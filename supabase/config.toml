@@ -14,3 +14,6 @@ verify_jwt = false
 
 [functions.api-call]
 verify_jwt = false
+
+[functions.run-agent]
+verify_jwt = false

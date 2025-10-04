@@ -35,90 +35,91 @@ export const WorkflowCanvas = ({
     }
   };
   return (
-    <main className="flex-1 bg-gradient-to-br from-canvas-background to-muted/20 overflow-auto" id="workflow-canvas">
-      <div className="h-full p-6 relative">
-        <Card className="h-full bg-canvas-background/50 backdrop-blur-sm border-2 border-dashed border-border/50 rounded-xl overflow-auto relative">
-          <div className="h-full p-6 space-y-6 relative">
-            <svg className="absolute inset-0 pointer-events-none z-10" style={{ width: '100%', height: '100%' }}>
-              <defs>
-                <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
-                  <polygon points="0 0, 10 3, 0 6" fill="hsl(var(--primary))" />
-                </marker>
-              </defs>
-              {workflow.connections.map((conn) => {
-                const fromAgent = workflow.stages.flatMap(s => s.agents).find(a => a.id === conn.fromAgentId);
-                const toAgent = workflow.stages.flatMap(s => s.agents).find(a => a.id === conn.toAgentId);
-                if (!fromAgent || !toAgent) return null;
-                
-                const fromEl = document.getElementById(`port-output-${conn.fromAgentId}`);
-                const toEl = document.getElementById(`port-input-${conn.toAgentId}`);
-                if (!fromEl || !toEl) return null;
-                
-                const canvas = document.getElementById('workflow-canvas');
-                const scrollContainer = canvas?.querySelector('.overflow-auto');
-                if (!canvas || !scrollContainer) return null;
-                
-                const fromRect = fromEl.getBoundingClientRect();
-                const toRect = toEl.getBoundingClientRect();
-                const containerRect = (scrollContainer as HTMLElement).getBoundingClientRect();
-                
-                const scrollLeft = (scrollContainer as HTMLElement).scrollLeft;
-                const scrollTop = (scrollContainer as HTMLElement).scrollTop;
-                
-                // Get center of the port circles
-                const x1 = fromRect.left + fromRect.width / 2 - containerRect.left + scrollLeft;
-                const y1 = fromRect.top + fromRect.height / 2 - containerRect.top + scrollTop;
-                const x2 = toRect.left + toRect.width / 2 - containerRect.left + scrollLeft;
-                const y2 = toRect.top + toRect.height / 2 - containerRect.top + scrollTop;
-                
-                // Calculate bezier curve control points for smooth curves
-                const controlY1 = y1 + Math.abs(y2 - y1) * 0.5;
-                const controlY2 = y2 - Math.abs(y2 - y1) * 0.5;
-                
-                const path = `M ${x1} ${y1} C ${x1} ${controlY1}, ${x2} ${controlY2}, ${x2} ${y2}`;
-                
-                return (
-                  <path
-                    key={conn.id}
-                    d={path}
-                    stroke="hsl(var(--primary))"
-                    strokeWidth="2"
-                    fill="none"
-                    markerEnd="url(#arrowhead)"
-                  />
-                );
-              })}
-            </svg>
-            {workflow.stages.length === 0 ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center space-y-3 max-w-md">
-                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary/10 to-secondary/10 flex items-center justify-center mx-auto">
-                    <svg className="w-10 h-10 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
+    <main className="flex-1 bg-gradient-to-br from-canvas-background to-muted/20 overflow-hidden relative" id="workflow-canvas">
+      <div className="absolute inset-0 p-6">
+        <Card className="h-full bg-canvas-background/50 backdrop-blur-sm border-2 border-dashed border-border/50 rounded-xl overflow-hidden flex flex-col relative">
+          <div className="flex-1 overflow-auto relative" id="workflow-scroll-container">
+            <div className="p-6 space-y-6 min-h-full">
+              <svg className="absolute inset-0 pointer-events-none z-10" style={{ width: '100%', height: '100%' }}>
+                <defs>
+                  <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                    <polygon points="0 0, 10 3, 0 6" fill="hsl(var(--primary))" />
+                  </marker>
+                </defs>
+                {workflow.connections.map((conn) => {
+                  const fromAgent = workflow.stages.flatMap(s => s.agents).find(a => a.id === conn.fromAgentId);
+                  const toAgent = workflow.stages.flatMap(s => s.agents).find(a => a.id === conn.toAgentId);
+                  if (!fromAgent || !toAgent) return null;
+                  
+                  const fromEl = document.getElementById(`port-output-${conn.fromAgentId}`);
+                  const toEl = document.getElementById(`port-input-${conn.toAgentId}`);
+                  if (!fromEl || !toEl) return null;
+                  
+                  const scrollContainer = document.getElementById('workflow-scroll-container');
+                  if (!scrollContainer) return null;
+                  
+                  const fromRect = fromEl.getBoundingClientRect();
+                  const toRect = toEl.getBoundingClientRect();
+                  const containerRect = scrollContainer.getBoundingClientRect();
+                  
+                  const scrollLeft = scrollContainer.scrollLeft;
+                  const scrollTop = scrollContainer.scrollTop;
+                  
+                  // Get center of the port circles relative to scroll container
+                  const x1 = fromRect.left + fromRect.width / 2 - containerRect.left + scrollLeft;
+                  const y1 = fromRect.top + fromRect.height / 2 - containerRect.top + scrollTop;
+                  const x2 = toRect.left + toRect.width / 2 - containerRect.left + scrollLeft;
+                  const y2 = toRect.top + toRect.height / 2 - containerRect.top + scrollTop;
+                  
+                  // Calculate bezier curve control points for smooth curves
+                  const controlY1 = y1 + Math.abs(y2 - y1) * 0.5;
+                  const controlY2 = y2 - Math.abs(y2 - y1) * 0.5;
+                  
+                  const path = `M ${x1} ${y1} C ${x1} ${controlY1}, ${x2} ${controlY2}, ${x2} ${y2}`;
+                  
+                  return (
+                    <path
+                      key={conn.id}
+                      d={path}
+                      stroke="hsl(var(--primary))"
+                      strokeWidth="2"
+                      fill="none"
+                      markerEnd="url(#arrowhead)"
+                    />
+                  );
+                })}
+              </svg>
+              {workflow.stages.length === 0 ? (
+                <div className="flex items-center justify-center h-full">
+                  <div className="text-center space-y-3 max-w-md">
+                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary/10 to-secondary/10 flex items-center justify-center mx-auto">
+                      <svg className="w-10 h-10 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                      </svg>
+                    </div>
+                    <h3 className="text-xl font-semibold text-foreground">Start Building Your Workflow</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Click "Add Stage" to create your first stage, then drag agents from the sidebar to build your workflow.
+                    </p>
                   </div>
-                  <h3 className="text-xl font-semibold text-foreground">Start Building Your Workflow</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Click "Add Stage" to create your first stage, then drag agents from the sidebar to build your workflow.
-                  </p>
                 </div>
-              </div>
-            ) : (
-              workflow.stages.map((stage, index) => (
-                <Stage
-                  key={stage.id}
-                  stage={stage}
-                  stageNumber={index + 1}
-                  selectedNode={selectedNode}
-                  connectingFrom={connectingFrom}
-                  onSelectNode={onSelectNode}
-                  onAddAgent={onAddAgent}
-                  onDeleteAgent={onDeleteAgent}
-                  onDeleteStage={onDeleteStage}
-                  onPortClick={handlePortClick}
-                />
-              ))
-            )}
+              ) : (
+                workflow.stages.map((stage, index) => (
+                  <Stage
+                    key={stage.id}
+                    stage={stage}
+                    stageNumber={index + 1}
+                    selectedNode={selectedNode}
+                    connectingFrom={connectingFrom}
+                    onSelectNode={onSelectNode}
+                    onAddAgent={onAddAgent}
+                    onDeleteAgent={onDeleteAgent}
+                    onDeleteStage={onDeleteStage}
+                    onPortClick={handlePortClick}
+                  />
+                ))
+              )}
+            </div>
           </div>
         </Card>
       </div>

@@ -189,24 +189,27 @@ const Index = () => {
         // Prepare the prompt
         const userPrompt = agent.userPrompt.replace("{input}", input || "initial input");
         
-        // Call Lovable AI via edge function
-        const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        // Call edge function to run agent
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/run-agent`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${import.meta.env.VITE_LOVABLE_API_KEY || ''}`,
           },
           body: JSON.stringify({
-            model: "google/gemini-2.5-flash",
-            messages: [
-              { role: "system", content: agent.systemPrompt },
-              { role: "user", content: userPrompt }
-            ],
+            systemPrompt: agent.systemPrompt,
+            userPrompt,
+            tools: agent.tools,
+            toolConfigs: workflow.toolConfigs,
           }),
         });
 
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || `Server error: ${response.status}`);
+        }
+
         const data = await response.json();
-        const output = data.choices?.[0]?.message?.content || "No output generated";
+        const output = data.output || "No output generated";
         
         outputs.set(agentId, output);
         executed.add(agentId);
