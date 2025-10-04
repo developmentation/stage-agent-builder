@@ -13,6 +13,7 @@ export interface Agent {
   userPrompt: string;
   tools: string[];
   status: "idle" | "running" | "complete" | "error";
+  output?: string;
 }
 
 export interface Stage {
@@ -169,7 +170,7 @@ const Index = () => {
     
     // Reset all agents to idle
     allAgents.forEach((agent) => {
-      updateAgent(agent.id, { status: "idle" });
+      updateAgent(agent.id, { status: "idle", output: undefined });
     });
 
     // Build execution order based on connections
@@ -184,31 +185,60 @@ const Index = () => {
 
       updateAgent(agentId, { status: "running" });
       
-      // Simulate agent execution
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-      
-      const output = `Output from ${agent.name}: processed "${input}"`;
-      outputs.set(agentId, output);
-      executed.add(agentId);
-      
-      updateAgent(agentId, { status: "complete" });
-
-      // Find and execute connected agents
-      const outgoingConnections = workflow.connections.filter(
-        (c) => c.fromAgentId === agentId
-      );
-      
-      for (const conn of outgoingConnections) {
-        // Gather all inputs for the target agent
-        const incomingConnections = workflow.connections.filter(
-          (c) => c.toAgentId === conn.toAgentId
-        );
-        const combinedInput = incomingConnections
-          .map((c) => outputs.get(c.fromAgentId) || "")
-          .filter(Boolean)
-          .join("\n");
+      try {
+        // Prepare the prompt
+        const userPrompt = agent.userPrompt.replace("{input}", input || "initial input");
         
-        await executeAgent(conn.toAgentId, combinedInput);
+        // Call Lovable AI via edge function
+        const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${import.meta.env.VITE_LOVABLE_API_KEY || ''}`,
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash",
+            messages: [
+              { role: "system", content: agent.systemPrompt },
+              { role: "user", content: userPrompt }
+            ],
+          }),
+        });
+
+        const data = await response.json();
+        const output = data.choices?.[0]?.message?.content || "No output generated";
+        
+        outputs.set(agentId, output);
+        executed.add(agentId);
+        
+        updateAgent(agentId, { status: "complete", output });
+
+        // Find and execute connected agents
+        const outgoingConnections = workflow.connections.filter(
+          (c) => c.fromAgentId === agentId
+        );
+        
+        for (const conn of outgoingConnections) {
+          // Check if all inputs for target agent are ready
+          const incomingConnections = workflow.connections.filter(
+            (c) => c.toAgentId === conn.toAgentId
+          );
+          
+          // Wait for all inputs to be ready
+          const allInputsReady = incomingConnections.every((c) => outputs.has(c.fromAgentId));
+          
+          if (allInputsReady) {
+            const combinedInput = incomingConnections
+              .map((c) => outputs.get(c.fromAgentId) || "")
+              .filter(Boolean)
+              .join("\n\n---\n\n");
+            
+            await executeAgent(conn.toAgentId, combinedInput);
+          }
+        }
+      } catch (error) {
+        console.error("Agent execution failed:", error);
+        updateAgent(agentId, { status: "error", output: `Error: ${error}` });
       }
     };
 
@@ -216,10 +246,8 @@ const Index = () => {
     const agentsWithInputs = new Set(workflow.connections.map((c) => c.toAgentId));
     const rootAgents = allAgents.filter((a) => !agentsWithInputs.has(a.id));
 
-    // Execute from roots
-    for (const agent of rootAgents) {
-      await executeAgent(agent.id);
-    }
+    // Execute from roots in parallel
+    await Promise.all(rootAgents.map((agent) => executeAgent(agent.id)));
   };
 
   const selectedAgent = workflow.stages

@@ -68,7 +68,13 @@ export const Stage = ({
         </Button>
       </div>
 
-      <div className="space-y-3 min-h-[100px]">
+      <div className="min-h-[100px]">
+        {stage.agents.length === 0 ? (
+          <div className="flex items-center justify-center h-24 border-2 border-dashed border-border/50 rounded-lg">
+            <p className="text-sm text-muted-foreground">Drop an agent here</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
             {stage.agents.map((agent) => (
               <div key={agent.id} id={`agent-${agent.id}`}>
                 <AgentNode
@@ -81,10 +87,6 @@ export const Stage = ({
                 />
               </div>
             ))}
-        
-        {stage.agents.length === 0 && (
-          <div className="flex items-center justify-center h-24 border-2 border-dashed border-border/50 rounded-lg">
-            <p className="text-sm text-muted-foreground">Drop an agent here</p>
           </div>
         )}
       </div>

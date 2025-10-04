@@ -119,6 +119,15 @@ export const PropertiesPanel = ({
             </p>
           </div>
 
+          {selectedAgent.output && (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Agent Output</Label>
+              <Card className="p-3 bg-muted/30 max-h-[200px] overflow-y-auto">
+                <p className="text-xs whitespace-pre-wrap break-words">{selectedAgent.output}</p>
+              </Card>
+            </div>
+          )}
+
           <div className="space-y-3">
             <Label className="text-sm font-medium">Attached Tools</Label>
             <Card className="p-3 bg-muted/30 space-y-2">

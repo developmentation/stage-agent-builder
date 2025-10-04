@@ -35,49 +35,56 @@ export const WorkflowCanvas = ({
     }
   };
   return (
-    <main className="flex-1 bg-gradient-to-br from-canvas-background to-muted/20 overflow-auto">
+    <main className="flex-1 bg-gradient-to-br from-canvas-background to-muted/20 overflow-auto" id="workflow-canvas">
       <div className="h-full p-6 relative">
-        <Card className="h-full bg-canvas-background/50 backdrop-blur-sm border-2 border-dashed border-border/50 rounded-xl">
-          <svg className="absolute inset-0 pointer-events-none z-10" style={{ width: '100%', height: '100%' }}>
-            <defs>
-              <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
-                <polygon points="0 0, 10 3, 0 6" fill="hsl(var(--primary))" />
-              </marker>
-            </defs>
-            {workflow.connections.map((conn) => {
-              const fromAgent = workflow.stages.flatMap(s => s.agents).find(a => a.id === conn.fromAgentId);
-              const toAgent = workflow.stages.flatMap(s => s.agents).find(a => a.id === conn.toAgentId);
-              if (!fromAgent || !toAgent) return null;
-              
-              const fromEl = document.getElementById(`agent-${conn.fromAgentId}`);
-              const toEl = document.getElementById(`agent-${conn.toAgentId}`);
-              if (!fromEl || !toEl) return null;
-              
-              const fromRect = fromEl.getBoundingClientRect();
-              const toRect = toEl.getBoundingClientRect();
-              const container = fromEl.closest('main')?.getBoundingClientRect();
-              if (!container) return null;
-              
-              const x1 = fromRect.left + fromRect.width / 2 - container.left;
-              const y1 = fromRect.bottom - container.top;
-              const x2 = toRect.left + toRect.width / 2 - container.left;
-              const y2 = toRect.top - container.top;
-              
-              return (
-                <line
-                  key={conn.id}
-                  x1={x1}
-                  y1={y1}
-                  x2={x2}
-                  y2={y2}
-                  stroke="hsl(var(--primary))"
-                  strokeWidth="2"
-                  markerEnd="url(#arrowhead)"
-                />
-              );
-            })}
-          </svg>
-          <div className="h-full p-6 space-y-6 overflow-auto">
+        <Card className="h-full bg-canvas-background/50 backdrop-blur-sm border-2 border-dashed border-border/50 rounded-xl overflow-auto relative">
+          <div className="h-full p-6 space-y-6 relative">
+            <svg className="absolute inset-0 pointer-events-none z-10" style={{ width: '100%', height: '100%' }}>
+              <defs>
+                <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                  <polygon points="0 0, 10 3, 0 6" fill="hsl(var(--primary))" />
+                </marker>
+              </defs>
+              {workflow.connections.map((conn) => {
+                const fromAgent = workflow.stages.flatMap(s => s.agents).find(a => a.id === conn.fromAgentId);
+                const toAgent = workflow.stages.flatMap(s => s.agents).find(a => a.id === conn.toAgentId);
+                if (!fromAgent || !toAgent) return null;
+                
+                const fromEl = document.getElementById(`agent-${conn.fromAgentId}`);
+                const toEl = document.getElementById(`agent-${conn.toAgentId}`);
+                if (!fromEl || !toEl) return null;
+                
+                const canvas = document.getElementById('workflow-canvas');
+                if (!canvas) return null;
+                
+                const fromRect = fromEl.getBoundingClientRect();
+                const toRect = toEl.getBoundingClientRect();
+                const canvasRect = canvas.getBoundingClientRect();
+                
+                const x1 = fromRect.left + fromRect.width / 2 - canvasRect.left + canvas.scrollLeft;
+                const y1 = fromRect.bottom - canvasRect.top + canvas.scrollTop;
+                const x2 = toRect.left + toRect.width / 2 - canvasRect.left + canvas.scrollLeft;
+                const y2 = toRect.top - canvasRect.top + canvas.scrollTop;
+                
+                // Calculate bezier curve control points
+                const midY = (y1 + y2) / 2;
+                const controlY1 = y1 + Math.abs(y2 - y1) * 0.5;
+                const controlY2 = y2 - Math.abs(y2 - y1) * 0.5;
+                
+                const path = `M ${x1} ${y1} C ${x1} ${controlY1}, ${x2} ${controlY2}, ${x2} ${y2}`;
+                
+                return (
+                  <path
+                    key={conn.id}
+                    d={path}
+                    stroke="hsl(var(--primary))"
+                    strokeWidth="2"
+                    fill="none"
+                    markerEnd="url(#arrowhead)"
+                  />
+                );
+              })}
+            </svg>
             {workflow.stages.length === 0 ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center space-y-3 max-w-md">
