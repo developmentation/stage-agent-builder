@@ -130,7 +130,7 @@ export const WorkflowCanvas = ({
       const isSelected = selectedConnection === conn.id;
       
       return (
-        <g key={conn.id}>
+        <g key={conn.id} style={{ pointerEvents: 'auto' }}>
           {/* Invisible wider path for easier clicking */}
           <path
             d={path}
@@ -180,7 +180,8 @@ export const WorkflowCanvas = ({
                 height: `${svgDimensions.height}px`, 
                 zIndex: 15,
                 minWidth: '100%',
-                minHeight: '100%'
+                minHeight: '100%',
+                pointerEvents: 'none'
               }}
             >
               <defs>
