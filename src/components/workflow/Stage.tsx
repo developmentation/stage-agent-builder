@@ -159,13 +159,13 @@ export const Stage = ({
             <p className="text-sm text-muted-foreground lg:hidden">No agents yet</p>
           </div>
         ) : (
-          <div className={`grid gap-4 ${
-            stage.agents.some(a => !a.minimized) 
-              ? "grid-cols-1 md:grid-cols-2" 
-              : "grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10"
-          }`}>
+          <div className="flex flex-wrap gap-3 items-start">
             {stage.agents.map((agent, index) => (
-              <div key={agent.id} id={`agent-${agent.id}`}>
+              <div 
+                key={agent.id} 
+                id={`agent-${agent.id}`}
+                className={agent.minimized ? "w-16 flex-shrink-0" : "w-full md:w-[calc(50%-0.375rem)] flex-shrink-0"}
+              >
                 <AgentNode
                   agent={agent}
                   isSelected={selectedNode === agent.id}

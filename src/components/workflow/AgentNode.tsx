@@ -59,7 +59,10 @@ export const AgentNode = ({ agent, isSelected, isConnecting, agentNumber, onSele
         className={`w-16 h-16 cursor-pointer transition-all hover:shadow-lg bg-card/50 backdrop-blur-sm flex items-center justify-center relative ${
           isSelected ? "ring-2 ring-primary shadow-lg" : ""
         } ${statusStyles[agent.status]}`}
-        onClick={onSelect}
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggleMinimize();
+        }}
         style={{ position: 'relative', zIndex: 20 }}
       >
         {/* Input/Output Ports */}
@@ -89,16 +92,6 @@ export const AgentNode = ({ agent, isSelected, isConnecting, agentNumber, onSele
           <div className="text-xs font-bold text-foreground">{agentNumber}</div>
           <StatusIcon className={`h-3 w-3 mx-auto mt-0.5 ${statusInfo.color}`} />
         </div>
-        
-        {/* Expand button - top right */}
-        <Button
-          variant="ghost"
-          size="sm"
-          className="absolute -top-1 -right-1 h-5 w-5 p-0 opacity-0 group-hover:opacity-100 hover:opacity-100 transition-opacity"
-          onClick={handleToggleMinimize}
-        >
-          <Maximize2 className="h-3 w-3" />
-        </Button>
       </Card>
     );
   }
@@ -169,9 +162,6 @@ export const AgentNode = ({ agent, isSelected, isConnecting, agentNumber, onSele
             <StatusIcon className="h-3 w-3" />
             <span className="text-xs capitalize">{agent.status}</span>
           </div>
-          <Badge variant="secondary" className="text-xs">
-            {agent.type}
-          </Badge>
           {agent.tools.length > 0 && (
             <Badge variant="outline" className="text-xs">
               {agent.tools.length} tools

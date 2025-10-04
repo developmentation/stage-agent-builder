@@ -94,6 +94,20 @@ export const PropertiesPanel = ({
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-6">
           <div className="space-y-2">
+            <Label htmlFor="agent-name" className="text-sm font-medium">
+              Agent Name
+            </Label>
+            <Input
+              id="agent-name"
+              placeholder="Agent name..."
+              value={selectedAgent.name}
+              onChange={(e) =>
+                onUpdateAgent(selectedAgent.id, { name: e.target.value })
+              }
+            />
+          </div>
+
+          <div className="space-y-2">
             <Label htmlFor="system-prompt" className="text-sm font-medium">
               System Prompt
             </Label>
