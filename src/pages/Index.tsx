@@ -438,8 +438,8 @@ const Index = () => {
         onRun={runWorkflow}
       />
       
-      <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
-        <div className="w-full lg:w-80 border-b lg:border-b-0 lg:border-r border-border overflow-y-auto">
+      <div className="flex flex-col lg:flex-row flex-1 lg:overflow-hidden">
+        <div className="w-full lg:w-80 h-auto max-h-[40vh] lg:max-h-none lg:h-full border-b lg:border-b-0 lg:border-r border-border overflow-y-auto">
           <Sidebar 
             onAddAgent={addAgent} 
             workflow={workflow} 
@@ -448,7 +448,7 @@ const Index = () => {
           />
         </div>
         
-        <div className="flex-1 min-h-[400px] lg:min-h-0 overflow-auto">
+        <div className="flex-1 h-[60vh] lg:h-full overflow-auto">
           <WorkflowCanvas 
             workflow={workflow}
             selectedNode={selectedNode}
@@ -463,7 +463,7 @@ const Index = () => {
           />
         </div>
         
-        <div className="w-full lg:w-96 border-t lg:border-t-0 lg:border-l border-border overflow-y-auto">
+        <div className="w-full lg:w-96 h-auto max-h-[50vh] lg:max-h-none lg:h-full border-t lg:border-t-0 lg:border-l border-border overflow-y-auto">
           <PropertiesPanel
             selectedAgent={selectedAgent}
             onUpdateAgent={updateAgent}
