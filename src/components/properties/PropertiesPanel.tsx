@@ -43,6 +43,7 @@ export const PropertiesPanel = ({
 }: PropertiesPanelProps) => {
   const [toolDialogOpen, setToolDialogOpen] = useState(false);
   const [configDialogTool, setConfigDialogTool] = useState<string | null>(null);
+  const [testInput, setTestInput] = useState("What time is it?");
 
   if (!selectedAgent) {
     return (
@@ -76,15 +77,27 @@ export const PropertiesPanel = ({
 
   return (
     <aside className="w-80 border-l border-border bg-card flex flex-col">
-      <div className="p-4 border-b border-border">
-        <div className="flex items-center justify-between mb-3">
+      <div className="p-4 border-b border-border space-y-3">
+        <div className="flex items-center justify-between">
           <h3 className="font-semibold text-foreground">Agent Properties</h3>
           <Button variant="ghost" size="sm" onClick={onDeselectAgent}>
             <X className="h-4 w-4" />
           </Button>
         </div>
+        
+        <div className="space-y-2">
+          <Label htmlFor="test-input" className="text-xs">Test Input</Label>
+          <Input
+            id="test-input"
+            placeholder="Enter test input..."
+            value={testInput}
+            onChange={(e) => setTestInput(e.target.value)}
+            className="text-sm"
+          />
+        </div>
+        
         <Button 
-          onClick={() => onRunAgent(selectedAgent.id)}
+          onClick={() => onRunAgent(selectedAgent.id, testInput)}
           className="w-full"
           variant="default"
           size="sm"
