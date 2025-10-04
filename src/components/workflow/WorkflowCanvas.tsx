@@ -161,7 +161,7 @@ export const WorkflowCanvas = ({
           {/* Invisible wider path for easier clicking */}
           <path
             d={path}
-            stroke="transparent"
+            stroke="red" // DEBUG: Make visible
             strokeWidth="20"
             fill="none"
             style={{ cursor: 'pointer', pointerEvents: isConnectingMode ? 'none' : 'stroke' }}
@@ -175,9 +175,9 @@ export const WorkflowCanvas = ({
           {/* Visible path */}
           <path
             d={path}
-            stroke={isSelected ? "hsl(var(--warning))" : "hsl(var(--primary))"}
-            strokeWidth="2"
-            strokeOpacity={isSelected ? "0.6" : "0.3"}
+            stroke={isSelected ? "yellow" : "lime"} // DEBUG: Use bright colors
+            strokeWidth="5" // DEBUG: Make thicker
+            strokeOpacity="1" // DEBUG: Full opacity
             fill="none"
             markerEnd={isSelected ? "url(#arrowhead-selected)" : "url(#arrowhead)"}
             style={{ pointerEvents: 'none' }}
