@@ -59,10 +59,7 @@ export const AgentNode = ({ agent, isSelected, isConnecting, agentNumber, onSele
         className={`w-16 h-16 cursor-pointer transition-all hover:shadow-lg bg-card/50 backdrop-blur-sm flex items-center justify-center relative ${
           isSelected ? "ring-2 ring-primary shadow-lg" : ""
         } ${statusStyles[agent.status]}`}
-        onClick={(e) => {
-          e.stopPropagation();
-          onToggleMinimize();
-        }}
+        onClick={onToggleMinimize}
         style={{ position: 'relative', zIndex: 20 }}
       >
         {/* Input/Output Ports */}
