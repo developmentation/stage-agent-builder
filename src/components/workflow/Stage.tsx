@@ -52,10 +52,11 @@ export const Stage = ({
 
   return (
     <Card
-      className="p-4 bg-card/80 backdrop-blur border-border/60 shadow-md transition-colors relative z-[1]"
+      className="p-4 bg-card/80 backdrop-blur border-border/60 shadow-md transition-colors"
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
+      style={{ position: 'relative', zIndex: 1 }}
     >
       <div className="flex items-center gap-3 mb-4 pb-3 border-b border-border/60">
         <GripVertical className="h-5 w-5 text-muted-foreground cursor-move" />

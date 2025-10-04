@@ -39,6 +39,16 @@ export const WorkflowCanvas = ({
     return () => timers.forEach(clearTimeout);
   }, [workflow.connections, workflow.stages, workflow.stages.flatMap(s => s.agents).length]);
 
+  // Redraw arrows on window resize
+  useEffect(() => {
+    const handleResize = () => {
+      setForceUpdate((prev) => prev + 1);
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const handlePortClick = (agentId: string, isOutput: boolean) => {
     if (isOutput && !connectingFrom) {
       onStartConnection(agentId);
@@ -95,20 +105,20 @@ export const WorkflowCanvas = ({
     <main className="flex-1 bg-gradient-to-br from-canvas-background to-muted/20 overflow-hidden relative" id="workflow-canvas">
       <div className="absolute inset-0 p-6">
         <Card className="h-full bg-canvas-background/50 backdrop-blur-sm border-2 border-dashed border-border/50 rounded-xl overflow-hidden flex flex-col relative">
-          <div className="flex-1 overflow-auto relative" id="workflow-scroll-container">
-            <div className="p-6 space-y-6 min-h-full">
-              <svg 
-                key={forceUpdate}
-                className="absolute inset-0 pointer-events-none z-[15]" 
-                style={{ width: '100%', height: '100%' }}
-              >
-                <defs>
-                  <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
-                    <polygon points="0 0, 10 3, 0 6" fill="hsl(var(--primary))" />
-                  </marker>
-                </defs>
-                {renderConnections()}
-              </svg>
+          <div className="flex-1 overflow-auto" id="workflow-scroll-container" style={{ position: 'relative' }}>
+            <svg 
+              key={forceUpdate}
+              className="absolute inset-0 pointer-events-none" 
+              style={{ width: '100%', height: '100%', zIndex: 15 }}
+            >
+              <defs>
+                <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                  <polygon points="0 0, 10 3, 0 6" fill="hsl(var(--primary))" />
+                </marker>
+              </defs>
+              {renderConnections()}
+            </svg>
+            <div className="p-6 space-y-6 min-h-full" style={{ position: 'relative', zIndex: 5 }}>
               {workflow.stages.length === 0 ? (
                 <div className="flex items-center justify-center h-full">
                   <div className="text-center space-y-3 max-w-md">

@@ -40,10 +40,11 @@ export const AgentNode = ({ agent, isSelected, isConnecting, onSelect, onDelete,
 
   return (
     <Card 
-      className={`p-3 cursor-pointer transition-all hover:shadow-lg relative w-full bg-card/80 backdrop-blur-sm z-30 ${
+      className={`p-3 cursor-pointer transition-all hover:shadow-lg w-full bg-card/80 backdrop-blur-sm ${
         isSelected ? "ring-2 ring-primary shadow-lg" : ""
       }`}
       onClick={onSelect}
+      style={{ position: 'relative', zIndex: 20 }}
     >
       {/* Input/Output Ports */}
       <div 
