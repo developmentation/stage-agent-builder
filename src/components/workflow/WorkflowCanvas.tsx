@@ -135,9 +135,9 @@ export const WorkflowCanvas = ({
           <path
             d={path}
             stroke="transparent"
-            strokeWidth="12"
+            strokeWidth="20"
             fill="none"
-            className="cursor-pointer"
+            style={{ cursor: 'pointer' }}
             onClick={(e) => {
               e.stopPropagation();
               setSelectedConnection(conn.id);
@@ -148,10 +148,10 @@ export const WorkflowCanvas = ({
             d={path}
             stroke={isSelected ? "hsl(var(--warning))" : "hsl(var(--primary))"}
             strokeWidth="2"
-            strokeOpacity="0.3"
+            strokeOpacity={isSelected ? "0.6" : "0.3"}
             fill="none"
             markerEnd={isSelected ? "url(#arrowhead-selected)" : "url(#arrowhead)"}
-            className="pointer-events-none"
+            style={{ pointerEvents: 'none' }}
           />
         </g>
       );
@@ -161,10 +161,15 @@ export const WorkflowCanvas = ({
     <main className="flex-1 bg-gradient-to-br from-canvas-background to-muted/20 overflow-hidden relative" id="workflow-canvas">
       <div className="absolute inset-0 p-6">
         <Card className="h-full bg-canvas-background/50 backdrop-blur-sm border-2 border-dashed border-border/50 rounded-xl overflow-hidden flex flex-col relative">
-          <div className="flex-1 overflow-auto" id="workflow-scroll-container" style={{ position: 'relative' }}>
+          <div 
+            className="flex-1 overflow-auto" 
+            id="workflow-scroll-container" 
+            style={{ position: 'relative' }}
+            onClick={() => setSelectedConnection(null)}
+          >
             <svg 
               key={forceUpdate}
-              className="absolute top-0 left-0 pointer-events-none" 
+              className="absolute top-0 left-0" 
               style={{ 
                 width: `${svgDimensions.width}px`, 
                 height: `${svgDimensions.height}px`, 
@@ -178,7 +183,7 @@ export const WorkflowCanvas = ({
                   <polygon points="0 0, 10 3, 0 6" fill="hsl(var(--primary))" fillOpacity="0.3" />
                 </marker>
                 <marker id="arrowhead-selected" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
-                  <polygon points="0 0, 10 3, 0 6" fill="hsl(var(--warning))" fillOpacity="0.3" />
+                  <polygon points="0 0, 10 3, 0 6" fill="hsl(var(--warning))" fillOpacity="0.6" />
                 </marker>
               </defs>
               {renderConnections()}
