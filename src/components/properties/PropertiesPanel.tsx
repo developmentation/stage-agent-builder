@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { X, Plus, Settings } from "lucide-react";
+import { X, Plus, Settings, Play } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useState } from "react";
 import type { Agent, Workflow } from "@/pages/Index";
@@ -22,6 +22,7 @@ interface PropertiesPanelProps {
   onUpdateAgent: (agentId: string, updates: Partial<Agent>) => void;
   onUpdateToolConfig: (toolId: string, config: any) => void;
   onDeselectAgent: () => void;
+  onRunAgent: (agentId: string, customInput?: string) => void;
 }
 
 const availableTools = [
@@ -38,6 +39,7 @@ export const PropertiesPanel = ({
   onUpdateAgent,
   onUpdateToolConfig,
   onDeselectAgent,
+  onRunAgent,
 }: PropertiesPanelProps) => {
   const [toolDialogOpen, setToolDialogOpen] = useState(false);
   const [configDialogTool, setConfigDialogTool] = useState<string | null>(null);
@@ -74,10 +76,21 @@ export const PropertiesPanel = ({
 
   return (
     <aside className="w-80 border-l border-border bg-card flex flex-col">
-      <div className="p-4 border-b border-border flex items-center justify-between">
-        <h3 className="font-semibold text-foreground">Agent Properties</h3>
-        <Button variant="ghost" size="sm" onClick={onDeselectAgent}>
-          <X className="h-4 w-4" />
+      <div className="p-4 border-b border-border">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-semibold text-foreground">Agent Properties</h3>
+          <Button variant="ghost" size="sm" onClick={onDeselectAgent}>
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+        <Button 
+          onClick={() => onRunAgent(selectedAgent.id)}
+          className="w-full"
+          variant="default"
+          size="sm"
+        >
+          <Play className="h-4 w-4 mr-2" />
+          Run Agent
         </Button>
       </div>
 

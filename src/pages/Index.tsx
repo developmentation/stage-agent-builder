@@ -165,6 +165,44 @@ const Index = () => {
     setConnectingFrom(null);
   };
 
+  const runSingleAgent = async (agentId: string, customInput?: string) => {
+    const allAgents = workflow.stages.flatMap((s) => s.agents);
+    const agent = allAgents.find((a) => a.id === agentId);
+    if (!agent) return;
+
+    updateAgent(agentId, { status: "running" });
+    
+    try {
+      const userPrompt = agent.userPrompt.replace("{input}", customInput || "test input");
+      
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/run-agent`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          systemPrompt: agent.systemPrompt,
+          userPrompt,
+          tools: agent.tools,
+          toolConfigs: workflow.toolConfigs,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Server error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      const output = data.output || "No output generated";
+      
+      updateAgent(agentId, { status: "complete", output });
+    } catch (error) {
+      console.error("Agent execution failed:", error);
+      updateAgent(agentId, { status: "error", output: `Error: ${error}` });
+    }
+  };
+
   const runWorkflow = async () => {
     const allAgents = workflow.stages.flatMap((s) => s.agents);
     
@@ -177,7 +215,7 @@ const Index = () => {
     const executed = new Set<string>();
     const outputs = new Map<string, string>();
 
-    const executeAgent = async (agentId: string, input: string = "") => {
+    const executeAgent = async (agentId: string, input: string = "initial input") => {
       if (executed.has(agentId)) return;
       
       const agent = allAgents.find((a) => a.id === agentId);
@@ -186,10 +224,8 @@ const Index = () => {
       updateAgent(agentId, { status: "running" });
       
       try {
-        // Prepare the prompt
-        const userPrompt = agent.userPrompt.replace("{input}", input || "initial input");
+        const userPrompt = agent.userPrompt.replace("{input}", input);
         
-        // Call edge function to run agent
         const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/run-agent`, {
           method: "POST",
           headers: {
@@ -222,12 +258,10 @@ const Index = () => {
         );
         
         for (const conn of outgoingConnections) {
-          // Check if all inputs for target agent are ready
           const incomingConnections = workflow.connections.filter(
             (c) => c.toAgentId === conn.toAgentId
           );
           
-          // Wait for all inputs to be ready
           const allInputsReady = incomingConnections.every((c) => outputs.has(c.fromAgentId));
           
           if (allInputsReady) {
@@ -245,11 +279,9 @@ const Index = () => {
       }
     };
 
-    // Find root agents (no incoming connections)
     const agentsWithInputs = new Set(workflow.connections.map((c) => c.toAgentId));
     const rootAgents = allAgents.filter((a) => !agentsWithInputs.has(a.id));
 
-    // Execute from roots in parallel
     await Promise.all(rootAgents.map((agent) => executeAgent(agent.id)));
   };
 
@@ -288,6 +320,7 @@ const Index = () => {
           onUpdateAgent={updateAgent}
           onUpdateToolConfig={updateToolConfig}
           onDeselectAgent={() => setSelectedNode(null)}
+          onRunAgent={runSingleAgent}
         />
       </div>
       

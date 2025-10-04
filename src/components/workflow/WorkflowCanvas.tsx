@@ -1,6 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Stage } from "./Stage";
 import type { Workflow } from "@/pages/Index";
+import { useEffect, useState } from "react";
 
 interface WorkflowCanvasProps {
   workflow: Workflow;
@@ -25,6 +26,16 @@ export const WorkflowCanvas = ({
   onStartConnection,
   onCompleteConnection,
 }: WorkflowCanvasProps) => {
+  const [, setForceUpdate] = useState(0);
+
+  // Force redraw of arrows when workflow changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setForceUpdate((prev) => prev + 1);
+    }, 50);
+    return () => clearTimeout(timer);
+  }, [workflow.connections, workflow.stages]);
+
   const handlePortClick = (agentId: string, isOutput: boolean) => {
     if (isOutput && !connectingFrom) {
       onStartConnection(agentId);
@@ -33,6 +44,49 @@ export const WorkflowCanvas = ({
     } else if (connectingFrom) {
       onStartConnection(null);
     }
+  };
+
+  const renderConnections = () => {
+    const scrollContainer = document.getElementById('workflow-scroll-container');
+    if (!scrollContainer) return null;
+    
+    const containerRect = scrollContainer.getBoundingClientRect();
+    const scrollLeft = scrollContainer.scrollLeft;
+    const scrollTop = scrollContainer.scrollTop;
+    
+    return workflow.connections.map((conn) => {
+      const fromAgent = workflow.stages.flatMap(s => s.agents).find(a => a.id === conn.fromAgentId);
+      const toAgent = workflow.stages.flatMap(s => s.agents).find(a => a.id === conn.toAgentId);
+      if (!fromAgent || !toAgent) return null;
+      
+      const fromEl = document.getElementById(`port-output-${conn.fromAgentId}`);
+      const toEl = document.getElementById(`port-input-${conn.toAgentId}`);
+      if (!fromEl || !toEl) return null;
+      
+      const fromRect = fromEl.getBoundingClientRect();
+      const toRect = toEl.getBoundingClientRect();
+      
+      const x1 = fromRect.left + fromRect.width / 2 - containerRect.left + scrollLeft;
+      const y1 = fromRect.top + fromRect.height / 2 - containerRect.top + scrollTop;
+      const x2 = toRect.left + toRect.width / 2 - containerRect.left + scrollLeft;
+      const y2 = toRect.top + toRect.height / 2 - containerRect.top + scrollTop;
+      
+      const controlY1 = y1 + Math.abs(y2 - y1) * 0.5;
+      const controlY2 = y2 - Math.abs(y2 - y1) * 0.5;
+      
+      const path = `M ${x1} ${y1} C ${x1} ${controlY1}, ${x2} ${controlY2}, ${x2} ${y2}`;
+      
+      return (
+        <path
+          key={conn.id}
+          d={path}
+          stroke="hsl(var(--primary))"
+          strokeWidth="2"
+          fill="none"
+          markerEnd="url(#arrowhead)"
+        />
+      );
+    });
   };
   return (
     <main className="flex-1 bg-gradient-to-br from-canvas-background to-muted/20 overflow-hidden relative" id="workflow-canvas">
@@ -46,48 +100,7 @@ export const WorkflowCanvas = ({
                     <polygon points="0 0, 10 3, 0 6" fill="hsl(var(--primary))" />
                   </marker>
                 </defs>
-                {workflow.connections.map((conn) => {
-                  const fromAgent = workflow.stages.flatMap(s => s.agents).find(a => a.id === conn.fromAgentId);
-                  const toAgent = workflow.stages.flatMap(s => s.agents).find(a => a.id === conn.toAgentId);
-                  if (!fromAgent || !toAgent) return null;
-                  
-                  const fromEl = document.getElementById(`port-output-${conn.fromAgentId}`);
-                  const toEl = document.getElementById(`port-input-${conn.toAgentId}`);
-                  if (!fromEl || !toEl) return null;
-                  
-                  const scrollContainer = document.getElementById('workflow-scroll-container');
-                  if (!scrollContainer) return null;
-                  
-                  const fromRect = fromEl.getBoundingClientRect();
-                  const toRect = toEl.getBoundingClientRect();
-                  const containerRect = scrollContainer.getBoundingClientRect();
-                  
-                  const scrollLeft = scrollContainer.scrollLeft;
-                  const scrollTop = scrollContainer.scrollTop;
-                  
-                  // Get center of the port circles relative to scroll container
-                  const x1 = fromRect.left + fromRect.width / 2 - containerRect.left + scrollLeft;
-                  const y1 = fromRect.top + fromRect.height / 2 - containerRect.top + scrollTop;
-                  const x2 = toRect.left + toRect.width / 2 - containerRect.left + scrollLeft;
-                  const y2 = toRect.top + toRect.height / 2 - containerRect.top + scrollTop;
-                  
-                  // Calculate bezier curve control points for smooth curves
-                  const controlY1 = y1 + Math.abs(y2 - y1) * 0.5;
-                  const controlY2 = y2 - Math.abs(y2 - y1) * 0.5;
-                  
-                  const path = `M ${x1} ${y1} C ${x1} ${controlY1}, ${x2} ${controlY2}, ${x2} ${y2}`;
-                  
-                  return (
-                    <path
-                      key={conn.id}
-                      d={path}
-                      stroke="hsl(var(--primary))"
-                      strokeWidth="2"
-                      fill="none"
-                      markerEnd="url(#arrowhead)"
-                    />
-                  );
-                })}
+                {renderConnections()}
               </svg>
               {workflow.stages.length === 0 ? (
                 <div className="flex items-center justify-center h-full">

@@ -67,44 +67,45 @@ export const AgentNode = ({ agent, isSelected, isConnecting, onSelect, onDelete,
         }}
       />
 
-      <div className="flex items-start gap-3">
-        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-          <Icon className="h-5 w-5 text-primary" />
-        </div>
-        
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between mb-1">
-            <h4 className="text-sm font-semibold text-foreground">{agent.name}</h4>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 p-0"
-              onClick={handleDelete}
-            >
-              <Trash2 className="h-3 w-3 text-destructive" />
-            </Button>
+      <div className="space-y-3">
+        <div className="flex items-start gap-2">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+            <Icon className="h-4 w-4 text-primary" />
           </div>
           
-          <div className="flex items-center gap-2 mb-2">
-            <div className={`flex items-center gap-1 ${statusInfo.color}`}>
-              <StatusIcon className="h-3 w-3" />
-              <span className="text-xs capitalize">{agent.status}</span>
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center justify-between gap-2">
+              <h4 className="text-sm font-semibold text-foreground truncate">{agent.name}</h4>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 flex-shrink-0"
+                onClick={handleDelete}
+              >
+                <Trash2 className="h-3 w-3 text-destructive" />
+              </Button>
             </div>
           </div>
-          
-          <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
-            {agent.systemPrompt}
-          </p>
         </div>
-      </div>
-
-      <div className="mt-2 flex items-center justify-between">
-        <Badge variant="secondary" className="text-xs">
-          {agent.type}
-        </Badge>
-        <Badge variant="outline" className="text-xs">
-          {agent.tools.length} tools
-        </Badge>
+        
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className={`flex items-center gap-1 ${statusInfo.color}`}>
+            <StatusIcon className="h-3 w-3" />
+            <span className="text-xs capitalize">{agent.status}</span>
+          </div>
+          <Badge variant="secondary" className="text-xs">
+            {agent.type}
+          </Badge>
+          {agent.tools.length > 0 && (
+            <Badge variant="outline" className="text-xs">
+              {agent.tools.length} tools
+            </Badge>
+          )}
+        </div>
+        
+        <p className="text-xs text-muted-foreground line-clamp-2">
+          {agent.systemPrompt}
+        </p>
       </div>
     </Card>
   );
