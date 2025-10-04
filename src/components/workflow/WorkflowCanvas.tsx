@@ -146,10 +146,14 @@ export const WorkflowCanvas = ({
       const x2 = toRect.left + toRect.width / 2 - containerRect.left + scrollLeft;
       const y2 = toRect.top + toRect.height / 2 - containerRect.top + scrollTop;
       
+      console.log('Path coordinates:', { x1, y1, x2, y2, containerRect, scrollLeft, scrollTop });
+      
       const controlY1 = y1 + Math.abs(y2 - y1) * 0.5;
       const controlY2 = y2 - Math.abs(y2 - y1) * 0.5;
       
       const path = `M ${x1} ${y1} C ${x1} ${controlY1}, ${x2} ${controlY2}, ${x2} ${y2}`;
+      
+      console.log('Generated path:', path);
       
       const isSelected = selectedConnection === conn.id;
       
