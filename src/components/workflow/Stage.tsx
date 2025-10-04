@@ -49,6 +49,7 @@ interface StageProps {
   onAddAgent: (stageId: string, agentTemplate: any) => void;
   onDeleteAgent: (agentId: string) => void;
   onDeleteStage: (stageId: string) => void;
+  onToggleMinimize: (agentId: string) => void;
   onPortClick: (agentId: string, isOutput: boolean) => void;
 }
 
@@ -61,6 +62,7 @@ export const Stage = ({
   onAddAgent,
   onDeleteAgent,
   onDeleteStage,
+  onToggleMinimize,
   onPortClick,
 }: StageProps) => {
   const [isAddAgentOpen, setIsAddAgentOpen] = useState(false);
@@ -157,15 +159,21 @@ export const Stage = ({
             <p className="text-sm text-muted-foreground lg:hidden">No agents yet</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {stage.agents.map((agent) => (
+          <div className={`grid gap-4 ${
+            stage.agents.some(a => !a.minimized) 
+              ? "grid-cols-1 md:grid-cols-2" 
+              : "grid-cols-4 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10"
+          }`}>
+            {stage.agents.map((agent, index) => (
               <div key={agent.id} id={`agent-${agent.id}`}>
                 <AgentNode
                   agent={agent}
                   isSelected={selectedNode === agent.id}
                   isConnecting={connectingFrom !== null}
+                  agentNumber={`${stageNumber}.${index + 1}`}
                   onSelect={() => onSelectNode(agent.id)}
                   onDelete={() => onDeleteAgent(agent.id)}
+                  onToggleMinimize={() => onToggleMinimize(agent.id)}
                   onPortClick={onPortClick}
                 />
               </div>

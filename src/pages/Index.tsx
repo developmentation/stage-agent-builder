@@ -21,6 +21,7 @@ export interface Agent {
   tools: ToolInstance[];
   status: "idle" | "running" | "complete" | "error";
   output?: string;
+  minimized?: boolean;
 }
 
 export interface Stage {
@@ -93,6 +94,18 @@ const Index = () => {
         ...stage,
         agents: stage.agents.map((agent) =>
           agent.id === agentId ? { ...agent, ...updates } : agent
+        ),
+      })),
+    }));
+  };
+
+  const toggleMinimize = (agentId: string) => {
+    setWorkflow((prev) => ({
+      ...prev,
+      stages: prev.stages.map((stage) => ({
+        ...stage,
+        agents: stage.agents.map((agent) =>
+          agent.id === agentId ? { ...agent, minimized: !agent.minimized } : agent
         ),
       })),
     }));
@@ -457,6 +470,7 @@ const Index = () => {
             onAddAgent={addAgent}
             onDeleteAgent={deleteAgent}
             onDeleteStage={deleteStage}
+            onToggleMinimize={toggleMinimize}
             onStartConnection={setConnectingFrom}
             onCompleteConnection={addConnection}
             onDeleteConnection={deleteConnection}

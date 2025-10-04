@@ -11,6 +11,7 @@ interface WorkflowCanvasProps {
   onAddAgent: (stageId: string, agentTemplate: any) => void;
   onDeleteAgent: (agentId: string) => void;
   onDeleteStage: (stageId: string) => void;
+  onToggleMinimize: (agentId: string) => void;
   onStartConnection: (agentId: string) => void;
   onCompleteConnection: (fromAgentId: string, toAgentId: string) => void;
   onDeleteConnection: (connectionId: string) => void;
@@ -24,6 +25,7 @@ export const WorkflowCanvas = ({
   onAddAgent,
   onDeleteAgent,
   onDeleteStage,
+  onToggleMinimize,
   onStartConnection,
   onCompleteConnection,
   onDeleteConnection,
@@ -221,6 +223,7 @@ export const WorkflowCanvas = ({
                     onAddAgent={onAddAgent}
                     onDeleteAgent={onDeleteAgent}
                     onDeleteStage={onDeleteStage}
+                    onToggleMinimize={onToggleMinimize}
                     onPortClick={handlePortClick}
                   />
                 ))
