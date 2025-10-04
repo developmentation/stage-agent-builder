@@ -65,6 +65,13 @@ export const WorkflowCanvas = ({
     return () => timers.forEach(clearTimeout);
   }, [workflow.connections, workflow.stages, workflow.stages.flatMap(s => s.agents).length]);
 
+  // Clear selection when entering connection mode
+  useEffect(() => {
+    if (connectingFrom !== null) {
+      setSelectedConnection(null);
+    }
+  }, [connectingFrom]);
+
   // Redraw arrows on window resize
   useEffect(() => {
     const handleResize = () => {
@@ -131,18 +138,23 @@ export const WorkflowCanvas = ({
       
       const isSelected = selectedConnection === conn.id;
       
+      // If we're in connecting mode, don't allow selecting connections
+      const isConnectingMode = connectingFrom !== null;
+      
       return (
-        <g key={conn.id} style={{ pointerEvents: 'auto' }}>
+        <g key={conn.id} style={{ pointerEvents: isConnectingMode ? 'none' : 'auto' }}>
           {/* Invisible wider path for easier clicking */}
           <path
             d={path}
             stroke="transparent"
             strokeWidth="20"
             fill="none"
-            style={{ cursor: 'pointer', pointerEvents: 'stroke' }}
+            style={{ cursor: 'pointer', pointerEvents: isConnectingMode ? 'none' : 'stroke' }}
             onClick={(e) => {
-              e.stopPropagation();
-              setSelectedConnection(conn.id);
+              if (!isConnectingMode) {
+                e.stopPropagation();
+                setSelectedConnection(conn.id);
+              }
             }}
           />
           {/* Visible path */}
@@ -196,6 +208,31 @@ export const WorkflowCanvas = ({
               </defs>
               {renderConnections()}
             </svg>
+            
+            {/* Mobile connection delete button */}
+            {selectedConnection && !connectingFrom && (
+              <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 lg:hidden">
+                <Card className="p-2 bg-card shadow-lg flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground px-2">Connection selected</span>
+                  <button
+                    onClick={() => {
+                      onDeleteConnection(selectedConnection);
+                      setSelectedConnection(null);
+                    }}
+                    className="px-3 py-1.5 bg-destructive text-destructive-foreground rounded-md text-sm font-medium hover:bg-destructive/90"
+                  >
+                    Delete
+                  </button>
+                  <button
+                    onClick={() => setSelectedConnection(null)}
+                    className="px-3 py-1.5 bg-muted text-foreground rounded-md text-sm font-medium hover:bg-muted/80"
+                  >
+                    Cancel
+                  </button>
+                </Card>
+              </div>
+            )}
+            
             <div className="p-6 space-y-6 min-h-full" style={{ position: 'relative', zIndex: 5 }}>
               {workflow.stages.length === 0 ? (
                 <div className="flex items-center justify-center h-full">
