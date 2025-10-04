@@ -40,7 +40,7 @@ export const AgentNode = ({ agent, isSelected, isConnecting, onSelect, onDelete,
 
   return (
     <Card 
-      className={`p-3 cursor-pointer transition-all hover:shadow-lg relative w-full bg-card/80 backdrop-blur-sm z-10 ${
+      className={`p-3 cursor-pointer transition-all hover:shadow-lg relative w-full bg-card/80 backdrop-blur-sm z-30 ${
         isSelected ? "ring-2 ring-primary shadow-lg" : ""
       }`}
       onClick={onSelect}

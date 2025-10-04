@@ -173,7 +173,26 @@ const Index = () => {
     updateAgent(agentId, { status: "running" });
     
     try {
-      const userPrompt = agent.userPrompt.replace("{input}", customInput || "test input");
+      // Get input from connected agents or use initial input
+      const incomingConnections = workflow.connections.filter(
+        (c) => c.toAgentId === agentId
+      );
+      
+      let input = "initial input";
+      if (incomingConnections.length > 0) {
+        const outputs = incomingConnections
+          .map((c) => {
+            const fromAgent = allAgents.find((a) => a.id === c.fromAgentId);
+            return fromAgent?.output || "";
+          })
+          .filter(Boolean);
+        
+        if (outputs.length > 0) {
+          input = outputs.join("\n\n---\n\n");
+        }
+      }
+      
+      const userPrompt = agent.userPrompt.replace("{input}", input);
       
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/run-agent`, {
         method: "POST",
