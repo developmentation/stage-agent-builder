@@ -1,7 +1,29 @@
 import { Button } from "@/components/ui/button";
-import { Play, Plus, Save, Upload, Undo2, Redo2, Trash2 } from "lucide-react";
+import { Play, Plus, Save, Upload, Trash2 } from "lucide-react";
+import { useRef } from "react";
 
-export const Toolbar = () => {
+interface ToolbarProps {
+  onAddStage: () => void;
+  onSave: () => void;
+  onLoad: (file: File) => void;
+  onClear: () => void;
+}
+
+export const Toolbar = ({ onAddStage, onSave, onLoad, onClear }: ToolbarProps) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleLoadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      onLoad(file);
+      e.target.value = "";
+    }
+  };
+
   return (
     <header className="h-16 border-b border-border bg-card flex items-center justify-between px-6 shadow-sm">
       <div className="flex items-center gap-4">
@@ -17,28 +39,27 @@ export const Toolbar = () => {
       </div>
 
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="sm" className="gap-2">
-          <Undo2 className="h-4 w-4" />
-          Undo
-        </Button>
-        <Button variant="ghost" size="sm" className="gap-2">
-          <Redo2 className="h-4 w-4" />
-          Redo
-        </Button>
-        <div className="w-px h-6 bg-border mx-2" />
-        <Button variant="ghost" size="sm" className="gap-2">
+        <Button variant="ghost" size="sm" className="gap-2" onClick={onAddStage}>
           <Plus className="h-4 w-4" />
           Add Stage
         </Button>
-        <Button variant="outline" size="sm" className="gap-2">
+        <div className="w-px h-6 bg-border mx-2" />
+        <Button variant="outline" size="sm" className="gap-2" onClick={handleLoadClick}>
           <Upload className="h-4 w-4" />
           Load
         </Button>
-        <Button variant="outline" size="sm" className="gap-2">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept=".json"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+        <Button variant="outline" size="sm" className="gap-2" onClick={onSave}>
           <Save className="h-4 w-4" />
           Save
         </Button>
-        <Button variant="outline" size="sm" className="gap-2">
+        <Button variant="outline" size="sm" className="gap-2" onClick={onClear}>
           <Trash2 className="h-4 w-4" />
           Clear
         </Button>

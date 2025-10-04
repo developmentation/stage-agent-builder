@@ -1,102 +1,90 @@
 import { Card } from "@/components/ui/card";
-import { Bot, Search, FileText, Zap } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Search, FileText, Bot, Play, CheckCircle2, AlertCircle, Circle, Trash2 } from "lucide-react";
+import type { Agent } from "@/pages/Index";
 
 interface AgentNodeProps {
-  id: string;
-  name: string;
-  type: "researcher" | "summarizer" | "analyst";
-  status: "idle" | "running" | "complete" | "error";
+  agent: Agent;
   isSelected: boolean;
   onSelect: () => void;
+  onDelete: () => void;
 }
 
-const iconMap = {
+const agentIcons = {
   researcher: Search,
   summarizer: FileText,
   analyst: Bot,
 };
 
 const statusConfig = {
-  idle: {
-    bg: "bg-node-idle",
-    border: "border-border",
-    glow: "",
-  },
-  running: {
-    bg: "bg-node-running",
-    border: "border-warning",
-    glow: "shadow-lg shadow-warning/20",
-  },
-  complete: {
-    bg: "bg-node-complete",
-    border: "border-success",
-    glow: "shadow-md shadow-success/20",
-  },
-  error: {
-    bg: "bg-node-error",
-    border: "border-destructive",
-    glow: "shadow-md shadow-destructive/20",
-  },
+  idle: { icon: Circle, color: "text-muted-foreground", bg: "bg-muted" },
+  running: { icon: Play, color: "text-warning", bg: "bg-warning/10" },
+  complete: { icon: CheckCircle2, color: "text-success", bg: "bg-success/10" },
+  error: { icon: AlertCircle, color: "text-destructive", bg: "bg-destructive/10" },
 };
 
-export const AgentNode = ({ id, name, type, status, isSelected, onSelect }: AgentNodeProps) => {
-  const Icon = iconMap[type];
-  const config = statusConfig[status];
+export const AgentNode = ({ agent, isSelected, onSelect, onDelete }: AgentNodeProps) => {
+  const Icon = agentIcons[agent.type as keyof typeof agentIcons] || Bot;
+  const statusInfo = statusConfig[agent.status];
+  const StatusIcon = statusInfo.icon;
+
+  const handleDelete = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirm(`Delete agent "${agent.name}"?`)) {
+      onDelete();
+    }
+  };
 
   return (
-    <Card
+    <Card 
+      className={`p-3 cursor-pointer transition-all hover:shadow-lg relative ${
+        isSelected ? "ring-2 ring-primary shadow-lg" : ""
+      }`}
       onClick={onSelect}
-      className={cn(
-        "p-3 cursor-pointer transition-all duration-200",
-        config.bg,
-        config.border,
-        config.glow,
-        isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-background",
-        "hover:shadow-md"
-      )}
     >
-      <div className="flex items-center gap-3">
-        {/* Input Port */}
-        <div className="w-3 h-3 rounded-full bg-primary border-2 border-background shadow-sm -ml-5" />
+      {/* Input/Output Ports */}
+      <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-primary border-2 border-card" />
+      <div className="absolute -right-2 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-primary border-2 border-card" />
 
-        {/* Icon */}
-        <div className={cn(
-          "w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0",
-          status === "running" ? "bg-warning/20 animate-pulse" : "bg-primary/10"
-        )}>
-          <Icon className={cn(
-            "h-5 w-5",
-            status === "running" ? "text-warning" : "text-primary"
-          )} />
+      <div className="flex items-start gap-3">
+        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+          <Icon className="h-5 w-5 text-primary" />
         </div>
-
-        {/* Content */}
+        
         <div className="flex-1 min-w-0">
-          <h4 className="text-sm font-medium text-foreground truncate">{name}</h4>
-          <div className="flex items-center gap-2 mt-1">
-            <span className="text-xs text-muted-foreground capitalize">{type}</span>
-            {status === "running" && (
-              <div className="flex items-center gap-1">
-                <Zap className="h-3 w-3 text-warning animate-pulse" />
-                <span className="text-xs text-warning font-medium">Processing</span>
-              </div>
-            )}
+          <div className="flex items-center justify-between mb-1">
+            <h4 className="text-sm font-semibold text-foreground">{agent.name}</h4>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0"
+              onClick={handleDelete}
+            >
+              <Trash2 className="h-3 w-3 text-destructive" />
+            </Button>
           </div>
+          
+          <div className="flex items-center gap-2 mb-2">
+            <div className={`flex items-center gap-1 ${statusInfo.color}`}>
+              <StatusIcon className="h-3 w-3" />
+              <span className="text-xs capitalize">{agent.status}</span>
+            </div>
+          </div>
+          
+          <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+            {agent.systemPrompt}
+          </p>
         </div>
-
-        {/* Output Port */}
-        <div className="w-3 h-3 rounded-full bg-secondary border-2 border-background shadow-sm -mr-5" />
       </div>
 
-      {/* Tools Indicator */}
-      <div className="flex flex-wrap gap-1.5 mt-2 pt-2 border-t border-border/40">
-        <span className="text-[10px] px-2 py-0.5 rounded-full bg-secondary/10 text-secondary font-medium">
-          Google Search
-        </span>
-        <span className="text-[10px] px-2 py-0.5 rounded-full bg-secondary/10 text-secondary font-medium">
-          Web Scrape
-        </span>
+      <div className="mt-2 flex items-center justify-between">
+        <Badge variant="secondary" className="text-xs">
+          {agent.type}
+        </Badge>
+        <Badge variant="outline" className="text-xs">
+          {agent.tools.length} tools
+        </Badge>
       </div>
     </Card>
   );

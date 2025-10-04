@@ -1,68 +1,97 @@
 import { Card } from "@/components/ui/card";
 import { AgentNode } from "./AgentNode";
-import { GripVertical, ChevronDown, Plus } from "lucide-react";
+import { GripVertical, ChevronDown, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import type { Stage as StageType } from "@/pages/Index";
 
 interface StageProps {
+  stage: StageType;
   stageNumber: number;
   selectedNode: string | null;
   onSelectNode: (id: string | null) => void;
+  onAddAgent: (stageId: string, agentTemplate: any) => void;
+  onDeleteAgent: (agentId: string) => void;
+  onDeleteStage: (stageId: string) => void;
 }
 
-export const Stage = ({ stageNumber, selectedNode, onSelectNode }: StageProps) => {
+export const Stage = ({
+  stage,
+  stageNumber,
+  selectedNode,
+  onSelectNode,
+  onAddAgent,
+  onDeleteAgent,
+  onDeleteStage,
+}: StageProps) => {
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.currentTarget.classList.add("border-primary");
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.currentTarget.classList.remove("border-primary");
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.currentTarget.classList.remove("border-primary");
+    
+    const templateData = e.dataTransfer.getData("agentTemplate");
+    if (templateData) {
+      const template = JSON.parse(templateData);
+      onAddAgent(stage.id, template);
+    }
+  };
+
+  const completedAgents = stage.agents.filter((a) => a.status === "complete").length;
+  const progress = stage.agents.length > 0 ? (completedAgents / stage.agents.length) * 100 : 0;
+
   return (
-    <Card className="p-4 bg-card/80 backdrop-blur border-border/60 shadow-md">
-      {/* Stage Header */}
+    <Card
+      className="p-4 bg-card/80 backdrop-blur border-border/60 shadow-md transition-colors"
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       <div className="flex items-center gap-3 mb-4 pb-3 border-b border-border/60">
         <GripVertical className="h-5 w-5 text-muted-foreground cursor-move" />
         <div className="flex-1">
           <h3 className="text-sm font-semibold text-foreground">Stage {stageNumber}</h3>
           <p className="text-xs text-muted-foreground">Drag agents here to add them</p>
         </div>
-        <Button variant="ghost" size="sm">
-          <ChevronDown className="h-4 w-4" />
+        <Button variant="ghost" size="sm" onClick={() => onDeleteStage(stage.id)}>
+          <Trash2 className="h-4 w-4 text-destructive" />
         </Button>
       </div>
 
-      {/* Stage Content - Agent Nodes */}
       <div className="space-y-3 min-h-[100px]">
-        {/* Example agent nodes */}
-        <AgentNode
-          id="agent-1"
-          name="Research Agent"
-          type="researcher"
-          status="idle"
-          isSelected={selectedNode === "agent-1"}
-          onSelect={() => onSelectNode("agent-1")}
-        />
-        <AgentNode
-          id="agent-2"
-          name="Analyzer Agent"
-          type="analyst"
-          status="idle"
-          isSelected={selectedNode === "agent-2"}
-          onSelect={() => onSelectNode("agent-2")}
-        />
+        {stage.agents.map((agent) => (
+          <AgentNode
+            key={agent.id}
+            agent={agent}
+            isSelected={selectedNode === agent.id}
+            onSelect={() => onSelectNode(agent.id)}
+            onDelete={() => onDeleteAgent(agent.id)}
+          />
+        ))}
         
-        {/* Add Agent Button */}
-        <Button 
-          variant="outline" 
-          className="w-full border-dashed hover:bg-primary/5 hover:border-primary/50"
-          size="sm"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Add Agent
-        </Button>
+        {stage.agents.length === 0 && (
+          <div className="flex items-center justify-center h-24 border-2 border-dashed border-border/50 rounded-lg">
+            <p className="text-sm text-muted-foreground">Drop an agent here</p>
+          </div>
+        )}
       </div>
 
-      {/* Progress Bar */}
       <div className="mt-4 pt-3 border-t border-border/60">
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs text-muted-foreground">Progress</span>
-          <span className="text-xs font-medium text-foreground">0%</span>
+          <span className="text-xs font-medium text-foreground">{Math.round(progress)}%</span>
         </div>
         <div className="h-2 bg-muted rounded-full overflow-hidden">
-          <div className="h-full bg-gradient-to-r from-primary to-secondary w-0 transition-all duration-300" />
+          <div
+            className="h-full bg-gradient-to-r from-primary to-secondary transition-all duration-300"
+            style={{ width: `${progress}%` }}
+          />
         </div>
       </div>
     </Card>

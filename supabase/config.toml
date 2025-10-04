@@ -1,1 +1,4 @@
 project_id = "tkppayricdwsogopxxzp"
+
+[functions.web-scrape]
+verify_jwt = false

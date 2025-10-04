@@ -5,21 +5,49 @@ import { Upload, Search, Cloud, Clock, Globe, FileText, Bot } from "lucide-react
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 const agentTemplates = [
-  { id: "researcher", name: "Researcher", icon: Search, description: "Gather and analyze information" },
-  { id: "summarizer", name: "Summarizer", icon: FileText, description: "Condense long content" },
-  { id: "analyst", name: "Analyst", icon: Bot, description: "Deep data analysis" },
+  { 
+    id: "researcher", 
+    name: "Researcher", 
+    icon: Search, 
+    description: "Gather and analyze information",
+    defaultSystemPrompt: "You are a research assistant specializing in gathering and analyzing information from various sources.",
+    defaultUserPrompt: "Research the following topic and provide detailed findings: {input}"
+  },
+  { 
+    id: "summarizer", 
+    name: "Summarizer", 
+    icon: FileText, 
+    description: "Condense long content",
+    defaultSystemPrompt: "You are a summarization expert who creates concise, accurate summaries of long content.",
+    defaultUserPrompt: "Summarize the following content: {input}"
+  },
+  { 
+    id: "analyst", 
+    name: "Analyst", 
+    icon: Bot, 
+    description: "Deep data analysis",
+    defaultSystemPrompt: "You are a data analyst who provides insightful analysis and identifies patterns in data.",
+    defaultUserPrompt: "Analyze the following data and provide insights: {input}"
+  },
 ];
 
 const tools = [
-  { id: "google_search", name: "Google Search", icon: Search, description: "Search the web for information" },
-  { id: "weather", name: "Weather", icon: Cloud, description: "Get current weather data" },
-  { id: "time", name: "Time", icon: Clock, description: "Get current time/date" },
-  { id: "api_call", name: "API Call", icon: Globe, description: "Call external APIs" },
-  { id: "file_parse", name: "File Parse", icon: FileText, description: "Extract text from files" },
-  { id: "web_scrape", name: "Web Scrape", icon: Globe, description: "Extract web page content" },
+  { id: "google_search", name: "Google Search", icon: Search, description: "Search the web for information", requiresApiKey: true },
+  { id: "weather", name: "Weather", icon: Cloud, description: "Get current weather data", requiresApiKey: true },
+  { id: "time", name: "Time", icon: Clock, description: "Get current time/date", requiresApiKey: false },
+  { id: "api_call", name: "API Call", icon: Globe, description: "Call external APIs", requiresApiKey: true },
+  { id: "web_scrape", name: "Web Scrape", icon: Globe, description: "Extract web page content", requiresApiKey: false },
 ];
 
-export const Sidebar = () => {
+interface SidebarProps {
+  onAddAgent: (stageId: string, agentTemplate: any) => void;
+  workflow: any;
+}
+
+export const Sidebar = ({ onAddAgent, workflow }: SidebarProps) => {
+  const handleDragStart = (e: React.DragEvent, template: any) => {
+    e.dataTransfer.setData("agentTemplate", JSON.stringify(template));
+  };
   return (
     <aside className="w-80 border-r border-border bg-card flex flex-col">
       <ScrollArea className="flex-1">
@@ -58,6 +86,7 @@ export const Sidebar = () => {
                   key={agent.id}
                   className="p-3 cursor-move hover:shadow-md transition-shadow bg-gradient-to-br from-card to-muted/20"
                   draggable
+                  onDragStart={(e) => handleDragStart(e, agent)}
                 >
                   <div className="flex items-start gap-3">
                     <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
