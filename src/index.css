@@ -8,89 +8,134 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* Alberta Sky Blues - Professional Government Palette */
+    --background: 210 30% 98%;
+    --foreground: 215 25% 15%;
 
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 215 25% 15%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover-foreground: 215 25% 15%;
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* Deep Alberta Blue - Primary Brand */
+    --primary: 210 85% 35%;
+    --primary-foreground: 210 30% 98%;
+    --primary-hover: 210 85% 30%;
 
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
+    /* Forest Green - Secondary Nature-Inspired */
+    --secondary: 155 45% 40%;
+    --secondary-foreground: 0 0% 100%;
+    --secondary-hover: 155 45% 35%;
 
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
+    /* Warm Accent for Actions */
+    --accent: 25 85% 55%;
+    --accent-foreground: 0 0% 100%;
+    --accent-hover: 25 85% 50%;
 
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
+    /* Muted Backgrounds */
+    --muted: 210 25% 92%;
+    --muted-foreground: 215 15% 45%;
 
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
+    /* Success State - Agent Complete */
+    --success: 155 65% 45%;
+    --success-foreground: 0 0% 100%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%;
+    /* Warning State - Agent Running */
+    --warning: 45 95% 55%;
+    --warning-foreground: 215 25% 15%;
 
-    --radius: 0.5rem;
+    /* Error State */
+    --destructive: 0 75% 50%;
+    --destructive-foreground: 0 0% 100%;
 
-    --sidebar-background: 0 0% 98%;
+    /* UI Elements */
+    --border: 210 20% 85%;
+    --input: 210 20% 90%;
+    --ring: 210 85% 35%;
 
-    --sidebar-foreground: 240 5.3% 26.1%;
+    --radius: 0.75rem;
 
-    --sidebar-primary: 240 5.9% 10%;
+    /* Canvas/Workflow Area */
+    --canvas-background: 210 20% 96%;
+    --canvas-grid: 210 15% 90%;
 
-    --sidebar-primary-foreground: 0 0% 98%;
+    /* Node States */
+    --node-idle: 0 0% 100%;
+    --node-running: 45 95% 95%;
+    --node-complete: 155 65% 95%;
+    --node-error: 0 75% 95%;
 
-    --sidebar-accent: 240 4.8% 95.9%;
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(210 85% 35%), hsl(210 85% 45%));
+    --gradient-secondary: linear-gradient(135deg, hsl(155 45% 40%), hsl(155 45% 50%));
+    --gradient-canvas: linear-gradient(180deg, hsl(210 25% 98%), hsl(210 20% 96%));
 
-    --sidebar-accent-foreground: 240 5.9% 10%;
+    /* Shadows */
+    --shadow-sm: 0 2px 4px hsl(210 20% 20% / 0.05);
+    --shadow-md: 0 4px 12px hsl(210 20% 20% / 0.08);
+    --shadow-lg: 0 8px 24px hsl(210 20% 20% / 0.12);
+    --shadow-node: 0 2px 8px hsl(210 20% 20% / 0.1);
 
-    --sidebar-border: 220 13% 91%;
-
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Transitions */
+    --transition-base: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    --background: 215 30% 12%;
+    --foreground: 210 30% 95%;
 
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
+    --card: 215 28% 15%;
+    --card-foreground: 210 30% 95%;
 
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 215 28% 15%;
+    --popover-foreground: 210 30% 95%;
 
-    --primary: 210 40% 98%;
-    --primary-foreground: 222.2 47.4% 11.2%;
+    --primary: 210 85% 55%;
+    --primary-foreground: 215 30% 12%;
+    --primary-hover: 210 85% 60%;
 
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
+    --secondary: 155 45% 50%;
+    --secondary-foreground: 215 30% 12%;
+    --secondary-hover: 155 45% 55%;
 
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --accent: 25 85% 60%;
+    --accent-foreground: 215 30% 12%;
+    --accent-hover: 25 85% 65%;
 
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
+    --muted: 215 25% 20%;
+    --muted-foreground: 210 15% 65%;
 
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
+    --success: 155 65% 50%;
+    --success-foreground: 215 30% 12%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 212.7 26.8% 83.9%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+    --warning: 45 95% 60%;
+    --warning-foreground: 215 30% 12%;
+
+    --destructive: 0 75% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 215 25% 25%;
+    --input: 215 25% 20%;
+    --ring: 210 85% 55%;
+
+    --canvas-background: 215 28% 14%;
+    --canvas-grid: 215 25% 20%;
+
+    --node-idle: 215 28% 18%;
+    --node-running: 45 95% 25%;
+    --node-complete: 155 65% 25%;
+    --node-error: 0 75% 25%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(210 85% 55%), hsl(210 85% 65%));
+    --gradient-secondary: linear-gradient(135deg, hsl(155 45% 50%), hsl(155 45% 60%));
+    --gradient-canvas: linear-gradient(180deg, hsl(215 30% 14%), hsl(215 28% 12%));
+
+    --shadow-sm: 0 2px 4px hsl(0 0% 0% / 0.3);
+    --shadow-md: 0 4px 12px hsl(0 0% 0% / 0.4);
+    --shadow-lg: 0 8px 24px hsl(0 0% 0% / 0.5);
+    --shadow-node: 0 2px 8px hsl(0 0% 0% / 0.4);
   }
 }
 

@@ -1,12 +1,35 @@
-// Update this page (the content is just a fallback if you fail to update the page)
+import { WorkflowCanvas } from "@/components/workflow/WorkflowCanvas";
+import { Sidebar } from "@/components/sidebar/Sidebar";
+import { PropertiesPanel } from "@/components/properties/PropertiesPanel";
+import { Toolbar } from "@/components/toolbar/Toolbar";
+import { OutputLog } from "@/components/output/OutputLog";
+import { useState } from "react";
 
 const Index = () => {
+  const [selectedNode, setSelectedNode] = useState<string | null>(null);
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="text-center">
-        <h1 className="mb-4 text-4xl font-bold">Welcome to Your Blank App</h1>
-        <p className="text-xl text-muted-foreground">Start building your amazing project here!</p>
+    <div className="flex flex-col h-screen bg-background">
+      {/* Top Toolbar */}
+      <Toolbar />
+      
+      {/* Main Content Area */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Left Sidebar - Tools & Inputs */}
+        <Sidebar />
+        
+        {/* Center Canvas - Workflow Builder */}
+        <WorkflowCanvas 
+          selectedNode={selectedNode}
+          onSelectNode={setSelectedNode}
+        />
+        
+        {/* Right Properties Panel */}
+        <PropertiesPanel selectedNode={selectedNode} />
       </div>
+      
+      {/* Bottom Output Log */}
+      <OutputLog />
     </div>
   );
 };
