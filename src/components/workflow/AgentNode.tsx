@@ -9,6 +9,7 @@ interface AgentNodeProps {
   isSelected: boolean;
   isConnecting: boolean;
   agentNumber: string;
+  layoutId?: string;
   onSelect: () => void;
   onDelete: () => void;
   onToggleMinimize: () => void;
@@ -28,7 +29,7 @@ const statusConfig = {
   error: { icon: AlertCircle, color: "text-destructive", bg: "bg-destructive/10" },
 };
 
-export const AgentNode = ({ agent, isSelected, isConnecting, agentNumber, onSelect, onDelete, onToggleMinimize, onPortClick }: AgentNodeProps) => {
+export const AgentNode = ({ agent, isSelected, isConnecting, agentNumber, layoutId = 'default', onSelect, onDelete, onToggleMinimize, onPortClick }: AgentNodeProps) => {
   const Icon = agentIcons[agent.type as keyof typeof agentIcons] || Bot;
   const statusInfo = statusConfig[agent.status];
   const StatusIcon = statusInfo.icon;
@@ -64,24 +65,22 @@ export const AgentNode = ({ agent, isSelected, isConnecting, agentNumber, onSele
       >
         {/* Input/Output Ports */}
         <div 
-          id={`port-input-${agent.id}`}
+          id={`port-input-${agent.id}-${layoutId}`}
           className={`absolute -top-2 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-primary border-2 border-card cursor-pointer hover:scale-125 transition-transform z-20 ${
             isConnecting ? "ring-2 ring-primary animate-pulse" : ""
           }`}
           onClick={(e) => {
             e.stopPropagation();
-            console.log('Input port clicked:', agent.id, agent.name);
             onPortClick(agent.id, false);
           }}
         />
         <div 
-          id={`port-output-${agent.id}`}
+          id={`port-output-${agent.id}-${layoutId}`}
           className={`absolute -bottom-2 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-primary border-2 border-card cursor-pointer hover:scale-125 transition-transform z-20 ${
             isConnecting ? "ring-2 ring-primary animate-pulse" : ""
           }`}
           onClick={(e) => {
             e.stopPropagation();
-            console.log('Output port clicked:', agent.id, agent.name);
             onPortClick(agent.id, true);
           }}
         />
@@ -105,24 +104,22 @@ export const AgentNode = ({ agent, isSelected, isConnecting, agentNumber, onSele
     >
       {/* Input/Output Ports */}
       <div 
-        id={`port-input-${agent.id}`}
+        id={`port-input-${agent.id}-${layoutId}`}
         className={`absolute -top-2 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-primary border-2 border-card cursor-pointer hover:scale-125 transition-transform z-20 ${
           isConnecting ? "ring-2 ring-primary animate-pulse" : ""
         }`}
         onClick={(e) => {
           e.stopPropagation();
-          console.log('Input port clicked (expanded):', agent.id, agent.name);
           onPortClick(agent.id, false);
         }}
       />
       <div 
-        id={`port-output-${agent.id}`}
+        id={`port-output-${agent.id}-${layoutId}`}
         className={`absolute -bottom-2 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-primary border-2 border-card cursor-pointer hover:scale-125 transition-transform z-20 ${
           isConnecting ? "ring-2 ring-primary animate-pulse" : ""
         }`}
         onClick={(e) => {
           e.stopPropagation();
-          console.log('Output port clicked (expanded):', agent.id, agent.name);
           onPortClick(agent.id, true);
         }}
       />

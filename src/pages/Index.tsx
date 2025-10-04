@@ -461,11 +461,28 @@ const Index = () => {
             onUserInputChange={setUserInput}
           />
         }
-        canvas={
+        mobileCanvas={
           <WorkflowCanvas 
             workflow={workflow}
             selectedNode={selectedNode}
             connectingFrom={connectingFrom}
+            layoutId="mobile"
+            onSelectNode={setSelectedNode}
+            onAddAgent={addAgent}
+            onDeleteAgent={deleteAgent}
+            onDeleteStage={deleteStage}
+            onToggleMinimize={toggleMinimize}
+            onStartConnection={setConnectingFrom}
+            onCompleteConnection={addConnection}
+            onDeleteConnection={deleteConnection}
+          />
+        }
+        desktopCanvas={
+          <WorkflowCanvas 
+            workflow={workflow}
+            selectedNode={selectedNode}
+            connectingFrom={connectingFrom}
+            layoutId="desktop"
             onSelectNode={setSelectedNode}
             onAddAgent={addAgent}
             onDeleteAgent={deleteAgent}

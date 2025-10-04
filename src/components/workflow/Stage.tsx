@@ -45,6 +45,7 @@ interface StageProps {
   stageNumber: number;
   selectedNode: string | null;
   connectingFrom: string | null;
+  layoutId?: string;
   onSelectNode: (id: string | null) => void;
   onAddAgent: (stageId: string, agentTemplate: any) => void;
   onDeleteAgent: (agentId: string) => void;
@@ -58,6 +59,7 @@ export const Stage = ({
   stageNumber,
   selectedNode,
   connectingFrom,
+  layoutId = 'default',
   onSelectNode,
   onAddAgent,
   onDeleteAgent,
@@ -171,6 +173,7 @@ export const Stage = ({
                   isSelected={selectedNode === agent.id}
                   isConnecting={connectingFrom !== null}
                   agentNumber={`${stageNumber}.${index + 1}`}
+                  layoutId={layoutId}
                   onSelect={() => onSelectNode(agent.id)}
                   onDelete={() => onDeleteAgent(agent.id)}
                   onToggleMinimize={() => onToggleMinimize(agent.id)}

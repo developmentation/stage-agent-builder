@@ -7,6 +7,7 @@ interface WorkflowCanvasProps {
   workflow: Workflow;
   selectedNode: string | null;
   connectingFrom: string | null;
+  layoutId?: string;
   onSelectNode: (id: string | null) => void;
   onAddAgent: (stageId: string, agentTemplate: any) => void;
   onDeleteAgent: (agentId: string) => void;
@@ -21,6 +22,7 @@ export const WorkflowCanvas = ({
   workflow,
   selectedNode,
   connectingFrom,
+  layoutId = 'default',
   onSelectNode,
   onAddAgent,
   onDeleteAgent,
@@ -97,26 +99,18 @@ export const WorkflowCanvas = ({
   }, [selectedConnection, onDeleteConnection]);
 
   const handlePortClick = (agentId: string, isOutput: boolean) => {
-    console.log('handlePortClick:', { agentId, isOutput, connectingFrom });
     if (isOutput && !connectingFrom) {
-      console.log('Starting connection from:', agentId);
       onStartConnection(agentId);
     } else if (!isOutput && connectingFrom && connectingFrom !== agentId) {
-      console.log('Completing connection:', connectingFrom, '->', agentId);
       onCompleteConnection(connectingFrom, agentId);
     } else if (connectingFrom) {
-      console.log('Canceling connection');
       onStartConnection(null);
     }
   };
 
   const renderConnections = () => {
-    const scrollContainer = document.getElementById('workflow-scroll-container');
-    if (!scrollContainer) {
-      console.log('Scroll container not found!');
-      return null;
-    }
-    console.log('Rendering connections:', workflow.connections.length);
+    const scrollContainer = document.getElementById(`workflow-scroll-container-${layoutId}`);
+    if (!scrollContainer) return null;
     
     const containerRect = scrollContainer.getBoundingClientRect();
     const scrollLeft = scrollContainer.scrollLeft;
@@ -125,26 +119,11 @@ export const WorkflowCanvas = ({
     return workflow.connections.map((conn) => {
       const fromAgent = workflow.stages.flatMap(s => s.agents).find(a => a.id === conn.fromAgentId);
       const toAgent = workflow.stages.flatMap(s => s.agents).find(a => a.id === conn.toAgentId);
-      if (!fromAgent || !toAgent) {
-        console.log('Agent not found for connection:', conn);
-        return null;
-      }
+      if (!fromAgent || !toAgent) return null;
       
-      const fromEl = document.getElementById(`port-output-${conn.fromAgentId}`);
-      const toEl = document.getElementById(`port-input-${conn.toAgentId}`);
-      if (!fromEl || !toEl) {
-        console.log('Port elements not found:', { fromEl: !!fromEl, toEl: !!toEl, conn });
-        return null;
-      }
-      console.log('Port elements found:', { 
-        fromEl: fromEl.id, 
-        toEl: toEl.id,
-        fromVisible: fromEl.offsetParent !== null,
-        toVisible: toEl.offsetParent !== null,
-        fromRect: fromEl.getBoundingClientRect(),
-        toRect: toEl.getBoundingClientRect()
-      });
-      console.log('Drawing connection:', conn.id, { fromEl: fromEl.id, toEl: toEl.id });
+      const fromEl = document.getElementById(`port-output-${conn.fromAgentId}-${layoutId}`);
+      const toEl = document.getElementById(`port-input-${conn.toAgentId}-${layoutId}`);
+      if (!fromEl || !toEl) return null;
       
       const fromRect = fromEl.getBoundingClientRect();
       const toRect = toEl.getBoundingClientRect();
@@ -154,14 +133,10 @@ export const WorkflowCanvas = ({
       const x2 = toRect.left + toRect.width / 2 - containerRect.left + scrollLeft;
       const y2 = toRect.top + toRect.height / 2 - containerRect.top + scrollTop;
       
-      console.log('Path coordinates:', { x1, y1, x2, y2, containerRect, scrollLeft, scrollTop });
-      
       const controlY1 = y1 + Math.abs(y2 - y1) * 0.5;
       const controlY2 = y2 - Math.abs(y2 - y1) * 0.5;
       
       const path = `M ${x1} ${y1} C ${x1} ${controlY1}, ${x2} ${controlY2}, ${x2} ${y2}`;
-      
-      console.log('Generated path:', path);
       
       const isSelected = selectedConnection === conn.id;
       
@@ -173,7 +148,7 @@ export const WorkflowCanvas = ({
           {/* Invisible wider path for easier clicking */}
           <path
             d={path}
-            stroke="red" // DEBUG: Make visible
+            stroke="transparent"
             strokeWidth="20"
             fill="none"
             style={{ cursor: 'pointer', pointerEvents: isConnectingMode ? 'none' : 'stroke' }}
@@ -187,9 +162,9 @@ export const WorkflowCanvas = ({
           {/* Visible path */}
           <path
             d={path}
-            stroke={isSelected ? "yellow" : "lime"} // DEBUG: Use bright colors
-            strokeWidth="5" // DEBUG: Make thicker
-            strokeOpacity="1" // DEBUG: Full opacity
+            stroke={isSelected ? "hsl(var(--warning))" : "hsl(var(--primary))"}
+            strokeWidth="2"
+            strokeOpacity={isSelected ? "0.6" : "0.3"}
             fill="none"
             markerEnd={isSelected ? "url(#arrowhead-selected)" : "url(#arrowhead)"}
             style={{ pointerEvents: 'none' }}
@@ -199,12 +174,12 @@ export const WorkflowCanvas = ({
     });
   };
   return (
-    <div className="h-full bg-gradient-to-br from-canvas-background to-muted/20 overflow-hidden relative" id="workflow-canvas">
+    <div className="h-full bg-gradient-to-br from-canvas-background to-muted/20 overflow-hidden relative" id={`workflow-canvas-${layoutId}`}>
       <div className="h-full p-4 lg:p-6">
         <Card className="h-full bg-canvas-background/50 backdrop-blur-sm border-2 border-dashed border-border/50 rounded-xl overflow-hidden flex flex-col relative">
           <div 
             className="flex-1 overflow-auto" 
-            id="workflow-scroll-container" 
+            id={`workflow-scroll-container-${layoutId}`}
             style={{ position: 'relative' }}
             onClick={(e) => {
               // Only deselect if clicking directly on the container, not children
@@ -222,8 +197,7 @@ export const WorkflowCanvas = ({
                 zIndex: 15,
                 minWidth: '100%',
                 minHeight: '100%',
-                pointerEvents: 'none',
-                border: '2px solid red' // DEBUG: Make SVG visible
+                pointerEvents: 'none'
               }}
             >
               <defs>
@@ -234,7 +208,6 @@ export const WorkflowCanvas = ({
                   <polygon points="0 0, 10 3, 0 6" fill="hsl(var(--warning))" fillOpacity="0.6" />
                 </marker>
               </defs>
-              <rect width="100%" height="100%" fill="rgba(255,0,0,0.1)" /> {/* DEBUG: Show SVG area */}
               {renderConnections()}
             </svg>
             
@@ -285,6 +258,7 @@ export const WorkflowCanvas = ({
                     stageNumber={index + 1}
                     selectedNode={selectedNode}
                     connectingFrom={connectingFrom}
+                    layoutId={layoutId}
                     onSelectNode={onSelectNode}
                     onAddAgent={onAddAgent}
                     onDeleteAgent={onDeleteAgent}

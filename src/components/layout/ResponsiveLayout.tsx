@@ -4,7 +4,8 @@ import { cn } from "@/lib/utils";
 
 interface ResponsiveLayoutProps {
   sidebar: ReactNode;
-  canvas: ReactNode;
+  mobileCanvas: ReactNode;
+  desktopCanvas: ReactNode;
   properties: ReactNode;
   onAddStage: () => void;
   onRun: () => void;
@@ -13,7 +14,8 @@ interface ResponsiveLayoutProps {
 
 export const ResponsiveLayout = ({
   sidebar,
-  canvas,
+  mobileCanvas,
+  desktopCanvas,
   properties,
   onAddStage,
   onRun,
@@ -48,7 +50,7 @@ export const ResponsiveLayout = ({
               mobileTab !== "workflow" && "hidden"
             )}
           >
-            {canvas}
+            {mobileCanvas}
           </div>
           <div
             className={cn(
@@ -68,7 +70,7 @@ export const ResponsiveLayout = ({
         </div>
         
         <div className="flex-1 flex flex-col overflow-hidden">
-          {canvas}
+          {desktopCanvas}
         </div>
         
         <div className="w-96 border-l border-border overflow-y-auto">
