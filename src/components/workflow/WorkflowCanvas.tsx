@@ -136,6 +136,14 @@ export const WorkflowCanvas = ({
         console.log('Port elements not found:', { fromEl: !!fromEl, toEl: !!toEl, conn });
         return null;
       }
+      console.log('Port elements found:', { 
+        fromEl: fromEl.id, 
+        toEl: toEl.id,
+        fromVisible: fromEl.offsetParent !== null,
+        toVisible: toEl.offsetParent !== null,
+        fromRect: fromEl.getBoundingClientRect(),
+        toRect: toEl.getBoundingClientRect()
+      });
       console.log('Drawing connection:', conn.id, { fromEl: fromEl.id, toEl: toEl.id });
       
       const fromRect = fromEl.getBoundingClientRect();
