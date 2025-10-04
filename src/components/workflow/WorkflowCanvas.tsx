@@ -112,7 +112,11 @@ export const WorkflowCanvas = ({
 
   const renderConnections = () => {
     const scrollContainer = document.getElementById('workflow-scroll-container');
-    if (!scrollContainer) return null;
+    if (!scrollContainer) {
+      console.log('Scroll container not found!');
+      return null;
+    }
+    console.log('Rendering connections:', workflow.connections.length);
     
     const containerRect = scrollContainer.getBoundingClientRect();
     const scrollLeft = scrollContainer.scrollLeft;
@@ -121,11 +125,18 @@ export const WorkflowCanvas = ({
     return workflow.connections.map((conn) => {
       const fromAgent = workflow.stages.flatMap(s => s.agents).find(a => a.id === conn.fromAgentId);
       const toAgent = workflow.stages.flatMap(s => s.agents).find(a => a.id === conn.toAgentId);
-      if (!fromAgent || !toAgent) return null;
+      if (!fromAgent || !toAgent) {
+        console.log('Agent not found for connection:', conn);
+        return null;
+      }
       
       const fromEl = document.getElementById(`port-output-${conn.fromAgentId}`);
       const toEl = document.getElementById(`port-input-${conn.toAgentId}`);
-      if (!fromEl || !toEl) return null;
+      if (!fromEl || !toEl) {
+        console.log('Port elements not found:', { fromEl: !!fromEl, toEl: !!toEl, conn });
+        return null;
+      }
+      console.log('Drawing connection:', conn.id, { fromEl: fromEl.id, toEl: toEl.id });
       
       const fromRect = fromEl.getBoundingClientRect();
       const toRect = toEl.getBoundingClientRect();
