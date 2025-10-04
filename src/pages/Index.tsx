@@ -36,6 +36,7 @@ export interface Workflow {
 const Index = () => {
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [connectingFrom, setConnectingFrom] = useState<string | null>(null);
+  const [userInput, setUserInput] = useState<string>("");
   const [workflow, setWorkflow] = useState<Workflow>({
     stages: [],
     toolConfigs: {},
@@ -173,12 +174,12 @@ const Index = () => {
     updateAgent(agentId, { status: "running" });
     
     try {
-      // Get input from connected agents or use initial input
+      // Get input from connected agents or use user's initial input
       const incomingConnections = workflow.connections.filter(
         (c) => c.toAgentId === agentId
       );
       
-      let input = "initial input";
+      let input = userInput || "No input provided";
       if (incomingConnections.length > 0) {
         const outputs = incomingConnections
           .map((c) => {
@@ -234,7 +235,7 @@ const Index = () => {
     const executed = new Set<string>();
     const outputs = new Map<string, string>();
 
-    const executeAgent = async (agentId: string, input: string = "initial input") => {
+    const executeAgent = async (agentId: string, input: string = userInput || "No input provided") => {
       if (executed.has(agentId)) return;
       
       const agent = allAgents.find((a) => a.id === agentId);
@@ -319,7 +320,12 @@ const Index = () => {
       />
       
       <div className="flex flex-1 overflow-hidden">
-        <Sidebar onAddAgent={addAgent} workflow={workflow} />
+        <Sidebar 
+          onAddAgent={addAgent} 
+          workflow={workflow} 
+          userInput={userInput}
+          onUserInputChange={setUserInput}
+        />
         
         <WorkflowCanvas 
           workflow={workflow}

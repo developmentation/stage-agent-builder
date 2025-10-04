@@ -52,9 +52,11 @@ const tools = [
 interface SidebarProps {
   onAddAgent: (stageId: string, agentTemplate: any) => void;
   workflow: any;
+  userInput: string;
+  onUserInputChange: (value: string) => void;
 }
 
-export const Sidebar = ({ onAddAgent, workflow }: SidebarProps) => {
+export const Sidebar = ({ onAddAgent, workflow, userInput, onUserInputChange }: SidebarProps) => {
   const [customAgents, setCustomAgents] = useState<any[]>([]);
   const [isAddAgentOpen, setIsAddAgentOpen] = useState(false);
   const [newAgentName, setNewAgentName] = useState("");
@@ -98,6 +100,8 @@ export const Sidebar = ({ onAddAgent, workflow }: SidebarProps) => {
               <Textarea 
                 placeholder="Enter your initial prompt or paste text here..."
                 className="min-h-[100px] resize-none border-0 bg-transparent focus-visible:ring-0"
+                value={userInput}
+                onChange={(e) => onUserInputChange(e.target.value)}
               />
               <div className="flex gap-2 mt-3">
                 <Button size="sm" variant="outline" className="flex-1 gap-2">

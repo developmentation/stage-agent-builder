@@ -94,7 +94,7 @@ export const WorkflowCanvas = ({
         <Card className="h-full bg-canvas-background/50 backdrop-blur-sm border-2 border-dashed border-border/50 rounded-xl overflow-hidden flex flex-col relative">
           <div className="flex-1 overflow-auto relative" id="workflow-scroll-container">
             <div className="p-6 space-y-6 min-h-full">
-              <svg className="absolute inset-0 pointer-events-none z-10" style={{ width: '100%', height: '100%' }}>
+              <svg className="absolute inset-0 pointer-events-none z-[15]" style={{ width: '100%', height: '100%' }}>
                 <defs>
                   <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
                     <polygon points="0 0, 10 3, 0 6" fill="hsl(var(--primary))" />
