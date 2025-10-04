@@ -38,7 +38,7 @@ export const WorkflowCanvas = ({
 
   // Update SVG dimensions based on scroll content
   const updateSvgDimensions = () => {
-    const scrollContainer = document.getElementById('workflow-scroll-container');
+    const scrollContainer = document.getElementById(`workflow-scroll-container-${layoutId}`);
     if (scrollContainer) {
       setSvgDimensions({
         width: Math.max(scrollContainer.scrollWidth, scrollContainer.clientWidth),
