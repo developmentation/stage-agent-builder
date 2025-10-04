@@ -7,8 +7,10 @@ import type { Agent } from "@/pages/Index";
 interface AgentNodeProps {
   agent: Agent;
   isSelected: boolean;
+  isConnecting: boolean;
   onSelect: () => void;
   onDelete: () => void;
+  onPortClick: (agentId: string, isOutput: boolean) => void;
 }
 
 const agentIcons = {
@@ -24,7 +26,7 @@ const statusConfig = {
   error: { icon: AlertCircle, color: "text-destructive", bg: "bg-destructive/10" },
 };
 
-export const AgentNode = ({ agent, isSelected, onSelect, onDelete }: AgentNodeProps) => {
+export const AgentNode = ({ agent, isSelected, isConnecting, onSelect, onDelete, onPortClick }: AgentNodeProps) => {
   const Icon = agentIcons[agent.type as keyof typeof agentIcons] || Bot;
   const statusInfo = statusConfig[agent.status];
   const StatusIcon = statusInfo.icon;
@@ -44,8 +46,24 @@ export const AgentNode = ({ agent, isSelected, onSelect, onDelete }: AgentNodePr
       onClick={onSelect}
     >
       {/* Input/Output Ports */}
-      <div className="absolute -left-2 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-primary border-2 border-card" />
-      <div className="absolute -right-2 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full bg-primary border-2 border-card" />
+      <div 
+        className={`absolute -top-2 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-primary border-2 border-card cursor-pointer hover:scale-125 transition-transform ${
+          isConnecting ? "ring-2 ring-primary animate-pulse" : ""
+        }`}
+        onClick={(e) => {
+          e.stopPropagation();
+          onPortClick(agent.id, false);
+        }}
+      />
+      <div 
+        className={`absolute -bottom-2 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-primary border-2 border-card cursor-pointer hover:scale-125 transition-transform ${
+          isConnecting ? "ring-2 ring-primary animate-pulse" : ""
+        }`}
+        onClick={(e) => {
+          e.stopPropagation();
+          onPortClick(agent.id, true);
+        }}
+      />
 
       <div className="flex items-start gap-3">
         <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">

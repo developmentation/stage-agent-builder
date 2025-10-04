@@ -7,9 +7,10 @@ interface ToolbarProps {
   onSave: () => void;
   onLoad: (file: File) => void;
   onClear: () => void;
+  onRun: () => void;
 }
 
-export const Toolbar = ({ onAddStage, onSave, onLoad, onClear }: ToolbarProps) => {
+export const Toolbar = ({ onAddStage, onSave, onLoad, onClear, onRun }: ToolbarProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleLoadClick = () => {
@@ -64,7 +65,7 @@ export const Toolbar = ({ onAddStage, onSave, onLoad, onClear }: ToolbarProps) =
           Clear
         </Button>
         <div className="w-px h-6 bg-border mx-2" />
-        <Button className="gap-2 bg-gradient-to-r from-primary to-primary-hover hover:opacity-90">
+        <Button className="gap-2 bg-gradient-to-r from-primary to-primary-hover hover:opacity-90" onClick={onRun}>
           <Play className="h-4 w-4" />
           Run Workflow
         </Button>

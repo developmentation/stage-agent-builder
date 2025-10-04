@@ -8,20 +8,24 @@ interface StageProps {
   stage: StageType;
   stageNumber: number;
   selectedNode: string | null;
+  connectingFrom: string | null;
   onSelectNode: (id: string | null) => void;
   onAddAgent: (stageId: string, agentTemplate: any) => void;
   onDeleteAgent: (agentId: string) => void;
   onDeleteStage: (stageId: string) => void;
+  onPortClick: (agentId: string, isOutput: boolean) => void;
 }
 
 export const Stage = ({
   stage,
   stageNumber,
   selectedNode,
+  connectingFrom,
   onSelectNode,
   onAddAgent,
   onDeleteAgent,
   onDeleteStage,
+  onPortClick,
 }: StageProps) => {
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
@@ -65,15 +69,18 @@ export const Stage = ({
       </div>
 
       <div className="space-y-3 min-h-[100px]">
-        {stage.agents.map((agent) => (
-          <AgentNode
-            key={agent.id}
-            agent={agent}
-            isSelected={selectedNode === agent.id}
-            onSelect={() => onSelectNode(agent.id)}
-            onDelete={() => onDeleteAgent(agent.id)}
-          />
-        ))}
+            {stage.agents.map((agent) => (
+              <div key={agent.id} id={`agent-${agent.id}`}>
+                <AgentNode
+                  agent={agent}
+                  isSelected={selectedNode === agent.id}
+                  isConnecting={connectingFrom !== null}
+                  onSelect={() => onSelectNode(agent.id)}
+                  onDelete={() => onDeleteAgent(agent.id)}
+                  onPortClick={onPortClick}
+                />
+              </div>
+            ))}
         
         {stage.agents.length === 0 && (
           <div className="flex items-center justify-center h-24 border-2 border-dashed border-border/50 rounded-lg">
