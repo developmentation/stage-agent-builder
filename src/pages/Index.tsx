@@ -438,36 +438,42 @@ const Index = () => {
         onRun={runWorkflow}
       />
       
-      <div className="flex flex-1 overflow-hidden">
-        <Sidebar 
-          onAddAgent={addAgent} 
-          workflow={workflow} 
-          userInput={userInput}
-          onUserInputChange={setUserInput}
-        />
+      <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
+        <div className="w-full lg:w-80 border-b lg:border-b-0 lg:border-r border-border overflow-y-auto">
+          <Sidebar 
+            onAddAgent={addAgent} 
+            workflow={workflow} 
+            userInput={userInput}
+            onUserInputChange={setUserInput}
+          />
+        </div>
         
-        <WorkflowCanvas 
-          workflow={workflow}
-          selectedNode={selectedNode}
-          connectingFrom={connectingFrom}
-          onSelectNode={setSelectedNode}
-          onAddAgent={addAgent}
-          onDeleteAgent={deleteAgent}
-          onDeleteStage={deleteStage}
-          onStartConnection={setConnectingFrom}
-          onCompleteConnection={addConnection}
-          onDeleteConnection={deleteConnection}
-        />
+        <div className="flex-1 min-h-[400px] lg:min-h-0 overflow-auto">
+          <WorkflowCanvas 
+            workflow={workflow}
+            selectedNode={selectedNode}
+            connectingFrom={connectingFrom}
+            onSelectNode={setSelectedNode}
+            onAddAgent={addAgent}
+            onDeleteAgent={deleteAgent}
+            onDeleteStage={deleteStage}
+            onStartConnection={setConnectingFrom}
+            onCompleteConnection={addConnection}
+            onDeleteConnection={deleteConnection}
+          />
+        </div>
         
-        <PropertiesPanel
-          selectedAgent={selectedAgent}
-          onUpdateAgent={updateAgent}
-          onAddToolInstance={addToolInstance}
-          onUpdateToolInstance={updateToolInstance}
-          onRemoveToolInstance={removeToolInstance}
-          onDeselectAgent={() => setSelectedNode(null)}
-          onRunAgent={runSingleAgent}
-        />
+        <div className="w-full lg:w-96 border-t lg:border-t-0 lg:border-l border-border overflow-y-auto">
+          <PropertiesPanel
+            selectedAgent={selectedAgent}
+            onUpdateAgent={updateAgent}
+            onAddToolInstance={addToolInstance}
+            onUpdateToolInstance={updateToolInstance}
+            onRemoveToolInstance={removeToolInstance}
+            onDeselectAgent={() => setSelectedNode(null)}
+            onRunAgent={runSingleAgent}
+          />
+        </div>
       </div>
       
       <OutputLog logs={logs} />
