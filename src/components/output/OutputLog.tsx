@@ -5,13 +5,15 @@ import { ChevronDown, Terminal, CheckCircle2, AlertCircle, Loader2 } from "lucid
 import { cn } from "@/lib/utils";
 import { useState } from "react";
 
-const sampleLogs = [
-  { time: "14:32:01", type: "info", message: "Workflow execution started" },
-  { time: "14:32:02", type: "success", message: "Stage 1: Research Agent initialized" },
-  { time: "14:32:03", type: "info", message: "Tool call: Google Search - 'Alberta AI policies'" },
-  { time: "14:32:05", type: "success", message: "Google Search completed: 5 results found" },
-  { time: "14:32:06", type: "running", message: "Agent processing with Gemini 2.5 Pro..." },
-];
+export interface LogEntry {
+  time: string;
+  type: "info" | "success" | "error" | "running";
+  message: string;
+}
+
+interface OutputLogProps {
+  logs: LogEntry[];
+}
 
 const logIcons = {
   info: Terminal,
@@ -27,8 +29,8 @@ const logColors = {
   running: "text-warning",
 };
 
-export const OutputLog = () => {
-  const [isExpanded, setIsExpanded] = useState(true);
+export const OutputLog = ({ logs }: OutputLogProps) => {
+  const [isExpanded, setIsExpanded] = useState(false);
 
   return (
     <Card className={cn(
@@ -39,9 +41,9 @@ export const OutputLog = () => {
         <div className="flex items-center gap-2">
           <Terminal className="h-4 w-4 text-muted-foreground" />
           <h3 className="text-sm font-semibold text-foreground">Output Log</h3>
-          {!isExpanded && (
+          {!isExpanded && logs.length > 0 && (
             <span className="text-xs text-muted-foreground">
-              5 entries
+              {logs.length} {logs.length === 1 ? 'entry' : 'entries'}
             </span>
           )}
         </div>
@@ -61,22 +63,28 @@ export const OutputLog = () => {
       {isExpanded && (
         <ScrollArea className="h-[calc(100%-3rem)]">
           <div className="p-3 space-y-2 font-mono text-xs">
-            {sampleLogs.map((log, index) => {
-              const Icon = logIcons[log.type as keyof typeof logIcons];
-              return (
-                <div key={index} className="flex items-start gap-3 group">
-                  <span className="text-muted-foreground flex-shrink-0">
-                    {log.time}
-                  </span>
-                  <Icon className={cn(
-                    "h-3.5 w-3.5 flex-shrink-0 mt-0.5",
-                    logColors[log.type as keyof typeof logColors],
-                    log.type === "running" && "animate-spin"
-                  )} />
-                  <span className="text-foreground flex-1">{log.message}</span>
-                </div>
-              );
-            })}
+            {logs.length === 0 ? (
+              <div className="text-muted-foreground text-center py-4">
+                No logs yet. Run the workflow to see execution logs.
+              </div>
+            ) : (
+              logs.map((log, index) => {
+                const Icon = logIcons[log.type];
+                return (
+                  <div key={index} className="flex items-start gap-3 group">
+                    <span className="text-muted-foreground flex-shrink-0">
+                      {log.time}
+                    </span>
+                    <Icon className={cn(
+                      "h-3.5 w-3.5 flex-shrink-0 mt-0.5",
+                      logColors[log.type],
+                      log.type === "running" && "animate-spin"
+                    )} />
+                    <span className="text-foreground flex-1">{log.message}</span>
+                  </div>
+                );
+              })
+            )}
           </div>
         </ScrollArea>
       )}

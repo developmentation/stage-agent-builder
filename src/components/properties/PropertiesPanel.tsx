@@ -11,6 +11,7 @@ import type { Agent, ToolInstance } from "@/pages/Index";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -165,6 +166,9 @@ export const PropertiesPanel = ({
                           <DialogContent>
                             <DialogHeader>
                               <DialogTitle>{tool?.name} Configuration</DialogTitle>
+                              <DialogDescription>
+                                Configure the settings for this tool instance.
+                              </DialogDescription>
                             </DialogHeader>
                             <div className="space-y-4">
                               {toolInstance.toolId === 'google_search' && (
@@ -314,6 +318,9 @@ export const PropertiesPanel = ({
               <DialogContent>
                 <DialogHeader>
                   <DialogTitle>Add Tool</DialogTitle>
+                  <DialogDescription>
+                    Select tools to attach to this agent.
+                  </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-2">
                   {availableTools.map((tool) => {

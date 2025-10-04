@@ -2,7 +2,7 @@ import { WorkflowCanvas } from "@/components/workflow/WorkflowCanvas";
 import { Sidebar } from "@/components/sidebar/Sidebar";
 import { PropertiesPanel } from "@/components/properties/PropertiesPanel";
 import { Toolbar } from "@/components/toolbar/Toolbar";
-import { OutputLog } from "@/components/output/OutputLog";
+import { OutputLog, LogEntry } from "@/components/output/OutputLog";
 import { useState } from "react";
 
 export interface ToolInstance {
@@ -42,10 +42,16 @@ const Index = () => {
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [connectingFrom, setConnectingFrom] = useState<string | null>(null);
   const [userInput, setUserInput] = useState<string>("");
+  const [logs, setLogs] = useState<LogEntry[]>([]);
   const [workflow, setWorkflow] = useState<Workflow>({
     stages: [],
     connections: [],
   });
+
+  const addLog = (type: LogEntry["type"], message: string) => {
+    const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+    setLogs((prev) => [...prev, { time, type, message }]);
+  };
 
   const addStage = () => {
     const newStage: Stage = {
@@ -240,6 +246,7 @@ const Index = () => {
     const agent = allAgents.find((a) => a.id === agentId);
     if (!agent) return;
 
+    addLog("info", `Starting agent: ${agent.name}`);
     updateAgent(agentId, { status: "running" });
     
     try {
@@ -259,7 +266,15 @@ const Index = () => {
         
         if (outputs.length > 0) {
           input = outputs.join("\n\n---\n\n");
+          addLog("info", `Agent ${agent.name} received input from ${incomingConnections.length} connection(s)`);
         }
+      }
+      
+      // Log tool execution
+      if (agent.tools.length > 0) {
+        agent.tools.forEach(tool => {
+          addLog("running", `Executing tool: ${tool.toolId}`);
+        });
       }
       
       const userPrompt = agent.userPrompt.replace("{input}", input);
@@ -269,6 +284,8 @@ const Index = () => {
         toolId: t.toolId,
         config: t.config,
       }));
+      
+      addLog("running", `Agent ${agent.name} processing with AI...`);
       
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/run-agent`, {
         method: "POST",
@@ -291,14 +308,20 @@ const Index = () => {
       const output = data.output || "No output generated";
       
       updateAgent(agentId, { status: "complete", output });
+      addLog("success", `Agent ${agent.name} completed successfully`);
     } catch (error) {
       console.error("Agent execution failed:", error);
       updateAgent(agentId, { status: "error", output: `Error: ${error}` });
+      addLog("error", `Agent ${agent.name} failed: ${error}`);
     }
   };
 
   const runWorkflow = async () => {
     const allAgents = workflow.stages.flatMap((s) => s.agents);
+    
+    addLog("info", "🚀 Workflow execution started");
+    setLogs([]); // Clear previous logs
+    addLog("info", "🚀 Workflow execution started");
     
     // Reset all agents to idle
     allAgents.forEach((agent) => {
@@ -311,9 +334,18 @@ const Index = () => {
       const agent = allAgents.find((a) => a.id === agentId);
       if (!agent) return;
 
+      addLog("info", `Starting agent: ${agent.name}`);
       updateAgent(agentId, { status: "running" });
       
       try {
+        // Log tool execution
+        if (agent.tools.length > 0) {
+          agent.tools.forEach(tool => {
+            const toolName = tool.toolId.replace('_', ' ');
+            addLog("running", `Executing tool: ${toolName}`);
+          });
+        }
+        
         const userPrompt = agent.userPrompt.replace("{input}", input);
         
         // Convert tool instances to the format expected by the edge function
@@ -321,6 +353,8 @@ const Index = () => {
           toolId: t.toolId,
           config: t.config,
         }));
+        
+        addLog("running", `Agent ${agent.name} processing with AI...`);
         
         const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/run-agent`, {
           method: "POST",
@@ -344,15 +378,20 @@ const Index = () => {
         
         outputs.set(agentId, output);
         updateAgent(agentId, { status: "complete", output });
+        addLog("success", `✓ Agent ${agent.name} completed`);
       } catch (error) {
         console.error("Agent execution failed:", error);
         updateAgent(agentId, { status: "error", output: `Error: ${error}` });
+        addLog("error", `✗ Agent ${agent.name} failed: ${error}`);
       }
     };
 
     // Execute stages sequentially
-    for (const stage of workflow.stages) {
+    for (let i = 0; i < workflow.stages.length; i++) {
+      const stage = workflow.stages[i];
       if (stage.agents.length === 0) continue;
+
+      addLog("info", `▸ Stage ${i + 1}: Processing ${stage.agents.length} agent(s)`);
 
       const agentPromises = stage.agents.map(async (agent) => {
         // Get incoming connections for this agent
@@ -370,6 +409,7 @@ const Index = () => {
           
           if (connectedOutputs.length > 0) {
             input = connectedOutputs.join("\n\n---\n\n");
+            addLog("info", `Agent ${agent.name} received input from ${incomingConnections.length} connection(s)`);
           }
         }
 
@@ -378,7 +418,10 @@ const Index = () => {
 
       // Wait for all agents in this stage to complete before moving to next stage
       await Promise.all(agentPromises);
+      addLog("success", `✓ Stage ${i + 1} completed`);
     }
+    
+    addLog("success", "🎉 Workflow execution completed");
   };
 
   const selectedAgent = workflow.stages
@@ -427,7 +470,7 @@ const Index = () => {
         />
       </div>
       
-      <OutputLog />
+      <OutputLog logs={logs} />
     </div>
   );
 };
