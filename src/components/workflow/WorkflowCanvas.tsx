@@ -27,14 +27,35 @@ export const WorkflowCanvas = ({
   onCompleteConnection,
 }: WorkflowCanvasProps) => {
   const [forceUpdate, setForceUpdate] = useState(0);
+  const [svgDimensions, setSvgDimensions] = useState({ width: 0, height: 0 });
+
+  // Update SVG dimensions based on scroll content
+  const updateSvgDimensions = () => {
+    const scrollContainer = document.getElementById('workflow-scroll-container');
+    if (scrollContainer) {
+      setSvgDimensions({
+        width: Math.max(scrollContainer.scrollWidth, scrollContainer.clientWidth),
+        height: Math.max(scrollContainer.scrollHeight, scrollContainer.clientHeight)
+      });
+    }
+  };
 
   // Force redraw of arrows when workflow changes
   useEffect(() => {
     // Multiple redraws to ensure DOM is ready
     const timers = [
-      setTimeout(() => setForceUpdate((prev) => prev + 1), 50),
-      setTimeout(() => setForceUpdate((prev) => prev + 1), 150),
-      setTimeout(() => setForceUpdate((prev) => prev + 1), 300),
+      setTimeout(() => {
+        updateSvgDimensions();
+        setForceUpdate((prev) => prev + 1);
+      }, 50),
+      setTimeout(() => {
+        updateSvgDimensions();
+        setForceUpdate((prev) => prev + 1);
+      }, 150),
+      setTimeout(() => {
+        updateSvgDimensions();
+        setForceUpdate((prev) => prev + 1);
+      }, 300),
     ];
     return () => timers.forEach(clearTimeout);
   }, [workflow.connections, workflow.stages, workflow.stages.flatMap(s => s.agents).length]);
@@ -42,6 +63,7 @@ export const WorkflowCanvas = ({
   // Redraw arrows on window resize
   useEffect(() => {
     const handleResize = () => {
+      updateSvgDimensions();
       setForceUpdate((prev) => prev + 1);
     };
     
@@ -108,8 +130,14 @@ export const WorkflowCanvas = ({
           <div className="flex-1 overflow-auto" id="workflow-scroll-container" style={{ position: 'relative' }}>
             <svg 
               key={forceUpdate}
-              className="absolute inset-0 pointer-events-none" 
-              style={{ width: '100%', height: '100%', zIndex: 15 }}
+              className="absolute top-0 left-0 pointer-events-none" 
+              style={{ 
+                width: `${svgDimensions.width}px`, 
+                height: `${svgDimensions.height}px`, 
+                zIndex: 15,
+                minWidth: '100%',
+                minHeight: '100%'
+              }}
             >
               <defs>
                 <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
