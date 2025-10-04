@@ -77,7 +77,9 @@ export const WorkflowCanvas = ({
   // Handle delete key for connections
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      console.log('Key pressed:', e.key, 'Selected connection:', selectedConnection);
       if (e.key === 'Delete' && selectedConnection) {
+        console.log('Deleting connection:', selectedConnection);
         onDeleteConnection(selectedConnection);
         setSelectedConnection(null);
       }
@@ -130,16 +132,17 @@ export const WorkflowCanvas = ({
       const isSelected = selectedConnection === conn.id;
       
       return (
-        <g key={conn.id}>
+        <g key={conn.id} style={{ pointerEvents: 'auto' }}>
           {/* Invisible wider path for easier clicking */}
           <path
             d={path}
             stroke="transparent"
             strokeWidth="20"
             fill="none"
-            style={{ cursor: 'pointer' }}
+            style={{ cursor: 'pointer', pointerEvents: 'stroke' }}
             onClick={(e) => {
               e.stopPropagation();
+              console.log('Connection clicked:', conn.id);
               setSelectedConnection(conn.id);
             }}
           />
@@ -175,7 +178,8 @@ export const WorkflowCanvas = ({
                 height: `${svgDimensions.height}px`, 
                 zIndex: 15,
                 minWidth: '100%',
-                minHeight: '100%'
+                minHeight: '100%',
+                pointerEvents: 'none'
               }}
             >
               <defs>
