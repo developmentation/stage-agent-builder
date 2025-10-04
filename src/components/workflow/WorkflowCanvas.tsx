@@ -210,7 +210,8 @@ export const WorkflowCanvas = ({
                 zIndex: 15,
                 minWidth: '100%',
                 minHeight: '100%',
-                pointerEvents: 'none'
+                pointerEvents: 'none',
+                border: '2px solid red' // DEBUG: Make SVG visible
               }}
             >
               <defs>
@@ -221,6 +222,7 @@ export const WorkflowCanvas = ({
                   <polygon points="0 0, 10 3, 0 6" fill="hsl(var(--warning))" fillOpacity="0.6" />
                 </marker>
               </defs>
+              <rect width="100%" height="100%" fill="rgba(255,0,0,0.1)" /> {/* DEBUG: Show SVG area */}
               {renderConnections()}
             </svg>
             
