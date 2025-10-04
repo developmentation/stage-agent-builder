@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { systemPrompt, userPrompt, tools = [], toolConfigs = {} } = await req.json();
+    const { systemPrompt, userPrompt, tools = [] } = await req.json();
     
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
@@ -19,16 +19,16 @@ serve(async (req) => {
     }
 
     console.log("Running agent with system prompt:", systemPrompt.substring(0, 50));
-    console.log("Tools attached:", tools);
+    console.log("Tool instances:", tools);
 
     // Execute tools if any
     let toolResults = "";
-    for (const toolId of tools) {
-      console.log("Executing tool:", toolId);
+    for (const toolInstance of tools) {
+      const { toolId, config } = toolInstance;
+      console.log("Executing tool:", toolId, "with config:", config);
       
       try {
         if (toolId === 'google_search') {
-          const config = toolConfigs[toolId];
           if (config?.apiKey && config?.searchEngineId) {
             const searchResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/google-search`, {
               method: 'POST',
@@ -39,7 +39,6 @@ serve(async (req) => {
             toolResults += `\n\nGoogle Search Results: ${JSON.stringify(searchData)}`;
           }
         } else if (toolId === 'weather') {
-          const config = toolConfigs[toolId];
           if (config?.apiKey) {
             const weatherResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/weather`, {
               method: 'POST',
@@ -58,7 +57,6 @@ serve(async (req) => {
           const timeData = await timeResponse.json();
           toolResults += `\n\nCurrent Time: ${JSON.stringify(timeData)}`;
         } else if (toolId === 'web_scrape') {
-          const config = toolConfigs[toolId];
           if (config?.url) {
             const scrapeResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/web-scrape`, {
               method: 'POST',
@@ -69,7 +67,6 @@ serve(async (req) => {
             toolResults += `\n\nWeb Scrape Results: ${JSON.stringify(scrapeData)}`;
           }
         } else if (toolId === 'api_call') {
-          const config = toolConfigs[toolId];
           if (config?.url) {
             const headers = config.headers ? JSON.parse(config.headers) : {};
             const apiResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/api-call`, {

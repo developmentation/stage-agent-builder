@@ -5,13 +5,19 @@ import { Toolbar } from "@/components/toolbar/Toolbar";
 import { OutputLog } from "@/components/output/OutputLog";
 import { useState } from "react";
 
+export interface ToolInstance {
+  id: string;
+  toolId: string;
+  config: any;
+}
+
 export interface Agent {
   id: string;
   name: string;
   type: string;
   systemPrompt: string;
   userPrompt: string;
-  tools: string[];
+  tools: ToolInstance[];
   status: "idle" | "running" | "complete" | "error";
   output?: string;
 }
@@ -29,7 +35,6 @@ export interface Connection {
 
 export interface Workflow {
   stages: Stage[];
-  toolConfigs: Record<string, any>;
   connections: Connection[];
 }
 
@@ -39,7 +44,6 @@ const Index = () => {
   const [userInput, setUserInput] = useState<string>("");
   const [workflow, setWorkflow] = useState<Workflow>({
     stages: [],
-    toolConfigs: {},
     connections: [],
   });
 
@@ -122,13 +126,56 @@ const Index = () => {
     });
   };
 
-  const updateToolConfig = (toolId: string, config: any) => {
+  const addToolInstance = (agentId: string, toolId: string) => {
+    const newToolInstance: ToolInstance = {
+      id: `tool-${Date.now()}`,
+      toolId,
+      config: {},
+    };
+    
     setWorkflow((prev) => ({
       ...prev,
-      toolConfigs: {
-        ...prev.toolConfigs,
-        [toolId]: config,
-      },
+      stages: prev.stages.map((stage) => ({
+        ...stage,
+        agents: stage.agents.map((agent) =>
+          agent.id === agentId
+            ? { ...agent, tools: [...agent.tools, newToolInstance] }
+            : agent
+        ),
+      })),
+    }));
+  };
+
+  const updateToolInstance = (agentId: string, toolInstanceId: string, config: any) => {
+    setWorkflow((prev) => ({
+      ...prev,
+      stages: prev.stages.map((stage) => ({
+        ...stage,
+        agents: stage.agents.map((agent) =>
+          agent.id === agentId
+            ? {
+                ...agent,
+                tools: agent.tools.map((tool) =>
+                  tool.id === toolInstanceId ? { ...tool, config } : tool
+                ),
+              }
+            : agent
+        ),
+      })),
+    }));
+  };
+
+  const removeToolInstance = (agentId: string, toolInstanceId: string) => {
+    setWorkflow((prev) => ({
+      ...prev,
+      stages: prev.stages.map((stage) => ({
+        ...stage,
+        agents: stage.agents.map((agent) =>
+          agent.id === agentId
+            ? { ...agent, tools: agent.tools.filter((t) => t.id !== toolInstanceId) }
+            : agent
+        ),
+      })),
     }));
   };
 
@@ -162,7 +209,7 @@ const Index = () => {
 
   const clearWorkflow = () => {
     if (confirm("Are you sure you want to clear the entire workflow?")) {
-      setWorkflow({ stages: [], toolConfigs: {}, connections: [] });
+      setWorkflow({ stages: [], connections: [] });
       setSelectedNode(null);
       setConnectingFrom(null);
     }
@@ -217,6 +264,12 @@ const Index = () => {
       
       const userPrompt = agent.userPrompt.replace("{input}", input);
       
+      // Convert tool instances to the format expected by the edge function
+      const toolsPayload = agent.tools.map(t => ({
+        toolId: t.toolId,
+        config: t.config,
+      }));
+      
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/run-agent`, {
         method: "POST",
         headers: {
@@ -225,8 +278,7 @@ const Index = () => {
         body: JSON.stringify({
           systemPrompt: agent.systemPrompt,
           userPrompt,
-          tools: agent.tools,
-          toolConfigs: workflow.toolConfigs,
+          tools: toolsPayload,
         }),
       });
 
@@ -264,6 +316,12 @@ const Index = () => {
       try {
         const userPrompt = agent.userPrompt.replace("{input}", input);
         
+        // Convert tool instances to the format expected by the edge function
+        const toolsPayload = agent.tools.map(t => ({
+          toolId: t.toolId,
+          config: t.config,
+        }));
+        
         const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/run-agent`, {
           method: "POST",
           headers: {
@@ -272,8 +330,7 @@ const Index = () => {
           body: JSON.stringify({
             systemPrompt: agent.systemPrompt,
             userPrompt,
-            tools: agent.tools,
-            toolConfigs: workflow.toolConfigs,
+            tools: toolsPayload,
           }),
         });
 
@@ -361,9 +418,10 @@ const Index = () => {
         
         <PropertiesPanel
           selectedAgent={selectedAgent}
-          workflow={workflow}
           onUpdateAgent={updateAgent}
-          onUpdateToolConfig={updateToolConfig}
+          onAddToolInstance={addToolInstance}
+          onUpdateToolInstance={updateToolInstance}
+          onRemoveToolInstance={removeToolInstance}
           onDeselectAgent={() => setSelectedNode(null)}
           onRunAgent={runSingleAgent}
         />
