@@ -166,6 +166,13 @@ const Index = () => {
     setConnectingFrom(null);
   };
 
+  const deleteConnection = (connectionId: string) => {
+    setWorkflow((prev) => ({
+      ...prev,
+      connections: prev.connections.filter((conn) => conn.id !== connectionId),
+    }));
+  };
+
   const runSingleAgent = async (agentId: string, customInput?: string) => {
     const allAgents = workflow.stages.flatMap((s) => s.agents);
     const agent = allAgents.find((a) => a.id === agentId);
@@ -337,6 +344,7 @@ const Index = () => {
           onDeleteStage={deleteStage}
           onStartConnection={setConnectingFrom}
           onCompleteConnection={addConnection}
+          onDeleteConnection={deleteConnection}
         />
         
         <PropertiesPanel

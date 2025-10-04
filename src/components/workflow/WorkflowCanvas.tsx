@@ -13,6 +13,7 @@ interface WorkflowCanvasProps {
   onDeleteStage: (stageId: string) => void;
   onStartConnection: (agentId: string) => void;
   onCompleteConnection: (fromAgentId: string, toAgentId: string) => void;
+  onDeleteConnection: (connectionId: string) => void;
 }
 
 export const WorkflowCanvas = ({
@@ -25,9 +26,11 @@ export const WorkflowCanvas = ({
   onDeleteStage,
   onStartConnection,
   onCompleteConnection,
+  onDeleteConnection,
 }: WorkflowCanvasProps) => {
   const [forceUpdate, setForceUpdate] = useState(0);
   const [svgDimensions, setSvgDimensions] = useState({ width: 0, height: 0 });
+  const [selectedConnection, setSelectedConnection] = useState<string | null>(null);
 
   // Update SVG dimensions based on scroll content
   const updateSvgDimensions = () => {
@@ -71,6 +74,19 @@ export const WorkflowCanvas = ({
     return () => window.removeEventListener('resize', handleResize);
   }, []);
 
+  // Handle delete key for connections
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Delete' && selectedConnection) {
+        onDeleteConnection(selectedConnection);
+        setSelectedConnection(null);
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedConnection, onDeleteConnection]);
+
   const handlePortClick = (agentId: string, isOutput: boolean) => {
     if (isOutput && !connectingFrom) {
       onStartConnection(agentId);
@@ -111,15 +127,33 @@ export const WorkflowCanvas = ({
       
       const path = `M ${x1} ${y1} C ${x1} ${controlY1}, ${x2} ${controlY2}, ${x2} ${y2}`;
       
+      const isSelected = selectedConnection === conn.id;
+      
       return (
-        <path
-          key={conn.id}
-          d={path}
-          stroke="hsl(var(--primary))"
-          strokeWidth="2"
-          fill="none"
-          markerEnd="url(#arrowhead)"
-        />
+        <g key={conn.id}>
+          {/* Invisible wider path for easier clicking */}
+          <path
+            d={path}
+            stroke="transparent"
+            strokeWidth="12"
+            fill="none"
+            className="cursor-pointer"
+            onClick={(e) => {
+              e.stopPropagation();
+              setSelectedConnection(conn.id);
+            }}
+          />
+          {/* Visible path */}
+          <path
+            d={path}
+            stroke={isSelected ? "hsl(var(--warning))" : "hsl(var(--primary))"}
+            strokeWidth="2"
+            strokeOpacity="0.3"
+            fill="none"
+            markerEnd={isSelected ? "url(#arrowhead-selected)" : "url(#arrowhead)"}
+            className="pointer-events-none"
+          />
+        </g>
       );
     });
   };
@@ -141,7 +175,10 @@ export const WorkflowCanvas = ({
             >
               <defs>
                 <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
-                  <polygon points="0 0, 10 3, 0 6" fill="hsl(var(--primary))" />
+                  <polygon points="0 0, 10 3, 0 6" fill="hsl(var(--primary))" fillOpacity="0.3" />
+                </marker>
+                <marker id="arrowhead-selected" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                  <polygon points="0 0, 10 3, 0 6" fill="hsl(var(--warning))" fillOpacity="0.3" />
                 </marker>
               </defs>
               {renderConnections()}
