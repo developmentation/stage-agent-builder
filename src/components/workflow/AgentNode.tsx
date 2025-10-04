@@ -70,6 +70,7 @@ export const AgentNode = ({ agent, isSelected, isConnecting, agentNumber, onSele
           }`}
           onClick={(e) => {
             e.stopPropagation();
+            console.log('Input port clicked:', agent.id, agent.name);
             onPortClick(agent.id, false);
           }}
         />
@@ -80,6 +81,7 @@ export const AgentNode = ({ agent, isSelected, isConnecting, agentNumber, onSele
           }`}
           onClick={(e) => {
             e.stopPropagation();
+            console.log('Output port clicked:', agent.id, agent.name);
             onPortClick(agent.id, true);
           }}
         />
@@ -109,6 +111,7 @@ export const AgentNode = ({ agent, isSelected, isConnecting, agentNumber, onSele
         }`}
         onClick={(e) => {
           e.stopPropagation();
+          console.log('Input port clicked (expanded):', agent.id, agent.name);
           onPortClick(agent.id, false);
         }}
       />
@@ -119,6 +122,7 @@ export const AgentNode = ({ agent, isSelected, isConnecting, agentNumber, onSele
         }`}
         onClick={(e) => {
           e.stopPropagation();
+          console.log('Output port clicked (expanded):', agent.id, agent.name);
           onPortClick(agent.id, true);
         }}
       />
