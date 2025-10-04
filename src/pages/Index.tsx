@@ -94,6 +94,10 @@ const Index = () => {
         ...stage,
         agents: stage.agents.filter((agent) => agent.id !== agentId),
       })),
+      // Remove all connections involving this agent
+      connections: prev.connections.filter(
+        (conn) => conn.fromAgentId !== agentId && conn.toAgentId !== agentId
+      ),
     }));
     if (selectedNode === agentId) {
       setSelectedNode(null);
@@ -101,10 +105,21 @@ const Index = () => {
   };
 
   const deleteStage = (stageId: string) => {
-    setWorkflow((prev) => ({
-      ...prev,
-      stages: prev.stages.filter((stage) => stage.id !== stageId),
-    }));
+    setWorkflow((prev) => {
+      const stageToDelete = prev.stages.find((s) => s.id === stageId);
+      const agentIdsToDelete = stageToDelete?.agents.map((a) => a.id) || [];
+      
+      return {
+        ...prev,
+        stages: prev.stages.filter((stage) => stage.id !== stageId),
+        // Remove all connections involving agents in this stage
+        connections: prev.connections.filter(
+          (conn) => 
+            !agentIdsToDelete.includes(conn.fromAgentId) && 
+            !agentIdsToDelete.includes(conn.toAgentId)
+        ),
+      };
+    });
   };
 
   const updateToolConfig = (toolId: string, config: any) => {
@@ -238,13 +253,9 @@ const Index = () => {
       updateAgent(agent.id, { status: "idle", output: undefined });
     });
 
-    // Build execution order based on connections
-    const executed = new Set<string>();
     const outputs = new Map<string, string>();
 
-    const executeAgent = async (agentId: string, input: string = userInput || "No input provided") => {
-      if (executed.has(agentId)) return;
-      
+    const executeAgent = async (agentId: string, input: string) => {
       const agent = allAgents.find((a) => a.id === agentId);
       if (!agent) return;
 
@@ -275,41 +286,42 @@ const Index = () => {
         const output = data.output || "No output generated";
         
         outputs.set(agentId, output);
-        executed.add(agentId);
-        
         updateAgent(agentId, { status: "complete", output });
-
-        // Find and execute connected agents
-        const outgoingConnections = workflow.connections.filter(
-          (c) => c.fromAgentId === agentId
-        );
-        
-        for (const conn of outgoingConnections) {
-          const incomingConnections = workflow.connections.filter(
-            (c) => c.toAgentId === conn.toAgentId
-          );
-          
-          const allInputsReady = incomingConnections.every((c) => outputs.has(c.fromAgentId));
-          
-          if (allInputsReady) {
-            const combinedInput = incomingConnections
-              .map((c) => outputs.get(c.fromAgentId) || "")
-              .filter(Boolean)
-              .join("\n\n---\n\n");
-            
-            await executeAgent(conn.toAgentId, combinedInput);
-          }
-        }
       } catch (error) {
         console.error("Agent execution failed:", error);
         updateAgent(agentId, { status: "error", output: `Error: ${error}` });
       }
     };
 
-    const agentsWithInputs = new Set(workflow.connections.map((c) => c.toAgentId));
-    const rootAgents = allAgents.filter((a) => !agentsWithInputs.has(a.id));
+    // Execute stages sequentially
+    for (const stage of workflow.stages) {
+      if (stage.agents.length === 0) continue;
 
-    await Promise.all(rootAgents.map((agent) => executeAgent(agent.id)));
+      const agentPromises = stage.agents.map(async (agent) => {
+        // Get incoming connections for this agent
+        const incomingConnections = workflow.connections.filter(
+          (c) => c.toAgentId === agent.id
+        );
+
+        let input = userInput || "No input provided";
+        
+        // If there are incoming connections, wait for and concatenate their outputs
+        if (incomingConnections.length > 0) {
+          const connectedOutputs = incomingConnections
+            .map((c) => outputs.get(c.fromAgentId))
+            .filter(Boolean);
+          
+          if (connectedOutputs.length > 0) {
+            input = connectedOutputs.join("\n\n---\n\n");
+          }
+        }
+
+        await executeAgent(agent.id, input);
+      });
+
+      // Wait for all agents in this stage to complete before moving to next stage
+      await Promise.all(agentPromises);
+    }
   };
 
   const selectedAgent = workflow.stages
