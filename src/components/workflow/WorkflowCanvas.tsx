@@ -26,15 +26,18 @@ export const WorkflowCanvas = ({
   onStartConnection,
   onCompleteConnection,
 }: WorkflowCanvasProps) => {
-  const [, setForceUpdate] = useState(0);
+  const [forceUpdate, setForceUpdate] = useState(0);
 
   // Force redraw of arrows when workflow changes
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setForceUpdate((prev) => prev + 1);
-    }, 50);
-    return () => clearTimeout(timer);
-  }, [workflow.connections, workflow.stages]);
+    // Multiple redraws to ensure DOM is ready
+    const timers = [
+      setTimeout(() => setForceUpdate((prev) => prev + 1), 50),
+      setTimeout(() => setForceUpdate((prev) => prev + 1), 150),
+      setTimeout(() => setForceUpdate((prev) => prev + 1), 300),
+    ];
+    return () => timers.forEach(clearTimeout);
+  }, [workflow.connections, workflow.stages, workflow.stages.flatMap(s => s.agents).length]);
 
   const handlePortClick = (agentId: string, isOutput: boolean) => {
     if (isOutput && !connectingFrom) {
@@ -94,7 +97,11 @@ export const WorkflowCanvas = ({
         <Card className="h-full bg-canvas-background/50 backdrop-blur-sm border-2 border-dashed border-border/50 rounded-xl overflow-hidden flex flex-col relative">
           <div className="flex-1 overflow-auto relative" id="workflow-scroll-container">
             <div className="p-6 space-y-6 min-h-full">
-              <svg className="absolute inset-0 pointer-events-none z-[15]" style={{ width: '100%', height: '100%' }}>
+              <svg 
+                key={forceUpdate}
+                className="absolute inset-0 pointer-events-none z-[15]" 
+                style={{ width: '100%', height: '100%' }}
+              >
                 <defs>
                   <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
                     <polygon points="0 0, 10 3, 0 6" fill="hsl(var(--primary))" />
