@@ -97,11 +97,15 @@ export const WorkflowCanvas = ({
   }, [selectedConnection, onDeleteConnection]);
 
   const handlePortClick = (agentId: string, isOutput: boolean) => {
+    console.log('handlePortClick:', { agentId, isOutput, connectingFrom });
     if (isOutput && !connectingFrom) {
+      console.log('Starting connection from:', agentId);
       onStartConnection(agentId);
     } else if (!isOutput && connectingFrom && connectingFrom !== agentId) {
+      console.log('Completing connection:', connectingFrom, '->', agentId);
       onCompleteConnection(connectingFrom, agentId);
     } else if (connectingFrom) {
+      console.log('Canceling connection');
       onStartConnection(null);
     }
   };
