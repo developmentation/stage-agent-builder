@@ -49,7 +49,7 @@ export const PropertiesPanel = ({
 
   if (!selectedAgent) {
     return (
-      <aside className="w-80 border-l border-border bg-card flex items-center justify-center p-6">
+      <div className="bg-card flex items-center justify-center p-6 h-full">
         <div className="text-center space-y-3">
           <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mx-auto">
             <svg className="w-8 h-8 text-muted-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -60,7 +60,7 @@ export const PropertiesPanel = ({
             Select an agent to view and edit its properties
           </p>
         </div>
-      </aside>
+      </div>
     );
   }
 
@@ -71,11 +71,11 @@ export const PropertiesPanel = ({
   };
 
   return (
-    <aside className="w-80 border-l border-border bg-card flex flex-col">
+    <div className="bg-card flex flex-col h-full">
       <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between">
           <h3 className="font-semibold text-foreground">Agent Properties</h3>
-          <Button variant="ghost" size="sm" onClick={onDeselectAgent}>
+          <Button variant="ghost" size="sm" onClick={onDeselectAgent} className="lg:flex hidden">
             <X className="h-4 w-4" />
           </Button>
         </div>
@@ -354,6 +354,6 @@ export const PropertiesPanel = ({
           </div>
         </div>
       </ScrollArea>
-    </aside>
+    </div>
   );
 };

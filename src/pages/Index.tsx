@@ -3,6 +3,7 @@ import { Sidebar } from "@/components/sidebar/Sidebar";
 import { PropertiesPanel } from "@/components/properties/PropertiesPanel";
 import { Toolbar } from "@/components/toolbar/Toolbar";
 import { OutputLog, LogEntry } from "@/components/output/OutputLog";
+import { ResponsiveLayout } from "@/components/layout/ResponsiveLayout";
 import { useState } from "react";
 
 export interface ToolInstance {
@@ -438,17 +439,16 @@ const Index = () => {
         onRun={runWorkflow}
       />
       
-      <div className="flex flex-col lg:flex-row flex-1 lg:overflow-hidden">
-        <div className="w-full lg:w-80 h-auto max-h-[40vh] lg:max-h-none lg:h-full border-b lg:border-b-0 lg:border-r border-border overflow-y-auto">
+      <ResponsiveLayout
+        sidebar={
           <Sidebar 
             onAddAgent={addAgent} 
             workflow={workflow} 
             userInput={userInput}
             onUserInputChange={setUserInput}
           />
-        </div>
-        
-        <div className="flex-1 h-[60vh] lg:h-full overflow-auto">
+        }
+        canvas={
           <WorkflowCanvas 
             workflow={workflow}
             selectedNode={selectedNode}
@@ -461,9 +461,8 @@ const Index = () => {
             onCompleteConnection={addConnection}
             onDeleteConnection={deleteConnection}
           />
-        </div>
-        
-        <div className="w-full lg:w-96 h-auto max-h-[50vh] lg:max-h-none lg:h-full border-t lg:border-t-0 lg:border-l border-border overflow-y-auto">
+        }
+        properties={
           <PropertiesPanel
             selectedAgent={selectedAgent}
             onUpdateAgent={updateAgent}
@@ -473,8 +472,11 @@ const Index = () => {
             onDeselectAgent={() => setSelectedNode(null)}
             onRunAgent={runSingleAgent}
           />
-        </div>
-      </div>
+        }
+        onAddStage={addStage}
+        onRun={runWorkflow}
+        hasSelectedAgent={!!selectedAgent}
+      />
       
       <OutputLog logs={logs} />
     </div>

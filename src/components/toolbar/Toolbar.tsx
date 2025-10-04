@@ -26,7 +26,7 @@ export const Toolbar = ({ onAddStage, onSave, onLoad, onClear, onRun }: ToolbarP
   };
 
   return (
-    <header className="h-16 border-b border-border bg-card flex items-center justify-between px-6 shadow-sm">
+    <header className="h-16 border-b border-border bg-card items-center justify-between px-6 shadow-sm hidden lg:flex">
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">

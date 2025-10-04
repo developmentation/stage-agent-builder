@@ -90,7 +90,7 @@ export const Sidebar = ({ onAddAgent, workflow, userInput, onUserInputChange }: 
 
   const allAgents = [...agentTemplates, ...customAgents];
   return (
-    <aside className="w-80 border-r border-border bg-card flex flex-col">
+    <div className="bg-card flex flex-col h-full">
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-6">
           {/* Input Section */}
@@ -227,6 +227,6 @@ export const Sidebar = ({ onAddAgent, workflow, userInput, onUserInputChange }: 
           </div>
         </div>
       </ScrollArea>
-    </aside>
+    </div>
   );
 };

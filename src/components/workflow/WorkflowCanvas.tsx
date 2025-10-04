@@ -158,8 +158,8 @@ export const WorkflowCanvas = ({
     });
   };
   return (
-    <main className="flex-1 bg-gradient-to-br from-canvas-background to-muted/20 overflow-hidden relative" id="workflow-canvas">
-      <div className="absolute inset-0 p-6">
+    <div className="h-full bg-gradient-to-br from-canvas-background to-muted/20 overflow-hidden relative" id="workflow-canvas">
+      <div className="h-full p-4 lg:p-6">
         <Card className="h-full bg-canvas-background/50 backdrop-blur-sm border-2 border-dashed border-border/50 rounded-xl overflow-hidden flex flex-col relative">
           <div 
             className="flex-1 overflow-auto" 
@@ -229,6 +229,6 @@ export const WorkflowCanvas = ({
           </div>
         </Card>
       </div>
-    </main>
+    </div>
   );
 };
