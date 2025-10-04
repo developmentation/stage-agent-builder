@@ -77,9 +77,7 @@ export const WorkflowCanvas = ({
   // Handle delete key for connections
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      console.log('Key pressed:', e.key, 'Selected connection:', selectedConnection);
       if (e.key === 'Delete' && selectedConnection) {
-        console.log('Deleting connection:', selectedConnection);
         onDeleteConnection(selectedConnection);
         setSelectedConnection(null);
       }
@@ -132,7 +130,7 @@ export const WorkflowCanvas = ({
       const isSelected = selectedConnection === conn.id;
       
       return (
-        <g key={conn.id} style={{ pointerEvents: 'auto' }}>
+        <g key={conn.id}>
           {/* Invisible wider path for easier clicking */}
           <path
             d={path}
@@ -142,7 +140,6 @@ export const WorkflowCanvas = ({
             style={{ cursor: 'pointer', pointerEvents: 'stroke' }}
             onClick={(e) => {
               e.stopPropagation();
-              console.log('Connection clicked:', conn.id);
               setSelectedConnection(conn.id);
             }}
           />
@@ -168,7 +165,12 @@ export const WorkflowCanvas = ({
             className="flex-1 overflow-auto" 
             id="workflow-scroll-container" 
             style={{ position: 'relative' }}
-            onClick={() => setSelectedConnection(null)}
+            onClick={(e) => {
+              // Only deselect if clicking directly on the container, not children
+              if (e.target === e.currentTarget) {
+                setSelectedConnection(null);
+              }
+            }}
           >
             <svg 
               key={forceUpdate}
@@ -178,8 +180,7 @@ export const WorkflowCanvas = ({
                 height: `${svgDimensions.height}px`, 
                 zIndex: 15,
                 minWidth: '100%',
-                minHeight: '100%',
-                pointerEvents: 'none'
+                minHeight: '100%'
               }}
             >
               <defs>
