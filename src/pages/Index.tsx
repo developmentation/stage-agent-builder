@@ -29,7 +29,7 @@ export interface Connection {
 
 export interface Workflow {
   stages: Stage[];
-  toolConfigs: Record<string, { apiKey?: string; config?: any }>;
+  toolConfigs: Record<string, any>;
   connections: Connection[];
 }
 

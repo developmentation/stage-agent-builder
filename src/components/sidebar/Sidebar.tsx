@@ -1,8 +1,18 @@
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Upload, Search, Cloud, Clock, Globe, FileText, Bot } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Upload, Search, Cloud, Clock, Globe, FileText, Bot, Plus } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useState } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 const agentTemplates = [
   { 
@@ -45,9 +55,38 @@ interface SidebarProps {
 }
 
 export const Sidebar = ({ onAddAgent, workflow }: SidebarProps) => {
+  const [customAgents, setCustomAgents] = useState<any[]>([]);
+  const [isAddAgentOpen, setIsAddAgentOpen] = useState(false);
+  const [newAgentName, setNewAgentName] = useState("");
+  const [newAgentDescription, setNewAgentDescription] = useState("");
+  const [newAgentSystemPrompt, setNewAgentSystemPrompt] = useState("");
+  const [newAgentUserPrompt, setNewAgentUserPrompt] = useState("");
+
   const handleDragStart = (e: React.DragEvent, template: any) => {
     e.dataTransfer.setData("agentTemplate", JSON.stringify(template));
   };
+
+  const handleAddCustomAgent = () => {
+    if (!newAgentName.trim()) return;
+    
+    const newAgent = {
+      id: `custom-${Date.now()}`,
+      name: newAgentName,
+      icon: Bot,
+      description: newAgentDescription || "Custom agent",
+      defaultSystemPrompt: newAgentSystemPrompt || `You are a ${newAgentName} agent.`,
+      defaultUserPrompt: newAgentUserPrompt || "Process the following: {input}",
+    };
+    
+    setCustomAgents([...customAgents, newAgent]);
+    setNewAgentName("");
+    setNewAgentDescription("");
+    setNewAgentSystemPrompt("");
+    setNewAgentUserPrompt("");
+    setIsAddAgentOpen(false);
+  };
+
+  const allAgents = [...agentTemplates, ...customAgents];
   return (
     <aside className="w-80 border-r border-border bg-card flex flex-col">
       <ScrollArea className="flex-1">
@@ -79,9 +118,66 @@ export const Sidebar = ({ onAddAgent, workflow }: SidebarProps) => {
 
           {/* Agent Templates */}
           <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-foreground">Agent Library</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-foreground">Agent Library</h3>
+              <Dialog open={isAddAgentOpen} onOpenChange={setIsAddAgentOpen}>
+                <DialogTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Add Custom Agent</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="agent-name">Agent Name</Label>
+                      <Input
+                        id="agent-name"
+                        placeholder="e.g., Code Reviewer"
+                        value={newAgentName}
+                        onChange={(e) => setNewAgentName(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="agent-desc">Description</Label>
+                      <Input
+                        id="agent-desc"
+                        placeholder="Brief description"
+                        value={newAgentDescription}
+                        onChange={(e) => setNewAgentDescription(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="agent-system">System Prompt</Label>
+                      <Textarea
+                        id="agent-system"
+                        placeholder="You are a helpful assistant..."
+                        value={newAgentSystemPrompt}
+                        onChange={(e) => setNewAgentSystemPrompt(e.target.value)}
+                        className="min-h-[80px]"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="agent-user">User Prompt Template</Label>
+                      <Textarea
+                        id="agent-user"
+                        placeholder="Process: {input}"
+                        value={newAgentUserPrompt}
+                        onChange={(e) => setNewAgentUserPrompt(e.target.value)}
+                        className="min-h-[60px]"
+                      />
+                    </div>
+                    <Button onClick={handleAddCustomAgent} className="w-full">
+                      Add Agent
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            </div>
             <div className="space-y-2">
-              {agentTemplates.map((agent) => (
+              {allAgents.map((agent) => (
                 <Card 
                   key={agent.id}
                   className="p-3 cursor-move hover:shadow-md transition-shadow bg-gradient-to-br from-card to-muted/20"

@@ -40,14 +40,15 @@ export const AgentNode = ({ agent, isSelected, isConnecting, onSelect, onDelete,
 
   return (
     <Card 
-      className={`p-3 cursor-pointer transition-all hover:shadow-lg relative ${
+      className={`p-3 cursor-pointer transition-all hover:shadow-lg relative w-full ${
         isSelected ? "ring-2 ring-primary shadow-lg" : ""
       }`}
       onClick={onSelect}
     >
       {/* Input/Output Ports */}
       <div 
-        className={`absolute -top-2 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-primary border-2 border-card cursor-pointer hover:scale-125 transition-transform ${
+        id={`port-input-${agent.id}`}
+        className={`absolute -top-2 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-primary border-2 border-card cursor-pointer hover:scale-125 transition-transform z-20 ${
           isConnecting ? "ring-2 ring-primary animate-pulse" : ""
         }`}
         onClick={(e) => {
@@ -56,7 +57,8 @@ export const AgentNode = ({ agent, isSelected, isConnecting, onSelect, onDelete,
         }}
       />
       <div 
-        className={`absolute -bottom-2 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-primary border-2 border-card cursor-pointer hover:scale-125 transition-transform ${
+        id={`port-output-${agent.id}`}
+        className={`absolute -bottom-2 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-primary border-2 border-card cursor-pointer hover:scale-125 transition-transform z-20 ${
           isConnecting ? "ring-2 ring-primary animate-pulse" : ""
         }`}
         onClick={(e) => {

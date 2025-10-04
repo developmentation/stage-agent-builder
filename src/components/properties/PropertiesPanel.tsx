@@ -142,7 +142,7 @@ export const PropertiesPanel = ({
                     <div key={toolId} className="flex items-center justify-between">
                       <span className="text-sm text-foreground">{tool?.name}</span>
                       <div className="flex gap-1">
-                        {tool?.requiresApiKey && (
+                        {(tool?.requiresApiKey || toolId === 'web_scrape' || toolId === 'api_call') && (
                           <Dialog
                             open={configDialogTool === toolId}
                             onOpenChange={(open) =>
@@ -154,34 +154,132 @@ export const PropertiesPanel = ({
                                 <Settings className="h-3 w-3" />
                               </Button>
                             </DialogTrigger>
-                            <DialogContent>
-                              <DialogHeader>
-                                <DialogTitle>{tool.name} Configuration</DialogTitle>
-                              </DialogHeader>
-                              <div className="space-y-4">
-                                <div className="space-y-2">
-                                  <Label htmlFor="api-key">API Key</Label>
-                                  <Input
-                                    id="api-key"
-                                    type="password"
-                                    placeholder="Enter API key"
-                                    value={workflow.toolConfigs[toolId]?.apiKey || ""}
-                                    onChange={(e) =>
-                                      onUpdateToolConfig(toolId, {
-                                        ...workflow.toolConfigs[toolId],
-                                        apiKey: e.target.value,
-                                      })
-                                    }
-                                  />
-                                </div>
-                                <Button
-                                  onClick={() => setConfigDialogTool(null)}
-                                  className="w-full"
-                                >
-                                  Save
-                                </Button>
-                              </div>
-                            </DialogContent>
+                             <DialogContent>
+                               <DialogHeader>
+                                 <DialogTitle>{tool.name} Configuration</DialogTitle>
+                               </DialogHeader>
+                               <div className="space-y-4">
+                                 {toolId === 'google_search' && (
+                                   <>
+                                     <div className="space-y-2">
+                                       <Label htmlFor="api-key">API Key</Label>
+                                       <Input
+                                         id="api-key"
+                                         type="password"
+                                         placeholder="Enter Google API key"
+                                         value={workflow.toolConfigs[toolId]?.apiKey || ""}
+                                         onChange={(e) =>
+                                           onUpdateToolConfig(toolId, {
+                                             ...workflow.toolConfigs[toolId],
+                                             apiKey: e.target.value,
+                                           })
+                                         }
+                                       />
+                                     </div>
+                                     <div className="space-y-2">
+                                       <Label htmlFor="search-engine-id">Search Engine ID</Label>
+                                       <Input
+                                         id="search-engine-id"
+                                         placeholder="Enter Custom Search Engine ID"
+                                         value={workflow.toolConfigs[toolId]?.searchEngineId || ""}
+                                         onChange={(e) =>
+                                           onUpdateToolConfig(toolId, {
+                                             ...workflow.toolConfigs[toolId],
+                                             searchEngineId: e.target.value,
+                                           })
+                                         }
+                                       />
+                                     </div>
+                                   </>
+                                 )}
+                                 {toolId === 'weather' && (
+                                   <div className="space-y-2">
+                                     <Label htmlFor="api-key">OpenWeatherMap API Key</Label>
+                                     <Input
+                                       id="api-key"
+                                       type="password"
+                                       placeholder="Enter API key"
+                                       value={workflow.toolConfigs[toolId]?.apiKey || ""}
+                                       onChange={(e) =>
+                                         onUpdateToolConfig(toolId, {
+                                           ...workflow.toolConfigs[toolId],
+                                           apiKey: e.target.value,
+                                         })
+                                       }
+                                     />
+                                   </div>
+                                 )}
+                                 {toolId === 'api_call' && (
+                                   <>
+                                     <div className="space-y-2">
+                                       <Label htmlFor="api-url">API URL</Label>
+                                       <Input
+                                         id="api-url"
+                                         placeholder="https://api.example.com/endpoint"
+                                         value={workflow.toolConfigs[toolId]?.url || ""}
+                                         onChange={(e) =>
+                                           onUpdateToolConfig(toolId, {
+                                             ...workflow.toolConfigs[toolId],
+                                             url: e.target.value,
+                                           })
+                                         }
+                                       />
+                                     </div>
+                                     <div className="space-y-2">
+                                       <Label htmlFor="api-method">Method</Label>
+                                       <Input
+                                         id="api-method"
+                                         placeholder="GET, POST, etc."
+                                         value={workflow.toolConfigs[toolId]?.method || "GET"}
+                                         onChange={(e) =>
+                                           onUpdateToolConfig(toolId, {
+                                             ...workflow.toolConfigs[toolId],
+                                             method: e.target.value,
+                                           })
+                                         }
+                                       />
+                                     </div>
+                                     <div className="space-y-2">
+                                       <Label htmlFor="api-headers">Headers (JSON)</Label>
+                                       <Textarea
+                                         id="api-headers"
+                                         placeholder='{"Authorization": "Bearer token"}'
+                                         value={workflow.toolConfigs[toolId]?.headers || ""}
+                                         onChange={(e) =>
+                                           onUpdateToolConfig(toolId, {
+                                             ...workflow.toolConfigs[toolId],
+                                             headers: e.target.value,
+                                           })
+                                         }
+                                         className="min-h-[60px]"
+                                       />
+                                     </div>
+                                   </>
+                                 )}
+                                 {toolId === 'web_scrape' && (
+                                   <div className="space-y-2">
+                                     <Label htmlFor="scrape-url">URL to Scrape</Label>
+                                     <Input
+                                       id="scrape-url"
+                                       placeholder="https://example.com"
+                                       value={workflow.toolConfigs[toolId]?.url || ""}
+                                       onChange={(e) =>
+                                         onUpdateToolConfig(toolId, {
+                                           ...workflow.toolConfigs[toolId],
+                                           url: e.target.value,
+                                         })
+                                       }
+                                     />
+                                   </div>
+                                 )}
+                                 <Button
+                                   onClick={() => setConfigDialogTool(null)}
+                                   className="w-full"
+                                 >
+                                   Save
+                                 </Button>
+                               </div>
+                             </DialogContent>
                           </Dialog>
                         )}
                         <Button

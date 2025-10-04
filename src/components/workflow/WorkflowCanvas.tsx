@@ -50,24 +50,28 @@ export const WorkflowCanvas = ({
                 const toAgent = workflow.stages.flatMap(s => s.agents).find(a => a.id === conn.toAgentId);
                 if (!fromAgent || !toAgent) return null;
                 
-                const fromEl = document.getElementById(`agent-${conn.fromAgentId}`);
-                const toEl = document.getElementById(`agent-${conn.toAgentId}`);
+                const fromEl = document.getElementById(`port-output-${conn.fromAgentId}`);
+                const toEl = document.getElementById(`port-input-${conn.toAgentId}`);
                 if (!fromEl || !toEl) return null;
                 
                 const canvas = document.getElementById('workflow-canvas');
-                if (!canvas) return null;
+                const scrollContainer = canvas?.querySelector('.overflow-auto');
+                if (!canvas || !scrollContainer) return null;
                 
                 const fromRect = fromEl.getBoundingClientRect();
                 const toRect = toEl.getBoundingClientRect();
-                const canvasRect = canvas.getBoundingClientRect();
+                const containerRect = (scrollContainer as HTMLElement).getBoundingClientRect();
                 
-                const x1 = fromRect.left + fromRect.width / 2 - canvasRect.left + canvas.scrollLeft;
-                const y1 = fromRect.bottom - canvasRect.top + canvas.scrollTop;
-                const x2 = toRect.left + toRect.width / 2 - canvasRect.left + canvas.scrollLeft;
-                const y2 = toRect.top - canvasRect.top + canvas.scrollTop;
+                const scrollLeft = (scrollContainer as HTMLElement).scrollLeft;
+                const scrollTop = (scrollContainer as HTMLElement).scrollTop;
                 
-                // Calculate bezier curve control points
-                const midY = (y1 + y2) / 2;
+                // Get center of the port circles
+                const x1 = fromRect.left + fromRect.width / 2 - containerRect.left + scrollLeft;
+                const y1 = fromRect.top + fromRect.height / 2 - containerRect.top + scrollTop;
+                const x2 = toRect.left + toRect.width / 2 - containerRect.left + scrollLeft;
+                const y2 = toRect.top + toRect.height / 2 - containerRect.top + scrollTop;
+                
+                // Calculate bezier curve control points for smooth curves
                 const controlY1 = y1 + Math.abs(y2 - y1) * 0.5;
                 const controlY2 = y2 - Math.abs(y2 - y1) * 0.5;
                 

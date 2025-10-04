@@ -2,3 +2,15 @@ project_id = "tkppayricdwsogopxxzp"
 
 [functions.web-scrape]
 verify_jwt = false
+
+[functions.google-search]
+verify_jwt = false
+
+[functions.weather]
+verify_jwt = false
+
+[functions.time]
+verify_jwt = false
+
+[functions.api-call]
+verify_jwt = false
