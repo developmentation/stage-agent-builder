@@ -2,6 +2,7 @@ import { Card } from "@/components/ui/card";
 import { AgentNode } from "./AgentNode";
 import { GripVertical, ChevronDown, Plus, Trash2, Search, FileText, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { useState } from "react";
 import {
   Dialog,
@@ -43,6 +44,7 @@ const agentTemplates = [
 interface StageProps {
   stage: StageType;
   stageNumber: number;
+  stageIndex: number;
   selectedNode: string | null;
   connectingFrom: string | null;
   layoutId?: string;
@@ -50,6 +52,8 @@ interface StageProps {
   onAddAgent: (stageId: string, agentTemplate: any) => void;
   onDeleteAgent: (agentId: string) => void;
   onDeleteStage: (stageId: string) => void;
+  onRenameStage: (stageId: string, name: string) => void;
+  onReorderStages: (fromIndex: number, toIndex: number) => void;
   onToggleMinimize: (agentId: string) => void;
   onPortClick: (agentId: string, isOutput: boolean) => void;
 }
@@ -57,6 +61,7 @@ interface StageProps {
 export const Stage = ({
   stage,
   stageNumber,
+  stageIndex,
   selectedNode,
   connectingFrom,
   layoutId = 'default',
@@ -64,14 +69,30 @@ export const Stage = ({
   onAddAgent,
   onDeleteAgent,
   onDeleteStage,
+  onRenameStage,
+  onReorderStages,
   onToggleMinimize,
   onPortClick,
 }: StageProps) => {
   const [isAddAgentOpen, setIsAddAgentOpen] = useState(false);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editedName, setEditedName] = useState(stage.name);
+
+  const handleDragStart = (e: React.DragEvent) => {
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("stageIndex", stageIndex.toString());
+  };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
-    e.currentTarget.classList.add("border-primary");
+    const templateData = e.dataTransfer.types.includes("agenttemplate");
+    const stageData = e.dataTransfer.types.includes("text/plain");
+    
+    if (templateData) {
+      e.currentTarget.classList.add("border-primary");
+    } else if (stageData) {
+      e.dataTransfer.dropEffect = "move";
+    }
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
@@ -83,9 +104,16 @@ export const Stage = ({
     e.currentTarget.classList.remove("border-primary");
     
     const templateData = e.dataTransfer.getData("agentTemplate");
+    const draggedStageIndex = e.dataTransfer.getData("stageIndex");
+    
     if (templateData) {
       const template = JSON.parse(templateData);
       onAddAgent(stage.id, template);
+    } else if (draggedStageIndex) {
+      const fromIndex = parseInt(draggedStageIndex);
+      if (fromIndex !== stageIndex) {
+        onReorderStages(fromIndex, stageIndex);
+      }
     }
   };
 
@@ -97,9 +125,29 @@ export const Stage = ({
     setIsAddAgentOpen(false);
   };
 
+  const handleNameBlur = () => {
+    if (editedName.trim() && editedName !== stage.name) {
+      onRenameStage(stage.id, editedName.trim());
+    } else {
+      setEditedName(stage.name);
+    }
+    setIsEditingName(false);
+  };
+
+  const handleNameKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      handleNameBlur();
+    } else if (e.key === "Escape") {
+      setEditedName(stage.name);
+      setIsEditingName(false);
+    }
+  };
+
   return (
     <Card
       className="p-4 bg-card/80 backdrop-blur border-border/60 shadow-md transition-colors"
+      draggable
+      onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
@@ -108,7 +156,23 @@ export const Stage = ({
       <div className="flex items-center gap-3 mb-4 pb-3 border-b border-border/60">
         <GripVertical className="h-5 w-5 text-muted-foreground cursor-move hidden lg:block" />
         <div className="flex-1">
-          <h3 className="text-sm font-semibold text-foreground">Stage {stageNumber}</h3>
+          {isEditingName ? (
+            <Input
+              value={editedName}
+              onChange={(e) => setEditedName(e.target.value)}
+              onBlur={handleNameBlur}
+              onKeyDown={handleNameKeyDown}
+              className="h-7 text-sm font-semibold"
+              autoFocus
+            />
+          ) : (
+            <h3 
+              className="text-sm font-semibold text-foreground cursor-pointer hover:text-primary transition-colors"
+              onClick={() => setIsEditingName(true)}
+            >
+              {stage.name}
+            </h3>
+          )}
           <p className="text-xs text-muted-foreground hidden lg:block">Drag agents here to add them</p>
         </div>
         

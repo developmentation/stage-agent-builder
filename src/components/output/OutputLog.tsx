@@ -7,7 +7,7 @@ import { useState } from "react";
 
 export interface LogEntry {
   time: string;
-  type: "info" | "success" | "error" | "running";
+  type: "info" | "success" | "error" | "running" | "warning";
   message: string;
 }
 
@@ -20,6 +20,7 @@ const logIcons = {
   success: CheckCircle2,
   error: AlertCircle,
   running: Loader2,
+  warning: AlertCircle,
 };
 
 const logColors = {
@@ -27,6 +28,7 @@ const logColors = {
   success: "text-success",
   error: "text-destructive",
   running: "text-warning",
+  warning: "text-warning",
 };
 
 export const OutputLog = ({ logs }: OutputLogProps) => {

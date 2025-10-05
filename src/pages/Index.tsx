@@ -26,6 +26,7 @@ export interface Agent {
 
 export interface Stage {
   id: string;
+  name: string;
   agents: Agent[];
 }
 
@@ -58,12 +59,58 @@ const Index = () => {
   const addStage = () => {
     const newStage: Stage = {
       id: `stage-${Date.now()}`,
+      name: `Stage ${workflow.stages.length + 1}`,
       agents: [],
     };
     setWorkflow((prev) => ({
       ...prev,
       stages: [...prev.stages, newStage],
     }));
+  };
+
+  const renameStage = (stageId: string, name: string) => {
+    setWorkflow((prev) => ({
+      ...prev,
+      stages: prev.stages.map((stage) =>
+        stage.id === stageId ? { ...stage, name } : stage
+      ),
+    }));
+  };
+
+  const reorderStages = (fromIndex: number, toIndex: number) => {
+    setWorkflow((prev) => {
+      const newStages = [...prev.stages];
+      const [movedStage] = newStages.splice(fromIndex, 1);
+      newStages.splice(toIndex, 0, movedStage);
+
+      // Validate connections after reordering
+      const getStageIndex = (agentId: string): number => {
+        for (let i = 0; i < newStages.length; i++) {
+          if (newStages[i].agents.some(a => a.id === agentId)) {
+            return i;
+          }
+        }
+        return -1;
+      };
+
+      // Remove connections where output stage is after input stage (backwards connections)
+      const validConnections = prev.connections.filter((conn) => {
+        const fromStageIndex = getStageIndex(conn.fromAgentId);
+        const toStageIndex = getStageIndex(conn.toAgentId);
+        return fromStageIndex !== -1 && toStageIndex !== -1 && fromStageIndex < toStageIndex;
+      });
+
+      const removedCount = prev.connections.length - validConnections.length;
+      if (removedCount > 0) {
+        addLog("warning", `Removed ${removedCount} invalid connection(s) after stage reordering`);
+      }
+
+      return {
+        ...prev,
+        stages: newStages,
+        connections: validConnections,
+      };
+    });
   };
 
   const addAgent = (stageId: string, agentTemplate: any) => {
@@ -471,6 +518,8 @@ const Index = () => {
             onAddAgent={addAgent}
             onDeleteAgent={deleteAgent}
             onDeleteStage={deleteStage}
+            onRenameStage={renameStage}
+            onReorderStages={reorderStages}
             onToggleMinimize={toggleMinimize}
             onStartConnection={setConnectingFrom}
             onCompleteConnection={addConnection}
@@ -487,6 +536,8 @@ const Index = () => {
             onAddAgent={addAgent}
             onDeleteAgent={deleteAgent}
             onDeleteStage={deleteStage}
+            onRenameStage={renameStage}
+            onReorderStages={reorderStages}
             onToggleMinimize={toggleMinimize}
             onStartConnection={setConnectingFrom}
             onCompleteConnection={addConnection}
