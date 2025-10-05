@@ -166,7 +166,7 @@ export const WorkflowCanvas = ({
             strokeWidth="2"
             strokeOpacity={isSelected ? "0.6" : "0.3"}
             fill="none"
-            markerEnd={isSelected ? "url(#arrowhead-selected)" : "url(#arrowhead)"}
+            markerEnd={isSelected ? `url(#arrowhead-selected-${layoutId})` : `url(#arrowhead-${layoutId})`}
             style={{ pointerEvents: 'none' }}
           />
         </g>
@@ -201,10 +201,10 @@ export const WorkflowCanvas = ({
               }}
             >
               <defs>
-                <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                <marker id={`arrowhead-${layoutId}`} markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
                   <polygon points="0 0, 10 3, 0 6" fill="hsl(var(--primary))" fillOpacity="0.3" />
                 </marker>
-                <marker id="arrowhead-selected" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
+                <marker id={`arrowhead-selected-${layoutId}`} markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
                   <polygon points="0 0, 10 3, 0 6" fill="hsl(var(--warning))" fillOpacity="0.6" />
                 </marker>
               </defs>
