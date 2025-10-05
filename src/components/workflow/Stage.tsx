@@ -173,6 +173,7 @@ export const Stage = ({
                   isSelected={selectedNode === agent.id}
                   isConnecting={connectingFrom !== null}
                   agentNumber={`${stageNumber}.${index + 1}`}
+                  stageIndex={stageNumber - 1}
                   layoutId={layoutId}
                   onSelect={() => onSelectNode(agent.id)}
                   onDelete={() => onDeleteAgent(agent.id)}

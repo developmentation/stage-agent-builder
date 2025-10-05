@@ -1,14 +1,16 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, FileText, Bot, Play, CheckCircle2, AlertCircle, Circle, Trash2, Minimize2, Maximize2 } from "lucide-react";
+import { Search, FileText, Bot, Play, CheckCircle2, AlertCircle, Circle, Trash2, Minimize2, Maximize2, Download, Copy } from "lucide-react";
 import type { Agent } from "@/pages/Index";
+import { useToast } from "@/hooks/use-toast";
 
 interface AgentNodeProps {
   agent: Agent;
   isSelected: boolean;
   isConnecting: boolean;
   agentNumber: string;
+  stageIndex: number;
   layoutId?: string;
   onSelect: () => void;
   onDelete: () => void;
@@ -29,10 +31,11 @@ const statusConfig = {
   error: { icon: AlertCircle, color: "text-destructive", bg: "bg-destructive/10" },
 };
 
-export const AgentNode = ({ agent, isSelected, isConnecting, agentNumber, layoutId = 'default', onSelect, onDelete, onToggleMinimize, onPortClick }: AgentNodeProps) => {
+export const AgentNode = ({ agent, isSelected, isConnecting, agentNumber, stageIndex, layoutId = 'default', onSelect, onDelete, onToggleMinimize, onPortClick }: AgentNodeProps) => {
   const Icon = agentIcons[agent.type as keyof typeof agentIcons] || Bot;
   const statusInfo = statusConfig[agent.status];
   const StatusIcon = statusInfo.icon;
+  const { toast } = useToast();
 
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -44,6 +47,62 @@ export const AgentNode = ({ agent, isSelected, isConnecting, agentNumber, layout
   const handleToggleMinimize = (e: React.MouseEvent) => {
     e.stopPropagation();
     onToggleMinimize();
+  };
+
+  const handleDownload = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!agent.output) {
+      toast({
+        title: "No output",
+        description: "This agent hasn't generated any output yet.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, -5);
+    const filename = `${agent.name}_stage${stageIndex + 1}_agent${agentNumber}_${timestamp}.md`;
+    
+    const blob = new Blob([agent.output], { type: "text/markdown" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: "Downloaded",
+      description: `Output saved as ${filename}`,
+    });
+  };
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!agent.output) {
+      toast({
+        title: "No output",
+        description: "This agent hasn't generated any output yet.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(agent.output);
+      toast({
+        title: "Copied",
+        description: "Output copied to clipboard",
+      });
+    } catch (error) {
+      toast({
+        title: "Failed to copy",
+        description: "Could not copy to clipboard",
+        variant: "destructive",
+      });
+    }
   };
 
   // Status-based styling
@@ -134,6 +193,24 @@ export const AgentNode = ({ agent, isSelected, isConnecting, agentNumber, layout
             <div className="flex items-center justify-between gap-2">
               <h4 className="text-sm font-semibold text-foreground truncate">{agent.name}</h4>
               <div className="flex items-center gap-1 flex-shrink-0">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0"
+                  onClick={handleDownload}
+                  title="Download output"
+                >
+                  <Download className="h-3 w-3" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0"
+                  onClick={handleCopy}
+                  title="Copy output"
+                >
+                  <Copy className="h-3 w-3" />
+                </Button>
                 <Button
                   variant="ghost"
                   size="sm"
