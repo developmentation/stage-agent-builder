@@ -76,7 +76,8 @@ export const Stage = ({
 }: StageProps) => {
   const [isAddAgentOpen, setIsAddAgentOpen] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
-  const [editedName, setEditedName] = useState(stage.name);
+  const displayName = stage.name || `Stage ${stageNumber}`;
+  const [editedName, setEditedName] = useState(displayName);
 
   const handleDragStart = (e: React.DragEvent) => {
     e.dataTransfer.effectAllowed = "move";
@@ -126,10 +127,10 @@ export const Stage = ({
   };
 
   const handleNameBlur = () => {
-    if (editedName.trim() && editedName !== stage.name) {
+    if (editedName.trim() && editedName !== displayName) {
       onRenameStage(stage.id, editedName.trim());
     } else {
-      setEditedName(stage.name);
+      setEditedName(displayName);
     }
     setIsEditingName(false);
   };
@@ -138,7 +139,7 @@ export const Stage = ({
     if (e.key === "Enter") {
       handleNameBlur();
     } else if (e.key === "Escape") {
-      setEditedName(stage.name);
+      setEditedName(displayName);
       setIsEditingName(false);
     }
   };
@@ -170,7 +171,7 @@ export const Stage = ({
               className="text-sm font-semibold text-foreground cursor-pointer hover:text-primary transition-colors"
               onClick={() => setIsEditingName(true)}
             >
-              {stage.name}
+              {displayName}
             </h3>
           )}
           <p className="text-xs text-muted-foreground hidden lg:block">Drag agents here to add them</p>
