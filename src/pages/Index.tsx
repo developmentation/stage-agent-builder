@@ -506,6 +506,9 @@ const Index = () => {
         }
         onAddStage={addStage}
         onRun={runWorkflow}
+        onSave={saveWorkflow}
+        onLoad={loadWorkflow}
+        onClear={clearWorkflow}
         hasSelectedAgent={!!selectedAgent}
       />
       

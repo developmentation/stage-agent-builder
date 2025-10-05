@@ -9,6 +9,9 @@ interface ResponsiveLayoutProps {
   properties: ReactNode;
   onAddStage: () => void;
   onRun: () => void;
+  onSave: () => void;
+  onLoad: (file: File) => void;
+  onClear: () => void;
   hasSelectedAgent: boolean;
 }
 
@@ -19,6 +22,9 @@ export const ResponsiveLayout = ({
   properties,
   onAddStage,
   onRun,
+  onSave,
+  onLoad,
+  onClear,
   hasSelectedAgent,
 }: ResponsiveLayoutProps) => {
   const [mobileTab, setMobileTab] = useState<"library" | "workflow" | "properties">("workflow");
@@ -32,6 +38,9 @@ export const ResponsiveLayout = ({
           onTabChange={setMobileTab}
           onAddStage={onAddStage}
           onRun={onRun}
+          onSave={onSave}
+          onLoad={onLoad}
+          onClear={onClear}
           hasSelectedAgent={hasSelectedAgent}
         />
         

@@ -1,12 +1,16 @@
 import { Button } from "@/components/ui/button";
-import { Library, Workflow, Settings, Plus, Play } from "lucide-react";
+import { Library, Workflow, Settings, Plus, Play, Save, Upload, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useRef } from "react";
 
 interface MobileNavProps {
   activeTab: "library" | "workflow" | "properties";
   onTabChange: (tab: "library" | "workflow" | "properties") => void;
   onAddStage: () => void;
   onRun: () => void;
+  onSave: () => void;
+  onLoad: (file: File) => void;
+  onClear: () => void;
   hasSelectedAgent: boolean;
 }
 
@@ -15,12 +19,29 @@ export const MobileNav = ({
   onTabChange, 
   onAddStage, 
   onRun,
+  onSave,
+  onLoad,
+  onClear,
   hasSelectedAgent 
 }: MobileNavProps) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleLoadClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      onLoad(file);
+      e.target.value = "";
+    }
+  };
+
   return (
     <div className="lg:hidden">
       {/* Top Action Bar */}
-      <div className="h-14 border-b border-border bg-card flex items-center justify-between px-4">
+      <div className="h-14 border-b border-border bg-card flex items-center gap-2 px-4">
         <Button
           size="sm"
           variant="outline"
@@ -32,7 +53,32 @@ export const MobileNav = ({
         </Button>
         <Button
           size="sm"
+          variant="outline"
           className="gap-2"
+          onClick={handleLoadClick}
+        >
+          <Upload className="h-4 w-4" />
+        </Button>
+        <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleFileChange} />
+        <Button
+          size="sm"
+          variant="outline"
+          className="gap-2"
+          onClick={onSave}
+        >
+          <Save className="h-4 w-4" />
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="gap-2"
+          onClick={onClear}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+        <Button
+          size="sm"
+          className="gap-2 bg-gradient-to-r from-primary to-primary-hover ml-auto"
           onClick={onRun}
         >
           <Play className="h-4 w-4" />
