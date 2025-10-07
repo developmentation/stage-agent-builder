@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { query, apiKey } = await req.json();
+    const { query, apiKey, searchEngineId } = await req.json();
     
     if (!query) {
       throw new Error("Query parameter is required");
@@ -21,10 +21,13 @@ serve(async (req) => {
       throw new Error("Google Search API key is required");
     }
 
+    if (!searchEngineId) {
+      throw new Error("Google Search Engine ID is required");
+    }
+
     console.log("Performing Google search for:", query);
 
     // Using Google Custom Search API
-    const searchEngineId = "YOUR_SEARCH_ENGINE_ID"; // Users will need to provide this
     const url = `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${searchEngineId}&q=${encodeURIComponent(query)}`;
     
     const response = await fetch(url);

@@ -23,6 +23,8 @@ serve(async (req) => {
 
     // Execute tools if any
     let toolResults = "";
+    const toolOutputs: Array<{ toolId: string; output: any }> = [];
+    
     for (const toolInstance of tools) {
       const { toolId, config } = toolInstance;
       console.log("Executing tool:", toolId, "with config:", config);
@@ -30,12 +32,15 @@ serve(async (req) => {
       try {
         if (toolId === 'google_search') {
           if (config?.apiKey && config?.searchEngineId) {
+            console.log("Calling google-search with query:", userPrompt);
             const searchResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/google-search`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ query: userPrompt, apiKey: config.apiKey, searchEngineId: config.searchEngineId }),
             });
             const searchData = await searchResponse.json();
+            console.log("Tool Output [google_search]:", JSON.stringify(searchData, null, 2));
+            toolOutputs.push({ toolId: 'google_search', output: searchData });
             toolResults += `\n\nGoogle Search Results: ${JSON.stringify(searchData)}`;
           }
         } else if (toolId === 'weather') {
@@ -46,6 +51,8 @@ serve(async (req) => {
               body: JSON.stringify({ location: "New York", apiKey: config.apiKey }),
             });
             const weatherData = await weatherResponse.json();
+            console.log("Tool Output [weather]:", JSON.stringify(weatherData, null, 2));
+            toolOutputs.push({ toolId: 'weather', output: weatherData });
             toolResults += `\n\nWeather Data: ${JSON.stringify(weatherData)}`;
           }
         } else if (toolId === 'time') {
@@ -55,6 +62,8 @@ serve(async (req) => {
             body: JSON.stringify({ timezone: 'UTC' }),
           });
           const timeData = await timeResponse.json();
+          console.log("Tool Output [time]:", JSON.stringify(timeData, null, 2));
+          toolOutputs.push({ toolId: 'time', output: timeData });
           toolResults += `\n\nCurrent Time: ${JSON.stringify(timeData)}`;
         } else if (toolId === 'web_scrape') {
           if (config?.url) {
@@ -64,6 +73,8 @@ serve(async (req) => {
               body: JSON.stringify({ url: config.url }),
             });
             const scrapeData = await scrapeResponse.json();
+            console.log("Tool Output [web_scrape]:", JSON.stringify(scrapeData, null, 2));
+            toolOutputs.push({ toolId: 'web_scrape', output: scrapeData });
             toolResults += `\n\nWeb Scrape Results: ${JSON.stringify(scrapeData)}`;
           }
         } else if (toolId === 'api_call') {
@@ -79,12 +90,17 @@ serve(async (req) => {
               }),
             });
             const apiData = await apiResponse.json();
+            console.log("Tool Output [api_call]:", JSON.stringify(apiData, null, 2));
+            toolOutputs.push({ toolId: 'api_call', output: apiData });
             toolResults += `\n\nAPI Call Results: ${JSON.stringify(apiData)}`;
           }
         }
       } catch (toolError) {
         console.error(`Error executing tool ${toolId}:`, toolError);
-        toolResults += `\n\nTool ${toolId} Error: ${toolError instanceof Error ? toolError.message : 'Unknown error'}`;
+        const errorMsg = toolError instanceof Error ? toolError.message : 'Unknown error';
+        console.log("Tool Output [" + toolId + "] ERROR:", errorMsg);
+        toolOutputs.push({ toolId, output: { error: errorMsg } });
+        toolResults += `\n\nTool ${toolId} Error: ${errorMsg}`;
       }
     }
 
@@ -124,7 +140,7 @@ serve(async (req) => {
     
     console.log("Agent output generated:", output.substring(0, 100));
 
-    return new Response(JSON.stringify({ output }), {
+    return new Response(JSON.stringify({ output, toolOutputs }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {

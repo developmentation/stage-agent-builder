@@ -367,6 +367,15 @@ const Index = () => {
 
       const data = await response.json();
       const output = data.output || "No output generated";
+      const toolOutputs = data.toolOutputs || [];
+      
+      // Log tool outputs
+      if (toolOutputs.length > 0) {
+        toolOutputs.forEach((toolOutput: any) => {
+          console.log(`Tool Output [${toolOutput.toolId}]:`, toolOutput.output);
+          addLog("info", `Tool Output [${toolOutput.toolId}]: ${JSON.stringify(toolOutput.output, null, 2)}`);
+        });
+      }
       
       updateAgent(agentId, { status: "complete", output });
       addLog("success", `Agent ${agent.name} completed successfully`);
@@ -436,6 +445,15 @@ const Index = () => {
 
         const data = await response.json();
         const output = data.output || "No output generated";
+        const toolOutputs = data.toolOutputs || [];
+        
+        // Log tool outputs
+        if (toolOutputs.length > 0) {
+          toolOutputs.forEach((toolOutput: any) => {
+            console.log(`Tool Output [${toolOutput.toolId}]:`, toolOutput.output);
+            addLog("info", `Tool Output [${toolOutput.toolId}]: ${JSON.stringify(toolOutput.output, null, 2)}`);
+          });
+        }
         
         outputs.set(agentId, output);
         updateAgent(agentId, { status: "complete", output });
