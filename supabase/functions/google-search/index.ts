@@ -11,18 +11,22 @@ serve(async (req) => {
   }
 
   try {
-    const { query, apiKey, searchEngineId } = await req.json();
+    const { query, apiKey: userApiKey, searchEngineId: userSearchEngineId } = await req.json();
     
     if (!query) {
       throw new Error("Query parameter is required");
     }
     
+    // Use provided keys or fall back to environment secrets
+    const apiKey = userApiKey || Deno.env.get("GOOGLE_SEARCH_API");
+    const searchEngineId = userSearchEngineId || Deno.env.get("GOOGLE_SEARCH_ENGINE");
+    
     if (!apiKey) {
-      throw new Error("Google Search API key is required");
+      throw new Error("Google Search API key is required (not configured in secrets or provided)");
     }
 
     if (!searchEngineId) {
-      throw new Error("Google Search Engine ID is required");
+      throw new Error("Google Search Engine ID is required (not configured in secrets or provided)");
     }
 
     console.log("Performing Google search for:", query);

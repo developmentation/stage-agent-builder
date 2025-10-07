@@ -31,23 +31,20 @@ serve(async (req) => {
       
       try {
         if (toolId === 'google_search') {
-          if (!config?.apiKey || !config?.searchEngineId) {
-            const errorMsg = 'Google Search requires both API Key and Search Engine ID to be configured';
-            console.log("Tool Output [google_search] ERROR:", errorMsg);
-            toolOutputs.push({ toolId: 'google_search', output: { error: errorMsg } });
-            toolResults += `\n\nGoogle Search Error: ${errorMsg}`;
-          } else {
-            console.log("Calling google-search with query:", userPrompt);
-            const searchResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/google-search`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ query: userPrompt, apiKey: config.apiKey, searchEngineId: config.searchEngineId }),
-            });
-            const searchData = await searchResponse.json();
-            console.log("Tool Output [google_search]:", JSON.stringify(searchData, null, 2));
-            toolOutputs.push({ toolId: 'google_search', output: searchData });
-            toolResults += `\n\nGoogle Search Results: ${JSON.stringify(searchData)}`;
-          }
+          console.log("Calling google-search with query:", userPrompt);
+          const searchResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/google-search`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              query: userPrompt, 
+              apiKey: config?.apiKey, 
+              searchEngineId: config?.searchEngineId 
+            }),
+          });
+          const searchData = await searchResponse.json();
+          console.log("Tool Output [google_search]:", JSON.stringify(searchData, null, 2));
+          toolOutputs.push({ toolId: 'google_search', output: searchData });
+          toolResults += `\n\nGoogle Search Results: ${JSON.stringify(searchData)}`;
         } else if (toolId === 'weather') {
           if (config?.apiKey) {
             const weatherResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/weather`, {
