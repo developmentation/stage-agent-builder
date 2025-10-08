@@ -237,7 +237,7 @@ export function ExcelSelector({ excelData, onClose, onSelect }: ExcelSelectorPro
               </div>
 
               {/* Table Container with ScrollArea */}
-              <div className="flex-1 min-h-0 overflow-hidden">
+              <div className="flex-1 min-h-0">
                 {activeSheet.jsonData.length === 0 ? (
                   <div className="flex items-center justify-center h-full">
                     <div className="text-center">
@@ -246,8 +246,9 @@ export function ExcelSelector({ excelData, onClose, onSelect }: ExcelSelectorPro
                     </div>
                   </div>
                 ) : (
-                  <div className="h-full w-full overflow-auto">
-                    <table className="w-full border-collapse">
+                  <div className="h-full w-full overflow-x-auto overflow-y-auto border border-border">
+                    <div className="min-w-full inline-block align-top">
+                      <table className="w-full border-collapse">{/* ... keep existing table ... */}
                       {/* Header */}
                       <thead className="sticky top-0 z-20 bg-muted">
                         <tr>
@@ -318,8 +319,9 @@ export function ExcelSelector({ excelData, onClose, onSelect }: ExcelSelectorPro
                         </tbody>
                       </table>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
