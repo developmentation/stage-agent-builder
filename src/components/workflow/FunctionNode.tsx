@@ -185,7 +185,7 @@ export const FunctionNode = ({
 
       <div className="space-y-3">
         <div className="flex items-start gap-2">
-          <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${functionDef?.color || "bg-primary/10"}`}>
+          <div className={`w-8 h-8 rounded-lg items-center justify-center flex-shrink-0 hidden md:flex lg:hidden xl:flex ${functionDef?.color || "bg-primary/10"}`}>
             <Icon className="h-4 w-4" />
           </div>
           
