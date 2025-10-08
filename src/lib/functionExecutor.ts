@@ -382,77 +382,96 @@ export class FunctionExecutor {
       
       let result = parsed;
       if (extractPath) {
-        // Parse path with support for array notation and wildcards
-        // Examples: "cards[0].uuid", "cards[].uuid", "user.name"
-        const pathParts = extractPath.split(/\.(?![^\[]*\])/).map(part => part.trim());
+        // Parse the full path including array notation
+        // Split on dots but keep track of array brackets
+        let currentResult = result;
+        let path = extractPath;
+        let isWildcardArray = false;
         
-        for (const part of pathParts) {
-          // Check if this part has array notation
-          const arrayMatch = part.match(/^([^\[]+)\[(\d*)\](.*)$/);
+        while (path.length > 0) {
+          // Check for array notation at the start of remaining path
+          const arrayMatch = path.match(/^([^\.\[]+)\[(\d*)\](\.(.*))?$/);
+          const propertyMatch = path.match(/^([^\.\[]+)(\.(.*))?$/);
           
           if (arrayMatch) {
-            const [, arrayName, index, remaining] = arrayMatch;
+            const [, arrayName, index, , remaining] = arrayMatch;
             
-            // Access the array
-            result = result[arrayName];
+            // Access the array property
+            currentResult = currentResult[arrayName];
             
-            if (!Array.isArray(result)) {
+            if (!Array.isArray(currentResult)) {
               throw new Error(`${arrayName} is not an array`);
             }
             
-            // Handle wildcard [] - extract from all items
+            // Handle wildcard [] - need to extract from all items
             if (index === '') {
-              const remainingPath = remaining.replace(/^\./, '');
+              isWildcardArray = true;
               
-              if (remainingPath) {
-                // Extract property from all array items
-                result = result.map(item => {
+              if (remaining) {
+                // There's more path after the wildcard - extract that property from each item
+                currentResult = currentResult.map(item => {
                   let value = item;
-                  const subPaths = remainingPath.split('.');
-                  for (const subPath of subPaths) {
-                    value = value?.[subPath];
+                  let subPath = remaining;
+                  
+                  // Process the remaining path for each array item
+                  while (subPath.length > 0) {
+                    const subArrayMatch = subPath.match(/^([^\.\[]+)\[(\d+)\](\.(.*))?$/);
+                    const subPropertyMatch = subPath.match(/^([^\.\[]+)(\.(.*))?$/);
+                    
+                    if (subArrayMatch) {
+                      const [, subArrayName, subIndex, , subRemaining] = subArrayMatch;
+                      value = value?.[subArrayName]?.[parseInt(subIndex, 10)];
+                      subPath = subRemaining || '';
+                    } else if (subPropertyMatch) {
+                      const [, propName, , subRemaining] = subPropertyMatch;
+                      value = value?.[propName];
+                      subPath = subRemaining || '';
+                    } else {
+                      break;
+                    }
                   }
+                  
                   return value;
                 }).filter(v => v !== undefined && v !== null);
                 
                 // Return as comma-space delimited string
                 return {
                   success: true,
-                  outputs: { output: result.join(', ') },
+                  outputs: { output: currentResult.join(', ') },
                 };
               } else {
-                // No remaining path, return the array as JSON
+                // No remaining path after wildcard - return the array as JSON
                 return {
                   success: true,
-                  outputs: { output: JSON.stringify(result, null, 2) },
+                  outputs: { output: JSON.stringify(currentResult, null, 2) },
                 };
               }
             } else {
               // Specific index
               const idx = parseInt(index, 10);
-              if (idx < 0 || idx >= result.length) {
+              if (idx < 0 || idx >= currentResult.length) {
                 throw new Error(`Array index ${idx} out of bounds`);
               }
-              result = result[idx];
-              
-              // Handle any remaining path after the array index
-              if (remaining) {
-                const remainingPath = remaining.replace(/^\./, '');
-                const subPaths = remainingPath.split('.');
-                for (const subPath of subPaths) {
-                  result = result[subPath];
-                }
-              }
+              currentResult = currentResult[idx];
             }
+            
+            path = remaining || '';
+          } else if (propertyMatch) {
+            const [, propName, , remaining] = propertyMatch;
+            
+            currentResult = currentResult[propName];
+            
+            if (currentResult === undefined) {
+              throw new Error(`Path not found: ${propName}`);
+            }
+            
+            path = remaining || '';
           } else {
-            // Simple property access
-            result = result[part];
-          }
-          
-          if (result === undefined) {
-            throw new Error(`Path not found: ${part}`);
+            throw new Error(`Invalid path syntax: ${path}`);
           }
         }
+        
+        result = currentResult;
       }
       
       // If result is a string or primitive, return it directly
