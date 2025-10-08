@@ -282,6 +282,64 @@ export const functionDefinitions: FunctionDefinition[] = [
       },
     },
   },
+  {
+    id: "export_pdf",
+    name: "Export to PDF",
+    description: "Export output as a formatted PDF file",
+    category: "export",
+    icon: FileDown,
+    color: "bg-orange-500/10 text-orange-500",
+    inputs: {
+      label: "Content",
+      description: "Markdown content to export as PDF",
+    },
+    outputs: ["output"],
+    configSchema: {
+      filename: {
+        type: "string",
+        label: "Filename",
+        description: "Name for the exported PDF file",
+        default: "export.pdf",
+        placeholder: "filename.pdf",
+      },
+      title: {
+        type: "string",
+        label: "Document Title",
+        description: "Title for the PDF document",
+        default: "Document",
+        placeholder: "My Document",
+      },
+    },
+  },
+  {
+    id: "export_word",
+    name: "Export to Word",
+    description: "Export output as a formatted Word document (.docx)",
+    category: "export",
+    icon: FileDown,
+    color: "bg-orange-500/10 text-orange-500",
+    inputs: {
+      label: "Content",
+      description: "Markdown content to export as Word document",
+    },
+    outputs: ["output"],
+    configSchema: {
+      filename: {
+        type: "string",
+        label: "Filename",
+        description: "Name for the exported Word file",
+        default: "export.docx",
+        placeholder: "filename.docx",
+      },
+      title: {
+        type: "string",
+        label: "Document Title",
+        description: "Title for the Word document",
+        default: "Document",
+        placeholder: "My Document",
+      },
+    },
+  },
 
   // URL Operations
   {

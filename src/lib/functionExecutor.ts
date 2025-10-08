@@ -1,5 +1,6 @@
 import type { FunctionNode } from "@/types/workflow";
 import type { FunctionExecutionResult, MemoryEntry } from "@/types/functions";
+import { MarkdownProcessor } from "@/utils/markdownProcessor";
 
 // Memory storage (in-memory for now, could be moved to localStorage or DB)
 const memoryStore = new Map<string, MemoryEntry[]>();
@@ -46,6 +47,12 @@ export class FunctionExecutor {
         
         case "export_text":
           return this.executeExportText(functionNode, input);
+        
+        case "export_pdf":
+          return await this.executeExportPDF(functionNode, input);
+        
+        case "export_word":
+          return await this.executeExportWord(functionNode, input);
         
         case "extract_urls":
           return this.executeExtractURLs(functionNode, input);
@@ -294,6 +301,61 @@ export class FunctionExecutor {
       success: true,
       outputs: { output: `Exported to ${filename}` },
     };
+  }
+
+  private static async executeExportPDF(node: FunctionNode, input: string): Promise<FunctionExecutionResult> {
+    try {
+      const filename = node.config.filename || "export.pdf";
+      const title = node.config.title || "Document";
+      
+      const processor = new MarkdownProcessor();
+      const sections = [{ title: "Content", value: input }];
+      const pdf = processor.generatePDF(title, sections);
+      
+      pdf.save(filename);
+      
+      return {
+        success: true,
+        outputs: { output: `Exported to ${filename}` },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        outputs: {},
+        error: error instanceof Error ? error.message : "PDF export failed",
+      };
+    }
+  }
+
+  private static async executeExportWord(node: FunctionNode, input: string): Promise<FunctionExecutionResult> {
+    try {
+      const filename = node.config.filename || "export.docx";
+      const title = node.config.title || "Document";
+      
+      const processor = new MarkdownProcessor();
+      const sections = [{ title: "Content", value: input }];
+      const blob = await processor.generateWordDocument(title, sections);
+      
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      return {
+        success: true,
+        outputs: { output: `Exported to ${filename}` },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        outputs: {},
+        error: error instanceof Error ? error.message : "Word export failed",
+      };
+    }
   }
 
   // URL Operations
