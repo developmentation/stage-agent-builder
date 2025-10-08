@@ -127,7 +127,7 @@ export const Stage = ({
 
   return (
     <Card
-      className="p-2 lg:p-3 bg-card/80 backdrop-blur border-border/60 shadow-md transition-colors w-full"
+      className="p-2 bg-card/80 backdrop-blur border-border/60 shadow-md transition-colors w-full"
       draggable
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
