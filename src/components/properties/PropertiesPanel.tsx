@@ -393,21 +393,25 @@ export const PropertiesPanel = ({
                 if (!('true' in output) || !('false' in output)) return null;
                 
                 const conditionalOutput = output as Record<string, string>;
+                // Check for non-empty strings
+                const trueHasContent = typeof conditionalOutput.true === 'string' && conditionalOutput.true.length > 0;
+                const falseHasContent = typeof conditionalOutput.false === 'string' && conditionalOutput.false.length > 0;
+                
                 return (
                   <div className="space-y-2">
                     <Label className="text-sm font-medium">Condition Result</Label>
                     <Card className="p-3 bg-muted/30">
-                      {conditionalOutput.true ? (
+                      {trueHasContent ? (
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-medium text-green-600 dark:text-green-400">✓ True</span>
                           <span className="text-xs text-muted-foreground">condition matched</span>
                         </div>
-                      ) : (
+                      ) : falseHasContent ? (
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-medium text-amber-600 dark:text-amber-400">✗ False</span>
                           <span className="text-xs text-muted-foreground">condition not matched</span>
                         </div>
-                      )}
+                      ) : null}
                     </Card>
                   </div>
                 );

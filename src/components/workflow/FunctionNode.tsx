@@ -247,9 +247,9 @@ export const FunctionNode = ({
           <div className="flex gap-1 text-[10px] text-muted-foreground">
             <span>Outputs:</span>
             {node.outputPorts.map((port, idx) => {
-              // Check if this specific output port has content
+              // Check if this specific output port has content (non-empty string)
               const output = node.output as any;
-              const hasContent = output && typeof output === 'object' && output[port];
+              const hasContent = output && typeof output === 'object' && typeof output[port] === 'string' && output[port].length > 0;
               
               return (
                 <Badge 
