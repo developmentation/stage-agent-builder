@@ -4,6 +4,7 @@ import { FunctionNode } from "./FunctionNode";
 import { GripVertical, ChevronDown, Plus, Trash2, Search, FileText, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { FunctionSelector } from "@/components/FunctionSelector";
 import { useState } from "react";
 import {
   Dialog,
@@ -78,6 +79,7 @@ export const Stage = ({
   onPortClick,
 }: StageProps) => {
   const [isAddAgentOpen, setIsAddAgentOpen] = useState(false);
+  const [isAddFunctionOpen, setIsAddFunctionOpen] = useState(false);
   const [isEditingName, setIsEditingName] = useState(false);
   const displayName = stage.name || `Stage ${stageNumber}`;
   const [editedName, setEditedName] = useState(displayName);
@@ -134,6 +136,11 @@ export const Stage = ({
     setIsAddAgentOpen(false);
   };
 
+  const handleAddFunction = (functionDef: any) => {
+    onAddNode(stage.id, functionDef, "function");
+    setIsAddFunctionOpen(false);
+  };
+
   const handleNameBlur = () => {
     if (editedName.trim() && editedName !== displayName) {
       onRenameStage(stage.id, editedName.trim());
@@ -185,10 +192,10 @@ export const Stage = ({
           <p className="text-xs text-muted-foreground hidden lg:block">Drag agents here to add them</p>
         </div>
         
-        {/* Mobile Add Agent Button */}
+        {/* Mobile Add Agent and Add Function Buttons */}
         <Dialog open={isAddAgentOpen} onOpenChange={setIsAddAgentOpen}>
           <DialogTrigger asChild>
-            <Button variant="outline" size="sm" className="lg:hidden gap-2">
+            <Button variant="outline" size="sm" className="xl:hidden gap-2">
               <Plus className="h-4 w-4" />
               Add Agent
             </Button>
@@ -221,6 +228,22 @@ export const Stage = ({
             </div>
           </DialogContent>
         </Dialog>
+
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="xl:hidden gap-2"
+          onClick={() => setIsAddFunctionOpen(true)}
+        >
+          <Plus className="h-4 w-4" />
+          Add Function
+        </Button>
+
+        <FunctionSelector
+          open={isAddFunctionOpen}
+          onOpenChange={setIsAddFunctionOpen}
+          onSelectFunction={handleAddFunction}
+        />
         
         <Button variant="ghost" size="sm" onClick={() => onDeleteStage(stage.id)}>
           <Trash2 className="h-4 w-4 text-destructive" />
