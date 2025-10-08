@@ -1,5 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { AgentNode } from "./AgentNode";
+import { FunctionNode } from "./FunctionNode";
 import { GripVertical, ChevronDown, Plus, Trash2, Search, FileText, Bot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -229,29 +230,46 @@ export const Stage = ({
       <div className="min-h-[100px]">
         {stage.nodes.length === 0 ? (
           <div className="flex items-center justify-center h-24 border-2 border-dashed border-border/50 rounded-lg">
-            <p className="text-sm text-muted-foreground hidden lg:block">Drop an agent here</p>
-            <p className="text-sm text-muted-foreground lg:hidden">No agents yet</p>
+            <p className="text-sm text-muted-foreground hidden lg:block">Drop an agent or function here</p>
+            <p className="text-sm text-muted-foreground lg:hidden">No nodes yet</p>
           </div>
         ) : (
           <div className="flex flex-wrap gap-3 items-start">
-            {stage.nodes.filter(n => n.nodeType === "agent").map((node, index) => (
+            {stage.nodes.map((node, index) => (
               <div 
                 key={node.id} 
                 id={`agent-${node.id}`}
                 className={node.minimized ? "w-16 flex-shrink-0" : "w-full md:w-[calc(50%-0.375rem)] flex-shrink-0"}
               >
-                <AgentNode
-                  agent={node}
-                  isSelected={selectedNode === node.id}
-                  isConnecting={connectingFrom !== null}
-                  agentNumber={`${stageNumber}.${index + 1}`}
-                  stageIndex={stageNumber - 1}
-                  layoutId={layoutId}
-                  onSelect={() => onSelectNode(node.id)}
-                  onDelete={() => onDeleteAgent(node.id)}
-                  onToggleMinimize={() => onToggleMinimize(node.id)}
-                  onPortClick={onPortClick}
-                />
+                {node.nodeType === "agent" ? (
+                  <AgentNode
+                    agent={node}
+                    isSelected={selectedNode === node.id}
+                    isConnecting={connectingFrom !== null}
+                    agentNumber={`${stageNumber}.${index + 1}`}
+                    stageIndex={stageNumber - 1}
+                    layoutId={layoutId}
+                    onSelect={() => onSelectNode(node.id)}
+                    onDelete={() => onDeleteAgent(node.id)}
+                    onToggleMinimize={() => onToggleMinimize(node.id)}
+                    onPortClick={onPortClick}
+                  />
+                ) : node.nodeType === "function" ? (
+                  <FunctionNode
+                    node={node}
+                    isSelected={selectedNode === node.id}
+                    isConnecting={connectingFrom !== null}
+                    nodeNumber={`${stageNumber}.${index + 1}`}
+                    stageIndex={stageNumber - 1}
+                    layoutId={layoutId}
+                    onSelect={() => onSelectNode(node.id)}
+                    onDelete={() => onDeleteAgent(node.id)}
+                    onToggleMinimize={() => onToggleMinimize(node.id)}
+                    onPortClick={onPortClick}
+                  />
+                ) : (
+                  <div className="text-xs text-muted-foreground p-2">Tool nodes coming soon</div>
+                )}
               </div>
             ))}
           </div>
