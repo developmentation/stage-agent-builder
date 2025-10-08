@@ -3,7 +3,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Upload, Search, FileText, Bot, Plus, Download, Trash2, X } from "lucide-react";
+import { Upload, Search, FileText, Bot, Plus, Download, Trash2, X, Eye } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useState, useRef } from "react";
 import {
@@ -23,7 +23,7 @@ import {
 import { functionDefinitions } from "@/lib/functionDefinitions";
 import { Badge } from "@/components/ui/badge";
 import { LucideIcon } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/hooks/use-toast";
 import { extractTextFromFile, formatExtractedContent, ExtractedContent } from "@/utils/fileTextExtraction";
 import { parseExcelFile, ExcelData } from "@/utils/parseExcel";
 import { ExcelSelector } from "@/components/ExcelSelector";
@@ -103,7 +103,10 @@ export const Sidebar = ({
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const fileUploadInputRef = useRef<HTMLInputElement>(null);
   const [excelData, setExcelData] = useState<ExcelData | null>(null);
+  const [excelQueue, setExcelQueue] = useState<File[]>([]);
   const [isProcessingFiles, setIsProcessingFiles] = useState(false);
+  const [isViewInputOpen, setIsViewInputOpen] = useState(false);
+  const [editedInput, setEditedInput] = useState("");
 
   const handleDragStart = (e: React.DragEvent, template: any, nodeType: "agent" | "function" | "tool" = "agent") => {
     e.dataTransfer.setData("agentTemplate", JSON.stringify(template));
@@ -146,14 +149,20 @@ export const Sidebar = ({
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast.success(`Agent "${agent.name}" downloaded`);
+    toast({
+      title: "Agent downloaded",
+      description: `Agent "${agent.name}" has been downloaded`,
+    });
   };
 
   const handleDeleteAgent = (agentId: string) => {
     const agent = customAgents.find(a => a.id === agentId);
     if (agent) {
       onCustomAgentsChange(customAgents.filter(a => a.id !== agentId));
-      toast.success(`Agent "${agent.name}" deleted`);
+      toast({
+        title: "Agent deleted",
+        description: `Agent "${agent.name}" has been deleted`,
+      });
     }
   };
 
@@ -196,17 +205,28 @@ export const Sidebar = ({
             newAgents.push(importedAgent);
             importedCount++;
           } else {
-            toast.error(`Invalid agent file: ${file.name}`);
+            toast({
+              title: "Invalid file",
+              description: `Invalid agent file: ${file.name}`,
+              variant: "destructive",
+            });
           }
 
           // Update state after processing all files
           if (importedCount > 0 && newAgents.length > 0) {
             onCustomAgentsChange([...customAgents, ...newAgents]);
-            toast.success(`Imported ${importedCount} agent(s)`);
+            toast({
+              title: "Agents imported",
+              description: `Imported ${importedCount} agent(s)`,
+            });
           }
         } catch (error) {
           console.error("Failed to import agent:", error);
-          toast.error(`Failed to import ${file.name}`);
+          toast({
+            title: "Import failed",
+            description: `Failed to import ${file.name}`,
+            variant: "destructive",
+          });
         }
       };
       reader.readAsText(file);
@@ -218,52 +238,97 @@ export const Sidebar = ({
     }
   };
 
+  const processNextExcel = async () => {
+    if (excelQueue.length === 0) {
+      setIsProcessingFiles(false);
+      return;
+    }
+
+    const nextFile = excelQueue[0];
+    try {
+      const excelData = await parseExcelFile(nextFile);
+      setExcelData(excelData);
+      setExcelQueue(prev => prev.slice(1)); // Remove processed file from queue
+    } catch (error) {
+      console.error(`Failed to parse Excel file ${nextFile.name}:`, error);
+      toast({
+        title: "Excel parsing failed",
+        description: `Failed to parse ${nextFile.name}`,
+        variant: "destructive",
+      });
+      setExcelQueue(prev => prev.slice(1)); // Remove failed file and continue
+      processNextExcel(); // Try next file
+    }
+  };
+
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
 
     setIsProcessingFiles(true);
     const extractedContents: ExtractedContent[] = [];
-    let hasExcelFile = false;
+    const excelFiles: File[] = [];
 
     try {
+      // First, categorize all files
       for (const file of Array.from(files)) {
         const extension = file.name.toLowerCase().split('.').pop();
 
         if (extension === 'xlsx' || extension === 'xls') {
-          // Handle Excel files with modal
-          hasExcelFile = true;
-          const excelData = await parseExcelFile(file);
-          setExcelData(excelData);
-          break; // Only process one Excel file at a time
+          excelFiles.push(file);
         } else if (['txt', 'docx', 'pdf'].includes(extension || '')) {
-          // Handle text-based files
+          // Process text-based files immediately
           try {
             const extracted = await extractTextFromFile(file);
             extractedContents.push(extracted);
-            toast.success(`Extracted text from ${file.name}`);
+            toast({
+              title: "File extracted",
+              description: `Extracted text from ${file.name}`,
+            });
           } catch (error) {
             console.error(`Failed to extract from ${file.name}:`, error);
-            toast.error(`Failed to extract text from ${file.name}`);
+            toast({
+              title: "Extraction failed",
+              description: `Failed to extract text from ${file.name}`,
+              variant: "destructive",
+            });
           }
         } else {
-          toast.error(`Unsupported file type: ${file.name}`);
+          toast({
+            title: "Unsupported file",
+            description: `Unsupported file type: ${file.name}`,
+            variant: "destructive",
+          });
         }
       }
 
-      // Add extracted content to input
+      // Add all extracted text content to input first
       if (extractedContents.length > 0) {
         const formattedContent = formatExtractedContent(extractedContents);
         const newInput = userInput ? `${userInput}${formattedContent}` : formattedContent.trim();
         onUserInputChange(newInput);
       }
-    } catch (error) {
-      console.error("File processing error:", error);
-      toast.error("Failed to process files");
-    } finally {
-      if (!hasExcelFile) {
+
+      // Then process Excel files one by one
+      if (excelFiles.length > 0) {
+        setExcelQueue(excelFiles);
+        // Process the first Excel file
+        const firstExcel = excelFiles[0];
+        const excelData = await parseExcelFile(firstExcel);
+        setExcelData(excelData);
+        setExcelQueue(excelFiles.slice(1)); // Queue the rest
+      } else {
         setIsProcessingFiles(false);
       }
+    } catch (error) {
+      console.error("File processing error:", error);
+      toast({
+        title: "Processing failed",
+        description: "Failed to process files",
+        variant: "destructive",
+      });
+      setIsProcessingFiles(false);
+    } finally {
       // Reset file input
       if (fileUploadInputRef.current) {
         fileUploadInputRef.current.value = "";
@@ -281,19 +346,51 @@ export const Sidebar = ({
       ? `${userInput}${selectedData.formattedContent}` 
       : selectedData.formattedContent.trim();
     onUserInputChange(newInput);
-    toast.success(`Added ${selectedData.totalRows} rows from ${selectedData.fileName}`);
+    toast({
+      title: "Excel data added",
+      description: `Added ${selectedData.totalRows} rows from ${selectedData.fileName}`,
+    });
     setExcelData(null);
-    setIsProcessingFiles(false);
+    
+    // Process next Excel file if any
+    if (excelQueue.length > 0) {
+      processNextExcel();
+    } else {
+      setIsProcessingFiles(false);
+    }
   };
 
   const handleExcelClose = () => {
     setExcelData(null);
-    setIsProcessingFiles(false);
+    
+    // Process next Excel file if any
+    if (excelQueue.length > 0) {
+      processNextExcel();
+    } else {
+      setIsProcessingFiles(false);
+    }
   };
 
   const handleClearInput = () => {
     onUserInputChange("");
-    toast.success("Input cleared");
+    toast({
+      title: "Input cleared",
+      description: "Input has been cleared",
+    });
+  };
+
+  const handleViewInput = () => {
+    setEditedInput(userInput);
+    setIsViewInputOpen(true);
+  };
+
+  const handleSaveEditedInput = () => {
+    onUserInputChange(editedInput);
+    setIsViewInputOpen(false);
+    toast({
+      title: "Input updated",
+      description: "Your changes have been saved",
+    });
   };
 
   const allAgents = [...agentTemplates, ...customAgents];
@@ -359,12 +456,22 @@ export const Sidebar = ({
                 <Button 
                   size="sm" 
                   variant="outline" 
-                  className="flex-1 gap-2"
+                  className="h-9 w-9 p-0"
+                  onClick={handleViewInput}
+                  disabled={!userInput}
+                  title="View/Edit Input"
+                >
+                  <Eye className="h-3.5 w-3.5" />
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="h-9 w-9 p-0"
                   onClick={handleClearInput}
                   disabled={!userInput}
+                  title="Clear Input"
                 >
                   <X className="h-3.5 w-3.5" />
-                  Clear
                 </Button>
               </div>
             </Card>
@@ -574,6 +681,31 @@ export const Sidebar = ({
           </div>
         </div>
       </ScrollArea>
+      
+      {/* View/Edit Input Modal */}
+      <Dialog open={isViewInputOpen} onOpenChange={setIsViewInputOpen}>
+        <DialogContent className="max-w-[90vw] max-h-[90vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle>View / Edit Input</DialogTitle>
+          </DialogHeader>
+          <div className="flex-1 min-h-0 py-4">
+            <Textarea
+              value={editedInput}
+              onChange={(e) => setEditedInput(e.target.value)}
+              className="w-full h-full min-h-[60vh] resize-none"
+              placeholder="No input text..."
+            />
+          </div>
+          <div className="flex justify-end gap-2 pt-4">
+            <Button variant="outline" onClick={() => setIsViewInputOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveEditedInput}>
+              Save Changes
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       
       {/* Excel Selector Modal */}
       {excelData && (
