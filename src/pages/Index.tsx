@@ -461,9 +461,11 @@ const Index = () => {
         throw new Error(result.error || "Function execution failed");
       }
 
-      // Set the primary output for display
-      const primaryOutput = result.outputs.output || Object.values(result.outputs)[0] || "";
-      updateNode(nodeId, { status: "complete", output: primaryOutput });
+      // Store the full outputs object for multi-output functions, or primary output for single-output
+      const outputValue = Object.keys(result.outputs).length > 1 
+        ? result.outputs 
+        : (result.outputs.output || Object.values(result.outputs)[0] || "");
+      updateNode(nodeId, { status: "complete", output: outputValue as any });
       addLog("success", `✓ Function ${functionNode.name} completed`);
     } catch (error) {
       console.error("Function execution failed:", error);
@@ -576,9 +578,11 @@ const Index = () => {
           functionOutputs.set(outputKey, value);
         });
 
-        // Set the primary output for display
-        const primaryOutput = result.outputs.output || Object.values(result.outputs)[0] || "";
-        updateNode(nodeId, { status: "complete", output: primaryOutput });
+        // Store the full outputs object for multi-output functions, or primary output for single-output
+        const outputValue = Object.keys(result.outputs).length > 1 
+          ? result.outputs 
+          : (result.outputs.output || Object.values(result.outputs)[0] || "");
+        updateNode(nodeId, { status: "complete", output: outputValue as any });
         addLog("success", `✓ Function ${functionNode.name} completed`);
         
         return functionOutputs;
