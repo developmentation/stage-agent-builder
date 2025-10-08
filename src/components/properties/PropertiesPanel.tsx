@@ -427,7 +427,25 @@ export const PropertiesPanel = ({
             <div className="space-y-2">
               <Label className="text-sm font-medium">Output</Label>
               <Card className="p-3 bg-muted/30 max-h-[200px] overflow-y-auto">
-                <p className="text-xs whitespace-pre-wrap break-words">{activeNode.output}</p>
+                <p className="text-xs whitespace-pre-wrap break-words">
+                  {(() => {
+                    const output = activeNode.output;
+                    if (!output) return 'No output';
+                    // Handle conditional outputs (objects with true/false keys)
+                    if (typeof output === 'object') {
+                      const obj = output as any;
+                      if ('true' in obj || 'false' in obj) {
+                        const trueContent = obj.true || '';
+                        const falseContent = obj.false || '';
+                        if (trueContent) return trueContent;
+                        if (falseContent) return falseContent;
+                        return 'No output';
+                      }
+                    }
+                    // Handle regular string output
+                    return typeof output === 'string' ? output : JSON.stringify(output, null, 2);
+                  })()}
+                </p>
               </Card>
             </div>
           )}
