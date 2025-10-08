@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { X, Plus, Settings, Play, Database, Download } from "lucide-react";
+import { X, Plus, Settings, Play, Database, Download, Eye, Save } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { useState } from "react";
@@ -64,6 +64,8 @@ export const PropertiesPanel = ({
   const [toolDialogOpen, setToolDialogOpen] = useState(false);
   const [configDialogInstance, setConfigDialogInstance] = useState<string | null>(null);
   const [memoryDialogOpen, setMemoryDialogOpen] = useState(false);
+  const [isEditingOutput, setIsEditingOutput] = useState(false);
+  const [editedOutput, setEditedOutput] = useState("");
 
   // Use selectedNode if provided, otherwise fall back to selectedAgent
   const activeNode = selectedNode || selectedAgent;
@@ -425,28 +427,92 @@ export const PropertiesPanel = ({
           {/* Common: Output */}
           {activeNode.output && (
             <div className="space-y-2">
-              <Label className="text-sm font-medium">Output</Label>
-              <Card className="p-3 bg-muted/30 max-h-[200px] overflow-y-auto">
-                <p className="text-xs whitespace-pre-wrap break-words">
-                  {(() => {
-                    const output = activeNode.output;
-                    if (!output) return 'No output';
-                    // Handle conditional outputs (objects with true/false keys)
-                    if (typeof output === 'object') {
-                      const obj = output as any;
-                      if ('true' in obj || 'false' in obj) {
-                        const trueContent = obj.true || '';
-                        const falseContent = obj.false || '';
-                        if (trueContent) return trueContent;
-                        if (falseContent) return falseContent;
-                        return 'No output';
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium">Output</Label>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2"
+                  onClick={() => {
+                    if (!isEditingOutput) {
+                      const output = activeNode.output;
+                      let outputText = '';
+                      if (typeof output === 'object') {
+                        const obj = output as any;
+                        if ('true' in obj || 'false' in obj) {
+                          outputText = obj.true || obj.false || '';
+                        } else {
+                          outputText = JSON.stringify(output, null, 2);
+                        }
+                      } else {
+                        outputText = String(output);
                       }
+                      setEditedOutput(outputText);
+                      setIsEditingOutput(true);
                     }
-                    // Handle regular string output
-                    return typeof output === 'string' ? output : JSON.stringify(output, null, 2);
-                  })()}
-                </p>
-              </Card>
+                  }}
+                >
+                  <Eye className="h-3 w-3 mr-1" />
+                  Edit
+                </Button>
+              </div>
+              
+              {isEditingOutput ? (
+                <div className="space-y-2">
+                  <Textarea
+                    value={editedOutput}
+                    onChange={(e) => setEditedOutput(e.target.value)}
+                    className="min-h-[200px] font-mono text-xs"
+                    placeholder="Edit output..."
+                  />
+                  <div className="flex gap-2">
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => {
+                        if (activeNode.nodeType === "agent") {
+                          onUpdateAgent(activeNode.id, { output: editedOutput });
+                        } else if (onUpdateNode) {
+                          onUpdateNode(activeNode.id, { output: editedOutput });
+                        }
+                        setIsEditingOutput(false);
+                      }}
+                    >
+                      <Save className="h-3 w-3 mr-1" />
+                      Save Changes
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsEditingOutput(false)}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Card className="p-3 bg-muted/30 max-h-[200px] overflow-y-auto">
+                  <p className="text-xs whitespace-pre-wrap break-words">
+                    {(() => {
+                      const output = activeNode.output;
+                      if (!output) return 'No output';
+                      // Handle conditional outputs (objects with true/false keys)
+                      if (typeof output === 'object') {
+                        const obj = output as any;
+                        if ('true' in obj || 'false' in obj) {
+                          const trueContent = obj.true || '';
+                          const falseContent = obj.false || '';
+                          if (trueContent) return trueContent;
+                          if (falseContent) return falseContent;
+                          return 'No output';
+                        }
+                      }
+                      // Handle regular string output
+                      return typeof output === 'string' ? output : JSON.stringify(output, null, 2);
+                    })()}
+                  </p>
+                </Card>
+              )}
             </div>
           )}
 
