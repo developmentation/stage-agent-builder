@@ -22,12 +22,20 @@ import {
 } from "@/components/ui/select";
 import { functionDefinitions } from "@/lib/functionDefinitions";
 import { Badge } from "@/components/ui/badge";
+import { LucideIcon } from "lucide-react";
+
+// Icon mapping for serialization
+const iconMap: Record<string, LucideIcon> = {
+  Search,
+  FileText,
+  Bot,
+};
 
 const agentTemplates = [
   { 
     id: "researcher", 
     name: "Researcher", 
-    icon: Search, 
+    iconName: "Search",
     description: "Gather and analyze information",
     defaultSystemPrompt: "You are a research assistant specializing in gathering and analyzing information from various sources.",
     defaultUserPrompt: "Research the following topic and provide detailed findings: {input}"
@@ -35,7 +43,7 @@ const agentTemplates = [
   { 
     id: "summarizer", 
     name: "Summarizer", 
-    icon: FileText, 
+    iconName: "FileText",
     description: "Condense long content",
     defaultSystemPrompt: "You are a summarization expert who creates concise, accurate summaries of long content.",
     defaultUserPrompt: "Summarize the following content: {input}"
@@ -43,7 +51,7 @@ const agentTemplates = [
   { 
     id: "analyst", 
     name: "Analyst", 
-    icon: Bot, 
+    iconName: "Bot",
     description: "Deep data analysis",
     defaultSystemPrompt: "You are a data analyst who provides insightful analysis and identifies patterns in data.",
     defaultUserPrompt: "Analyze the following data and provide insights: {input}"
@@ -100,7 +108,7 @@ export const Sidebar = ({
     const newAgent = {
       id: `custom-${Date.now()}`,
       name: newAgentName,
-      icon: Bot,
+      iconName: "Bot", // Store as string, not component
       description: newAgentDescription || "Custom agent",
       defaultSystemPrompt: newAgentSystemPrompt || `You are a ${newAgentName} agent.`,
       defaultUserPrompt: newAgentUserPrompt || "Process the following: {input}",
@@ -233,24 +241,27 @@ export const Sidebar = ({
               </Dialog>
             </div>
             <div className="space-y-2">
-              {allAgents.map((agent) => (
-                <Card 
-                  key={agent.id}
-                  className="p-3 cursor-move hover:shadow-md transition-shadow bg-gradient-to-br from-card to-muted/20"
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, agent)}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <agent.icon className="h-4 w-4 text-primary" />
+              {allAgents.map((agent) => {
+                const IconComponent = iconMap[agent.iconName] || Bot;
+                return (
+                  <Card 
+                    key={agent.id}
+                    className="p-3 cursor-move hover:shadow-md transition-shadow bg-gradient-to-br from-card to-muted/20"
+                    draggable
+                    onDragStart={(e) => handleDragStart(e, agent)}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <IconComponent className="h-4 w-4 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-sm font-medium text-foreground">{agent.name}</h4>
+                        <p className="text-xs text-muted-foreground mt-0.5">{agent.description}</p>
+                      </div>
                     </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-sm font-medium text-foreground">{agent.name}</h4>
-                      <p className="text-xs text-muted-foreground mt-0.5">{agent.description}</p>
-                    </div>
-                  </div>
-                </Card>
-              ))}
+                  </Card>
+                );
+              })}
             </div>
           </div>
 
