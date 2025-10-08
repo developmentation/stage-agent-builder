@@ -36,7 +36,7 @@ export const OutputLog = ({ logs }: OutputLogProps) => {
 
   return (
     <Card className={cn(
-      "border-t border-border rounded-none transition-all duration-300",
+      "border-t border-border rounded-none transition-all duration-300 flex-shrink-0",
       isExpanded ? "h-64" : "h-12"
     )}>
       <div className="flex items-center justify-between p-3 border-b border-border bg-muted/30">

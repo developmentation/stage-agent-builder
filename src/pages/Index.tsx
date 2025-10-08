@@ -707,7 +707,7 @@ const Index = () => {
   const selectedAgent = selectedNodeData?.nodeType === "agent" ? (selectedNodeData as AgentNode) : undefined;
 
   return (
-    <div className="flex flex-col h-screen bg-background">
+    <div className="flex flex-col h-screen bg-background overflow-hidden">
       <Toolbar
         onAddStage={addStage}
         onSave={saveWorkflow}
@@ -716,7 +716,7 @@ const Index = () => {
         onRun={runWorkflow}
       />
       
-      <div className="flex-1 flex flex-col min-h-0">
+      <div className="flex-1 flex flex-col overflow-hidden">
         <ResponsiveLayout
           sidebar={
             <Sidebar 
