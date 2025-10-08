@@ -446,12 +446,19 @@ export class FunctionExecutor {
       }
 
       const method = (node.config.method as string) || "POST";
+      const bearerToken = node.config.bearerToken as string;
       const headersConfig = node.config.headers as string;
       
       let headers: Record<string, string> = {
         "Content-Type": "application/json",
       };
 
+      // Add Bearer token if provided
+      if (bearerToken) {
+        headers["Authorization"] = `Bearer ${bearerToken}`;
+      }
+
+      // Add additional headers
       if (headersConfig) {
         try {
           const parsedHeaders = JSON.parse(headersConfig);
