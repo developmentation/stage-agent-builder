@@ -155,7 +155,7 @@ export const AgentNode = ({ agent, isSelected, isConnecting, agentNumber, stageI
 
   return (
     <Card 
-      className={`p-3 cursor-pointer transition-all hover:shadow-lg w-full bg-card/50 backdrop-blur-sm group ${
+      className={`p-3 cursor-pointer transition-all hover:shadow-lg w-full min-w-[240px] bg-card/50 backdrop-blur-sm group ${
         isSelected ? "ring-2 ring-primary shadow-lg" : ""
       } ${statusStyles[agent.status]}`}
       onClick={onSelect}
@@ -185,18 +185,18 @@ export const AgentNode = ({ agent, isSelected, isConnecting, agentNumber, stageI
 
       <div className="space-y-3">
         <div className="flex items-start gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary/10 items-center justify-center flex-shrink-0 hidden md:flex lg:hidden xl:flex">
+          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
             <Icon className="h-4 w-4 text-primary" />
           </div>
           
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-2">
               <h4 className="text-sm font-semibold text-foreground truncate">{agent.name}</h4>
-              <div className="flex items-center gap-1 flex-shrink-0">
+              <div className="flex items-center gap-0.5 flex-shrink-0">
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-6 w-6 p-0"
+                  className="h-6 w-6 p-0 hidden xl:flex"
                   onClick={handleDownload}
                   title="Download output"
                 >

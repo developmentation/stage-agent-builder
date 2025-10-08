@@ -143,7 +143,7 @@ export const FunctionNode = ({
 
   return (
     <Card 
-      className={`p-3 cursor-pointer transition-all hover:shadow-lg w-full backdrop-blur-sm group ${
+      className={`p-3 cursor-pointer transition-all hover:shadow-lg w-full min-w-[240px] backdrop-blur-sm group ${
         isSelected ? "ring-2 ring-primary shadow-lg" : ""
       } ${statusStyles[node.status]} ${functionDef?.color || "bg-card/50"}`}
       onClick={onSelect}
@@ -185,14 +185,14 @@ export const FunctionNode = ({
 
       <div className="space-y-3">
         <div className="flex items-start gap-2">
-          <div className={`w-8 h-8 rounded-lg items-center justify-center flex-shrink-0 hidden md:flex lg:hidden xl:flex ${functionDef?.color || "bg-primary/10"}`}>
+          <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${functionDef?.color || "bg-primary/10"}`}>
             <Icon className="h-4 w-4" />
           </div>
           
           <div className="flex-1 min-w-0">
             <div className="flex items-center justify-between gap-2">
               <h4 className="text-sm font-semibold text-foreground truncate">{node.name}</h4>
-              <div className="flex items-center gap-1 flex-shrink-0">
+              <div className="flex items-center gap-0.5 flex-shrink-0">
                 <Button
                   variant="ghost"
                   size="sm"
