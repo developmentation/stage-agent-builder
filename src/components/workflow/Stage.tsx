@@ -57,7 +57,7 @@ interface StageProps {
   onRenameStage: (stageId: string, name: string) => void;
   onReorderStages: (fromIndex: number, toIndex: number) => void;
   onToggleMinimize: (agentId: string) => void;
-  onPortClick: (agentId: string, isOutput: boolean) => void;
+  onPortClick: (agentId: string, isOutput: boolean, outputPort?: string) => void;
 }
 
 export const Stage = ({

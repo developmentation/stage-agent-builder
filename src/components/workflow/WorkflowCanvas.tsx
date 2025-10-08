@@ -16,8 +16,8 @@ interface WorkflowCanvasProps {
   onRenameStage: (stageId: string, name: string) => void;
   onReorderStages: (fromIndex: number, toIndex: number) => void;
   onToggleMinimize: (agentId: string) => void;
-  onStartConnection: (agentId: string) => void;
-  onCompleteConnection: (fromAgentId: string, toAgentId: string) => void;
+  onStartConnection: (agentId: string, outputPort?: string) => void;
+  onCompleteConnection: (fromAgentId: string, toAgentId: string, fromOutputPort?: string) => void;
   onDeleteConnection: (connectionId: string) => void;
 }
 
@@ -73,10 +73,14 @@ export const WorkflowCanvas = ({
     return () => timers.forEach(clearTimeout);
   }, [workflow.connections, workflow.stages, workflow.stages.flatMap(s => s.nodes).length]);
 
+  const [connectingFromPort, setConnectingFromPort] = useState<string | undefined>(undefined);
+
   // Clear selection when entering connection mode
   useEffect(() => {
     if (connectingFrom !== null) {
       setSelectedConnection(null);
+    } else {
+      setConnectingFromPort(undefined);
     }
   }, [connectingFrom]);
 
@@ -104,12 +108,15 @@ export const WorkflowCanvas = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedConnection, onDeleteConnection]);
 
-  const handlePortClick = (agentId: string, isOutput: boolean) => {
+  const handlePortClick = (agentId: string, isOutput: boolean, outputPort?: string) => {
     if (isOutput && !connectingFrom) {
-      onStartConnection(agentId);
+      setConnectingFromPort(outputPort);
+      onStartConnection(agentId, outputPort);
     } else if (!isOutput && connectingFrom && connectingFrom !== agentId) {
-      onCompleteConnection(connectingFrom, agentId);
+      onCompleteConnection(connectingFrom, agentId, connectingFromPort);
+      setConnectingFromPort(undefined);
     } else if (connectingFrom) {
+      setConnectingFromPort(undefined);
       onStartConnection(null);
     }
   };
@@ -127,7 +134,13 @@ export const WorkflowCanvas = ({
       const toNode = workflow.stages.flatMap(s => s.nodes).find(n => n.id === conn.toNodeId);
       if (!fromNode || !toNode) return null;
       
-      const fromEl = document.getElementById(`port-output-${conn.fromNodeId}-${layoutId}`);
+      // Build the correct output port ID
+      let outputPortId = `port-output-${conn.fromNodeId}-${layoutId}`;
+      if (conn.fromOutputPort) {
+        outputPortId = `port-output-${conn.fromNodeId}-${conn.fromOutputPort}-${layoutId}`;
+      }
+      
+      const fromEl = document.getElementById(outputPortId);
       const toEl = document.getElementById(`port-input-${conn.toNodeId}-${layoutId}`);
       if (!fromEl || !toEl) return null;
       

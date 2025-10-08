@@ -25,6 +25,7 @@ export type Agent = AgentNode;
 const Index = () => {
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [connectingFrom, setConnectingFrom] = useState<string | null>(null);
+  const [connectingFromPort, setConnectingFromPort] = useState<string | undefined>(undefined);
   const [userInput, setUserInput] = useState<string>("");
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [workflow, setWorkflow] = useState<Workflow>({
@@ -305,6 +306,16 @@ const Index = () => {
     }
   };
 
+  const handleStartConnection = (nodeId: string | null, outputPort?: string) => {
+    setConnectingFrom(nodeId);
+    setConnectingFromPort(outputPort);
+  };
+
+  const handleCompleteConnection = (fromNodeId: string, toNodeId: string, fromOutputPort?: string) => {
+    addConnection(fromNodeId, toNodeId, fromOutputPort);
+    setConnectingFromPort(undefined);
+  };
+
   const addConnection = (fromNodeId: string, toNodeId: string, fromOutputPort?: string) => {
     const newConnection: Connection = {
       id: `conn-${Date.now()}`,
@@ -317,6 +328,7 @@ const Index = () => {
       connections: [...prev.connections, newConnection],
     }));
     setConnectingFrom(null);
+    setConnectingFromPort(undefined);
   };
 
   const deleteConnection = (connectionId: string) => {
@@ -676,8 +688,8 @@ const Index = () => {
             onRenameStage={renameStage}
             onReorderStages={reorderStages}
             onToggleMinimize={toggleMinimize}
-            onStartConnection={setConnectingFrom}
-            onCompleteConnection={addConnection}
+            onStartConnection={handleStartConnection}
+            onCompleteConnection={handleCompleteConnection}
             onDeleteConnection={deleteConnection}
           />
         }
@@ -695,8 +707,8 @@ const Index = () => {
             onRenameStage={renameStage}
             onReorderStages={reorderStages}
             onToggleMinimize={toggleMinimize}
-            onStartConnection={setConnectingFrom}
-            onCompleteConnection={addConnection}
+            onStartConnection={handleStartConnection}
+            onCompleteConnection={handleCompleteConnection}
             onDeleteConnection={deleteConnection}
           />
         }
