@@ -33,7 +33,7 @@ export const Toolbar = ({
             <span className="text-xl font-bold text-primary-foreground">A</span>
           </div>
           <div>
-            <h1 className="text-xl font-bold text-foreground">Agent Builder - Alberta AI Academy</h1>
+            <h1 className="text-xl font-bold text-foreground">Agent Builder Console (ABC)</h1>
             <p className="text-xs text-muted-foreground">Workflow Builder</p>
           </div>
         </div>
