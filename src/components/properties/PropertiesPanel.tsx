@@ -385,6 +385,34 @@ export const PropertiesPanel = ({
                 </Card>
               </div>
 
+              {/* Show condition result for conditional functions */}
+              {(() => {
+                const output = activeNode.output as any;
+                // Check if output is a conditional output object
+                if (!output || typeof output !== 'object') return null;
+                if (!('true' in output) || !('false' in output)) return null;
+                
+                const conditionalOutput = output as Record<string, string>;
+                return (
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Condition Result</Label>
+                    <Card className="p-3 bg-muted/30">
+                      {conditionalOutput.true ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-green-600 dark:text-green-400">✓ True</span>
+                          <span className="text-xs text-muted-foreground">condition matched</span>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-amber-600 dark:text-amber-400">✗ False</span>
+                          <span className="text-xs text-muted-foreground">condition not matched</span>
+                        </div>
+                      )}
+                    </Card>
+                  </div>
+                );
+              })()}
+
               {renderFunctionConfig(activeNode as FunctionNode)}
               {renderMemoryViewer(activeNode as FunctionNode)}
             </>
