@@ -382,10 +382,85 @@ export class FunctionExecutor {
       
       let result = parsed;
       if (extractPath) {
-        const paths = extractPath.split(".");
-        for (const path of paths) {
-          result = result[path];
+        // Parse path with support for array notation and wildcards
+        // Examples: "cards[0].uuid", "cards[].uuid", "user.name"
+        const pathParts = extractPath.split(/\.(?![^\[]*\])/).map(part => part.trim());
+        
+        for (const part of pathParts) {
+          // Check if this part has array notation
+          const arrayMatch = part.match(/^([^\[]+)\[(\d*)\](.*)$/);
+          
+          if (arrayMatch) {
+            const [, arrayName, index, remaining] = arrayMatch;
+            
+            // Access the array
+            result = result[arrayName];
+            
+            if (!Array.isArray(result)) {
+              throw new Error(`${arrayName} is not an array`);
+            }
+            
+            // Handle wildcard [] - extract from all items
+            if (index === '') {
+              const remainingPath = remaining.replace(/^\./, '');
+              
+              if (remainingPath) {
+                // Extract property from all array items
+                result = result.map(item => {
+                  let value = item;
+                  const subPaths = remainingPath.split('.');
+                  for (const subPath of subPaths) {
+                    value = value?.[subPath];
+                  }
+                  return value;
+                }).filter(v => v !== undefined && v !== null);
+                
+                // Return as comma-space delimited string
+                return {
+                  success: true,
+                  outputs: { output: result.join(', ') },
+                };
+              } else {
+                // No remaining path, return the array as JSON
+                return {
+                  success: true,
+                  outputs: { output: JSON.stringify(result, null, 2) },
+                };
+              }
+            } else {
+              // Specific index
+              const idx = parseInt(index, 10);
+              if (idx < 0 || idx >= result.length) {
+                throw new Error(`Array index ${idx} out of bounds`);
+              }
+              result = result[idx];
+              
+              // Handle any remaining path after the array index
+              if (remaining) {
+                const remainingPath = remaining.replace(/^\./, '');
+                const subPaths = remainingPath.split('.');
+                for (const subPath of subPaths) {
+                  result = result[subPath];
+                }
+              }
+            }
+          } else {
+            // Simple property access
+            result = result[part];
+          }
+          
+          if (result === undefined) {
+            throw new Error(`Path not found: ${part}`);
+          }
         }
+      }
+      
+      // If result is a string or primitive, return it directly
+      if (typeof result === 'string' || typeof result === 'number' || typeof result === 'boolean') {
+        return {
+          success: true,
+          outputs: { output: String(result) },
+        };
       }
       
       return {
@@ -396,7 +471,7 @@ export class FunctionExecutor {
       return {
         success: false,
         outputs: {},
-        error: "Invalid JSON",
+        error: `Error: ${error instanceof Error ? error.message : "Invalid JSON"}`,
       };
     }
   }
