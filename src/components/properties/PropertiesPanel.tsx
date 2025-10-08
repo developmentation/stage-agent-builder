@@ -429,90 +429,96 @@ export const PropertiesPanel = ({
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label className="text-sm font-medium">Output</Label>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 px-2"
-                  onClick={() => {
-                    if (!isEditingOutput) {
-                      const output = activeNode.output;
-                      let outputText = '';
-                      if (typeof output === 'object') {
-                        const obj = output as any;
-                        if ('true' in obj || 'false' in obj) {
-                          outputText = obj.true || obj.false || '';
-                        } else {
-                          outputText = JSON.stringify(output, null, 2);
-                        }
-                      } else {
-                        outputText = String(output);
-                      }
-                      setEditedOutput(outputText);
-                      setIsEditingOutput(true);
-                    }
-                  }}
-                >
-                  <Eye className="h-3 w-3 mr-1" />
-                  Edit
-                </Button>
-              </div>
-              
-              {isEditingOutput ? (
-                <div className="space-y-2">
-                  <Textarea
-                    value={editedOutput}
-                    onChange={(e) => setEditedOutput(e.target.value)}
-                    className="min-h-[200px] font-mono text-xs"
-                    placeholder="Edit output..."
-                  />
-                  <div className="flex gap-2">
+                <Dialog open={isEditingOutput} onOpenChange={setIsEditingOutput}>
+                  <DialogTrigger asChild>
                     <Button
-                      variant="default"
+                      variant="ghost"
                       size="sm"
+                      className="h-7 px-2"
                       onClick={() => {
-                        if (activeNode.nodeType === "agent") {
-                          onUpdateAgent(activeNode.id, { output: editedOutput });
-                        } else if (onUpdateNode) {
-                          onUpdateNode(activeNode.id, { output: editedOutput });
+                        const output = activeNode.output;
+                        let outputText = '';
+                        if (typeof output === 'object') {
+                          const obj = output as any;
+                          if ('true' in obj || 'false' in obj) {
+                            outputText = obj.true || obj.false || '';
+                          } else {
+                            outputText = JSON.stringify(output, null, 2);
+                          }
+                        } else {
+                          outputText = String(output);
                         }
-                        setIsEditingOutput(false);
+                        setEditedOutput(outputText);
                       }}
                     >
-                      <Save className="h-3 w-3 mr-1" />
-                      Save Changes
+                      <Eye className="h-3 w-3 mr-1" />
+                      Edit
                     </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setIsEditingOutput(false)}
-                    >
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <Card className="p-3 bg-muted/30 max-h-[200px] overflow-y-auto">
-                  <p className="text-xs whitespace-pre-wrap break-words">
-                    {(() => {
-                      const output = activeNode.output;
-                      if (!output) return 'No output';
-                      // Handle conditional outputs (objects with true/false keys)
-                      if (typeof output === 'object') {
-                        const obj = output as any;
-                        if ('true' in obj || 'false' in obj) {
-                          const trueContent = obj.true || '';
-                          const falseContent = obj.false || '';
-                          if (trueContent) return trueContent;
-                          if (falseContent) return falseContent;
-                          return 'No output';
-                        }
+                  </DialogTrigger>
+                  <DialogContent className="max-w-3xl max-h-[80vh]">
+                    <DialogHeader>
+                      <DialogTitle>Edit Output</DialogTitle>
+                      <DialogDescription>
+                        Manually edit the output from this {activeNode.nodeType}
+                      </DialogDescription>
+                    </DialogHeader>
+                    <ScrollArea className="h-[500px]">
+                      <Textarea
+                        value={editedOutput}
+                        onChange={(e) => setEditedOutput(e.target.value)}
+                        className="min-h-[480px] font-mono text-xs resize-none"
+                        placeholder="Edit output..."
+                      />
+                    </ScrollArea>
+                    <div className="flex gap-2 justify-end">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsEditingOutput(false)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => {
+                          if (activeNode.nodeType === "agent") {
+                            onUpdateAgent(activeNode.id, { output: editedOutput });
+                          } else if (onUpdateNode) {
+                            onUpdateNode(activeNode.id, { output: editedOutput });
+                          }
+                          setIsEditingOutput(false);
+                        }}
+                      >
+                        <Save className="h-3 w-3 mr-1" />
+                        Save Changes
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
+              
+              <Card className="p-3 bg-muted/30 max-h-[200px] overflow-y-auto">
+                <p className="text-xs whitespace-pre-wrap break-words">
+                  {(() => {
+                    const output = activeNode.output;
+                    if (!output) return 'No output';
+                    // Handle conditional outputs (objects with true/false keys)
+                    if (typeof output === 'object') {
+                      const obj = output as any;
+                      if ('true' in obj || 'false' in obj) {
+                        const trueContent = obj.true || '';
+                        const falseContent = obj.false || '';
+                        if (trueContent) return trueContent;
+                        if (falseContent) return falseContent;
+                        return 'No output';
                       }
-                      // Handle regular string output
-                      return typeof output === 'string' ? output : JSON.stringify(output, null, 2);
-                    })()}
-                  </p>
-                </Card>
-              )}
+                    }
+                    // Handle regular string output
+                    return typeof output === 'string' ? output : JSON.stringify(output, null, 2);
+                  })()}
+                </p>
+              </Card>
             </div>
           )}
 
