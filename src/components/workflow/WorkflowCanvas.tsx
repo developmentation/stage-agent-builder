@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui/card";
 import { Stage } from "./Stage";
-import type { Workflow } from "@/pages/Index";
+import type { Workflow } from "@/types/workflow";
 import { useEffect, useState } from "react";
 
 interface WorkflowCanvasProps {
@@ -69,7 +69,7 @@ export const WorkflowCanvas = ({
       }, 300),
     ];
     return () => timers.forEach(clearTimeout);
-  }, [workflow.connections, workflow.stages, workflow.stages.flatMap(s => s.agents).length]);
+  }, [workflow.connections, workflow.stages, workflow.stages.flatMap(s => s.nodes).length]);
 
   // Clear selection when entering connection mode
   useEffect(() => {
@@ -121,12 +121,12 @@ export const WorkflowCanvas = ({
     const scrollTop = scrollContainer.scrollTop;
     
     return workflow.connections.map((conn) => {
-      const fromAgent = workflow.stages.flatMap(s => s.agents).find(a => a.id === conn.fromAgentId);
-      const toAgent = workflow.stages.flatMap(s => s.agents).find(a => a.id === conn.toAgentId);
-      if (!fromAgent || !toAgent) return null;
+      const fromNode = workflow.stages.flatMap(s => s.nodes).find(n => n.id === conn.fromNodeId);
+      const toNode = workflow.stages.flatMap(s => s.nodes).find(n => n.id === conn.toNodeId);
+      if (!fromNode || !toNode) return null;
       
-      const fromEl = document.getElementById(`port-output-${conn.fromAgentId}-${layoutId}`);
-      const toEl = document.getElementById(`port-input-${conn.toAgentId}-${layoutId}`);
+      const fromEl = document.getElementById(`port-output-${conn.fromNodeId}-${layoutId}`);
+      const toEl = document.getElementById(`port-input-${conn.toNodeId}-${layoutId}`);
       if (!fromEl || !toEl) return null;
       
       const fromRect = fromEl.getBoundingClientRect();

@@ -2,44 +2,24 @@ import { WorkflowCanvas } from "@/components/workflow/WorkflowCanvas";
 import { Sidebar } from "@/components/sidebar/Sidebar";
 import { PropertiesPanel } from "@/components/properties/PropertiesPanel";
 import { Toolbar } from "@/components/toolbar/Toolbar";
-import { OutputLog, LogEntry } from "@/components/output/OutputLog";
+import { OutputLog } from "@/components/output/OutputLog";
 import { ResponsiveLayout } from "@/components/layout/ResponsiveLayout";
 import { useState } from "react";
+import type { 
+  Workflow, 
+  WorkflowNode, 
+  AgentNode, 
+  FunctionNode, 
+  ToolNode,
+  Stage,
+  Connection,
+  ToolInstance,
+  LogEntry 
+} from "@/types/workflow";
 
-export interface ToolInstance {
-  id: string;
-  toolId: string;
-  config: any;
-}
-
-export interface Agent {
-  id: string;
-  name: string;
-  type: string;
-  systemPrompt: string;
-  userPrompt: string;
-  tools: ToolInstance[];
-  status: "idle" | "running" | "complete" | "error";
-  output?: string;
-  minimized?: boolean;
-}
-
-export interface Stage {
-  id: string;
-  name: string;
-  agents: Agent[];
-}
-
-export interface Connection {
-  id: string;
-  fromAgentId: string;
-  toAgentId: string;
-}
-
-export interface Workflow {
-  stages: Stage[];
-  connections: Connection[];
-}
+// Legacy export for backward compatibility
+export type { ToolInstance, LogEntry } from "@/types/workflow";
+export type Agent = AgentNode;
 
 const Index = () => {
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
@@ -60,7 +40,7 @@ const Index = () => {
     const newStage: Stage = {
       id: `stage-${Date.now()}`,
       name: `Stage ${workflow.stages.length + 1}`,
-      agents: [],
+      nodes: [],
     };
     setWorkflow((prev) => ({
       ...prev,
@@ -84,9 +64,9 @@ const Index = () => {
       newStages.splice(toIndex, 0, movedStage);
 
       // Validate connections after reordering
-      const getStageIndex = (agentId: string): number => {
+      const getStageIndex = (nodeId: string): number => {
         for (let i = 0; i < newStages.length; i++) {
-          if (newStages[i].agents.some(a => a.id === agentId)) {
+          if (newStages[i].nodes.some(n => n.id === nodeId)) {
             return i;
           }
         }
@@ -95,8 +75,8 @@ const Index = () => {
 
       // Remove connections where output stage is after input stage (backwards connections)
       const validConnections = prev.connections.filter((conn) => {
-        const fromStageIndex = getStageIndex(conn.fromAgentId);
-        const toStageIndex = getStageIndex(conn.toAgentId);
+        const fromStageIndex = getStageIndex(conn.fromNodeId);
+        const toStageIndex = getStageIndex(conn.toNodeId);
         return fromStageIndex !== -1 && toStageIndex !== -1 && fromStageIndex < toStageIndex;
       });
 
@@ -113,87 +93,126 @@ const Index = () => {
     });
   };
 
-  const addAgent = (stageId: string, agentTemplate: any) => {
-    const newAgent: Agent = {
-      id: `agent-${Date.now()}`,
-      name: agentTemplate.name,
-      type: agentTemplate.id,
-      systemPrompt: agentTemplate.defaultSystemPrompt || `You are a ${agentTemplate.name} agent.`,
-      userPrompt: agentTemplate.defaultUserPrompt || "Process the following input: {input}",
-      tools: [],
-      status: "idle",
-    };
+  const addNode = (stageId: string, template: any, nodeType: "agent" | "function" | "tool" = "agent") => {
+    let newNode: WorkflowNode;
+
+    if (nodeType === "agent") {
+      newNode = {
+        id: `agent-${Date.now()}`,
+        nodeType: "agent",
+        name: template.name,
+        type: template.id,
+        systemPrompt: template.defaultSystemPrompt || `You are a ${template.name} agent.`,
+        userPrompt: template.defaultUserPrompt || "Process the following input: {input}",
+        tools: [],
+        status: "idle",
+      } as AgentNode;
+    } else if (nodeType === "function") {
+      newNode = {
+        id: `function-${Date.now()}`,
+        nodeType: "function",
+        name: template.name,
+        functionType: template.id,
+        config: {},
+        outputPorts: template.outputPorts || ["output"],
+        status: "idle",
+      } as FunctionNode;
+    } else {
+      newNode = {
+        id: `tool-${Date.now()}`,
+        nodeType: "tool",
+        name: template.name,
+        toolType: template.id,
+        config: {},
+        status: "idle",
+      } as ToolNode;
+    }
 
     setWorkflow((prev) => ({
       ...prev,
       stages: prev.stages.map((stage) =>
         stage.id === stageId
-          ? { ...stage, agents: [...stage.agents, newAgent] }
+          ? { ...stage, nodes: [...stage.nodes, newNode] }
           : stage
       ),
     }));
   };
 
-  const updateAgent = (agentId: string, updates: Partial<Agent>) => {
+  // Legacy method for backward compatibility
+  const addAgent = (stageId: string, agentTemplate: any) => {
+    addNode(stageId, agentTemplate, "agent");
+  };
+
+  const updateNode = (nodeId: string, updates: Partial<WorkflowNode>) => {
     setWorkflow((prev) => ({
       ...prev,
       stages: prev.stages.map((stage) => ({
         ...stage,
-        agents: stage.agents.map((agent) =>
-          agent.id === agentId ? { ...agent, ...updates } : agent
+        nodes: stage.nodes.map((node) =>
+          node.id === nodeId ? { ...node, ...updates } as WorkflowNode : node
         ),
       })),
     }));
   };
 
-  const toggleMinimize = (agentId: string) => {
+  // Legacy method for backward compatibility
+  const updateAgent = (agentId: string, updates: Partial<AgentNode>) => {
+    updateNode(agentId, updates);
+  };
+
+  const toggleMinimize = (nodeId: string) => {
     setWorkflow((prev) => ({
       ...prev,
       stages: prev.stages.map((stage) => ({
         ...stage,
-        agents: stage.agents.map((agent) =>
-          agent.id === agentId ? { ...agent, minimized: !agent.minimized } : agent
+        nodes: stage.nodes.map((node) =>
+          node.id === nodeId ? { ...node, minimized: !node.minimized } : node
         ),
       })),
     }));
   };
 
-  const deleteAgent = (agentId: string) => {
+  const deleteNode = (nodeId: string) => {
     setWorkflow((prev) => ({
       ...prev,
       stages: prev.stages.map((stage) => ({
         ...stage,
-        agents: stage.agents.filter((agent) => agent.id !== agentId),
+        nodes: stage.nodes.filter((node) => node.id !== nodeId),
       })),
-      // Remove all connections involving this agent
+      // Remove all connections involving this node
       connections: prev.connections.filter(
-        (conn) => conn.fromAgentId !== agentId && conn.toAgentId !== agentId
+        (conn) => conn.fromNodeId !== nodeId && conn.toNodeId !== nodeId
       ),
     }));
-    if (selectedNode === agentId) {
+    if (selectedNode === nodeId) {
       setSelectedNode(null);
     }
+  };
+
+  // Legacy method for backward compatibility
+  const deleteAgent = (nodeId: string) => {
+    deleteNode(nodeId);
   };
 
   const deleteStage = (stageId: string) => {
     setWorkflow((prev) => {
       const stageToDelete = prev.stages.find((s) => s.id === stageId);
-      const agentIdsToDelete = stageToDelete?.agents.map((a) => a.id) || [];
+      const nodeIdsToDelete = stageToDelete?.nodes.map((n) => n.id) || [];
       
       return {
         ...prev,
         stages: prev.stages.filter((stage) => stage.id !== stageId),
-        // Remove all connections involving agents in this stage
+        // Remove all connections involving nodes in this stage
         connections: prev.connections.filter(
           (conn) => 
-            !agentIdsToDelete.includes(conn.fromAgentId) && 
-            !agentIdsToDelete.includes(conn.toAgentId)
+            !nodeIdsToDelete.includes(conn.fromNodeId) && 
+            !nodeIdsToDelete.includes(conn.toNodeId)
         ),
       };
     });
   };
 
-  const addToolInstance = (agentId: string, toolId: string) => {
+  const addToolInstance = (nodeId: string, toolId: string) => {
     const newToolInstance: ToolInstance = {
       id: `tool-${Date.now()}`,
       toolId,
@@ -204,44 +223,47 @@ const Index = () => {
       ...prev,
       stages: prev.stages.map((stage) => ({
         ...stage,
-        agents: stage.agents.map((agent) =>
-          agent.id === agentId
-            ? { ...agent, tools: [...agent.tools, newToolInstance] }
-            : agent
-        ),
+        nodes: stage.nodes.map((node) => {
+          if (node.id === nodeId && node.nodeType === "agent") {
+            return { ...node, tools: [...node.tools, newToolInstance] } as AgentNode;
+          }
+          return node;
+        }),
       })),
     }));
   };
 
-  const updateToolInstance = (agentId: string, toolInstanceId: string, config: any) => {
+  const updateToolInstance = (nodeId: string, toolInstanceId: string, config: any) => {
     setWorkflow((prev) => ({
       ...prev,
       stages: prev.stages.map((stage) => ({
         ...stage,
-        agents: stage.agents.map((agent) =>
-          agent.id === agentId
-            ? {
-                ...agent,
-                tools: agent.tools.map((tool) =>
-                  tool.id === toolInstanceId ? { ...tool, config } : tool
-                ),
-              }
-            : agent
-        ),
+        nodes: stage.nodes.map((node) => {
+          if (node.id === nodeId && node.nodeType === "agent") {
+            return {
+              ...node,
+              tools: node.tools.map((tool) =>
+                tool.id === toolInstanceId ? { ...tool, config } : tool
+              ),
+            } as AgentNode;
+          }
+          return node;
+        }),
       })),
     }));
   };
 
-  const removeToolInstance = (agentId: string, toolInstanceId: string) => {
+  const removeToolInstance = (nodeId: string, toolInstanceId: string) => {
     setWorkflow((prev) => ({
       ...prev,
       stages: prev.stages.map((stage) => ({
         ...stage,
-        agents: stage.agents.map((agent) =>
-          agent.id === agentId
-            ? { ...agent, tools: agent.tools.filter((t) => t.id !== toolInstanceId) }
-            : agent
-        ),
+        nodes: stage.nodes.map((node) => {
+          if (node.id === nodeId && node.nodeType === "agent") {
+            return { ...node, tools: node.tools.filter((t) => t.id !== toolInstanceId) } as AgentNode;
+          }
+          return node;
+        }),
       })),
     }));
   };
@@ -282,11 +304,12 @@ const Index = () => {
     }
   };
 
-  const addConnection = (fromAgentId: string, toAgentId: string) => {
+  const addConnection = (fromNodeId: string, toNodeId: string, fromOutputPort?: string) => {
     const newConnection: Connection = {
       id: `conn-${Date.now()}`,
-      fromAgentId,
-      toAgentId,
+      fromNodeId,
+      toNodeId,
+      fromOutputPort,
     };
     setWorkflow((prev) => ({
       ...prev,
@@ -302,26 +325,28 @@ const Index = () => {
     }));
   };
 
-  const runSingleAgent = async (agentId: string, customInput?: string) => {
-    const allAgents = workflow.stages.flatMap((s) => s.agents);
-    const agent = allAgents.find((a) => a.id === agentId);
-    if (!agent) return;
+  const runSingleAgent = async (nodeId: string, customInput?: string) => {
+    const allNodes = workflow.stages.flatMap((s) => s.nodes);
+    const node = allNodes.find((n) => n.id === nodeId);
+    if (!node || node.nodeType !== "agent") return;
+    
+    const agent = node as AgentNode;
 
     addLog("info", `Starting agent: ${agent.name}`);
-    updateAgent(agentId, { status: "running" });
+    updateNode(nodeId, { status: "running" });
     
     try {
-      // Get input from connected agents or use user's initial input
+      // Get input from connected nodes or use user's initial input
       const incomingConnections = workflow.connections.filter(
-        (c) => c.toAgentId === agentId
+        (c) => c.toNodeId === nodeId
       );
       
       let input = userInput || "No input provided";
       if (incomingConnections.length > 0) {
         const outputs = incomingConnections
           .map((c) => {
-            const fromAgent = allAgents.find((a) => a.id === c.fromAgentId);
-            return fromAgent?.output || "";
+            const fromNode = allNodes.find((n) => n.id === c.fromNodeId);
+            return fromNode?.output || "";
           })
           .filter(Boolean);
         
@@ -377,35 +402,37 @@ const Index = () => {
         });
       }
       
-      updateAgent(agentId, { status: "complete", output });
+      updateNode(nodeId, { status: "complete", output });
       addLog("success", `Agent ${agent.name} completed successfully`);
     } catch (error) {
       console.error("Agent execution failed:", error);
-      updateAgent(agentId, { status: "error", output: `Error: ${error}` });
+      updateNode(nodeId, { status: "error", output: `Error: ${error}` });
       addLog("error", `Agent ${agent.name} failed: ${error}`);
     }
   };
 
   const runWorkflow = async () => {
-    const allAgents = workflow.stages.flatMap((s) => s.agents);
+    const allNodes = workflow.stages.flatMap((s) => s.nodes);
     
     addLog("info", "🚀 Workflow execution started");
     setLogs([]); // Clear previous logs
     addLog("info", "🚀 Workflow execution started");
     
-    // Reset all agents to idle
-    allAgents.forEach((agent) => {
-      updateAgent(agent.id, { status: "idle", output: undefined });
+    // Reset all nodes to idle
+    allNodes.forEach((node) => {
+      updateNode(node.id, { status: "idle", output: undefined });
     });
 
     const outputs = new Map<string, string>();
 
-    const executeAgent = async (agentId: string, input: string) => {
-      const agent = allAgents.find((a) => a.id === agentId);
-      if (!agent) return;
+    const executeAgent = async (nodeId: string, input: string) => {
+      const node = allNodes.find((n) => n.id === nodeId);
+      if (!node || node.nodeType !== "agent") return;
+      
+      const agent = node as AgentNode;
 
       addLog("info", `Starting agent: ${agent.name}`);
-      updateAgent(agentId, { status: "running" });
+      updateNode(nodeId, { status: "running" });
       
       try {
         // Log tool execution
@@ -455,12 +482,12 @@ const Index = () => {
           });
         }
         
-        outputs.set(agentId, output);
-        updateAgent(agentId, { status: "complete", output });
+        outputs.set(nodeId, output);
+        updateNode(nodeId, { status: "complete", output });
         addLog("success", `✓ Agent ${agent.name} completed`);
       } catch (error) {
         console.error("Agent execution failed:", error);
-        updateAgent(agentId, { status: "error", output: `Error: ${error}` });
+        updateNode(nodeId, { status: "error", output: `Error: ${error}` });
         addLog("error", `✗ Agent ${agent.name} failed: ${error}`);
       }
     };
@@ -468,14 +495,18 @@ const Index = () => {
     // Execute stages sequentially
     for (let i = 0; i < workflow.stages.length; i++) {
       const stage = workflow.stages[i];
-      if (stage.agents.length === 0) continue;
+      if (stage.nodes.length === 0) continue;
 
-      addLog("info", `▸ Stage ${i + 1}: Processing ${stage.agents.length} agent(s)`);
+      const agentCount = stage.nodes.filter(n => n.nodeType === "agent").length;
+      addLog("info", `▸ Stage ${i + 1}: Processing ${agentCount} agent(s)`);
 
-      const agentPromises = stage.agents.map(async (agent) => {
-        // Get incoming connections for this agent
+      const nodePromises = stage.nodes.map(async (node) => {
+        // Only execute agents for now (functions and tools in Phase 5)
+        if (node.nodeType !== "agent") return;
+
+        // Get incoming connections for this node
         const incomingConnections = workflow.connections.filter(
-          (c) => c.toAgentId === agent.id
+          (c) => c.toNodeId === node.id
         );
 
         let input = userInput || "No input provided";
@@ -483,29 +514,32 @@ const Index = () => {
         // If there are incoming connections, wait for and concatenate their outputs
         if (incomingConnections.length > 0) {
           const connectedOutputs = incomingConnections
-            .map((c) => outputs.get(c.fromAgentId))
+            .map((c) => outputs.get(c.fromNodeId))
             .filter(Boolean);
           
           if (connectedOutputs.length > 0) {
             input = connectedOutputs.join("\n\n---\n\n");
-            addLog("info", `Agent ${agent.name} received input from ${incomingConnections.length} connection(s)`);
+            addLog("info", `Agent ${node.name} received input from ${incomingConnections.length} connection(s)`);
           }
         }
 
-        await executeAgent(agent.id, input);
+        await executeAgent(node.id, input);
       });
 
-      // Wait for all agents in this stage to complete before moving to next stage
-      await Promise.all(agentPromises);
+      // Wait for all nodes in this stage to complete before moving to next stage
+      await Promise.all(nodePromises);
       addLog("success", `✓ Stage ${i + 1} completed`);
     }
     
     addLog("success", "🎉 Workflow execution completed");
   };
 
-  const selectedAgent = workflow.stages
-    .flatMap((s) => s.agents)
-    .find((a) => a.id === selectedNode);
+  const selectedNodeData = workflow.stages
+    .flatMap((s) => s.nodes)
+    .find((n) => n.id === selectedNode);
+  
+  // For backward compatibility with PropertiesPanel
+  const selectedAgent = selectedNodeData?.nodeType === "agent" ? (selectedNodeData as AgentNode) : undefined;
 
   return (
     <div className="flex flex-col h-screen bg-background">

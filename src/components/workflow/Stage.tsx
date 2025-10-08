@@ -12,7 +12,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import type { Stage as StageType } from "@/pages/Index";
+import type { Stage as StageType } from "@/types/workflow";
 
 const agentTemplates = [
   { 
@@ -118,8 +118,8 @@ export const Stage = ({
     }
   };
 
-  const completedAgents = stage.agents.filter((a) => a.status === "complete").length;
-  const progress = stage.agents.length > 0 ? (completedAgents / stage.agents.length) * 100 : 0;
+  const completedNodes = stage.nodes.filter((n) => n.status === "complete").length;
+  const progress = stage.nodes.length > 0 ? (completedNodes / stage.nodes.length) * 100 : 0;
 
   const handleAddAgent = (template: any) => {
     onAddAgent(stage.id, template);
@@ -220,29 +220,29 @@ export const Stage = ({
       </div>
 
       <div className="min-h-[100px]">
-        {stage.agents.length === 0 ? (
+        {stage.nodes.length === 0 ? (
           <div className="flex items-center justify-center h-24 border-2 border-dashed border-border/50 rounded-lg">
             <p className="text-sm text-muted-foreground hidden lg:block">Drop an agent here</p>
             <p className="text-sm text-muted-foreground lg:hidden">No agents yet</p>
           </div>
         ) : (
           <div className="flex flex-wrap gap-3 items-start">
-            {stage.agents.map((agent, index) => (
+            {stage.nodes.filter(n => n.nodeType === "agent").map((node, index) => (
               <div 
-                key={agent.id} 
-                id={`agent-${agent.id}`}
-                className={agent.minimized ? "w-16 flex-shrink-0" : "w-full md:w-[calc(50%-0.375rem)] flex-shrink-0"}
+                key={node.id} 
+                id={`agent-${node.id}`}
+                className={node.minimized ? "w-16 flex-shrink-0" : "w-full md:w-[calc(50%-0.375rem)] flex-shrink-0"}
               >
                 <AgentNode
-                  agent={agent}
-                  isSelected={selectedNode === agent.id}
+                  agent={node}
+                  isSelected={selectedNode === node.id}
                   isConnecting={connectingFrom !== null}
                   agentNumber={`${stageNumber}.${index + 1}`}
                   stageIndex={stageNumber - 1}
                   layoutId={layoutId}
-                  onSelect={() => onSelectNode(agent.id)}
-                  onDelete={() => onDeleteAgent(agent.id)}
-                  onToggleMinimize={() => onToggleMinimize(agent.id)}
+                  onSelect={() => onSelectNode(node.id)}
+                  onDelete={() => onDeleteAgent(node.id)}
+                  onToggleMinimize={() => onToggleMinimize(node.id)}
                   onPortClick={onPortClick}
                 />
               </div>
