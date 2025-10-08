@@ -10,7 +10,9 @@ import {
   FileJson,
   Filter,
   Split,
-  Merge
+  Merge,
+  ExternalLink,
+  Zap
 } from "lucide-react";
 import type { FunctionDefinition } from "@/types/functions";
 
@@ -338,6 +340,67 @@ export const functionDefinitions: FunctionDefinition[] = [
       description: "JSON to format",
     },
     outputs: ["output"],
+  },
+  {
+    id: "google_search",
+    name: "Google Search",
+    description: "Perform a Google search and return top results",
+    category: "url",
+    icon: Globe,
+    color: "bg-sky-500/10 text-sky-500",
+    inputs: {
+      label: "Search query",
+      description: "The search query to execute",
+    },
+    outputs: ["output"],
+  },
+  {
+    id: "web_scrape",
+    name: "Web Scrape",
+    description: "Extract URLs from input and scrape each one, concatenating results",
+    category: "url",
+    icon: ExternalLink,
+    color: "bg-teal-500/10 text-teal-500",
+    inputs: {
+      label: "Text with URLs",
+      description: "Text containing URLs to scrape",
+    },
+    outputs: ["output"],
+  },
+  {
+    id: "api_call",
+    name: "API Call",
+    description: "Make an HTTP API call with the input as the body",
+    category: "url",
+    icon: Zap,
+    color: "bg-yellow-500/10 text-yellow-500",
+    inputs: {
+      label: "Request body",
+      description: "Data to send in the API call",
+    },
+    outputs: ["output"],
+    configSchema: {
+      url: {
+        type: "string",
+        label: "API URL",
+        description: "The URL to call",
+        required: true,
+        placeholder: "https://api.example.com/endpoint",
+      },
+      method: {
+        type: "string",
+        label: "HTTP Method",
+        description: "HTTP method (GET, POST, PUT, DELETE)",
+        default: "POST",
+        placeholder: "POST",
+      },
+      headers: {
+        type: "json",
+        label: "Headers (JSON)",
+        description: "HTTP headers as JSON object",
+        placeholder: '{"Content-Type": "application/json"}',
+      },
+    },
   },
 ];
 

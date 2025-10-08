@@ -50,6 +50,15 @@ export class FunctionExecutor {
         case "extract_urls":
           return this.executeExtractURLs(functionNode, input);
         
+        case "google_search":
+          return await this.executeGoogleSearch(functionNode, input);
+        
+        case "web_scrape":
+          return await this.executeWebScrape(functionNode, input);
+        
+        case "api_call":
+          return await this.executeAPICall(functionNode, input);
+        
         case "parse_json":
           return this.executeParseJSON(functionNode, input);
         
@@ -338,6 +347,153 @@ export class FunctionExecutor {
         success: false,
         outputs: {},
         error: "Invalid JSON",
+      };
+    }
+  }
+
+  // Google Search
+  private static async executeGoogleSearch(node: FunctionNode, input: string): Promise<FunctionExecutionResult> {
+    try {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-search`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ query: input }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Google Search failed: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const formattedResults = data.results
+        .map((r: any, i: number) => `${i + 1}. ${r.title}\n   ${r.link}\n   ${r.snippet}`)
+        .join("\n\n");
+
+      return {
+        success: true,
+        outputs: { output: formattedResults },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        outputs: { output: "" },
+        error: error instanceof Error ? error.message : "Google Search failed",
+      };
+    }
+  }
+
+  // Web Scraping (extracts URLs and scrapes each one)
+  private static async executeWebScrape(node: FunctionNode, input: string): Promise<FunctionExecutionResult> {
+    try {
+      // Extract URLs from input
+      const urlRegex = /(https?:\/\/[^\s]+)/g;
+      const urls = input.match(urlRegex) || [];
+
+      if (urls.length === 0) {
+        return {
+          success: false,
+          outputs: { output: "" },
+          error: "No URLs found in input",
+        };
+      }
+
+      // Scrape each URL
+      const scrapePromises = urls.map(async (url) => {
+        try {
+          const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/web-scrape`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ url }),
+          });
+
+          if (!response.ok) {
+            return `[Error scraping ${url}: ${response.statusText}]`;
+          }
+
+          const data = await response.json();
+          return `=== ${data.title || url} ===\n${data.content}\n`;
+        } catch (error) {
+          return `[Error scraping ${url}: ${error}]`;
+        }
+      });
+
+      const results = await Promise.all(scrapePromises);
+      const concatenatedOutput = results.join("\n\n---\n\n");
+
+      return {
+        success: true,
+        outputs: { output: concatenatedOutput },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        outputs: { output: "" },
+        error: error instanceof Error ? error.message : "Web scraping failed",
+      };
+    }
+  }
+
+  // API Call
+  private static async executeAPICall(node: FunctionNode, input: string): Promise<FunctionExecutionResult> {
+    try {
+      const url = node.config.url as string;
+      if (!url) {
+        throw new Error("API URL is required");
+      }
+
+      const method = (node.config.method as string) || "POST";
+      const headersConfig = node.config.headers as string;
+      
+      let headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+
+      if (headersConfig) {
+        try {
+          const parsedHeaders = JSON.parse(headersConfig);
+          headers = { ...headers, ...parsedHeaders };
+        } catch (e) {
+          console.warn("Invalid headers JSON, using defaults");
+        }
+      }
+
+      const fetchOptions: RequestInit = {
+        method,
+        headers,
+      };
+
+      if (method !== "GET" && method !== "HEAD") {
+        fetchOptions.body = input;
+      }
+
+      const response = await fetch(url, fetchOptions);
+      const contentType = response.headers.get("content-type");
+      
+      let responseData;
+      if (contentType?.includes("application/json")) {
+        responseData = await response.json();
+        responseData = JSON.stringify(responseData, null, 2);
+      } else {
+        responseData = await response.text();
+      }
+
+      if (!response.ok) {
+        throw new Error(`API call failed: ${response.status} ${response.statusText}\n${responseData}`);
+      }
+
+      return {
+        success: true,
+        outputs: { output: responseData },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        outputs: { output: "" },
+        error: error instanceof Error ? error.message : "API call failed",
       };
     }
   }

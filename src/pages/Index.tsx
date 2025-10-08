@@ -16,6 +16,7 @@ import type {
   ToolInstance,
   LogEntry 
 } from "@/types/workflow";
+import { FunctionExecutor } from "@/lib/functionExecutor";
 
 // Legacy export for backward compatibility
 export type { ToolInstance, LogEntry } from "@/types/workflow";
@@ -492,18 +493,53 @@ const Index = () => {
       }
     };
 
+    const executeFunction = async (nodeId: string, input: string, fromOutputPort?: string): Promise<Map<string, string>> => {
+      const node = allNodes.find((n) => n.id === nodeId);
+      if (!node || node.nodeType !== "function") return new Map();
+      
+      const functionNode = node as FunctionNode;
+
+      addLog("info", `Executing function: ${functionNode.name}`);
+      updateNode(nodeId, { status: "running" });
+      
+      try {
+        const result = await FunctionExecutor.execute(functionNode, input);
+        
+        if (!result.success) {
+          throw new Error(result.error || "Function execution failed");
+        }
+
+        // Store all outputs
+        const functionOutputs = new Map<string, string>();
+        Object.entries(result.outputs).forEach(([port, value]) => {
+          const outputKey = `${nodeId}:${port}`;
+          functionOutputs.set(outputKey, value);
+        });
+
+        // Set the primary output for display
+        const primaryOutput = result.outputs.output || Object.values(result.outputs)[0] || "";
+        updateNode(nodeId, { status: "complete", output: primaryOutput });
+        addLog("success", `✓ Function ${functionNode.name} completed`);
+        
+        return functionOutputs;
+      } catch (error) {
+        console.error("Function execution failed:", error);
+        updateNode(nodeId, { status: "error", output: `Error: ${error}` });
+        addLog("error", `✗ Function ${functionNode.name} failed: ${error}`);
+        return new Map();
+      }
+    };
+
     // Execute stages sequentially
     for (let i = 0; i < workflow.stages.length; i++) {
       const stage = workflow.stages[i];
       if (stage.nodes.length === 0) continue;
 
       const agentCount = stage.nodes.filter(n => n.nodeType === "agent").length;
-      addLog("info", `▸ Stage ${i + 1}: Processing ${agentCount} agent(s)`);
+      const functionCount = stage.nodes.filter(n => n.nodeType === "function").length;
+      addLog("info", `▸ Stage ${i + 1}: Processing ${agentCount} agent(s) and ${functionCount} function(s)`);
 
       const nodePromises = stage.nodes.map(async (node) => {
-        // Only execute agents for now (functions and tools in Phase 5)
-        if (node.nodeType !== "agent") return;
-
         // Get incoming connections for this node
         const incomingConnections = workflow.connections.filter(
           (c) => c.toNodeId === node.id
@@ -511,19 +547,36 @@ const Index = () => {
 
         let input = userInput || "No input provided";
         
-        // If there are incoming connections, wait for and concatenate their outputs
+        // If there are incoming connections, use the output from the specific port
         if (incomingConnections.length > 0) {
           const connectedOutputs = incomingConnections
-            .map((c) => outputs.get(c.fromNodeId))
+            .map((c) => {
+              // Check if there's a specific output port
+              if (c.fromOutputPort) {
+                return outputs.get(`${c.fromNodeId}:${c.fromOutputPort}`);
+              }
+              return outputs.get(c.fromNodeId);
+            })
             .filter(Boolean);
           
           if (connectedOutputs.length > 0) {
             input = connectedOutputs.join("\n\n---\n\n");
-            addLog("info", `Agent ${node.name} received input from ${incomingConnections.length} connection(s)`);
+            addLog("info", `${node.name} received input from ${incomingConnections.length} connection(s)`);
           }
         }
 
-        await executeAgent(node.id, input);
+        if (node.nodeType === "agent") {
+          await executeAgent(node.id, input);
+          outputs.set(node.id, allNodes.find(n => n.id === node.id)?.output || "");
+        } else if (node.nodeType === "function") {
+          const functionOutputs = await executeFunction(node.id, input);
+          // Merge function outputs into the main outputs map
+          functionOutputs.forEach((value, key) => {
+            outputs.set(key, value);
+          });
+          // Also set the primary output
+          outputs.set(node.id, allNodes.find(n => n.id === node.id)?.output || "");
+        }
       });
 
       // Wait for all nodes in this stage to complete before moving to next stage
