@@ -194,7 +194,7 @@ export const WorkflowCanvas = ({
   };
   return (
     <div className="h-full bg-gradient-to-br from-canvas-background to-muted/20 overflow-hidden relative" id={`workflow-canvas-${layoutId}`}>
-      <div className="h-full p-4 lg:p-6">
+      <div className="h-full p-2 lg:p-3">
         <Card className="h-full bg-canvas-background/50 backdrop-blur-sm border-2 border-dashed border-border/50 rounded-xl overflow-hidden flex flex-col relative">
           <div 
             className="flex-1 overflow-auto" 
@@ -254,7 +254,7 @@ export const WorkflowCanvas = ({
               </div>
             )}
             
-            <div className="p-6 space-y-6 min-h-full" style={{ position: 'relative', zIndex: 5 }}>
+            <div className="p-3 lg:p-4 space-y-4 min-h-full" style={{ position: 'relative', zIndex: 5 }}>
               {workflow.stages.length === 0 ? (
                 <div className="flex items-center justify-center h-full">
                   <div className="text-center space-y-3 max-w-md">
