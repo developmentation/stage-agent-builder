@@ -32,7 +32,7 @@ export const ResponsiveLayout = ({
   return (
     <>
       {/* Mobile Layout */}
-      <div className="lg:hidden flex flex-col flex-1 overflow-hidden">
+      <div className="xl:hidden flex flex-col flex-1 overflow-hidden">
         <MobileNav
           activeTab={mobileTab}
           onTabChange={setMobileTab}
@@ -73,7 +73,7 @@ export const ResponsiveLayout = ({
       </div>
 
       {/* Desktop Layout */}
-      <div className="hidden lg:flex flex-1 overflow-hidden">
+      <div className="hidden xl:flex flex-1 overflow-hidden">
         <div className="w-80 border-r border-border overflow-y-auto">
           {sidebar}
         </div>
