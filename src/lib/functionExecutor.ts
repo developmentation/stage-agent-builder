@@ -434,10 +434,18 @@ export class FunctionExecutor {
                   return value;
                 }).filter(v => v !== undefined && v !== null);
                 
+                // Convert objects to JSON strings, keep primitives as-is
+                const formattedResults = currentResult.map(item => {
+                  if (typeof item === 'object' && item !== null) {
+                    return JSON.stringify(item);
+                  }
+                  return String(item);
+                });
+                
                 // Return as comma-space delimited string
                 return {
                   success: true,
-                  outputs: { output: currentResult.join(', ') },
+                  outputs: { output: formattedResults.join(', ') },
                 };
               } else {
                 // No remaining path after wildcard - return the array as JSON
