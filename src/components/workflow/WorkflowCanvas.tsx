@@ -193,30 +193,28 @@ export const WorkflowCanvas = ({
     });
   };
   return (
-    <div className="h-full bg-gradient-to-br from-canvas-background to-muted/20 overflow-hidden relative" id={`workflow-canvas-${layoutId}`}>
-      <div className="h-full">
-        <Card className="h-full bg-canvas-background/50 backdrop-blur-sm border-2 border-dashed border-border/50 rounded-xl overflow-auto flex flex-col relative">
-          <div 
-            className="flex-1" 
-            id={`workflow-scroll-container-${layoutId}`}
-            style={{ position: 'relative' }}
-            onClick={(e) => {
-              // Only deselect if clicking directly on the container, not children
-              if (e.target === e.currentTarget) {
-                setSelectedConnection(null);
-              }
+    <div className="h-full bg-gradient-to-br from-canvas-background to-muted/20 p-2 lg:p-3" id={`workflow-canvas-${layoutId}`}>
+      <Card className="h-full bg-canvas-background/50 backdrop-blur-sm border-2 border-dashed border-border/50 rounded-xl overflow-hidden flex flex-col relative">
+        <div 
+          className="flex-1 overflow-auto" 
+          id={`workflow-scroll-container-${layoutId}`}
+          style={{ position: 'relative' }}
+          onClick={(e) => {
+            // Only deselect if clicking directly on the container, not children
+            if (e.target === e.currentTarget) {
+              setSelectedConnection(null);
+            }
+          }}
+        >
+          <svg 
+            key={forceUpdate}
+            className="absolute top-0 left-0 pointer-events-none" 
+            style={{ 
+              width: `${svgDimensions.width}px`, 
+              height: `${svgDimensions.height}px`, 
+              zIndex: 15
             }}
           >
-            <svg 
-              key={forceUpdate}
-              className="absolute top-0 left-0" 
-              style={{ 
-                width: `${svgDimensions.width}px`, 
-                height: `${svgDimensions.height}px`, 
-                zIndex: 15,
-                pointerEvents: 'none'
-              }}
-            >
               <defs>
                 <marker id={`arrowhead-${layoutId}`} markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto">
                   <polygon points="0 0, 10 3, 0 6" fill="hsl(var(--primary))" fillOpacity="0.3" />
@@ -227,72 +225,63 @@ export const WorkflowCanvas = ({
               </defs>
               {renderConnections()}
             </svg>
-            
-            {/* Mobile connection delete button */}
-            {selectedConnection && !connectingFrom && (
-              <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 lg:hidden">
-                <Card className="p-2 bg-card shadow-lg flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground px-2">Connection selected</span>
-                  <button
-                    onClick={() => {
-                      onDeleteConnection(selectedConnection);
-                      setSelectedConnection(null);
-                    }}
-                    className="px-3 py-1.5 bg-destructive text-destructive-foreground rounded-md text-sm font-medium hover:bg-destructive/90"
-                  >
-                    Delete
-                  </button>
-                  <button
-                    onClick={() => setSelectedConnection(null)}
-                    className="px-3 py-1.5 bg-muted text-foreground rounded-md text-sm font-medium hover:bg-muted/80"
-                  >
-                    Cancel
-                  </button>
-                </Card>
-              </div>
-            )}
-            
-            <div className="p-3 lg:p-4 space-y-4" style={{ position: 'relative', zIndex: 5 }}>
-              {workflow.stages.length === 0 ? (
-                <div className="flex items-center justify-center h-full">
-                  <div className="text-center space-y-3 max-w-md">
-                    <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary/10 to-secondary/10 flex items-center justify-center mx-auto">
-                      <svg className="w-10 h-10 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                      </svg>
-                    </div>
-                    <h3 className="text-xl font-semibold text-foreground">Start Building Your Workflow</h3>
-                    <p className="text-sm text-muted-foreground">
-                      Click "Add Stage" to create your first stage, then drag agents from the sidebar to build your workflow.
-                    </p>
-                  </div>
-                </div>
-              ) : (
-                workflow.stages.map((stage, index) => (
-                  <Stage
-                    key={stage.id}
-                    stage={stage}
-                    stageNumber={index + 1}
-                    stageIndex={index}
-                    selectedNode={selectedNode}
-                    connectingFrom={connectingFrom}
-                    layoutId={layoutId}
-                    onSelectNode={onSelectNode}
-                    onAddAgent={onAddAgent}
-                    onAddNode={onAddNode}
-                    onDeleteAgent={onDeleteAgent}
-                    onDeleteStage={onDeleteStage}
-                    onRenameStage={onRenameStage}
-                    onReorderStages={onReorderStages}
-                    onToggleMinimize={onToggleMinimize}
-                    onPortClick={handlePortClick}
-                  />
-                ))
-              )}
+          
+          {/* Mobile connection delete button */}
+          {selectedConnection && !connectingFrom && (
+            <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 lg:hidden">
+              <Card className="p-2 bg-card shadow-lg flex items-center gap-2">
+                <span className="text-xs text-muted-foreground px-2">Connection selected</span>
+                <button
+                  onClick={() => {
+                    onDeleteConnection(selectedConnection);
+                    setSelectedConnection(null);
+                  }}
+                  className="px-3 py-1.5 bg-destructive text-destructive-foreground rounded-md text-sm font-medium hover:bg-destructive/90"
+                >
+                  Delete
+                </button>
+                <button
+                  onClick={() => setSelectedConnection(null)}
+                  className="px-3 py-1.5 bg-muted text-foreground rounded-md text-sm font-medium hover:bg-muted/80"
+                >
+                  Cancel
+                </button>
+              </Card>
             </div>
+          )}
+          
+          <div className="p-3 lg:p-4 space-y-4 w-full" style={{ position: 'relative', zIndex: 5 }}>
+            {workflow.stages.length === 0 ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center space-y-3 max-w-md">
+...
+                </div>
+              </div>
+            ) : (
+              workflow.stages.map((stage, index) => (
+                <Stage
+                  key={stage.id}
+                  stage={stage}
+                  stageNumber={index + 1}
+                  stageIndex={index}
+                  selectedNode={selectedNode}
+                  connectingFrom={connectingFrom}
+                  layoutId={layoutId}
+                  onSelectNode={onSelectNode}
+                  onAddAgent={onAddAgent}
+                  onAddNode={onAddNode}
+                  onDeleteAgent={onDeleteAgent}
+                  onDeleteStage={onDeleteStage}
+                  onRenameStage={onRenameStage}
+                  onReorderStages={onReorderStages}
+                  onToggleMinimize={onToggleMinimize}
+                  onPortClick={handlePortClick}
+                />
+              ))
+            )}
           </div>
-        </Card>
-      </div>
+        </div>
+      </Card>
     </div>
   );
 };
