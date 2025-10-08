@@ -127,7 +127,7 @@ export const Stage = ({
 
   return (
     <Card
-      className="p-3 bg-card/80 backdrop-blur border-border/60 shadow-md transition-colors"
+      className="p-2 lg:p-3 bg-card/80 backdrop-blur border-border/60 shadow-md transition-colors"
       draggable
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
@@ -135,7 +135,7 @@ export const Stage = ({
       onDrop={handleDrop}
       style={{ position: 'relative', zIndex: 1 }}
     >
-      <div className="flex items-center gap-3 mb-4 pb-3 border-b border-border/60">
+      <div className="flex items-center gap-3 mb-2 pb-2 border-b border-border/60">
         <GripVertical className="h-5 w-5 text-muted-foreground cursor-move hidden lg:block" />
         <div className="flex-1">
           {isEditingName ? (
@@ -245,7 +245,7 @@ export const Stage = ({
         )}
       </div>
 
-      <div className="mt-4 pt-3 border-t border-border/60">
+      <div className="mt-2 pt-2 border-t border-border/60">
         <div className="flex items-center justify-between mb-2">
           <span className="text-xs text-muted-foreground">Progress</span>
           <span className="text-xs font-medium text-foreground">{Math.round(progress)}%</span>
