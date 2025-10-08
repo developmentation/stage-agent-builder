@@ -106,39 +106,85 @@ serve(async (req) => {
       }
     }
 
-    // Call Lovable AI
+    // Call AI - use direct Gemini API if GEMINI_API_KEY is set, otherwise use Lovable AI Gateway
     const finalPrompt = toolResults ? `${userPrompt}\n\nTool Results:${toolResults}` : userPrompt;
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
     
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: finalPrompt }
-        ],
-      }),
-    });
+    let response;
+    let output;
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
+    if (GEMINI_API_KEY) {
+      // Use Google's Gemini API directly
+      console.log("Using direct Gemini API with user's API key");
       
-      if (response.status === 429) {
-        throw new Error("Rate limits exceeded, please try again later.");
-      }
-      if (response.status === 402) {
-        throw new Error("Payment required, please add funds to your Lovable AI workspace.");
-      }
-      throw new Error(`AI gateway error: ${response.status}`);
-    }
+      response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                role: "user",
+                parts: [
+                  { text: `${systemPrompt}\n\n${finalPrompt}` }
+                ]
+              }
+            ],
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 8192,
+            }
+          }),
+        }
+      );
 
-    const data = await response.json();
-    const output = data.choices?.[0]?.message?.content || "No output generated";
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Gemini API error:", response.status, errorText);
+        throw new Error(`Gemini API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      output = data.candidates?.[0]?.content?.parts?.[0]?.text || "No output generated";
+      
+    } else {
+      // Fall back to Lovable AI Gateway
+      console.log("Using Lovable AI Gateway (no GEMINI_API_KEY found)");
+      
+      response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: finalPrompt }
+          ],
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("AI gateway error:", response.status, errorText);
+        
+        if (response.status === 429) {
+          throw new Error("Rate limits exceeded, please try again later.");
+        }
+        if (response.status === 402) {
+          throw new Error("Payment required, please add funds to your Lovable AI workspace.");
+        }
+        throw new Error(`AI gateway error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      output = data.choices?.[0]?.message?.content || "No output generated";
+    }
     
     console.log("Agent output generated:", output.substring(0, 100));
 
