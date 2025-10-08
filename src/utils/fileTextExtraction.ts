@@ -106,17 +106,28 @@ export const extractTextFromPdf = async (file: File): Promise<ExtractedContent> 
   });
 };
 
+// List of text-based file extensions that can be read as plain text
+const TEXT_EXTENSIONS = [
+  'txt', 'md', 'markdown', 'json', 'xml', 'csv', 'yaml', 'yml', 'toml',
+  'js', 'jsx', 'ts', 'tsx', 'vue', 'svelte', 'html', 'css', 'scss', 'sass', 'less',
+  'py', 'java', 'c', 'cpp', 'h', 'hpp', 'cs', 'go', 'rs', 'php', 'rb', 'swift', 'kt',
+  'sql', 'sh', 'bash', 'zsh', 'fish', 'ps1', 'bat', 'cmd',
+  'log', 'env', 'ini', 'conf', 'config', 'gitignore', 'dockerfile'
+];
+
 export const extractTextFromFile = async (file: File): Promise<ExtractedContent> => {
   const extension = file.name.toLowerCase().split('.').pop();
   
   switch (extension) {
-    case 'txt':
-      return extractTextFromTxt(file);
     case 'docx':
       return extractTextFromDocx(file);
     case 'pdf':
       return extractTextFromPdf(file);
     default:
+      // Check if it's a text-based file
+      if (extension && TEXT_EXTENSIONS.includes(extension)) {
+        return extractTextFromTxt(file);
+      }
       throw new Error(`Unsupported file type: ${extension}`);
   }
 };

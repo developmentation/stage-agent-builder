@@ -285,8 +285,8 @@ export const Sidebar = ({
 
         if (extension === 'xlsx' || extension === 'xls') {
           excelFiles.push(file);
-        } else if (['txt', 'docx', 'pdf'].includes(extension || '')) {
-          // Process text-based files immediately
+        } else {
+          // Try to process as text-based file (includes txt, docx, pdf, and all code/config files)
           try {
             const extracted = await extractTextFromFile(file);
             extractedContents.push(extracted);
@@ -296,18 +296,15 @@ export const Sidebar = ({
             });
           } catch (error) {
             console.error(`Failed to extract from ${file.name}:`, error);
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             toast({
               title: "Extraction failed",
-              description: `Failed to extract text from ${file.name}`,
+              description: errorMessage.includes('Unsupported file type') 
+                ? `Unsupported file type: ${file.name}`
+                : `Failed to extract text from ${file.name}`,
               variant: "destructive",
             });
           }
-        } else {
-          toast({
-            title: "Unsupported file",
-            description: `Unsupported file type: ${file.name}`,
-            variant: "destructive",
-          });
         }
       }
 
@@ -464,7 +461,7 @@ export const Sidebar = ({
                 <input
                   ref={fileUploadInputRef}
                   type="file"
-                  accept=".txt,.pdf,.docx,.xlsx,.xls"
+                  accept=".txt,.md,.json,.xml,.csv,.yaml,.yml,.toml,.js,.jsx,.ts,.tsx,.vue,.html,.css,.scss,.sass,.py,.java,.c,.cpp,.cs,.go,.php,.rb,.sql,.sh,.log,.pdf,.docx,.xlsx,.xls"
                   multiple
                   className="hidden"
                   onChange={handleFileUpload}
