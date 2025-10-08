@@ -114,7 +114,7 @@ const Index = () => {
         name: template.name,
         functionType: template.id,
         config: {},
-        outputPorts: template.outputPorts || ["output"],
+        outputPorts: template.outputs || ["output"], // Use 'outputs' from function definition
         status: "idle",
       } as FunctionNode;
     } else {
