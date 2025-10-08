@@ -1,47 +1,13 @@
 import { Card } from "@/components/ui/card";
 import { AgentNode } from "./AgentNode";
 import { FunctionNode } from "./FunctionNode";
-import { GripVertical, ChevronDown, Plus, Trash2, Search, FileText, Bot } from "lucide-react";
+import { GripVertical, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FunctionSelector } from "@/components/FunctionSelector";
+import { AgentSelector } from "@/components/AgentSelector";
 import { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import type { Stage as StageType } from "@/types/workflow";
-
-const agentTemplates = [
-  { 
-    id: "researcher", 
-    name: "Researcher", 
-    icon: Search, 
-    description: "Gather and analyze information",
-    defaultSystemPrompt: "You are a research assistant specializing in gathering and analyzing information from various sources.",
-    defaultUserPrompt: "Research the following topic and provide detailed findings: {input}"
-  },
-  { 
-    id: "summarizer", 
-    name: "Summarizer", 
-    icon: FileText, 
-    description: "Condense long content",
-    defaultSystemPrompt: "You are a summarization expert who creates concise, accurate summaries of long content.",
-    defaultUserPrompt: "Summarize the following content: {input}"
-  },
-  { 
-    id: "analyst", 
-    name: "Analyst", 
-    icon: Bot, 
-    description: "Deep data analysis",
-    defaultSystemPrompt: "You are a data analyst who provides insightful analysis and identifies patterns in data.",
-    defaultUserPrompt: "Analyze the following data and provide insights: {input}"
-  },
-];
 
 interface StageProps {
   stage: StageType;
@@ -193,41 +159,21 @@ export const Stage = ({
         </div>
         
         {/* Mobile Add Agent and Add Function Buttons */}
-        <Dialog open={isAddAgentOpen} onOpenChange={setIsAddAgentOpen}>
-          <DialogTrigger asChild>
-            <Button variant="outline" size="sm" className="xl:hidden gap-2">
-              <Plus className="h-4 w-4" />
-              Add Agent
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-sm">
-            <DialogHeader>
-              <DialogTitle>Add Agent to Stage {stageNumber}</DialogTitle>
-              <DialogDescription>
-                Select an agent to add to this stage
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-2 max-h-[60vh] overflow-y-auto">
-              {agentTemplates.map((template) => (
-                <Card
-                  key={template.id}
-                  className="p-3 cursor-pointer hover:shadow-md transition-shadow bg-gradient-to-br from-card to-muted/20"
-                  onClick={() => handleAddAgent(template)}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <template.icon className="h-5 w-5 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-sm font-medium text-foreground">{template.name}</h4>
-                      <p className="text-xs text-muted-foreground mt-0.5">{template.description}</p>
-                    </div>
-                  </div>
-                </Card>
-              ))}
-            </div>
-          </DialogContent>
-        </Dialog>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="xl:hidden gap-2"
+          onClick={() => setIsAddAgentOpen(true)}
+        >
+          <Plus className="h-4 w-4" />
+          Add Agent
+        </Button>
+
+        <AgentSelector
+          open={isAddAgentOpen}
+          onOpenChange={setIsAddAgentOpen}
+          onSelectAgent={handleAddAgent}
+        />
 
         <Button 
           variant="outline" 
