@@ -205,9 +205,15 @@ export class FunctionExecutor {
     
     memoryStore.get(memoryKey)!.push(entry);
     
+    // Get all memory entries and concatenate them
+    const allEntries = memoryStore.get(memoryKey)!;
+    const concatenatedOutput = allEntries
+      .map(e => e.output)
+      .join("\n\n---\n\n");
+    
     return {
       success: true,
-      outputs: { output: input },
+      outputs: { output: concatenatedOutput },
     };
   }
 
