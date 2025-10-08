@@ -716,7 +716,7 @@ const Index = () => {
         onRun={runWorkflow}
       />
       
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 flex flex-col min-h-0">
         <ResponsiveLayout
           sidebar={
             <Sidebar 
@@ -790,9 +790,9 @@ const Index = () => {
           onClear={clearWorkflow}
           hasSelectedAgent={!!selectedNodeData}
         />
+        
+        <OutputLog logs={logs} />
       </div>
-      
-      <OutputLog logs={logs} />
     </div>
   );
 };
