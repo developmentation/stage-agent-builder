@@ -246,11 +246,23 @@ export const FunctionNode = ({
         {node.outputPorts.length > 1 && (
           <div className="flex gap-1 text-[10px] text-muted-foreground">
             <span>Outputs:</span>
-            {node.outputPorts.map((port, idx) => (
-              <Badge key={port} variant="outline" className="text-[9px] px-1 py-0 h-4">
-                {port}
-              </Badge>
-            ))}
+            {node.outputPorts.map((port, idx) => {
+              // Check if this specific output port has content
+              const output = node.output as any;
+              const hasContent = output && typeof output === 'object' && output[port];
+              
+              return (
+                <Badge 
+                  key={port} 
+                  variant="outline" 
+                  className={`text-[9px] px-1 py-0 h-4 ${
+                    hasContent ? 'bg-green-500/20 border-green-500 text-green-700 dark:text-green-400' : ''
+                  }`}
+                >
+                  {port}
+                </Badge>
+              );
+            })}
           </div>
         )}
       </div>
