@@ -787,7 +787,7 @@ const Index = () => {
         onSave={saveWorkflow}
         onLoad={loadWorkflow}
         onClear={clearWorkflow}
-        hasSelectedAgent={!!selectedAgent}
+        hasSelectedAgent={!!selectedNodeData}
       />
       
       <OutputLog logs={logs} />

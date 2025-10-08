@@ -162,7 +162,7 @@ export const Stage = ({
         <Button 
           variant="outline" 
           size="sm" 
-          className="xl:hidden gap-2"
+          className="lg:hidden gap-2"
           onClick={() => setIsAddAgentOpen(true)}
         >
           <Plus className="h-4 w-4" />
@@ -178,7 +178,7 @@ export const Stage = ({
         <Button 
           variant="outline" 
           size="sm" 
-          className="xl:hidden gap-2"
+          className="lg:hidden gap-2"
           onClick={() => setIsAddFunctionOpen(true)}
         >
           <Plus className="h-4 w-4" />

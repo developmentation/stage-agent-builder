@@ -39,7 +39,7 @@ export const MobileNav = ({
   };
 
   return (
-    <div className="xl:hidden">
+    <div className="lg:hidden">
       {/* Top Action Bar */}
       <div className="h-14 border-b border-border bg-card flex items-center gap-2 px-4">
         <Button
