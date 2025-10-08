@@ -557,23 +557,35 @@ export class FunctionExecutor {
   // Web Scraping (extracts URLs and scrapes each one)
   private static async executeWebScrape(node: FunctionNode, input: string): Promise<FunctionExecutionResult> {
     try {
-      // Extract URLs from input
-      const urlRegex = /(https?:\/\/[^\s]+)/g;
-      const urls = input.match(urlRegex) || [];
+      // Extract and clean URLs from input
+      const urlRegex = /(https?:\/\/[^\s"'<>]+)/g;
+      const rawUrls = input.match(urlRegex) || [];
+      
+      // Clean URLs - remove trailing quotes, brackets, etc.
+      const urls = rawUrls.map(url => 
+        url.replace(/["')\]}>]+$/, '').trim()
+      ).filter(url => {
+        try {
+          new URL(url);
+          return true;
+        } catch {
+          return false;
+        }
+      });
 
       if (urls.length === 0) {
         return {
           success: false,
           outputs: { output: "" },
-          error: "No URLs found in input",
+          error: "No valid URLs found in input",
         };
       }
 
       // Get returnHtml config option
       const returnHtml = node.config.returnHtml === true;
 
-      // Scrape each URL
-      const scrapePromises = urls.map(async (url) => {
+      // Helper function to scrape a single URL
+      const scrapeUrl = async (url: string): Promise<{ url: string; result: string; success: boolean }> => {
         try {
           const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/web-scrape`, {
             method: "POST",
@@ -584,19 +596,79 @@ export class FunctionExecutor {
           });
 
           if (!response.ok) {
-            return `[Error scraping ${url}: ${response.statusText}]`;
+            return { 
+              url, 
+              result: `[Error scraping ${url}: ${response.statusText}]`, 
+              success: false 
+            };
           }
 
           const data = await response.json();
-          return `=== ${data.title || url} ===\n${data.content}\n`;
+          return { 
+            url, 
+            result: `=== ${data.title || url} ===\n${data.content}\n`, 
+            success: true 
+          };
         } catch (error) {
-          return `[Error scraping ${url}: ${error}]`;
+          return { 
+            url, 
+            result: `[Error scraping ${url}: ${error}]`, 
+            success: false 
+          };
         }
-      });
+      };
 
-      const results = await Promise.all(scrapePromises);
-      const concatenatedOutput = results.join("\n\n---\n\n");
+      // Helper function to retry failed URLs with exponential backoff
+      const retryWithBackoff = async (url: string, attempt: number = 1): Promise<string> => {
+        const maxRetries = 3;
+        const delay = Math.min(1000 * Math.pow(2, attempt - 1), 5000); // Cap at 5 seconds
+        
+        await new Promise(resolve => setTimeout(resolve, delay));
+        
+        const result = await scrapeUrl(url);
+        
+        if (!result.success && attempt < maxRetries) {
+          console.log(`Retry attempt ${attempt} for ${url} after ${delay}ms delay`);
+          return retryWithBackoff(url, attempt + 1);
+        }
+        
+        return result.result;
+      };
 
+      // Phase 1: Try all URLs concurrently (fast)
+      console.log(`Scraping ${urls.length} URLs concurrently...`);
+      const initialResults = await Promise.all(urls.map(url => scrapeUrl(url)));
+      
+      // Phase 2: Identify failures and retry with backoff
+      const failedUrls = initialResults
+        .filter(r => !r.success)
+        .map(r => r.url);
+      
+      if (failedUrls.length > 0) {
+        console.log(`${failedUrls.length} URLs failed, retrying with backoff...`);
+        
+        // Retry failed URLs sequentially with exponential backoff
+        const retryResults = await Promise.all(
+          failedUrls.map(url => retryWithBackoff(url))
+        );
+        
+        // Merge successful initial results with retry results
+        const successfulResults = initialResults
+          .filter(r => r.success)
+          .map(r => r.result);
+        
+        const allResults = [...successfulResults, ...retryResults];
+        const concatenatedOutput = allResults.join("\n\n---\n\n");
+        
+        return {
+          success: true,
+          outputs: { output: concatenatedOutput },
+        };
+      }
+      
+      // All succeeded on first try
+      const concatenatedOutput = initialResults.map(r => r.result).join("\n\n---\n\n");
+      
       return {
         success: true,
         outputs: { output: concatenatedOutput },
