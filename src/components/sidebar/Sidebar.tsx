@@ -251,13 +251,22 @@ export const Sidebar = ({
       setExcelQueue(prev => prev.slice(1)); // Remove processed file from queue
     } catch (error) {
       console.error(`Failed to parse Excel file ${nextFile.name}:`, error);
+      const errorMessage = error instanceof Error ? error.message : `Failed to parse ${nextFile.name}`;
       toast({
         title: "Excel parsing failed",
-        description: `Failed to parse ${nextFile.name}`,
+        description: errorMessage,
         variant: "destructive",
       });
       setExcelQueue(prev => prev.slice(1)); // Remove failed file and continue
-      processNextExcel(); // Try next file
+      
+      // Try next file after a short delay
+      setTimeout(() => {
+        if (excelQueue.length > 1) {
+          processNextExcel();
+        } else {
+          setIsProcessingFiles(false);
+        }
+      }, 500);
     }
   };
 
@@ -313,10 +322,27 @@ export const Sidebar = ({
       if (excelFiles.length > 0) {
         setExcelQueue(excelFiles);
         // Process the first Excel file
-        const firstExcel = excelFiles[0];
-        const excelData = await parseExcelFile(firstExcel);
-        setExcelData(excelData);
-        setExcelQueue(excelFiles.slice(1)); // Queue the rest
+        try {
+          const firstExcel = excelFiles[0];
+          const excelData = await parseExcelFile(firstExcel);
+          setExcelData(excelData);
+          setExcelQueue(excelFiles.slice(1)); // Queue the rest
+        } catch (error) {
+          console.error('Failed to parse first Excel file:', error);
+          const errorMessage = error instanceof Error ? error.message : 'Failed to parse Excel file';
+          toast({
+            title: "Excel parsing failed",
+            description: errorMessage,
+            variant: "destructive",
+          });
+          // Try to process the rest if there are more
+          if (excelFiles.length > 1) {
+            setExcelQueue(excelFiles.slice(1));
+            setTimeout(() => processNextExcel(), 500);
+          } else {
+            setIsProcessingFiles(false);
+          }
+        }
       } else {
         setIsProcessingFiles(false);
       }
