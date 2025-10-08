@@ -194,29 +194,21 @@ export const WorkflowCanvas = ({
   };
   return (
     <div className="h-full bg-gradient-to-br from-canvas-background to-muted/20 overflow-hidden relative" id={`workflow-canvas-${layoutId}`}>
-      <div className="h-full p-4 lg:p-6">
-        <Card className="h-full bg-canvas-background/50 backdrop-blur-sm border-2 border-dashed border-border/50 rounded-xl overflow-hidden flex flex-col relative">
-          <div 
-            className="flex-1 overflow-auto" 
-            id={`workflow-scroll-container-${layoutId}`}
-            style={{ position: 'relative' }}
-            onClick={(e) => {
-              // Only deselect if clicking directly on the container, not children
+      <div className="h-full p-2 lg:p-3">
+        <Card className="h-full bg-canvas-background/50 backdrop-blur-sm border-2 border-dashed border-border/50 rounded-xl overflow-auto flex flex-col relative" id={`workflow-scroll-container-${layoutId}`} onClick={(e) => {
               if (e.target === e.currentTarget) {
                 setSelectedConnection(null);
               }
-            }}
-          >
+            }}>
             <svg 
               key={forceUpdate}
-              className="absolute top-0 left-0" 
+              className="absolute top-0 left-0 pointer-events-none" 
               style={{ 
                 width: `${svgDimensions.width}px`, 
                 height: `${svgDimensions.height}px`, 
                 zIndex: 15,
                 minWidth: '100%',
-                minHeight: '100%',
-                pointerEvents: 'none'
+                minHeight: '100%'
               }}
             >
               <defs>
@@ -254,7 +246,7 @@ export const WorkflowCanvas = ({
               </div>
             )}
             
-            <div className="p-6 space-y-6 min-h-full" style={{ position: 'relative', zIndex: 5 }}>
+            <div className="p-2 lg:p-3 space-y-3 w-full" style={{ position: 'relative', zIndex: 5 }}>
               {workflow.stages.length === 0 ? (
                 <div className="flex items-center justify-center h-full">
                   <div className="text-center space-y-3 max-w-md">
@@ -292,7 +284,6 @@ export const WorkflowCanvas = ({
                 ))
               )}
             </div>
-          </div>
         </Card>
       </div>
     </div>
