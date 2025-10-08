@@ -3,7 +3,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Upload, Search, Cloud, Clock, Globe, FileText, Bot, Plus } from "lucide-react";
+import { Upload, Search, FileText, Bot, Plus } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useState } from "react";
 import {
@@ -13,6 +13,15 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { functionDefinitions } from "@/lib/functionDefinitions";
+import { Badge } from "@/components/ui/badge";
 
 const agentTemplates = [
   { 
@@ -43,29 +52,33 @@ const agentTemplates = [
 
 const tools = [
   { id: "google_search", name: "Google Search", icon: Search, description: "Search the web for information", requiresApiKey: true },
-  { id: "weather", name: "Weather", icon: Cloud, description: "Get current weather data", requiresApiKey: true },
-  { id: "time", name: "Time", icon: Clock, description: "Get current time/date", requiresApiKey: false },
-  { id: "api_call", name: "API Call", icon: Globe, description: "Call external APIs", requiresApiKey: true },
-  { id: "web_scrape", name: "Web Scrape", icon: Globe, description: "Extract web page content", requiresApiKey: false },
+  { id: "weather", name: "Weather", icon: Search, description: "Get current weather data", requiresApiKey: true },
+  { id: "time", name: "Time", icon: Search, description: "Get current time/date", requiresApiKey: false },
+  { id: "api_call", name: "API Call", icon: Search, description: "Call external APIs", requiresApiKey: true },
+  { id: "web_scrape", name: "Web Scrape", icon: Search, description: "Extract web page content", requiresApiKey: false },
 ];
 
 interface SidebarProps {
   onAddAgent: (stageId: string, agentTemplate: any) => void;
+  onAddNode: (stageId: string, template: any, nodeType: "agent" | "function" | "tool") => void;
   workflow: any;
   userInput: string;
   onUserInputChange: (value: string) => void;
 }
 
-export const Sidebar = ({ onAddAgent, workflow, userInput, onUserInputChange }: SidebarProps) => {
+export const Sidebar = ({ onAddAgent, onAddNode, workflow, userInput, onUserInputChange }: SidebarProps) => {
   const [customAgents, setCustomAgents] = useState<any[]>([]);
   const [isAddAgentOpen, setIsAddAgentOpen] = useState(false);
   const [newAgentName, setNewAgentName] = useState("");
   const [newAgentDescription, setNewAgentDescription] = useState("");
   const [newAgentSystemPrompt, setNewAgentSystemPrompt] = useState("");
   const [newAgentUserPrompt, setNewAgentUserPrompt] = useState("");
+  const [functionSearch, setFunctionSearch] = useState("");
+  const [functionCategory, setFunctionCategory] = useState<string>("all");
 
-  const handleDragStart = (e: React.DragEvent, template: any) => {
+  const handleDragStart = (e: React.DragEvent, template: any, nodeType: "agent" | "function" | "tool" = "agent") => {
     e.dataTransfer.setData("agentTemplate", JSON.stringify(template));
+    e.dataTransfer.setData("nodeType", nodeType);
   };
 
   const handleAddCustomAgent = () => {
@@ -89,6 +102,18 @@ export const Sidebar = ({ onAddAgent, workflow, userInput, onUserInputChange }: 
   };
 
   const allAgents = [...agentTemplates, ...customAgents];
+  
+  // Filter functions based on search and category
+  const filteredFunctions = functionDefinitions.filter((func) => {
+    const matchesSearch = func.name.toLowerCase().includes(functionSearch.toLowerCase()) ||
+                         func.description.toLowerCase().includes(functionSearch.toLowerCase());
+    const matchesCategory = functionCategory === "all" || func.category === functionCategory;
+    return matchesSearch && matchesCategory;
+  });
+  
+  // Get unique categories for filter
+  const categories = ["all", ...new Set(functionDefinitions.map(f => f.category))];
+  
   return (
     <div className="bg-card flex flex-col h-full">
       <ScrollArea className="flex-1">
@@ -202,27 +227,73 @@ export const Sidebar = ({ onAddAgent, workflow, userInput, onUserInputChange }: 
             </div>
           </div>
 
-          {/* Tools Library */}
+          {/* Tools Library - Now replaced with Functions */}
           <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-foreground">Tools</h3>
+            <h3 className="text-sm font-semibold text-foreground">Functions Library</h3>
+            
+            {/* Search and Filter */}
             <div className="space-y-2">
-              {tools.map((tool) => (
-                <Card 
-                  key={tool.id}
-                  className="p-2.5 cursor-move hover:shadow-md transition-shadow bg-gradient-to-br from-card to-secondary/5"
-                  draggable
-                >
-                  <div className="flex items-center gap-2.5">
-                    <div className="w-7 h-7 rounded-md bg-secondary/10 flex items-center justify-center flex-shrink-0">
-                      <tool.icon className="h-3.5 w-3.5 text-secondary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="text-xs font-medium text-foreground">{tool.name}</h4>
-                      <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-1">{tool.description}</p>
-                    </div>
-                  </div>
-                </Card>
-              ))}
+              <Input
+                placeholder="Search functions..."
+                value={functionSearch}
+                onChange={(e) => setFunctionSearch(e.target.value)}
+                className="h-8 text-xs"
+              />
+              <Select value={functionCategory} onValueChange={setFunctionCategory}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="All Categories" />
+                </SelectTrigger>
+                <SelectContent>
+                  {categories.map((cat) => (
+                    <SelectItem key={cat} value={cat} className="text-xs">
+                      {cat === "all" ? "All Categories" : cat.charAt(0).toUpperCase() + cat.slice(1)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            {/* Functions List */}
+            <div className="space-y-2 max-h-[400px] overflow-y-auto">
+              {filteredFunctions.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-4">
+                  No functions found
+                </p>
+              ) : (
+                filteredFunctions.map((func) => {
+                  const FuncIcon = func.icon;
+                  return (
+                    <Card 
+                      key={func.id}
+                      className="p-2.5 cursor-move hover:shadow-md transition-all bg-gradient-to-br from-card to-muted/10"
+                      draggable
+                      onDragStart={(e) => handleDragStart(e, func, "function")}
+                    >
+                      <div className="flex items-start gap-2.5">
+                        <div className={`w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0 ${func.color}`}>
+                          <FuncIcon className="h-3.5 w-3.5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <h4 className="text-xs font-medium text-foreground">{func.name}</h4>
+                            {func.outputs.length > 1 && (
+                              <Badge variant="outline" className="text-[9px] px-1 py-0 h-4">
+                                {func.outputs.length} outputs
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">
+                            {func.description}
+                          </p>
+                          <Badge variant="secondary" className="text-[9px] px-1 py-0 h-4 mt-1">
+                            {func.category}
+                          </Badge>
+                        </div>
+                      </div>
+                    </Card>
+                  );
+                })
+              )}
             </div>
           </div>
         </div>

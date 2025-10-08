@@ -554,7 +554,8 @@ const Index = () => {
       <ResponsiveLayout
         sidebar={
           <Sidebar 
-            onAddAgent={addAgent} 
+            onAddAgent={addAgent}
+            onAddNode={addNode}
             workflow={workflow} 
             userInput={userInput}
             onUserInputChange={setUserInput}
@@ -568,6 +569,7 @@ const Index = () => {
             layoutId="mobile"
             onSelectNode={setSelectedNode}
             onAddAgent={addAgent}
+            onAddNode={addNode}
             onDeleteAgent={deleteAgent}
             onDeleteStage={deleteStage}
             onRenameStage={renameStage}
@@ -586,6 +588,7 @@ const Index = () => {
             layoutId="desktop"
             onSelectNode={setSelectedNode}
             onAddAgent={addAgent}
+            onAddNode={addNode}
             onDeleteAgent={deleteAgent}
             onDeleteStage={deleteStage}
             onRenameStage={renameStage}

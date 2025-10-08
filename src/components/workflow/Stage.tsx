@@ -50,6 +50,7 @@ interface StageProps {
   layoutId?: string;
   onSelectNode: (id: string | null) => void;
   onAddAgent: (stageId: string, agentTemplate: any) => void;
+  onAddNode: (stageId: string, template: any, nodeType: "agent" | "function" | "tool") => void;
   onDeleteAgent: (agentId: string) => void;
   onDeleteStage: (stageId: string) => void;
   onRenameStage: (stageId: string, name: string) => void;
@@ -67,6 +68,7 @@ export const Stage = ({
   layoutId = 'default',
   onSelectNode,
   onAddAgent,
+  onAddNode,
   onDeleteAgent,
   onDeleteStage,
   onRenameStage,
@@ -105,11 +107,16 @@ export const Stage = ({
     e.currentTarget.classList.remove("border-primary");
     
     const templateData = e.dataTransfer.getData("agentTemplate");
+    const nodeType = e.dataTransfer.getData("nodeType") as "agent" | "function" | "tool";
     const draggedStageIndex = e.dataTransfer.getData("stageIndex");
     
     if (templateData) {
       const template = JSON.parse(templateData);
-      onAddAgent(stage.id, template);
+      if (nodeType && nodeType !== "agent") {
+        onAddNode(stage.id, template, nodeType);
+      } else {
+        onAddAgent(stage.id, template);
+      }
     } else if (draggedStageIndex) {
       const fromIndex = parseInt(draggedStageIndex);
       if (fromIndex !== stageIndex) {

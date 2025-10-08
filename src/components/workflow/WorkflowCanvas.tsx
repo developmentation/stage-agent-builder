@@ -10,6 +10,7 @@ interface WorkflowCanvasProps {
   layoutId?: string;
   onSelectNode: (id: string | null) => void;
   onAddAgent: (stageId: string, agentTemplate: any) => void;
+  onAddNode: (stageId: string, template: any, nodeType: "agent" | "function" | "tool") => void;
   onDeleteAgent: (agentId: string) => void;
   onDeleteStage: (stageId: string) => void;
   onRenameStage: (stageId: string, name: string) => void;
@@ -27,6 +28,7 @@ export const WorkflowCanvas = ({
   layoutId = 'default',
   onSelectNode,
   onAddAgent,
+  onAddNode,
   onDeleteAgent,
   onDeleteStage,
   onRenameStage,
@@ -266,6 +268,7 @@ export const WorkflowCanvas = ({
                     layoutId={layoutId}
                     onSelectNode={onSelectNode}
                     onAddAgent={onAddAgent}
+                    onAddNode={onAddNode}
                     onDeleteAgent={onDeleteAgent}
                     onDeleteStage={onDeleteStage}
                     onRenameStage={onRenameStage}
