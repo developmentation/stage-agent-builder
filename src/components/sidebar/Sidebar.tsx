@@ -3,9 +3,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Upload, Search, FileText, Bot, Plus } from "lucide-react";
+import { Upload, Search, FileText, Bot, Plus, Download, Trash2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -23,6 +23,7 @@ import {
 import { functionDefinitions } from "@/lib/functionDefinitions";
 import { Badge } from "@/components/ui/badge";
 import { LucideIcon } from "lucide-react";
+import { toast } from "sonner";
 
 // Icon mapping for serialization
 const iconMap: Record<string, LucideIcon> = {
@@ -96,6 +97,7 @@ export const Sidebar = ({
   const [newAgentUserPrompt, setNewAgentUserPrompt] = useState("");
   const [functionSearch, setFunctionSearch] = useState("");
   const [functionCategory, setFunctionCategory] = useState<string>("all");
+  const uploadInputRef = useRef<HTMLInputElement>(null);
 
   const handleDragStart = (e: React.DragEvent, template: any, nodeType: "agent" | "function" | "tool" = "agent") => {
     e.dataTransfer.setData("agentTemplate", JSON.stringify(template));
@@ -120,6 +122,94 @@ export const Sidebar = ({
     setNewAgentSystemPrompt("");
     setNewAgentUserPrompt("");
     setIsAddAgentOpen(false);
+  };
+
+  const handleDownloadAgent = (agent: any) => {
+    const agentData = {
+      ...agent,
+      type: "agent-definition",
+      exportedAt: new Date().toISOString(),
+    };
+    const json = JSON.stringify(agentData, null, 2);
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `${agent.name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}-agent.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast.success(`Agent "${agent.name}" downloaded`);
+  };
+
+  const handleDeleteAgent = (agentId: string) => {
+    const agent = customAgents.find(a => a.id === agentId);
+    if (agent) {
+      onCustomAgentsChange(customAgents.filter(a => a.id !== agentId));
+      toast.success(`Agent "${agent.name}" deleted`);
+    }
+  };
+
+  const handleUploadAgents = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    let importedCount = 0;
+    const newAgents: any[] = [];
+
+    Array.from(files).forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = JSON.parse(e.target?.result as string);
+          
+          // Check if it's a workflow file with customAgents
+          if (data.workflow && data.customAgents) {
+            // Import custom agents from workflow
+            data.customAgents.forEach((agent: any) => {
+              // Generate new ID to avoid conflicts
+              const importedAgent = {
+                ...agent,
+                id: `custom-${Date.now()}-${Math.random()}`,
+              };
+              newAgents.push(importedAgent);
+              importedCount++;
+            });
+          } 
+          // Check if it's a single agent definition
+          else if (data.type === "agent-definition" || data.defaultSystemPrompt) {
+            const importedAgent = {
+              id: data.id || `custom-${Date.now()}-${Math.random()}`,
+              name: data.name,
+              iconName: data.iconName || "Bot",
+              description: data.description || "Imported agent",
+              defaultSystemPrompt: data.defaultSystemPrompt,
+              defaultUserPrompt: data.defaultUserPrompt,
+            };
+            newAgents.push(importedAgent);
+            importedCount++;
+          } else {
+            toast.error(`Invalid agent file: ${file.name}`);
+          }
+
+          // Update state after processing all files
+          if (importedCount > 0 && newAgents.length > 0) {
+            onCustomAgentsChange([...customAgents, ...newAgents]);
+            toast.success(`Imported ${importedCount} agent(s)`);
+          }
+        } catch (error) {
+          console.error("Failed to import agent:", error);
+          toast.error(`Failed to import ${file.name}`);
+        }
+      };
+      reader.readAsText(file);
+    });
+
+    // Reset file input
+    if (uploadInputRef.current) {
+      uploadInputRef.current.value = "";
+    }
   };
 
   const allAgents = [...agentTemplates, ...customAgents];
@@ -184,69 +274,89 @@ export const Sidebar = ({
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold text-foreground">Agent Library</h3>
-              <Dialog open={isAddAgentOpen} onOpenChange={setIsAddAgentOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="max-w-md">
-                  <DialogHeader>
-                    <DialogTitle>Add Custom Agent</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4">
-                    <div>
-                      <Label htmlFor="agent-name">Agent Name</Label>
-                      <Input
-                        id="agent-name"
-                        placeholder="e.g., Code Reviewer"
-                        value={newAgentName}
-                        onChange={(e) => setNewAgentName(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="agent-desc">Description</Label>
-                      <Input
-                        id="agent-desc"
-                        placeholder="Brief description"
-                        value={newAgentDescription}
-                        onChange={(e) => setNewAgentDescription(e.target.value)}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="agent-system">System Prompt</Label>
-                      <Textarea
-                        id="agent-system"
-                        placeholder="You are a helpful assistant..."
-                        value={newAgentSystemPrompt}
-                        onChange={(e) => setNewAgentSystemPrompt(e.target.value)}
-                        className="min-h-[80px]"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="agent-user">User Prompt Template</Label>
-                      <Textarea
-                        id="agent-user"
-                        placeholder="Process: {input}"
-                        value={newAgentUserPrompt}
-                        onChange={(e) => setNewAgentUserPrompt(e.target.value)}
-                        className="min-h-[60px]"
-                      />
-                    </div>
-                    <Button onClick={handleAddCustomAgent} className="w-full">
-                      Add Agent
+              <div className="flex items-center gap-1">
+                <input
+                  ref={uploadInputRef}
+                  type="file"
+                  accept=".json"
+                  multiple
+                  className="hidden"
+                  onChange={handleUploadAgents}
+                />
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-7 w-7 p-0"
+                  onClick={() => uploadInputRef.current?.click()}
+                  title="Upload agent(s)"
+                >
+                  <Upload className="h-4 w-4" />
+                </Button>
+                <Dialog open={isAddAgentOpen} onOpenChange={setIsAddAgentOpen}>
+                  <DialogTrigger asChild>
+                    <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                      <Plus className="h-4 w-4" />
                     </Button>
-                  </div>
-                </DialogContent>
-              </Dialog>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Add Custom Agent</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                      <div>
+                        <Label htmlFor="agent-name">Agent Name</Label>
+                        <Input
+                          id="agent-name"
+                          placeholder="e.g., Code Reviewer"
+                          value={newAgentName}
+                          onChange={(e) => setNewAgentName(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="agent-desc">Description</Label>
+                        <Input
+                          id="agent-desc"
+                          placeholder="Brief description"
+                          value={newAgentDescription}
+                          onChange={(e) => setNewAgentDescription(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="agent-system">System Prompt</Label>
+                        <Textarea
+                          id="agent-system"
+                          placeholder="You are a helpful assistant..."
+                          value={newAgentSystemPrompt}
+                          onChange={(e) => setNewAgentSystemPrompt(e.target.value)}
+                          className="min-h-[80px]"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="agent-user">User Prompt Template</Label>
+                        <Textarea
+                          id="agent-user"
+                          placeholder="Process: {input}"
+                          value={newAgentUserPrompt}
+                          onChange={(e) => setNewAgentUserPrompt(e.target.value)}
+                          className="min-h-[60px]"
+                        />
+                      </div>
+                      <Button onClick={handleAddCustomAgent} className="w-full">
+                        Add Agent
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
             </div>
             <div className="space-y-2">
               {allAgents.map((agent) => {
                 const IconComponent = iconMap[agent.iconName] || Bot;
+                const isCustom = customAgents.some(a => a.id === agent.id);
                 return (
                   <Card 
                     key={agent.id}
-                    className="p-3 cursor-move hover:shadow-md transition-shadow bg-gradient-to-br from-card to-muted/20"
+                    className="p-3 cursor-move hover:shadow-md transition-shadow bg-gradient-to-br from-card to-muted/20 group"
                     draggable
                     onDragStart={(e) => handleDragStart(e, agent)}
                   >
@@ -257,6 +367,34 @@ export const Sidebar = ({
                       <div className="flex-1 min-w-0">
                         <h4 className="text-sm font-medium text-foreground">{agent.name}</h4>
                         <p className="text-xs text-muted-foreground mt-0.5">{agent.description}</p>
+                      </div>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDownloadAgent(agent);
+                          }}
+                          title="Download agent"
+                        >
+                          <Download className="h-3 w-3" />
+                        </Button>
+                        {isCustom && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteAgent(agent.id);
+                            }}
+                            title="Delete agent"
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </Card>

@@ -327,6 +327,7 @@ const Index = () => {
       setWorkflow({ stages: [], connections: [] });
       setUserInput("");
       setWorkflowName("Untitled Workflow");
+      setCustomAgents([]); // Reset to only default agents
       setSelectedNode(null);
       setConnectingFrom(null);
     }
