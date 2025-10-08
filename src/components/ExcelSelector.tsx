@@ -237,7 +237,7 @@ export function ExcelSelector({ excelData, onClose, onSelect }: ExcelSelectorPro
               </div>
 
               {/* Table Container with ScrollArea */}
-              <div className="flex-1 min-h-0">
+              <div className="flex-1 min-h-0 overflow-hidden">
                 {activeSheet.jsonData.length === 0 ? (
                   <div className="flex items-center justify-center h-full">
                     <div className="text-center">
@@ -246,40 +246,39 @@ export function ExcelSelector({ excelData, onClose, onSelect }: ExcelSelectorPro
                     </div>
                   </div>
                 ) : (
-                  <ScrollArea className="h-full">
-                    <div className="min-w-full">
-                      <table className="w-full border-collapse">
-                        {/* Header */}
-                        <thead className="sticky top-0 z-20 bg-muted">
-                          <tr>
-                            {/* Checkbox Column */}
-                            <th className="sticky left-0 z-30 w-12 px-4 py-3 bg-muted border-r">
-                              <Checkbox
-                                checked={isSheetFullySelected(activeSheetIndex)}
-                                onCheckedChange={() => toggleSheetSelection(activeSheetIndex)}
-                                className={isSheetPartiallySelected(activeSheetIndex) ? "data-[state=checked]:bg-primary/50" : ""}
-                              />
+                  <div className="h-full w-full overflow-auto">
+                    <table className="w-full border-collapse">
+                      {/* Header */}
+                      <thead className="sticky top-0 z-20 bg-muted">
+                        <tr>
+                          {/* Checkbox Column */}
+                          <th className="sticky left-0 z-30 w-12 px-4 py-3 bg-muted border-r">
+                            <Checkbox
+                              checked={isSheetFullySelected(activeSheetIndex)}
+                              onCheckedChange={() => toggleSheetSelection(activeSheetIndex)}
+                              className={isSheetPartiallySelected(activeSheetIndex) ? "data-[state=checked]:bg-primary/50" : ""}
+                            />
+                          </th>
+                          {/* Row Number Column */}
+                          <th className="sticky left-12 z-30 w-20 px-4 py-3 bg-muted border-r text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                            Row
+                          </th>
+                          {/* Data Headers */}
+                          {activeSheet.headers.map((header, headerIndex) => (
+                            <th
+                              key={`header-${headerIndex}`}
+                              className="min-w-[160px] px-4 py-3 bg-muted text-left text-xs font-medium text-muted-foreground uppercase tracking-wider border-r"
+                            >
+                              <div className="truncate" title={header}>
+                                {header}
+                              </div>
                             </th>
-                            {/* Row Number Column */}
-                            <th className="sticky left-12 z-30 w-20 px-4 py-3 bg-muted border-r text-left text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                              Row
-                            </th>
-                            {/* Data Headers */}
-                            {activeSheet.headers.map((header, headerIndex) => (
-                              <th
-                                key={`header-${headerIndex}`}
-                                className="min-w-[160px] px-4 py-3 bg-muted text-left text-xs font-medium text-muted-foreground uppercase tracking-wider border-r"
-                              >
-                                <div className="truncate" title={header}>
-                                  {header}
-                                </div>
-                              </th>
-                            ))}
-                          </tr>
-                        </thead>
-                        {/* Body */}
-                        <tbody className="bg-background divide-y">
-                          {activeSheet.jsonData.map((row, rowIndex) => (
+                          ))}
+                        </tr>
+                      </thead>
+                      {/* Body */}
+                      <tbody className="bg-background divide-y">
+                        {activeSheet.jsonData.map((row, rowIndex) => (
                             <tr
                               key={`row-${rowIndex}`}
                               className={`hover:bg-muted/50 cursor-pointer transition-colors ${
@@ -319,9 +318,8 @@ export function ExcelSelector({ excelData, onClose, onSelect }: ExcelSelectorPro
                         </tbody>
                       </table>
                     </div>
-                  </ScrollArea>
-                )}
-              </div>
+                  )}
+                </div>
             </div>
           )}
         </div>
