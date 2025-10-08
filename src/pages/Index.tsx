@@ -602,7 +602,9 @@ const Index = () => {
         properties={
           <PropertiesPanel
             selectedAgent={selectedAgent}
+            selectedNode={selectedNodeData}
             onUpdateAgent={updateAgent}
+            onUpdateNode={updateNode}
             onAddToolInstance={addToolInstance}
             onUpdateToolInstance={updateToolInstance}
             onRemoveToolInstance={removeToolInstance}
