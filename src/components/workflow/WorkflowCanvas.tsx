@@ -46,8 +46,9 @@ export const WorkflowCanvas = ({
   const updateSvgDimensions = () => {
     const scrollContainer = document.getElementById(`workflow-scroll-container-${layoutId}`);
     if (scrollContainer) {
+      // Use clientWidth to prevent horizontal expansion, scrollHeight for vertical scrolling
       setSvgDimensions({
-        width: Math.max(scrollContainer.scrollWidth, scrollContainer.clientWidth),
+        width: scrollContainer.clientWidth,
         height: Math.max(scrollContainer.scrollHeight, scrollContainer.clientHeight)
       });
     }
@@ -195,7 +196,7 @@ export const WorkflowCanvas = ({
   return (
     <div className="h-full bg-gradient-to-br from-canvas-background to-muted/20 overflow-hidden relative" id={`workflow-canvas-${layoutId}`}>
       <div className="h-full p-2 lg:p-3">
-        <Card className="h-full bg-canvas-background/50 backdrop-blur-sm border-2 border-dashed border-border/50 rounded-xl overflow-auto flex flex-col relative" id={`workflow-scroll-container-${layoutId}`} onClick={(e) => {
+        <Card className="h-full bg-canvas-background/50 backdrop-blur-sm border-2 border-dashed border-border/50 rounded-xl overflow-x-hidden overflow-y-auto flex flex-col relative" id={`workflow-scroll-container-${layoutId}`} onClick={(e) => {
               if (e.target === e.currentTarget) {
                 setSelectedConnection(null);
               }
@@ -246,7 +247,7 @@ export const WorkflowCanvas = ({
               </div>
             )}
             
-            <div className="p-2 lg:p-3 space-y-3 w-full" style={{ position: 'relative', zIndex: 5 }}>
+            <div className="p-2 lg:p-3 space-y-3 w-full max-w-full" style={{ position: 'relative', zIndex: 5 }}>
               {workflow.stages.length === 0 ? (
                 <div className="flex items-center justify-center h-full">
                   <div className="text-center space-y-3 max-w-md">
