@@ -134,7 +134,11 @@ export const extractTextFromFile = async (file: File): Promise<ExtractedContent>
 
 export const formatExtractedContent = (extractedFiles: ExtractedContent[]): string => {
   return extractedFiles.map(file => {
-    let content = `\n\n=== ${file.filename} ===\n\n${file.content}`;
+    // Skip boundary markers for JSON files to avoid parsing issues
+    const isJsonFile = file.filename.toLowerCase().endsWith('.json');
+    let content = isJsonFile 
+      ? `\n\n${file.content}` 
+      : `\n\n=== ${file.filename} ===\n\n${file.content}`;
     return content;
   }).join('\n\n');
 };
