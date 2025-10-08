@@ -27,6 +27,8 @@ const Index = () => {
   const [connectingFrom, setConnectingFrom] = useState<string | null>(null);
   const [connectingFromPort, setConnectingFromPort] = useState<string | undefined>(undefined);
   const [userInput, setUserInput] = useState<string>("");
+  const [workflowName, setWorkflowName] = useState<string>("Untitled Workflow");
+  const [customAgents, setCustomAgents] = useState<any[]>([]);
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [workflow, setWorkflow] = useState<Workflow>({
     stages: [],
@@ -271,12 +273,22 @@ const Index = () => {
   };
 
   const saveWorkflow = () => {
-    const json = JSON.stringify(workflow, null, 2);
+    const saveData = {
+      workflow,
+      userInput,
+      workflowName,
+      customAgents,
+    };
+    const json = JSON.stringify(saveData, null, 2);
     const blob = new Blob([json], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `workflow-${Date.now()}.json`;
+    // Use workflow name in filename if it's not the default
+    const filename = workflowName !== "Untitled Workflow" 
+      ? `${workflowName.replace(/[^a-z0-9]/gi, '_').toLowerCase()}-${Date.now()}.json`
+      : `workflow-${Date.now()}.json`;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -288,7 +300,19 @@ const Index = () => {
     reader.onload = (e) => {
       try {
         const loaded = JSON.parse(e.target?.result as string);
-        setWorkflow(loaded);
+        
+        // Handle both old format (just workflow) and new format (with metadata)
+        if (loaded.workflow) {
+          // New format with metadata
+          setWorkflow(loaded.workflow);
+          setUserInput(loaded.userInput || "");
+          setWorkflowName(loaded.workflowName || "Untitled Workflow");
+          setCustomAgents(loaded.customAgents || []);
+        } else {
+          // Old format (just the workflow object)
+          setWorkflow(loaded);
+        }
+        
         setSelectedNode(null);
       } catch (error) {
         console.error("Failed to load workflow:", error);
@@ -301,6 +325,8 @@ const Index = () => {
   const clearWorkflow = () => {
     if (confirm("Are you sure you want to clear the entire workflow?")) {
       setWorkflow({ stages: [], connections: [] });
+      setUserInput("");
+      setWorkflowName("Untitled Workflow");
       setSelectedNode(null);
       setConnectingFrom(null);
     }
@@ -697,6 +723,10 @@ const Index = () => {
             workflow={workflow} 
             userInput={userInput}
             onUserInputChange={setUserInput}
+            workflowName={workflowName}
+            onWorkflowNameChange={setWorkflowName}
+            customAgents={customAgents}
+            onCustomAgentsChange={setCustomAgents}
           />
         }
         mobileCanvas={

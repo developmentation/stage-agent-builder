@@ -64,10 +64,23 @@ interface SidebarProps {
   workflow: any;
   userInput: string;
   onUserInputChange: (value: string) => void;
+  workflowName: string;
+  onWorkflowNameChange: (value: string) => void;
+  customAgents: any[];
+  onCustomAgentsChange: (agents: any[]) => void;
 }
 
-export const Sidebar = ({ onAddAgent, onAddNode, workflow, userInput, onUserInputChange }: SidebarProps) => {
-  const [customAgents, setCustomAgents] = useState<any[]>([]);
+export const Sidebar = ({ 
+  onAddAgent, 
+  onAddNode, 
+  workflow, 
+  userInput, 
+  onUserInputChange,
+  workflowName,
+  onWorkflowNameChange,
+  customAgents,
+  onCustomAgentsChange
+}: SidebarProps) => {
   const [isAddAgentOpen, setIsAddAgentOpen] = useState(false);
   const [newAgentName, setNewAgentName] = useState("");
   const [newAgentDescription, setNewAgentDescription] = useState("");
@@ -93,7 +106,7 @@ export const Sidebar = ({ onAddAgent, onAddNode, workflow, userInput, onUserInpu
       defaultUserPrompt: newAgentUserPrompt || "Process the following: {input}",
     };
     
-    setCustomAgents([...customAgents, newAgent]);
+    onCustomAgentsChange([...customAgents, newAgent]);
     setNewAgentName("");
     setNewAgentDescription("");
     setNewAgentSystemPrompt("");
@@ -118,6 +131,20 @@ export const Sidebar = ({ onAddAgent, onAddNode, workflow, userInput, onUserInpu
     <div className="bg-card flex flex-col h-full">
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-6">
+          {/* Workflow Name */}
+          <div className="space-y-2">
+            <Label htmlFor="workflow-name" className="text-sm font-semibold text-foreground">
+              Workflow Name
+            </Label>
+            <Input
+              id="workflow-name"
+              placeholder="Untitled Workflow"
+              value={workflowName}
+              onChange={(e) => onWorkflowNameChange(e.target.value)}
+              className="h-9"
+            />
+          </div>
+
           {/* Input Section */}
           <div className="space-y-3">
             <h3 className="text-sm font-semibold text-foreground">Input / Trigger</h3>
