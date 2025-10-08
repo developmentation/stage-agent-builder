@@ -488,13 +488,13 @@ const Index = () => {
 
     const outputs = new Map<string, string>();
 
-    const executeAgent = async (nodeId: string, input: string) => {
+    const executeAgent = async (nodeId: string, input: string): Promise<string> => {
       const node = allNodes.find((n) => n.id === nodeId);
-      if (!node || node.nodeType !== "agent") return;
+      if (!node || node.nodeType !== "agent") return "";
       
       const agent = node as AgentNode;
 
-      addLog("info", `Starting agent: ${agent.name}`);
+      addLog("info", `Starting agent: ${agent.name} (input length: ${input.length} chars)`);
       updateNode(nodeId, { status: "running" });
       
       try {
@@ -545,23 +545,25 @@ const Index = () => {
           });
         }
         
-        outputs.set(nodeId, output);
         updateNode(nodeId, { status: "complete", output });
-        addLog("success", `✓ Agent ${agent.name} completed`);
+        addLog("success", `✓ Agent ${agent.name} completed (output length: ${output.length} chars)`);
+        return output;
       } catch (error) {
         console.error("Agent execution failed:", error);
-        updateNode(nodeId, { status: "error", output: `Error: ${error}` });
+        const errorMsg = `Error: ${error}`;
+        updateNode(nodeId, { status: "error", output: errorMsg });
         addLog("error", `✗ Agent ${agent.name} failed: ${error}`);
+        return errorMsg;
       }
     };
 
-    const executeFunction = async (nodeId: string, input: string, fromOutputPort?: string): Promise<Map<string, string>> => {
+    const executeFunction = async (nodeId: string, input: string, fromOutputPort?: string): Promise<{ outputs: Map<string, string>; primaryOutput: string }> => {
       const node = allNodes.find((n) => n.id === nodeId);
-      if (!node || node.nodeType !== "function") return new Map();
+      if (!node || node.nodeType !== "function") return { outputs: new Map(), primaryOutput: "" };
       
       const functionNode = node as FunctionNode;
 
-      addLog("info", `Executing function: ${functionNode.name}`);
+      addLog("info", `Executing function: ${functionNode.name} (input length: ${input.length} chars)`);
       updateNode(nodeId, { status: "running" });
       
       try {
@@ -571,26 +573,37 @@ const Index = () => {
           throw new Error(result.error || "Function execution failed");
         }
 
-        // Store all outputs
+        // Store all outputs with port-specific keys
         const functionOutputs = new Map<string, string>();
         Object.entries(result.outputs).forEach(([port, value]) => {
           const outputKey = `${nodeId}:${port}`;
           functionOutputs.set(outputKey, value);
         });
 
-        // Store the full outputs object for multi-output functions, or primary output for single-output
+        // Determine primary output as a string (for nodes that don't specify a port)
+        let primaryOutput: string;
+        if (Object.keys(result.outputs).length > 1) {
+          // Multi-output function: concatenate all non-empty outputs
+          primaryOutput = Object.values(result.outputs).filter(v => v).join("\n\n---\n\n");
+        } else {
+          // Single-output function: use the single output value
+          primaryOutput = result.outputs.output || Object.values(result.outputs)[0] || "";
+        }
+
+        // Store the full outputs object for display purposes, or primary output for single-output
         const outputValue = Object.keys(result.outputs).length > 1 
           ? result.outputs 
-          : (result.outputs.output || Object.values(result.outputs)[0] || "");
+          : primaryOutput;
         updateNode(nodeId, { status: "complete", output: outputValue as any });
-        addLog("success", `✓ Function ${functionNode.name} completed`);
+        addLog("success", `✓ Function ${functionNode.name} completed (output length: ${primaryOutput.length} chars)`);
         
-        return functionOutputs;
+        return { outputs: functionOutputs, primaryOutput };
       } catch (error) {
         console.error("Function execution failed:", error);
-        updateNode(nodeId, { status: "error", output: `Error: ${error}` });
+        const errorMsg = `Error: ${error}`;
+        updateNode(nodeId, { status: "error", output: errorMsg });
         addLog("error", `✗ Function ${functionNode.name} failed: ${error}`);
-        return new Map();
+        return { outputs: new Map(), primaryOutput: errorMsg };
       }
     };
 
@@ -617,29 +630,37 @@ const Index = () => {
             .map((c) => {
               // Check if there's a specific output port
               if (c.fromOutputPort) {
-                return outputs.get(`${c.fromNodeId}:${c.fromOutputPort}`);
+                const portOutput = outputs.get(`${c.fromNodeId}:${c.fromOutputPort}`);
+                return portOutput;
               }
-              return outputs.get(c.fromNodeId);
+              // Get the primary output for the node
+              const nodeOutput = outputs.get(c.fromNodeId);
+              // Handle case where output might be an object (shouldn't happen with fixed code, but defensive)
+              if (typeof nodeOutput === "object") {
+                console.warn(`Warning: Node ${c.fromNodeId} output is an object, concatenating values`);
+                return Object.values(nodeOutput).filter(v => v).join("\n\n---\n\n");
+              }
+              return nodeOutput;
             })
             .filter(Boolean);
           
           if (connectedOutputs.length > 0) {
             input = connectedOutputs.join("\n\n---\n\n");
-            addLog("info", `${node.name} received input from ${incomingConnections.length} connection(s)`);
+            addLog("info", `${node.name} received input from ${incomingConnections.length} connection(s) (${input.length} chars)`);
           }
         }
 
         if (node.nodeType === "agent") {
-          await executeAgent(node.id, input);
-          outputs.set(node.id, allNodes.find(n => n.id === node.id)?.output || "");
+          const output = await executeAgent(node.id, input);
+          outputs.set(node.id, output);
         } else if (node.nodeType === "function") {
-          const functionOutputs = await executeFunction(node.id, input);
-          // Merge function outputs into the main outputs map
+          const { outputs: functionOutputs, primaryOutput } = await executeFunction(node.id, input);
+          // Merge port-specific outputs into the main outputs map
           functionOutputs.forEach((value, key) => {
             outputs.set(key, value);
           });
-          // Also set the primary output
-          outputs.set(node.id, allNodes.find(n => n.id === node.id)?.output || "");
+          // Set the primary output (string) for connections that don't specify a port
+          outputs.set(node.id, primaryOutput);
         }
       });
 
