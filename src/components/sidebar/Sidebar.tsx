@@ -3,7 +3,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Upload, Search, FileText, Bot, Plus, Download, Trash2 } from "lucide-react";
+import { Upload, Search, FileText, Bot, Plus, Download, Trash2, X } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useState, useRef } from "react";
 import {
@@ -24,6 +24,9 @@ import { functionDefinitions } from "@/lib/functionDefinitions";
 import { Badge } from "@/components/ui/badge";
 import { LucideIcon } from "lucide-react";
 import { toast } from "sonner";
+import { extractTextFromFile, formatExtractedContent, ExtractedContent } from "@/utils/fileTextExtraction";
+import { parseExcelFile, ExcelData } from "@/utils/parseExcel";
+import { ExcelSelector } from "@/components/ExcelSelector";
 
 // Icon mapping for serialization
 const iconMap: Record<string, LucideIcon> = {
@@ -98,6 +101,9 @@ export const Sidebar = ({
   const [functionSearch, setFunctionSearch] = useState("");
   const [functionCategory, setFunctionCategory] = useState<string>("all");
   const uploadInputRef = useRef<HTMLInputElement>(null);
+  const fileUploadInputRef = useRef<HTMLInputElement>(null);
+  const [excelData, setExcelData] = useState<ExcelData | null>(null);
+  const [isProcessingFiles, setIsProcessingFiles] = useState(false);
 
   const handleDragStart = (e: React.DragEvent, template: any, nodeType: "agent" | "function" | "tool" = "agent") => {
     e.dataTransfer.setData("agentTemplate", JSON.stringify(template));
@@ -212,6 +218,84 @@ export const Sidebar = ({
     }
   };
 
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsProcessingFiles(true);
+    const extractedContents: ExtractedContent[] = [];
+    let hasExcelFile = false;
+
+    try {
+      for (const file of Array.from(files)) {
+        const extension = file.name.toLowerCase().split('.').pop();
+
+        if (extension === 'xlsx' || extension === 'xls') {
+          // Handle Excel files with modal
+          hasExcelFile = true;
+          const excelData = await parseExcelFile(file);
+          setExcelData(excelData);
+          break; // Only process one Excel file at a time
+        } else if (['txt', 'docx', 'pdf'].includes(extension || '')) {
+          // Handle text-based files
+          try {
+            const extracted = await extractTextFromFile(file);
+            extractedContents.push(extracted);
+            toast.success(`Extracted text from ${file.name}`);
+          } catch (error) {
+            console.error(`Failed to extract from ${file.name}:`, error);
+            toast.error(`Failed to extract text from ${file.name}`);
+          }
+        } else {
+          toast.error(`Unsupported file type: ${file.name}`);
+        }
+      }
+
+      // Add extracted content to input
+      if (extractedContents.length > 0) {
+        const formattedContent = formatExtractedContent(extractedContents);
+        const newInput = userInput ? `${userInput}${formattedContent}` : formattedContent.trim();
+        onUserInputChange(newInput);
+      }
+    } catch (error) {
+      console.error("File processing error:", error);
+      toast.error("Failed to process files");
+    } finally {
+      if (!hasExcelFile) {
+        setIsProcessingFiles(false);
+      }
+      // Reset file input
+      if (fileUploadInputRef.current) {
+        fileUploadInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleExcelSelect = (selectedData: {
+    fileName: string;
+    selectedData: any[];
+    formattedContent: string;
+    totalRows: number;
+  }) => {
+    const newInput = userInput 
+      ? `${userInput}${selectedData.formattedContent}` 
+      : selectedData.formattedContent.trim();
+    onUserInputChange(newInput);
+    toast.success(`Added ${selectedData.totalRows} rows from ${selectedData.fileName}`);
+    setExcelData(null);
+    setIsProcessingFiles(false);
+  };
+
+  const handleExcelClose = () => {
+    setExcelData(null);
+    setIsProcessingFiles(false);
+  };
+
+  const handleClearInput = () => {
+    onUserInputChange("");
+    toast.success("Input cleared");
+  };
+
   const allAgents = [...agentTemplates, ...customAgents];
   
   // Filter functions based on search and category
@@ -254,17 +338,33 @@ export const Sidebar = ({
                 onChange={(e) => onUserInputChange(e.target.value)}
               />
               <div className="flex gap-2 mt-3">
-                <Button size="sm" variant="outline" className="flex-1 gap-2">
+                <input
+                  ref={fileUploadInputRef}
+                  type="file"
+                  accept=".txt,.pdf,.docx,.xlsx,.xls"
+                  multiple
+                  className="hidden"
+                  onChange={handleFileUpload}
+                />
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="flex-1 gap-2"
+                  onClick={() => fileUploadInputRef.current?.click()}
+                  disabled={isProcessingFiles}
+                >
                   <Upload className="h-3.5 w-3.5" />
-                  PDF
+                  {isProcessingFiles ? "Processing..." : "Upload Files"}
                 </Button>
-                <Button size="sm" variant="outline" className="flex-1 gap-2">
-                  <Upload className="h-3.5 w-3.5" />
-                  Excel
-                </Button>
-                <Button size="sm" variant="outline" className="flex-1 gap-2">
-                  <Upload className="h-3.5 w-3.5" />
-                  Text
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  className="flex-1 gap-2"
+                  onClick={handleClearInput}
+                  disabled={!userInput}
+                >
+                  <X className="h-3.5 w-3.5" />
+                  Clear
                 </Button>
               </div>
             </Card>
@@ -474,6 +574,15 @@ export const Sidebar = ({
           </div>
         </div>
       </ScrollArea>
+      
+      {/* Excel Selector Modal */}
+      {excelData && (
+        <ExcelSelector
+          excelData={excelData}
+          onClose={handleExcelClose}
+          onSelect={handleExcelSelect}
+        />
+      )}
     </div>
   );
 };
