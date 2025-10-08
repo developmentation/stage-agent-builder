@@ -94,7 +94,7 @@ serve(async (req) => {
   }
 
   try {
-    const { url } = await req.json();
+    const { url, returnHtml } = await req.json();
 
     if (!url) {
       return new Response(
@@ -103,7 +103,7 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Scraping URL: ${url}`);
+    console.log(`Scraping URL: ${url}, returnHtml: ${returnHtml}`);
 
     // Use smart fetch with retry logic
     const response = await smartFetch(url);
@@ -117,31 +117,39 @@ serve(async (req) => {
 
     const html = await response.text();
 
-    // Simple HTML parsing - extract text content
-    // Remove script and style tags
-    let textContent = html
-      .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
-      .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "")
-      .replace(/<[^>]+>/g, " ") // Remove HTML tags
-      .replace(/\s+/g, " ") // Normalize whitespace
-      .trim();
-
-    // Limit to first 5000 characters
-    textContent = textContent.substring(0, 5000);
-
     // Extract title
     const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
     const title = titleMatch ? titleMatch[1].trim() : "No title found";
 
-    console.log(`Successfully scraped ${url}: ${textContent.length} characters`);
+    let content: string;
+    
+    if (returnHtml) {
+      // Return raw HTML
+      content = html;
+      console.log(`Successfully scraped ${url}: ${content.length} characters (HTML)`);
+    } else {
+      // Simple HTML parsing - extract text content
+      // Remove script and style tags
+      let textContent = html
+        .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, "")
+        .replace(/<style\b[^<]*(?:(?!<\/style>)<[^<]*)*<\/style>/gi, "")
+        .replace(/<[^>]+>/g, " ") // Remove HTML tags
+        .replace(/\s+/g, " ") // Normalize whitespace
+        .trim();
+
+      // Limit to first 5000 characters
+      textContent = textContent.substring(0, 5000);
+      content = textContent;
+      console.log(`Successfully scraped ${url}: ${content.length} characters (text)`);
+    }
 
     return new Response(
       JSON.stringify({
         success: true,
         url,
         title,
-        content: textContent,
-        contentLength: textContent.length,
+        content,
+        contentLength: content.length,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

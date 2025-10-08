@@ -424,6 +424,14 @@ export const functionDefinitions: FunctionDefinition[] = [
       description: "Text containing URLs to scrape",
     },
     outputs: ["output"],
+    configSchema: {
+      returnHtml: {
+        type: "boolean",
+        label: "Return HTML",
+        description: "Return raw HTML instead of extracted text",
+        default: false,
+      },
+    },
   },
   {
     id: "api_call",

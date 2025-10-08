@@ -569,6 +569,9 @@ export class FunctionExecutor {
         };
       }
 
+      // Get returnHtml config option
+      const returnHtml = node.config.returnHtml === true;
+
       // Scrape each URL
       const scrapePromises = urls.map(async (url) => {
         try {
@@ -577,7 +580,7 @@ export class FunctionExecutor {
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ url }),
+            body: JSON.stringify({ url, returnHtml }),
           });
 
           if (!response.ok) {
