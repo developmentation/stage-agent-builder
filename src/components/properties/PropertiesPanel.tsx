@@ -38,6 +38,7 @@ interface PropertiesPanelProps {
   onRemoveToolInstance: (agentId: string, toolInstanceId: string) => void;
   onDeselectAgent: () => void;
   onRunAgent: (agentId: string, customInput?: string) => void;
+  onRunFunction?: (functionId: string, customInput?: string) => void;
 }
 
 const availableTools = [
@@ -58,6 +59,7 @@ export const PropertiesPanel = ({
   onRemoveToolInstance,
   onDeselectAgent,
   onRunAgent,
+  onRunFunction,
 }: PropertiesPanelProps) => {
   const [toolDialogOpen, setToolDialogOpen] = useState(false);
   const [configDialogInstance, setConfigDialogInstance] = useState<string | null>(null);
@@ -292,6 +294,18 @@ export const PropertiesPanel = ({
           >
             <Play className="h-4 w-4 mr-2" />
             Run Agent
+          </Button>
+        )}
+
+        {activeNode.nodeType === "function" && onRunFunction && (
+          <Button 
+            onClick={() => onRunFunction(activeNode.id)}
+            className="w-full mt-3"
+            variant="default"
+            size="sm"
+          >
+            <Play className="h-4 w-4 mr-2" />
+            Run Function
           </Button>
         )}
       </div>

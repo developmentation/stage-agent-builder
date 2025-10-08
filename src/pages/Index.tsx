@@ -412,6 +412,54 @@ const Index = () => {
     }
   };
 
+  const runSingleFunction = async (nodeId: string, customInput?: string) => {
+    const allNodes = workflow.stages.flatMap((s) => s.nodes);
+    const node = allNodes.find((n) => n.id === nodeId);
+    if (!node || node.nodeType !== "function") return;
+    
+    const functionNode = node as FunctionNode;
+
+    addLog("info", `Executing function: ${functionNode.name}`);
+    updateNode(nodeId, { status: "running" });
+    
+    try {
+      // Get input from connected nodes or use user's initial input
+      const incomingConnections = workflow.connections.filter(
+        (c) => c.toNodeId === nodeId
+      );
+      
+      let input = userInput || "No input provided";
+      if (incomingConnections.length > 0) {
+        const outputs = incomingConnections
+          .map((c) => {
+            const fromNode = allNodes.find((n) => n.id === c.fromNodeId);
+            return fromNode?.output || "";
+          })
+          .filter(Boolean);
+        
+        if (outputs.length > 0) {
+          input = outputs.join("\n\n---\n\n");
+          addLog("info", `Function ${functionNode.name} received input from ${incomingConnections.length} connection(s)`);
+        }
+      }
+      
+      const result = await FunctionExecutor.execute(functionNode, input);
+      
+      if (!result.success) {
+        throw new Error(result.error || "Function execution failed");
+      }
+
+      // Set the primary output for display
+      const primaryOutput = result.outputs.output || Object.values(result.outputs)[0] || "";
+      updateNode(nodeId, { status: "complete", output: primaryOutput });
+      addLog("success", `✓ Function ${functionNode.name} completed`);
+    } catch (error) {
+      console.error("Function execution failed:", error);
+      updateNode(nodeId, { status: "error", output: `Error: ${error}` });
+      addLog("error", `✗ Function ${functionNode.name} failed: ${error}`);
+    }
+  };
+
   const runWorkflow = async () => {
     const allNodes = workflow.stages.flatMap((s) => s.nodes);
     
@@ -663,6 +711,7 @@ const Index = () => {
             onRemoveToolInstance={removeToolInstance}
             onDeselectAgent={() => setSelectedNode(null)}
             onRunAgent={runSingleAgent}
+            onRunFunction={runSingleFunction}
           />
         }
         onAddStage={addStage}
