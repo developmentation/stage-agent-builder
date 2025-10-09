@@ -31,21 +31,41 @@ serve(async (req) => {
 
     console.log("Performing Google search for:", query);
 
-    // Using Google Custom Search API
-    const url = `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${searchEngineId}&q=${encodeURIComponent(query)}`;
+    // Fetch first 10 results
+    const url1 = `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${searchEngineId}&q=${encodeURIComponent(query)}&start=1&num=10`;
+    console.log("Fetching results 1-10");
     
-    const response = await fetch(url);
-    const data = await response.json();
+    const response1 = await fetch(url1);
+    const data1 = await response1.json();
     
-    if (!response.ok) {
-      throw new Error(data.error?.message || "Google Search API error");
+    if (!response1.ok) {
+      throw new Error(data1.error?.message || "Google Search API error");
     }
 
-    const results = data.items?.slice(0, 5).map((item: any) => ({
+    // Fetch next 10 results (pagination)
+    const url2 = `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${searchEngineId}&q=${encodeURIComponent(query)}&start=11&num=10`;
+    console.log("Fetching results 11-20");
+    
+    const response2 = await fetch(url2);
+    const data2 = await response2.json();
+    
+    if (!response2.ok) {
+      console.warn("Error fetching second page:", data2.error?.message);
+    }
+
+    // Combine results from both pages
+    const allItems = [
+      ...(data1.items || []),
+      ...(data2.items || [])
+    ];
+
+    const results = allItems.map((item: any) => ({
       title: item.title,
-      link: item.link,
-      snippet: item.snippet,
-    })) || [];
+      url: item.link,
+      description: item.snippet,
+    }));
+
+    console.log(`Returning ${results.length} search results`);
 
     return new Response(JSON.stringify({ results }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
