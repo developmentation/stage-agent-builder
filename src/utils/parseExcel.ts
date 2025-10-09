@@ -31,37 +31,49 @@ export const parseExcelFile = async (file: File): Promise<ExcelData> => {
       const sheetName = worksheet.name;
       const jsonData: Record<string, any>[] = [];
       let headers: string[] = [];
+      const allRows: Array<{ rowNumber: number; values: any[] }> = [];
 
+      // First pass: collect all rows and find max column count
+      let maxColumns = 0;
       worksheet.eachRow((row, rowNumber) => {
-        if (rowNumber === 1) {
-          // First row is headers - extract values from potential formula cells
-          const rawHeaders = row.values as any[];
-          headers = rawHeaders.slice(1).map(value => {
-            // Handle formula cells in headers
-            if (value && typeof value === 'object' && 'result' in value) {
-              return String(value.result || '');
-            }
-            return String(value || '');
-          });
-        } else {
-          // Data rows
-          const rowData: Record<string, any> = {};
-          const values = row.values as any[];
+        const values = (row.values as any[]).slice(1); // Remove first empty element
+        maxColumns = Math.max(maxColumns, values.length);
+        allRows.push({ rowNumber, values });
+      });
+
+      // Extract headers from first row or generate them
+      if (allRows.length > 0 && allRows[0].rowNumber === 1) {
+        const firstRowValues = allRows[0].values;
+        headers = Array.from({ length: maxColumns }, (_, i) => {
+          const value = firstRowValues[i];
+          // Handle formula cells in headers
+          if (value && typeof value === 'object' && 'result' in value) {
+            return String(value.result || `Column ${i + 1}`);
+          }
+          return value ? String(value) : `Column ${i + 1}`;
+        });
+      } else {
+        // No header row, generate generic headers
+        headers = Array.from({ length: maxColumns }, (_, i) => `Column ${i + 1}`);
+      }
+
+      // Second pass: build JSON data
+      allRows.forEach(({ rowNumber, values }) => {
+        if (rowNumber === 1) return; // Skip header row
+        
+        const rowData: Record<string, any> = {};
+        headers.forEach((header, index) => {
+          const cellValue = values[index];
           
-          headers.forEach((header, index) => {
-            // index + 1 because ExcelJS array starts with empty element
-            const cellValue = values[index + 1];
-            
-            // Handle Excel formula cells - extract the result value
-            if (cellValue && typeof cellValue === 'object' && 'result' in cellValue) {
-              rowData[header] = cellValue.result !== undefined ? cellValue.result : null;
-            } else {
-              rowData[header] = cellValue !== undefined ? cellValue : null;
-            }
-          });
-          
-          jsonData.push(rowData);
-        }
+          // Handle Excel formula cells - extract the result value
+          if (cellValue && typeof cellValue === 'object' && 'result' in cellValue) {
+            rowData[header] = cellValue.result !== undefined ? cellValue.result : null;
+          } else {
+            rowData[header] = cellValue !== undefined ? cellValue : null;
+          }
+        });
+        
+        jsonData.push(rowData);
       });
 
       if (jsonData.length > 0) {
