@@ -360,7 +360,7 @@ export const PropertiesPanel = ({
 
           {/* View/Edit Content Dialog */}
           <Dialog open={isViewContentOpen} onOpenChange={setIsViewContentOpen}>
-            <DialogContent className="max-w-3xl max-h-[80vh]">
+            <DialogContent className="w-[90vw] h-[90vh] max-w-none">
               <DialogHeader>
                 <DialogTitle>View/Edit Content</DialogTitle>
                 <DialogDescription>
@@ -368,7 +368,7 @@ export const PropertiesPanel = ({
                 </DialogDescription>
               </DialogHeader>
               <Textarea 
-                className="min-h-[calc(90vh-210px)] resize-none font-mono text-xs"
+                className="flex-1 resize-none font-mono text-xs"
                 value={editedContent}
                 onChange={(e) => setEditedContent(e.target.value)}
               />

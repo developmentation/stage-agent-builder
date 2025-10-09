@@ -386,6 +386,14 @@ const Index = () => {
         const outputs = incomingConnections
           .map((c) => {
             const fromNode = allNodes.find((n) => n.id === c.fromNodeId);
+            if (!fromNode) return "";
+            
+            // Special handling for Content function - get from config if not yet executed
+            if (fromNode.nodeType === "function" && (fromNode as FunctionNode).functionType === "content") {
+              const contentNode = fromNode as FunctionNode;
+              return contentNode.output || contentNode.config.content || "";
+            }
+            
             return fromNode?.output || "";
           })
           .filter(Boolean);
@@ -403,9 +411,9 @@ const Index = () => {
         });
       }
       
-      const userPrompt = agent.userPrompt
-        .replace("{input}", input)
-        .replace("{prompt}", userInput || "No input provided");
+        const userPrompt = agent.userPrompt
+          .replace(/{input}/g, input)
+          .replace(/{prompt}/g, userInput || "No input provided");
       
       // Convert tool instances to the format expected by the edge function
       const toolsPayload = agent.tools.map(t => ({
@@ -474,6 +482,14 @@ const Index = () => {
         const outputs = incomingConnections
           .map((c) => {
             const fromNode = allNodes.find((n) => n.id === c.fromNodeId);
+            if (!fromNode) return "";
+            
+            // Special handling for Content function - get from config if not yet executed
+            if (fromNode.nodeType === "function" && (fromNode as FunctionNode).functionType === "content") {
+              const contentNode = fromNode as FunctionNode;
+              return contentNode.output || contentNode.config.content || "";
+            }
+            
             return fromNode?.output || "";
           })
           .filter(Boolean);
@@ -536,8 +552,8 @@ const Index = () => {
         }
         
         const userPrompt = agent.userPrompt
-          .replace("{input}", input)
-          .replace("{prompt}", userInput || "No input provided");
+          .replace(/{input}/g, input)
+          .replace(/{prompt}/g, userInput || "No input provided");
         
         // Convert tool instances to the format expected by the edge function
         const toolsPayload = agent.tools.map(t => ({
