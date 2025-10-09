@@ -44,7 +44,7 @@ export const HelpModal = ({ open, onOpenChange }: HelpModalProps) => {
               </p>
               <ul className="text-sm text-muted-foreground space-y-2 list-disc list-inside">
                 <li><strong>Add Stage:</strong> Click the "Add Stage" button to create a new stage in your workflow</li>
-                <li><strong>Stage Order:</strong> Stages execute sequentially from left to right (Stage 1, then Stage 2, etc.)</li>
+                <li><strong>Stage Order:</strong> Stages execute sequentially from top to bottom (Stage 1, then Stage 2, etc.)</li>
                 <li><strong>Parallel Execution:</strong> All cards within the same stage run simultaneously</li>
               </ul>
             </section>
@@ -125,9 +125,9 @@ export const HelpModal = ({ open, onOpenChange }: HelpModalProps) => {
                 Click any card to view and edit its properties:
               </p>
               <ul className="text-sm text-muted-foreground space-y-2 list-disc list-inside">
-                <li><strong>Agents:</strong> Configure model, temperature, max tokens, system prompt, user prompt, and available tools</li>
-                <li><strong>Functions:</strong> Set required parameters (URLs, API endpoints, search queries, etc.)</li>
-                <li><strong>Output Preview:</strong> View the execution results after running the workflow</li>
+                <li><strong>Agents:</strong> Configure name, system prompt, and user prompt template</li>
+                <li><strong>Functions:</strong> Set required parameters based on the function type (URLs, search text, separators, etc.)</li>
+                <li><strong>Output Preview:</strong> View the execution results after running the workflow or individual agents/functions</li>
                 <li><strong>Real-time Updates:</strong> Changes are saved automatically as you type</li>
               </ul>
             </section>
@@ -166,15 +166,15 @@ export const HelpModal = ({ open, onOpenChange }: HelpModalProps) => {
 
             {/* Excel Integration */}
             <section>
-              <h3 className="text-lg font-semibold mb-2">Excel Batch Processing</h3>
+              <h3 className="text-lg font-semibold mb-2">Excel & File Upload</h3>
               <p className="text-sm text-muted-foreground mb-3">
-                Process multiple rows of data automatically:
+                Extract text from files and add them to your input:
               </p>
               <ul className="text-sm text-muted-foreground space-y-2 list-disc list-inside">
-                <li><strong>Add Excel Input:</strong> Drag the Excel component to Stage 1</li>
-                <li><strong>Upload File:</strong> Select your Excel file in the properties panel</li>
-                <li><strong>Select Column:</strong> Choose which column to use as input for your workflow</li>
-                <li><strong>Batch Execution:</strong> The workflow runs once for each row, using that row's cell value as input</li>
+                <li><strong>Upload Button:</strong> Click "Upload Files" in the Input/Trigger section to select files</li>
+                <li><strong>Supported Formats:</strong> Supports text files, PDFs, Word docs (.docx), Excel (.xlsx, .xls), code files, and more</li>
+                <li><strong>Excel Files:</strong> When uploading Excel files, a selector appears to choose specific sheets and rows</li>
+                <li><strong>Text Extraction:</strong> Extracted content is automatically added to the Input/Trigger field for use with {"{input}"} or {"{prompt}"}</li>
               </ul>
             </section>
 
