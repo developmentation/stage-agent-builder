@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { ScrollArea } from './ui/scroll-area';
 import { Checkbox } from './ui/checkbox';
-import { X, FileText } from 'lucide-react';
+import { Input } from './ui/input';
+import { X, FileText, Filter } from 'lucide-react';
 import { ExcelData, formatExcelDataForChat } from '@/utils/parseExcel';
 
 interface SelectedSheetData {
@@ -26,17 +27,82 @@ interface ExcelSelectorProps {
 export function ExcelSelector({ excelData, onClose, onSelect }: ExcelSelectorProps) {
   const [activeSheetIndex, setActiveSheetIndex] = useState(0);
   const [selectedRows, setSelectedRows] = useState<Record<number, Set<number>>>({});
+  const [showFilters, setShowFilters] = useState(false);
+  const [containsInput, setContainsInput] = useState('');
+  const [doesNotContainInput, setDoesNotContainInput] = useState('');
+  const [appliedContains, setAppliedContains] = useState<string[]>([]);
+  const [appliedDoesNotContain, setAppliedDoesNotContain] = useState<string[]>([]);
 
   const activeSheet = excelData.sheets[activeSheetIndex];
+
+  // Check if any filters are applied
+  const hasActiveFilters = appliedContains.length > 0 || appliedDoesNotContain.length > 0;
+
+  // Function to check if a row matches the filter criteria
+  const rowMatchesFilters = (row: Record<string, any>): boolean => {
+    const rowJSON = JSON.stringify(row).toLowerCase();
+    
+    // Check "Contains" filter - row must contain at least one of the values
+    if (appliedContains.length > 0) {
+      const containsMatch = appliedContains.some(value => 
+        rowJSON.includes(value.toLowerCase().trim())
+      );
+      if (!containsMatch) return false;
+    }
+    
+    // Check "Does Not Contain" filter - row must not contain any of the values
+    if (appliedDoesNotContain.length > 0) {
+      const doesNotContainMatch = appliedDoesNotContain.some(value => 
+        rowJSON.includes(value.toLowerCase().trim())
+      );
+      if (doesNotContainMatch) return false;
+    }
+    
+    return true;
+  };
+
+  // Get filtered data for the active sheet
+  const filteredActiveSheetData = useMemo(() => {
+    if (!hasActiveFilters) return activeSheet.jsonData;
+    return activeSheet.jsonData.filter(rowMatchesFilters);
+  }, [activeSheet, appliedContains, appliedDoesNotContain, hasActiveFilters]);
+
+  // Get filtered row indices for the active sheet
+  const filteredActiveSheetIndices = useMemo(() => {
+    if (!hasActiveFilters) return Array.from({ length: activeSheet.jsonData.length }, (_, i) => i);
+    return activeSheet.jsonData
+      .map((row, index) => ({ row, index }))
+      .filter(({ row }) => rowMatchesFilters(row))
+      .map(({ index }) => index);
+  }, [activeSheet, appliedContains, appliedDoesNotContain, hasActiveFilters]);
+
+  // Apply filters
+  const applyFilters = () => {
+    setAppliedContains(containsInput ? containsInput.split(',').map(v => v.trim()).filter(v => v) : []);
+    setAppliedDoesNotContain(doesNotContainInput ? doesNotContainInput.split(',').map(v => v.trim()).filter(v => v) : []);
+  };
+
+  // Clear filters
+  const clearFilters = () => {
+    setContainsInput('');
+    setDoesNotContainInput('');
+    setAppliedContains([]);
+    setAppliedDoesNotContain([]);
+  };
 
   const getSheetSelectionCount = (sheetIndex: number): number => {
     return selectedRows[sheetIndex]?.size || 0;
   };
 
+  const getFilteredSheetDataCount = (sheetIndex: number): number => {
+    if (!hasActiveFilters) return excelData.sheets[sheetIndex].jsonData.length;
+    return excelData.sheets[sheetIndex].jsonData.filter(rowMatchesFilters).length;
+  };
+
   const isSheetFullySelected = (sheetIndex: number): boolean => {
-    const sheet = excelData.sheets[sheetIndex];
+    const filteredCount = getFilteredSheetDataCount(sheetIndex);
     const selectionCount = getSheetSelectionCount(sheetIndex);
-    return selectionCount > 0 && selectionCount === sheet.jsonData.length;
+    return selectionCount > 0 && selectionCount === filteredCount;
   };
 
   const isSheetPartiallySelected = (sheetIndex: number): boolean => {
@@ -66,7 +132,6 @@ export function ExcelSelector({ excelData, onClose, onSelect }: ExcelSelectorPro
   };
 
   const toggleSheetSelection = (sheetIndex: number) => {
-    const sheet = excelData.sheets[sheetIndex];
     const isFullySelected = isSheetFullySelected(sheetIndex);
     
     setSelectedRows(prev => {
@@ -75,10 +140,20 @@ export function ExcelSelector({ excelData, onClose, onSelect }: ExcelSelectorPro
         // Deselect all
         newSelection[sheetIndex] = new Set();
       } else {
-        // Select all
-        newSelection[sheetIndex] = new Set(
-          Array.from({ length: sheet.jsonData.length }, (_, i) => i)
-        );
+        // Select all filtered rows
+        if (sheetIndex === activeSheetIndex) {
+          newSelection[sheetIndex] = new Set(filteredActiveSheetIndices);
+        } else {
+          // For non-active sheets, filter and select
+          const sheet = excelData.sheets[sheetIndex];
+          const filteredIndices = hasActiveFilters
+            ? sheet.jsonData
+                .map((row, index) => ({ row, index }))
+                .filter(({ row }) => rowMatchesFilters(row))
+                .map(({ index }) => index)
+            : Array.from({ length: sheet.jsonData.length }, (_, i) => i);
+          newSelection[sheetIndex] = new Set(filteredIndices);
+        }
       }
       return newSelection;
     });
@@ -87,9 +162,19 @@ export function ExcelSelector({ excelData, onClose, onSelect }: ExcelSelectorPro
   const selectFullWorkbook = () => {
     const newSelection: Record<number, Set<number>> = {};
     excelData.sheets.forEach((sheet, sheetIndex) => {
-      newSelection[sheetIndex] = new Set(
-        Array.from({ length: sheet.jsonData.length }, (_, i) => i)
-      );
+      if (hasActiveFilters) {
+        // Only select filtered rows
+        const filteredIndices = sheet.jsonData
+          .map((row, index) => ({ row, index }))
+          .filter(({ row }) => rowMatchesFilters(row))
+          .map(({ index }) => index);
+        newSelection[sheetIndex] = new Set(filteredIndices);
+      } else {
+        // Select all rows
+        newSelection[sheetIndex] = new Set(
+          Array.from({ length: sheet.jsonData.length }, (_, i) => i)
+        );
+      }
     });
     setSelectedRows(newSelection);
   };
@@ -163,7 +248,7 @@ export function ExcelSelector({ excelData, onClose, onSelect }: ExcelSelectorPro
               onClick={selectFullWorkbook}
               className="text-green-600 hover:text-green-700"
             >
-              Select Full Workbook
+              {hasActiveFilters ? 'Select Filtered Workbook' : 'Select Full Workbook'}
             </Button>
             <Button
               variant="ghost"
@@ -181,6 +266,51 @@ export function ExcelSelector({ excelData, onClose, onSelect }: ExcelSelectorPro
             </Button>
           </div>
         </div>
+
+        {/* Filter Section */}
+        {showFilters && (
+          <div className="flex-shrink-0 border-b bg-muted/30 px-6 py-4">
+            <div className="grid grid-cols-2 gap-4 mb-4">
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-2 block">
+                  Contains (comma separated)
+                </label>
+                <Input
+                  value={containsInput}
+                  onChange={(e) => setContainsInput(e.target.value)}
+                  placeholder="e.g. apple, orange"
+                  className="h-9"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-2 block">
+                  Does Not Contain (comma separated)
+                </label>
+                <Input
+                  value={doesNotContainInput}
+                  onChange={(e) => setDoesNotContainInput(e.target.value)}
+                  placeholder="e.g. banana, coconut"
+                  className="h-9"
+                />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button size="sm" onClick={applyFilters}>
+                Apply Filter
+              </Button>
+              <Button size="sm" variant="outline" onClick={clearFilters}>
+                Clear Filter
+              </Button>
+              {hasActiveFilters && (
+                <div className="flex items-center text-sm text-muted-foreground ml-2">
+                  <Badge variant="secondary" className="text-xs">
+                    Filters Active
+                  </Badge>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Content */}
         <div className="flex-1 flex flex-col min-h-0">
@@ -219,18 +349,26 @@ export function ExcelSelector({ excelData, onClose, onSelect }: ExcelSelectorPro
                   <div>
                     <h3 className="text-lg font-medium">{activeSheet.sheetName}</h3>
                     <p className="text-sm text-muted-foreground">
-                      {activeSheet.jsonData.length} rows • {activeSheet.headers.length} columns
+                      {hasActiveFilters ? `${filteredActiveSheetData.length} filtered rows` : `${activeSheet.jsonData.length} rows`} • {activeSheet.headers.length} columns
                     </p>
                   </div>
                   <div className="flex items-center gap-3">
                     <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setShowFilters(!showFilters)}
+                      className={showFilters ? 'bg-accent' : ''}
+                    >
+                      <Filter className="w-4 h-4" />
+                    </Button>
+                    <Button
                       variant={isSheetFullySelected(activeSheetIndex) ? "default" : "outline"}
                       onClick={() => toggleSheetSelection(activeSheetIndex)}
                     >
-                      {isSheetFullySelected(activeSheetIndex) ? 'Deselect All' : 'Select All'}
+                      {isSheetFullySelected(activeSheetIndex) ? 'Deselect All' : hasActiveFilters ? 'Select Filtered' : 'Select All'}
                     </Button>
                     <div className="text-sm text-muted-foreground">
-                      {getSheetSelectionCount(activeSheetIndex)} of {activeSheet.jsonData.length} selected
+                      {getSheetSelectionCount(activeSheetIndex)} of {hasActiveFilters ? filteredActiveSheetData.length : activeSheet.jsonData.length} selected
                     </div>
                   </div>
                 </div>
@@ -238,11 +376,13 @@ export function ExcelSelector({ excelData, onClose, onSelect }: ExcelSelectorPro
 
               {/* Table Container with ScrollArea */}
               <div className="flex-1 min-h-0">
-                {activeSheet.jsonData.length === 0 ? (
+                {filteredActiveSheetData.length === 0 ? (
                   <div className="flex items-center justify-center h-full">
                     <div className="text-center">
                       <FileText className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                      <p className="text-muted-foreground">No data in this sheet</p>
+                      <p className="text-muted-foreground">
+                        {hasActiveFilters ? 'No rows match the current filters' : 'No data in this sheet'}
+                      </p>
                     </div>
                   </div>
                 ) : (
@@ -279,7 +419,12 @@ export function ExcelSelector({ excelData, onClose, onSelect }: ExcelSelectorPro
                       </thead>
                       {/* Body */}
                       <tbody className="bg-background divide-y">
-                        {activeSheet.jsonData.map((row, rowIndex) => (
+                        {activeSheet.jsonData.map((row, rowIndex) => {
+                          // Skip rows that don't match filters
+                          if (hasActiveFilters && !filteredActiveSheetIndices.includes(rowIndex)) {
+                            return null;
+                          }
+                          return (
                             <tr
                               key={`row-${rowIndex}`}
                               className={`hover:bg-muted/50 cursor-pointer transition-colors ${
@@ -315,7 +460,8 @@ export function ExcelSelector({ excelData, onClose, onSelect }: ExcelSelectorPro
                                 </td>
                               ))}
                             </tr>
-                          ))}
+                          );
+                        })}
                         </tbody>
                       </table>
                     </div>
