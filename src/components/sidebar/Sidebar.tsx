@@ -575,8 +575,8 @@ export const Sidebar = ({
       
       {/* View/Edit Input Modal */}
       <Dialog open={isViewInputOpen} onOpenChange={setIsViewInputOpen}>
-        <DialogContent className="max-w-[90vw] max-h-[90vh] flex flex-col">
-          <DialogHeader>
+        <DialogContent className="w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh] flex flex-col p-6">
+          <DialogHeader className="pb-4">
             <DialogTitle>View / Edit Input</DialogTitle>
           </DialogHeader>
           <Tabs value={inputTab} onValueChange={setInputTab} className="flex-1 flex flex-col overflow-hidden">
@@ -590,7 +590,7 @@ export const Sidebar = ({
                 <Textarea 
                   value={editedInput} 
                   onChange={e => setEditedInput(e.target.value)} 
-                  className="w-full min-h-[60vh] resize-none" 
+                  className="min-h-[calc(90vh-270px)] font-mono text-xs resize-none w-full" 
                   placeholder="No input text..." 
                 />
               </ScrollArea>
@@ -605,7 +605,7 @@ export const Sidebar = ({
             </TabsContent>
           </Tabs>
           
-          <div className="flex justify-end gap-2 pt-4 border-t">
+          <div className="flex gap-2 justify-end pt-4 border-t">
             <Button variant="outline" onClick={() => {
               setIsViewInputOpen(false);
               setInputTab("edit");
