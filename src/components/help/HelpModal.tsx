@@ -108,8 +108,8 @@ export const HelpModal = ({ open, onOpenChange }: HelpModalProps) => {
                 Connect cards between stages to pass data through your workflow:
               </p>
               <ul className="text-sm text-muted-foreground space-y-2 list-disc list-inside">
-                <li><strong>Click Connection Point:</strong> Click the circular connection point on the right edge of a card</li>
-                <li><strong>Drag to Target:</strong> Drag the line to a card in the next stage and release</li>
+                <li><strong>Click Output:</strong> Click the circular connection point on the right edge of a source card</li>
+                <li><strong>Click Input:</strong> Click the connection point on the left edge of a target card in the next stage</li>
                 <li><strong>Data Flow:</strong> Connected cards pass their output as input to downstream cards</li>
                 <li><strong>Multiple Connections:</strong> A card can receive input from multiple sources (outputs are concatenated)</li>
                 <li><strong>Delete Links:</strong> Click on a connection line and press Delete to remove it</li>
