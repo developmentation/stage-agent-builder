@@ -20,6 +20,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import ReactMarkdown from "react-markdown";
+import {
   Table,
   TableBody,
   TableCell,
@@ -76,6 +83,7 @@ export const PropertiesPanel = ({
   const [isProcessingFiles, setIsProcessingFiles] = useState(false);
   const [isViewContentOpen, setIsViewContentOpen] = useState(false);
   const [editedContent, setEditedContent] = useState("");
+  const [outputTab, setOutputTab] = useState("edit");
 
   // Use selectedNode if provided, otherwise fall back to selectedAgent
   const activeNode = selectedNode || selectedAgent;
@@ -756,21 +764,40 @@ export const PropertiesPanel = ({
                         Manually edit the output from this {activeNode.nodeType}
                       </DialogDescription>
                     </DialogHeader>
-                    <div className="flex-1 overflow-hidden pb-4">
-                      <ScrollArea className="h-full">
-                        <Textarea
-                          value={editedOutput}
-                          onChange={(e) => setEditedOutput(e.target.value)}
-                          className="min-h-[calc(90vh-210px)] font-mono text-xs resize-none w-full"
-                          placeholder="Edit output..."
-                        />
-                      </ScrollArea>
-                    </div>
+                    <Tabs value={outputTab} onValueChange={setOutputTab} className="flex-1 flex flex-col overflow-hidden">
+                      <TabsList className="w-full justify-start mb-4">
+                        <TabsTrigger value="edit">Edit</TabsTrigger>
+                        <TabsTrigger value="view">View</TabsTrigger>
+                      </TabsList>
+                      
+                      <TabsContent value="edit" className="flex-1 overflow-hidden mt-0">
+                        <ScrollArea className="h-full">
+                          <Textarea
+                            value={editedOutput}
+                            onChange={(e) => setEditedOutput(e.target.value)}
+                            className="min-h-[calc(90vh-270px)] font-mono text-xs resize-none w-full"
+                            placeholder="Edit output..."
+                          />
+                        </ScrollArea>
+                      </TabsContent>
+                      
+                      <TabsContent value="view" className="flex-1 overflow-hidden mt-0">
+                        <ScrollArea className="h-full">
+                          <div className="prose prose-sm dark:prose-invert max-w-none p-4">
+                            <ReactMarkdown>{editedOutput}</ReactMarkdown>
+                          </div>
+                        </ScrollArea>
+                      </TabsContent>
+                    </Tabs>
+                    
                     <div className="flex gap-2 justify-end pt-4 border-t">
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setIsEditingOutput(false)}
+                        onClick={() => {
+                          setIsEditingOutput(false);
+                          setOutputTab("edit");
+                        }}
                       >
                         Cancel
                       </Button>
@@ -784,6 +811,7 @@ export const PropertiesPanel = ({
                             onUpdateNode(activeNode.id, { output: editedOutput });
                           }
                           setIsEditingOutput(false);
+                          setOutputTab("edit");
                         }}
                       >
                         <Save className="h-3 w-3 mr-1" />
