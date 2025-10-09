@@ -6,20 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Upload, Search, FileText, Bot, Plus, Download, Trash2, X, Eye } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useState, useRef } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { functionDefinitions } from "@/lib/functionDefinitions";
 import { Badge } from "@/components/ui/badge";
 import { LucideIcon } from "lucide-react";
@@ -32,44 +20,61 @@ import { ExcelSelector } from "@/components/ExcelSelector";
 const iconMap: Record<string, LucideIcon> = {
   Search,
   FileText,
-  Bot,
+  Bot
 };
-
-const agentTemplates = [
-  { 
-    id: "researcher", 
-    name: "Researcher", 
-    iconName: "Search",
-    description: "Gather and analyze information",
-    defaultSystemPrompt: "You are a research assistant specializing in gathering and analyzing information from various sources.",
-    defaultUserPrompt: "Research the following topic and provide detailed findings: {input}"
-  },
-  { 
-    id: "summarizer", 
-    name: "Summarizer", 
-    iconName: "FileText",
-    description: "Condense long content",
-    defaultSystemPrompt: "You are a summarization expert who creates concise, accurate summaries of long content.",
-    defaultUserPrompt: "Summarize the following content: {input}"
-  },
-  { 
-    id: "analyst", 
-    name: "Analyst", 
-    iconName: "Bot",
-    description: "Deep data analysis",
-    defaultSystemPrompt: "You are a data analyst who provides insightful analysis and identifies patterns in data.",
-    defaultUserPrompt: "Analyze the following data and provide insights: {input}"
-  },
-];
-
-const tools = [
-  { id: "google_search", name: "Google Search", icon: Search, description: "Search the web for information", requiresApiKey: true },
-  { id: "weather", name: "Weather", icon: Search, description: "Get current weather data", requiresApiKey: true },
-  { id: "time", name: "Time", icon: Search, description: "Get current time/date", requiresApiKey: false },
-  { id: "api_call", name: "API Call", icon: Search, description: "Call external APIs", requiresApiKey: true },
-  { id: "web_scrape", name: "Web Scrape", icon: Search, description: "Extract web page content", requiresApiKey: false },
-];
-
+const agentTemplates = [{
+  id: "researcher",
+  name: "Researcher",
+  iconName: "Search",
+  description: "Gather and analyze information",
+  defaultSystemPrompt: "You are a research assistant specializing in gathering and analyzing information from various sources.",
+  defaultUserPrompt: "Research the following topic and provide detailed findings: {input}"
+}, {
+  id: "summarizer",
+  name: "Summarizer",
+  iconName: "FileText",
+  description: "Condense long content",
+  defaultSystemPrompt: "You are a summarization expert who creates concise, accurate summaries of long content.",
+  defaultUserPrompt: "Summarize the following content: {input}"
+}, {
+  id: "analyst",
+  name: "Analyst",
+  iconName: "Bot",
+  description: "Deep data analysis",
+  defaultSystemPrompt: "You are a data analyst who provides insightful analysis and identifies patterns in data.",
+  defaultUserPrompt: "Analyze the following data and provide insights: {input}"
+}];
+const tools = [{
+  id: "google_search",
+  name: "Google Search",
+  icon: Search,
+  description: "Search the web for information",
+  requiresApiKey: true
+}, {
+  id: "weather",
+  name: "Weather",
+  icon: Search,
+  description: "Get current weather data",
+  requiresApiKey: true
+}, {
+  id: "time",
+  name: "Time",
+  icon: Search,
+  description: "Get current time/date",
+  requiresApiKey: false
+}, {
+  id: "api_call",
+  name: "API Call",
+  icon: Search,
+  description: "Call external APIs",
+  requiresApiKey: true
+}, {
+  id: "web_scrape",
+  name: "Web Scrape",
+  icon: Search,
+  description: "Extract web page content",
+  requiresApiKey: false
+}];
 interface SidebarProps {
   onAddAgent: (stageId: string, agentTemplate: any) => void;
   onAddNode: (stageId: string, template: any, nodeType: "agent" | "function" | "tool") => void;
@@ -81,12 +86,11 @@ interface SidebarProps {
   customAgents: any[];
   onCustomAgentsChange: (agents: any[]) => void;
 }
-
-export const Sidebar = ({ 
-  onAddAgent, 
-  onAddNode, 
-  workflow, 
-  userInput, 
+export const Sidebar = ({
+  onAddAgent,
+  onAddNode,
+  workflow,
+  userInput,
   onUserInputChange,
   workflowName,
   onWorkflowNameChange,
@@ -107,24 +111,21 @@ export const Sidebar = ({
   const [isProcessingFiles, setIsProcessingFiles] = useState(false);
   const [isViewInputOpen, setIsViewInputOpen] = useState(false);
   const [editedInput, setEditedInput] = useState("");
-
   const handleDragStart = (e: React.DragEvent, template: any, nodeType: "agent" | "function" | "tool" = "agent") => {
     e.dataTransfer.setData("agentTemplate", JSON.stringify(template));
     e.dataTransfer.setData("nodeType", nodeType);
   };
-
   const handleAddCustomAgent = () => {
     if (!newAgentName.trim()) return;
-    
     const newAgent = {
       id: `custom-${Date.now()}`,
       name: newAgentName,
-      iconName: "Bot", // Store as string, not component
+      iconName: "Bot",
+      // Store as string, not component
       description: newAgentDescription || "Custom agent",
       defaultSystemPrompt: newAgentSystemPrompt || `You are a ${newAgentName} agent.`,
-      defaultUserPrompt: newAgentUserPrompt || "Process the following: {input}",
+      defaultUserPrompt: newAgentUserPrompt || "Process the following: {input}"
     };
-    
     onCustomAgentsChange([...customAgents, newAgent]);
     setNewAgentName("");
     setNewAgentDescription("");
@@ -132,15 +133,16 @@ export const Sidebar = ({
     setNewAgentUserPrompt("");
     setIsAddAgentOpen(false);
   };
-
   const handleDownloadAgent = (agent: any) => {
     const agentData = {
       ...agent,
       type: "agent-definition",
-      exportedAt: new Date().toISOString(),
+      exportedAt: new Date().toISOString()
     };
     const json = JSON.stringify(agentData, null, 2);
-    const blob = new Blob([json], { type: "application/json" });
+    const blob = new Blob([json], {
+      type: "application/json"
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -151,34 +153,30 @@ export const Sidebar = ({
     URL.revokeObjectURL(url);
     toast({
       title: "Agent downloaded",
-      description: `Agent "${agent.name}" has been downloaded`,
+      description: `Agent "${agent.name}" has been downloaded`
     });
   };
-
   const handleDeleteAgent = (agentId: string) => {
     const agent = customAgents.find(a => a.id === agentId);
     if (agent) {
       onCustomAgentsChange(customAgents.filter(a => a.id !== agentId));
       toast({
         title: "Agent deleted",
-        description: `Agent "${agent.name}" has been deleted`,
+        description: `Agent "${agent.name}" has been deleted`
       });
     }
   };
-
   const handleUploadAgents = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
-
     let importedCount = 0;
     const newAgents: any[] = [];
-
-    Array.from(files).forEach((file) => {
+    Array.from(files).forEach(file => {
       const reader = new FileReader();
-      reader.onload = (e) => {
+      reader.onload = e => {
         try {
           const data = JSON.parse(e.target?.result as string);
-          
+
           // Check if it's a workflow file with customAgents
           if (data.workflow && data.customAgents) {
             // Import custom agents from workflow
@@ -186,12 +184,12 @@ export const Sidebar = ({
               // Generate new ID to avoid conflicts
               const importedAgent = {
                 ...agent,
-                id: `custom-${Date.now()}-${Math.random()}`,
+                id: `custom-${Date.now()}-${Math.random()}`
               };
               newAgents.push(importedAgent);
               importedCount++;
             });
-          } 
+          }
           // Check if it's a single agent definition
           else if (data.type === "agent-definition" || data.defaultSystemPrompt) {
             const importedAgent = {
@@ -200,7 +198,7 @@ export const Sidebar = ({
               iconName: data.iconName || "Bot",
               description: data.description || "Imported agent",
               defaultSystemPrompt: data.defaultSystemPrompt,
-              defaultUserPrompt: data.defaultUserPrompt,
+              defaultUserPrompt: data.defaultUserPrompt
             };
             newAgents.push(importedAgent);
             importedCount++;
@@ -208,7 +206,7 @@ export const Sidebar = ({
             toast({
               title: "Invalid file",
               description: `Invalid agent file: ${file.name}`,
-              variant: "destructive",
+              variant: "destructive"
             });
           }
 
@@ -217,7 +215,7 @@ export const Sidebar = ({
             onCustomAgentsChange([...customAgents, ...newAgents]);
             toast({
               title: "Agents imported",
-              description: `Imported ${importedCount} agent(s)`,
+              description: `Imported ${importedCount} agent(s)`
             });
           }
         } catch (error) {
@@ -225,7 +223,7 @@ export const Sidebar = ({
           toast({
             title: "Import failed",
             description: `Failed to import ${file.name}`,
-            variant: "destructive",
+            variant: "destructive"
           });
         }
       };
@@ -237,13 +235,11 @@ export const Sidebar = ({
       uploadInputRef.current.value = "";
     }
   };
-
   const processNextExcel = async () => {
     if (excelQueue.length === 0) {
       setIsProcessingFiles(false);
       return;
     }
-
     const nextFile = excelQueue[0];
     try {
       const excelData = await parseExcelFile(nextFile);
@@ -255,10 +251,10 @@ export const Sidebar = ({
       toast({
         title: "Excel parsing failed",
         description: errorMessage,
-        variant: "destructive",
+        variant: "destructive"
       });
       setExcelQueue(prev => prev.slice(1)); // Remove failed file and continue
-      
+
       // Try next file after a short delay
       setTimeout(() => {
         if (excelQueue.length > 1) {
@@ -269,20 +265,16 @@ export const Sidebar = ({
       }, 500);
     }
   };
-
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
-
     setIsProcessingFiles(true);
     const extractedContents: ExtractedContent[] = [];
     const excelFiles: File[] = [];
-
     try {
       // First, categorize all files
       for (const file of Array.from(files)) {
         const extension = file.name.toLowerCase().split('.').pop();
-
         if (extension === 'xlsx' || extension === 'xls') {
           excelFiles.push(file);
         } else {
@@ -292,17 +284,15 @@ export const Sidebar = ({
             extractedContents.push(extracted);
             toast({
               title: "File extracted",
-              description: `Extracted text from ${file.name}`,
+              description: `Extracted text from ${file.name}`
             });
           } catch (error) {
             console.error(`Failed to extract from ${file.name}:`, error);
             const errorMessage = error instanceof Error ? error.message : 'Unknown error';
             toast({
               title: "Extraction failed",
-              description: errorMessage.includes('Unsupported file type') 
-                ? `Unsupported file type: ${file.name}`
-                : `Failed to extract text from ${file.name}`,
-              variant: "destructive",
+              description: errorMessage.includes('Unsupported file type') ? `Unsupported file type: ${file.name}` : `Failed to extract text from ${file.name}`,
+              variant: "destructive"
             });
           }
         }
@@ -330,7 +320,7 @@ export const Sidebar = ({
           toast({
             title: "Excel parsing failed",
             description: errorMessage,
-            variant: "destructive",
+            variant: "destructive"
           });
           // Try to process the rest if there are more
           if (excelFiles.length > 1) {
@@ -348,7 +338,7 @@ export const Sidebar = ({
       toast({
         title: "Processing failed",
         description: "Failed to process files",
-        variant: "destructive",
+        variant: "destructive"
       });
       setIsProcessingFiles(false);
     } finally {
@@ -358,23 +348,20 @@ export const Sidebar = ({
       }
     }
   };
-
   const handleExcelSelect = (selectedData: {
     fileName: string;
     selectedData: any[];
     formattedContent: string;
     totalRows: number;
   }) => {
-    const newInput = userInput 
-      ? `${userInput}${selectedData.formattedContent}` 
-      : selectedData.formattedContent.trim();
+    const newInput = userInput ? `${userInput}${selectedData.formattedContent}` : selectedData.formattedContent.trim();
     onUserInputChange(newInput);
     toast({
       title: "Excel data added",
-      description: `Added ${selectedData.totalRows} rows from ${selectedData.fileName}`,
+      description: `Added ${selectedData.totalRows} rows from ${selectedData.fileName}`
     });
     setExcelData(null);
-    
+
     // Process next Excel file if any
     if (excelQueue.length > 0) {
       processNextExcel();
@@ -382,10 +369,9 @@ export const Sidebar = ({
       setIsProcessingFiles(false);
     }
   };
-
   const handleExcelClose = () => {
     setExcelData(null);
-    
+
     // Process next Excel file if any
     if (excelQueue.length > 0) {
       processNextExcel();
@@ -393,44 +379,37 @@ export const Sidebar = ({
       setIsProcessingFiles(false);
     }
   };
-
   const handleClearInput = () => {
     onUserInputChange("");
     toast({
       title: "Input cleared",
-      description: "Input has been cleared",
+      description: "Input has been cleared"
     });
   };
-
   const handleViewInput = () => {
     setEditedInput(userInput);
     setIsViewInputOpen(true);
   };
-
   const handleSaveEditedInput = () => {
     onUserInputChange(editedInput);
     setIsViewInputOpen(false);
     toast({
       title: "Input updated",
-      description: "Your changes have been saved",
+      description: "Your changes have been saved"
     });
   };
-
   const allAgents = [...agentTemplates, ...customAgents];
-  
+
   // Filter functions based on search and category
-  const filteredFunctions = functionDefinitions.filter((func) => {
-    const matchesSearch = func.name.toLowerCase().includes(functionSearch.toLowerCase()) ||
-                         func.description.toLowerCase().includes(functionSearch.toLowerCase());
+  const filteredFunctions = functionDefinitions.filter(func => {
+    const matchesSearch = func.name.toLowerCase().includes(functionSearch.toLowerCase()) || func.description.toLowerCase().includes(functionSearch.toLowerCase());
     const matchesCategory = functionCategory === "all" || func.category === functionCategory;
     return matchesSearch && matchesCategory;
   });
-  
+
   // Get unique categories for filter
   const categories = ["all", ...new Set(functionDefinitions.map(f => f.category))];
-  
-  return (
-    <div className="bg-card flex flex-col h-full">
+  return <div className="bg-card flex flex-col h-full">
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-6">
           {/* Workflow Name */}
@@ -438,62 +417,24 @@ export const Sidebar = ({
             <Label htmlFor="workflow-name" className="text-sm font-semibold text-foreground">
               Workflow Name
             </Label>
-            <Input
-              id="workflow-name"
-              placeholder="Untitled Workflow"
-              value={workflowName}
-              onChange={(e) => onWorkflowNameChange(e.target.value)}
-              className="h-9"
-            />
+            <Input id="workflow-name" placeholder="Untitled Workflow" value={workflowName} onChange={e => onWorkflowNameChange(e.target.value)} className="h-9" />
           </div>
 
           {/* Input Section */}
           <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-foreground">Input / Trigger</h3>
+            <h3 className="text-sm font-semibold text-foreground">Prompt</h3>
             <Card className="p-3 bg-muted/30">
-              <Textarea 
-                placeholder="Enter your initial prompt or paste text here..."
-                className="min-h-[100px] resize-none border-0 bg-transparent focus-visible:ring-0"
-                value={userInput}
-                onChange={(e) => onUserInputChange(e.target.value)}
-              />
+              <Textarea placeholder="Enter your initial prompt or paste text here..." className="min-h-[100px] resize-none border-0 bg-transparent focus-visible:ring-0" value={userInput} onChange={e => onUserInputChange(e.target.value)} />
               <div className="flex gap-2 mt-3">
-                <input
-                  ref={fileUploadInputRef}
-                  type="file"
-                  accept=".txt,.md,.json,.xml,.csv,.yaml,.yml,.toml,.js,.jsx,.ts,.tsx,.vue,.html,.css,.scss,.sass,.py,.java,.c,.cpp,.cs,.go,.php,.rb,.sql,.sh,.log,.pdf,.docx,.xlsx,.xls"
-                  multiple
-                  className="hidden"
-                  onChange={handleFileUpload}
-                />
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  className="flex-1 gap-2"
-                  onClick={() => fileUploadInputRef.current?.click()}
-                  disabled={isProcessingFiles}
-                >
+                <input ref={fileUploadInputRef} type="file" accept=".txt,.md,.json,.xml,.csv,.yaml,.yml,.toml,.js,.jsx,.ts,.tsx,.vue,.html,.css,.scss,.sass,.py,.java,.c,.cpp,.cs,.go,.php,.rb,.sql,.sh,.log,.pdf,.docx,.xlsx,.xls" multiple className="hidden" onChange={handleFileUpload} />
+                <Button size="sm" variant="outline" className="flex-1 gap-2" onClick={() => fileUploadInputRef.current?.click()} disabled={isProcessingFiles}>
                   <Upload className="h-3.5 w-3.5" />
                   {isProcessingFiles ? "Processing..." : "Upload Files"}
                 </Button>
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  className="h-9 w-9 p-0"
-                  onClick={handleViewInput}
-                  disabled={!userInput}
-                  title="View/Edit Input"
-                >
+                <Button size="sm" variant="outline" className="h-9 w-9 p-0" onClick={handleViewInput} disabled={!userInput} title="View/Edit Input">
                   <Eye className="h-3.5 w-3.5" />
                 </Button>
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  className="h-9 w-9 p-0"
-                  onClick={handleClearInput}
-                  disabled={!userInput}
-                  title="Clear Input"
-                >
+                <Button size="sm" variant="outline" className="h-9 w-9 p-0" onClick={handleClearInput} disabled={!userInput} title="Clear Input">
                   <X className="h-3.5 w-3.5" />
                 </Button>
               </div>
@@ -505,21 +446,8 @@ export const Sidebar = ({
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold text-foreground">Agent Library</h3>
               <div className="flex items-center gap-1">
-                <input
-                  ref={uploadInputRef}
-                  type="file"
-                  accept=".json"
-                  multiple
-                  className="hidden"
-                  onChange={handleUploadAgents}
-                />
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-7 w-7 p-0"
-                  onClick={() => uploadInputRef.current?.click()}
-                  title="Upload agent(s)"
-                >
+                <input ref={uploadInputRef} type="file" accept=".json" multiple className="hidden" onChange={handleUploadAgents} />
+                <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => uploadInputRef.current?.click()} title="Upload agent(s)">
                   <Upload className="h-4 w-4" />
                 </Button>
                 <Dialog open={isAddAgentOpen} onOpenChange={setIsAddAgentOpen}>
@@ -535,41 +463,19 @@ export const Sidebar = ({
                     <div className="space-y-4">
                       <div>
                         <Label htmlFor="agent-name">Agent Name</Label>
-                        <Input
-                          id="agent-name"
-                          placeholder="e.g., Code Reviewer"
-                          value={newAgentName}
-                          onChange={(e) => setNewAgentName(e.target.value)}
-                        />
+                        <Input id="agent-name" placeholder="e.g., Code Reviewer" value={newAgentName} onChange={e => setNewAgentName(e.target.value)} />
                       </div>
                       <div>
                         <Label htmlFor="agent-desc">Description</Label>
-                        <Input
-                          id="agent-desc"
-                          placeholder="Brief description"
-                          value={newAgentDescription}
-                          onChange={(e) => setNewAgentDescription(e.target.value)}
-                        />
+                        <Input id="agent-desc" placeholder="Brief description" value={newAgentDescription} onChange={e => setNewAgentDescription(e.target.value)} />
                       </div>
                       <div>
                         <Label htmlFor="agent-system">System Prompt</Label>
-                        <Textarea
-                          id="agent-system"
-                          placeholder="You are a helpful assistant..."
-                          value={newAgentSystemPrompt}
-                          onChange={(e) => setNewAgentSystemPrompt(e.target.value)}
-                          className="min-h-[80px]"
-                        />
+                        <Textarea id="agent-system" placeholder="You are a helpful assistant..." value={newAgentSystemPrompt} onChange={e => setNewAgentSystemPrompt(e.target.value)} className="min-h-[80px]" />
                       </div>
                       <div>
                         <Label htmlFor="agent-user">User Prompt Template</Label>
-                        <Textarea
-                          id="agent-user"
-                          placeholder="Process: {input}"
-                          value={newAgentUserPrompt}
-                          onChange={(e) => setNewAgentUserPrompt(e.target.value)}
-                          className="min-h-[60px]"
-                        />
+                        <Textarea id="agent-user" placeholder="Process: {input}" value={newAgentUserPrompt} onChange={e => setNewAgentUserPrompt(e.target.value)} className="min-h-[60px]" />
                       </div>
                       <Button onClick={handleAddCustomAgent} className="w-full">
                         Add Agent
@@ -580,16 +486,10 @@ export const Sidebar = ({
               </div>
             </div>
             <div className="space-y-2">
-              {allAgents.map((agent) => {
-                const IconComponent = iconMap[agent.iconName] || Bot;
-                const isCustom = customAgents.some(a => a.id === agent.id);
-                return (
-                  <Card 
-                    key={agent.id}
-                    className="p-3 cursor-move hover:shadow-md transition-shadow bg-gradient-to-br from-card to-muted/20 group"
-                    draggable
-                    onDragStart={(e) => handleDragStart(e, agent)}
-                  >
+              {allAgents.map(agent => {
+              const IconComponent = iconMap[agent.iconName] || Bot;
+              const isCustom = customAgents.some(a => a.id === agent.id);
+              return <Card key={agent.id} className="p-3 cursor-move hover:shadow-md transition-shadow bg-gradient-to-br from-card to-muted/20 group" draggable onDragStart={e => handleDragStart(e, agent)}>
                     <div className="flex items-start gap-3">
                       <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
                         <IconComponent className="h-4 w-4 text-primary" />
@@ -599,37 +499,22 @@ export const Sidebar = ({
                         <p className="text-xs text-muted-foreground mt-0.5">{agent.description}</p>
                       </div>
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDownloadAgent(agent);
-                          }}
-                          title="Download agent"
-                        >
+                        <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={e => {
+                      e.stopPropagation();
+                      handleDownloadAgent(agent);
+                    }} title="Download agent">
                           <Download className="h-3 w-3" />
                         </Button>
-                        {isCustom && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 w-6 p-0 text-destructive hover:text-destructive"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteAgent(agent.id);
-                            }}
-                            title="Delete agent"
-                          >
+                        {isCustom && <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-destructive hover:text-destructive" onClick={e => {
+                      e.stopPropagation();
+                      handleDeleteAgent(agent.id);
+                    }} title="Delete agent">
                             <Trash2 className="h-3 w-3" />
-                          </Button>
-                        )}
+                          </Button>}
                       </div>
                     </div>
-                  </Card>
-                );
-              })}
+                  </Card>;
+            })}
             </div>
           </div>
 
@@ -639,42 +524,26 @@ export const Sidebar = ({
             
             {/* Search and Filter */}
             <div className="space-y-2">
-              <Input
-                placeholder="Search functions..."
-                value={functionSearch}
-                onChange={(e) => setFunctionSearch(e.target.value)}
-                className="h-8 text-xs"
-              />
+              <Input placeholder="Search functions..." value={functionSearch} onChange={e => setFunctionSearch(e.target.value)} className="h-8 text-xs" />
               <Select value={functionCategory} onValueChange={setFunctionCategory}>
                 <SelectTrigger className="h-8 text-xs">
                   <SelectValue placeholder="All Categories" />
                 </SelectTrigger>
                 <SelectContent>
-                  {categories.map((cat) => (
-                    <SelectItem key={cat} value={cat} className="text-xs">
+                  {categories.map(cat => <SelectItem key={cat} value={cat} className="text-xs">
                       {cat === "all" ? "All Categories" : cat.charAt(0).toUpperCase() + cat.slice(1)}
-                    </SelectItem>
-                  ))}
+                    </SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
             
             {/* Functions List */}
             <div className="space-y-2">
-              {filteredFunctions.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-4">
+              {filteredFunctions.length === 0 ? <p className="text-xs text-muted-foreground text-center py-4">
                   No functions found
-                </p>
-              ) : (
-                filteredFunctions.map((func) => {
-                  const FuncIcon = func.icon;
-                  return (
-                    <Card 
-                      key={func.id}
-                      className="p-2.5 cursor-move hover:shadow-md transition-all bg-gradient-to-br from-card to-muted/10"
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, func, "function")}
-                    >
+                </p> : filteredFunctions.map(func => {
+              const FuncIcon = func.icon;
+              return <Card key={func.id} className="p-2.5 cursor-move hover:shadow-md transition-all bg-gradient-to-br from-card to-muted/10" draggable onDragStart={e => handleDragStart(e, func, "function")}>
                       <div className="flex items-start gap-2.5">
                         <div className={`w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0 ${func.color}`}>
                           <FuncIcon className="h-3.5 w-3.5" />
@@ -682,11 +551,9 @@ export const Sidebar = ({
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5">
                             <h4 className="text-xs font-medium text-foreground">{func.name}</h4>
-                            {func.outputs.length > 1 && (
-                              <Badge variant="outline" className="text-[9px] px-1 py-0 h-4">
+                            {func.outputs.length > 1 && <Badge variant="outline" className="text-[9px] px-1 py-0 h-4">
                                 {func.outputs.length} outputs
-                              </Badge>
-                            )}
+                              </Badge>}
                           </div>
                           <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">
                             {func.description}
@@ -696,10 +563,8 @@ export const Sidebar = ({
                           </Badge>
                         </div>
                       </div>
-                    </Card>
-                  );
-                })
-              )}
+                    </Card>;
+            })}
             </div>
           </div>
         </div>
@@ -712,12 +577,7 @@ export const Sidebar = ({
             <DialogTitle>View / Edit Input</DialogTitle>
           </DialogHeader>
           <div className="flex-1 min-h-0 py-4">
-            <Textarea
-              value={editedInput}
-              onChange={(e) => setEditedInput(e.target.value)}
-              className="w-full h-full min-h-[60vh] resize-none"
-              placeholder="No input text..."
-            />
+            <Textarea value={editedInput} onChange={e => setEditedInput(e.target.value)} className="w-full h-full min-h-[60vh] resize-none" placeholder="No input text..." />
           </div>
           <div className="flex justify-end gap-2 pt-4">
             <Button variant="outline" onClick={() => setIsViewInputOpen(false)}>
@@ -731,13 +591,6 @@ export const Sidebar = ({
       </Dialog>
       
       {/* Excel Selector Modal */}
-      {excelData && (
-        <ExcelSelector
-          excelData={excelData}
-          onClose={handleExcelClose}
-          onSelect={handleExcelSelect}
-        />
-      )}
-    </div>
-  );
+      {excelData && <ExcelSelector excelData={excelData} onClose={handleExcelClose} onSelect={handleExcelSelect} />}
+    </div>;
 };

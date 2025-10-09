@@ -18,7 +18,6 @@ export const Toolbar = ({
 }: ToolbarProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [helpOpen, setHelpOpen] = useState(false);
-  
   const handleLoadClick = () => {
     fileInputRef.current?.click();
   };
@@ -33,11 +32,11 @@ export const Toolbar = ({
       <div className="flex items-center gap-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-            <span className="text-xl font-bold text-primary-foreground">A</span>
+            <span className="font-bold text-primary-foreground text-lg">ABC</span>
           </div>
           <div>
-            <h1 className="text-xl font-bold text-foreground">Agent Builder Console (ABC)</h1>
-            <p className="text-xs text-muted-foreground">Workflow Builder</p>
+            <h1 className="text-xl font-bold text-foreground">Agent Builder Console</h1>
+            <p className="text-xs text-muted-foreground">From the Alberta AI Academy</p>
           </div>
         </div>
       </div>
