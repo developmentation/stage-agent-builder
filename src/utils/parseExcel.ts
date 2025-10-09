@@ -34,9 +34,15 @@ export const parseExcelFile = async (file: File): Promise<ExcelData> => {
 
       worksheet.eachRow((row, rowNumber) => {
         if (rowNumber === 1) {
-          // First row is headers
-          headers = row.values as string[];
-          headers = headers.slice(1); // Remove first empty element from ExcelJS
+          // First row is headers - extract values from potential formula cells
+          const rawHeaders = row.values as any[];
+          headers = rawHeaders.slice(1).map(value => {
+            // Handle formula cells in headers
+            if (value && typeof value === 'object' && 'result' in value) {
+              return String(value.result || '');
+            }
+            return String(value || '');
+          });
         } else {
           // Data rows
           const rowData: Record<string, any> = {};
