@@ -538,7 +538,7 @@ export class FunctionExecutor {
 
       const data = await response.json();
       const formattedResults = data.results
-        .map((r: any, i: number) => `${i + 1}. ${r.title}\n   ${r.link}\n   ${r.snippet}`)
+        .map((r: any, i: number) => `${i + 1}. ${r.title}\n   ${r.url}\n   ${r.description}`)
         .join("\n\n");
 
       return {
