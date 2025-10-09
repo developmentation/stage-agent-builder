@@ -7,6 +7,8 @@ import { Upload, Search, FileText, Bot, Plus, Download, Trash2, X, Eye } from "l
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useState, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import ReactMarkdown from "react-markdown";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { functionDefinitions } from "@/lib/functionDefinitions";
 import { Badge } from "@/components/ui/badge";
@@ -111,6 +113,7 @@ export const Sidebar = ({
   const [isProcessingFiles, setIsProcessingFiles] = useState(false);
   const [isViewInputOpen, setIsViewInputOpen] = useState(false);
   const [editedInput, setEditedInput] = useState("");
+  const [inputTab, setInputTab] = useState("edit");
   const handleDragStart = (e: React.DragEvent, template: any, nodeType: "agent" | "function" | "tool" = "agent") => {
     e.dataTransfer.setData("agentTemplate", JSON.stringify(template));
     e.dataTransfer.setData("nodeType", nodeType);
@@ -576,14 +579,43 @@ export const Sidebar = ({
           <DialogHeader>
             <DialogTitle>View / Edit Input</DialogTitle>
           </DialogHeader>
-          <div className="flex-1 min-h-0 py-4">
-            <Textarea value={editedInput} onChange={e => setEditedInput(e.target.value)} className="w-full h-full min-h-[60vh] resize-none" placeholder="No input text..." />
-          </div>
-          <div className="flex justify-end gap-2 pt-4">
-            <Button variant="outline" onClick={() => setIsViewInputOpen(false)}>
+          <Tabs value={inputTab} onValueChange={setInputTab} className="flex-1 flex flex-col overflow-hidden">
+            <TabsList className="w-full justify-start mb-4">
+              <TabsTrigger value="edit">Edit</TabsTrigger>
+              <TabsTrigger value="view">View</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="edit" className="flex-1 overflow-hidden mt-0">
+              <ScrollArea className="h-full">
+                <Textarea 
+                  value={editedInput} 
+                  onChange={e => setEditedInput(e.target.value)} 
+                  className="w-full min-h-[60vh] resize-none" 
+                  placeholder="No input text..." 
+                />
+              </ScrollArea>
+            </TabsContent>
+            
+            <TabsContent value="view" className="flex-1 overflow-hidden mt-0">
+              <ScrollArea className="h-full">
+                <div className="prose prose-sm dark:prose-invert max-w-none p-4">
+                  <ReactMarkdown>{editedInput}</ReactMarkdown>
+                </div>
+              </ScrollArea>
+            </TabsContent>
+          </Tabs>
+          
+          <div className="flex justify-end gap-2 pt-4 border-t">
+            <Button variant="outline" onClick={() => {
+              setIsViewInputOpen(false);
+              setInputTab("edit");
+            }}>
               Cancel
             </Button>
-            <Button onClick={handleSaveEditedInput}>
+            <Button onClick={() => {
+              handleSaveEditedInput();
+              setInputTab("edit");
+            }}>
               Save Changes
             </Button>
           </div>
