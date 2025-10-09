@@ -474,7 +474,7 @@ export const PropertiesPanel = ({
                         <Textarea
                           value={editedOutput}
                           onChange={(e) => setEditedOutput(e.target.value)}
-                          className="min-h-[calc(90vh-250px)] font-mono text-xs resize-none w-full"
+                          className="min-h-[calc(90vh-210px)] font-mono text-xs resize-none w-full"
                           placeholder="Edit output..."
                         />
                       </ScrollArea>
