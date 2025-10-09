@@ -427,14 +427,14 @@ export const PropertiesPanel = ({
           {/* Common: Output */}
           {activeNode.output && (
             <div className="space-y-2">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between gap-2">
                 <Label className="text-sm font-medium">Output</Label>
                 <Dialog open={isEditingOutput} onOpenChange={setIsEditingOutput}>
                   <DialogTrigger asChild>
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-7 px-2"
+                      className="h-7 px-2 flex-shrink-0"
                       onClick={() => {
                         const output = activeNode.output;
                         let outputText = '';
@@ -499,7 +499,7 @@ export const PropertiesPanel = ({
               </div>
               
               <Card className="p-3 bg-muted/30 max-h-[200px] overflow-y-auto">
-                <p className="text-xs whitespace-pre-wrap break-words">
+                <p className="text-xs whitespace-pre-wrap break-all overflow-wrap-anywhere">
                   {(() => {
                     const output = activeNode.output;
                     if (!output) return 'No output';
