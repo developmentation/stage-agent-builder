@@ -360,29 +360,23 @@ export const PropertiesPanel = ({
 
           {/* View/Edit Content Dialog */}
           <Dialog open={isViewContentOpen} onOpenChange={setIsViewContentOpen}>
-            <DialogContent className="w-[90vw] h-[90vh] max-w-none">
+            <DialogContent className="max-w-[90vw] max-h-[90vh] flex flex-col">
               <DialogHeader>
-                <DialogTitle>View/Edit Content</DialogTitle>
-                <DialogDescription>
-                  Edit the content that will be output by this function
-                </DialogDescription>
+                <DialogTitle>View / Edit Content</DialogTitle>
               </DialogHeader>
-              <Textarea 
-                className="flex-1 resize-none font-mono text-xs"
-                value={editedContent}
-                onChange={(e) => setEditedContent(e.target.value)}
-              />
-              <div className="flex gap-2 justify-end">
-                <Button
-                  variant="outline"
-                  onClick={() => setIsViewContentOpen(false)}
-                >
+              <div className="flex-1 min-h-0 py-4">
+                <Textarea
+                  value={editedContent}
+                  onChange={(e) => setEditedContent(e.target.value)}
+                  className="w-full h-full min-h-[60vh] resize-none"
+                  placeholder="No content..."
+                />
+              </div>
+              <div className="flex justify-end gap-2 pt-4">
+                <Button variant="outline" onClick={() => setIsViewContentOpen(false)}>
                   Cancel
                 </Button>
-                <Button
-                  onClick={handleSaveEditedContent}
-                >
-                  <Save className="h-3 w-3 mr-1" />
+                <Button onClick={handleSaveEditedContent}>
                   Save Changes
                 </Button>
               </div>
