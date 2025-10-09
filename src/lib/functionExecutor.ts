@@ -69,24 +69,27 @@ export class FunctionExecutor {
         case "parse_json":
           return this.executeParseJSON(functionNode, input);
         
-        case "format_json":
-          return this.executeFormatJSON(functionNode, input);
-        
-        default:
-          return {
-            success: false,
-            outputs: {},
-            error: `Unknown function type: ${functionNode.functionType}`,
-          };
-      }
-    } catch (error) {
-      return {
-        success: false,
-        outputs: {},
-        error: error instanceof Error ? error.message : "Unknown error",
-      };
+      case "format_json":
+        return this.executeFormatJSON(functionNode, input);
+      
+      case "content":
+        return this.executeContent(functionNode, input);
+      
+      default:
+        return {
+          success: false,
+          outputs: {},
+          error: `Unknown function type: ${functionNode.functionType}`,
+        };
     }
+  } catch (error) {
+    return {
+      success: false,
+      outputs: {},
+      error: error instanceof Error ? error.message : "Unknown error",
+    };
   }
+}
 
   // String Operations
   private static executeStringContains(node: FunctionNode, input: string): FunctionExecutionResult {
@@ -519,6 +522,17 @@ export class FunctionExecutor {
         error: "Invalid JSON",
       };
     }
+  }
+
+  // Content Function
+  private static executeContent(node: FunctionNode, input: string): FunctionExecutionResult {
+    // Simply output the configured content, ignoring any input
+    const content = node.config.content || "";
+    
+    return {
+      success: true,
+      outputs: { output: content },
+    };
   }
 
   // Google Search

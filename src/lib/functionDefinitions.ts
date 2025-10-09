@@ -12,7 +12,8 @@ import {
   Split,
   Merge,
   ExternalLink,
-  Zap
+  Zap,
+  FileText
 } from "lucide-react";
 import type { FunctionDefinition } from "@/types/functions";
 
@@ -488,6 +489,27 @@ export const functionDefinitions: FunctionDefinition[] = [
         label: "Additional Headers (JSON)",
         description: "Additional HTTP headers as JSON object",
         placeholder: '{"X-Custom-Header": "value"}',
+      },
+    },
+  },
+  {
+    id: "content",
+    name: "Content",
+    description: "Add static content manually or via file upload at any workflow stage",
+    category: "data",
+    icon: FileText,
+    color: "bg-blue-500/10 text-blue-500",
+    inputs: {
+      label: "Optional Input",
+      description: "Optional input from connections (displayed but not used in output)"
+    },
+    outputs: ["output"],
+    configSchema: {
+      content: {
+        type: "string",
+        label: "Content",
+        description: "Static content to output (can be manually entered or uploaded from files)",
+        placeholder: "Enter your content here or upload files...",
       },
     },
   },

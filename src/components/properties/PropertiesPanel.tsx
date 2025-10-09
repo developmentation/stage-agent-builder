@@ -4,10 +4,10 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { X, Plus, Settings, Play, Database, Download, Eye, Save } from "lucide-react";
+import { X, Plus, Settings, Play, Database, Download, Eye, Save, Upload } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import type { WorkflowNode, AgentNode, FunctionNode, ToolInstance } from "@/types/workflow";
 import { getFunctionById } from "@/lib/functionDefinitions";
 import { FunctionExecutor } from "@/lib/functionExecutor";
@@ -27,6 +27,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { toast } from "@/hooks/use-toast";
+import { extractTextFromFile, formatExtractedContent, ExtractedContent } from "@/utils/fileTextExtraction";
+import { parseExcelFile, ExcelData } from "@/utils/parseExcel";
+import { ExcelSelector } from "@/components/ExcelSelector";
 
 interface PropertiesPanelProps {
   selectedAgent: AgentNode | undefined;
@@ -66,6 +70,12 @@ export const PropertiesPanel = ({
   const [memoryDialogOpen, setMemoryDialogOpen] = useState(false);
   const [isEditingOutput, setIsEditingOutput] = useState(false);
   const [editedOutput, setEditedOutput] = useState("");
+  const contentFileInputRef = useRef<HTMLInputElement>(null);
+  const [excelData, setExcelData] = useState<ExcelData | null>(null);
+  const [excelQueue, setExcelQueue] = useState<File[]>([]);
+  const [isProcessingFiles, setIsProcessingFiles] = useState(false);
+  const [isViewContentOpen, setIsViewContentOpen] = useState(false);
+  const [editedContent, setEditedContent] = useState("");
 
   // Use selectedNode if provided, otherwise fall back to selectedAgent
   const activeNode = selectedNode || selectedAgent;
@@ -104,9 +114,292 @@ export const PropertiesPanel = ({
     }
   };
 
+  const processNextExcel = async () => {
+    if (excelQueue.length === 0) {
+      setIsProcessingFiles(false);
+      return;
+    }
+
+    const nextFile = excelQueue[0];
+    try {
+      const excelData = await parseExcelFile(nextFile);
+      setExcelData(excelData);
+      setExcelQueue(prev => prev.slice(1));
+    } catch (error) {
+      console.error(`Failed to parse Excel file ${nextFile.name}:`, error);
+      const errorMessage = error instanceof Error ? error.message : `Failed to parse ${nextFile.name}`;
+      toast({
+        title: "Excel parsing failed",
+        description: errorMessage,
+        variant: "destructive",
+      });
+      setExcelQueue(prev => prev.slice(1));
+      
+      setTimeout(() => {
+        if (excelQueue.length > 1) {
+          processNextExcel();
+        } else {
+          setIsProcessingFiles(false);
+        }
+      }, 500);
+    }
+  };
+
+  const handleContentFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (activeNode.nodeType !== "function") return;
+    const functionNode = activeNode as FunctionNode;
+    
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsProcessingFiles(true);
+    const extractedContents: ExtractedContent[] = [];
+    const excelFiles: File[] = [];
+
+    try {
+      for (const file of Array.from(files)) {
+        const extension = file.name.toLowerCase().split('.').pop();
+
+        if (extension === 'xlsx' || extension === 'xls') {
+          excelFiles.push(file);
+        } else {
+          try {
+            const extracted = await extractTextFromFile(file);
+            extractedContents.push(extracted);
+            toast({
+              title: "File extracted",
+              description: `Extracted text from ${file.name}`,
+            });
+          } catch (error) {
+            console.error(`Failed to extract from ${file.name}:`, error);
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            toast({
+              title: "Extraction failed",
+              description: errorMessage.includes('Unsupported file type') 
+                ? `Unsupported file type: ${file.name}`
+                : `Failed to extract text from ${file.name}`,
+              variant: "destructive",
+            });
+          }
+        }
+      }
+
+      if (extractedContents.length > 0) {
+        const formattedContent = formatExtractedContent(extractedContents);
+        const currentContent = functionNode.config.content || "";
+        const newContent = currentContent ? `${currentContent}${formattedContent}` : formattedContent.trim();
+        updateNodeConfig({ ...functionNode.config, content: newContent });
+      }
+
+      if (excelFiles.length > 0) {
+        setExcelQueue(excelFiles);
+        try {
+          const firstExcel = excelFiles[0];
+          const excelData = await parseExcelFile(firstExcel);
+          setExcelData(excelData);
+          setExcelQueue(excelFiles.slice(1));
+        } catch (error) {
+          console.error('Failed to parse first Excel file:', error);
+          const errorMessage = error instanceof Error ? error.message : 'Failed to parse Excel file';
+          toast({
+            title: "Excel parsing failed",
+            description: errorMessage,
+            variant: "destructive",
+          });
+          if (excelFiles.length > 1) {
+            setExcelQueue(excelFiles.slice(1));
+            setTimeout(() => processNextExcel(), 500);
+          } else {
+            setIsProcessingFiles(false);
+          }
+        }
+      } else {
+        setIsProcessingFiles(false);
+      }
+    } catch (error) {
+      console.error("File processing error:", error);
+      toast({
+        title: "Processing failed",
+        description: "Failed to process files",
+        variant: "destructive",
+      });
+      setIsProcessingFiles(false);
+    } finally {
+      if (contentFileInputRef.current) {
+        contentFileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const handleExcelSelect = (selectedData: {
+    fileName: string;
+    selectedData: any[];
+    formattedContent: string;
+    totalRows: number;
+  }) => {
+    if (activeNode.nodeType !== "function") return;
+    const functionNode = activeNode as FunctionNode;
+    
+    const currentContent = functionNode.config.content || "";
+    const newContent = currentContent 
+      ? `${currentContent}${selectedData.formattedContent}` 
+      : selectedData.formattedContent.trim();
+    updateNodeConfig({ ...functionNode.config, content: newContent });
+    
+    toast({
+      title: "Excel data added",
+      description: `Added ${selectedData.totalRows} rows from ${selectedData.fileName}`,
+    });
+    setExcelData(null);
+    
+    if (excelQueue.length > 0) {
+      processNextExcel();
+    } else {
+      setIsProcessingFiles(false);
+    }
+  };
+
+  const handleExcelClose = () => {
+    setExcelData(null);
+    
+    if (excelQueue.length > 0) {
+      processNextExcel();
+    } else {
+      setIsProcessingFiles(false);
+    }
+  };
+
+  const handleClearContent = () => {
+    if (activeNode.nodeType !== "function") return;
+    const functionNode = activeNode as FunctionNode;
+    updateNodeConfig({ ...functionNode.config, content: "" });
+    toast({
+      title: "Content cleared",
+      description: "Content has been cleared",
+    });
+  };
+
+  const handleViewContent = () => {
+    if (activeNode.nodeType !== "function") return;
+    const functionNode = activeNode as FunctionNode;
+    setEditedContent(functionNode.config.content || "");
+    setIsViewContentOpen(true);
+  };
+
+  const handleSaveEditedContent = () => {
+    if (activeNode.nodeType !== "function") return;
+    const functionNode = activeNode as FunctionNode;
+    updateNodeConfig({ ...functionNode.config, content: editedContent });
+    setIsViewContentOpen(false);
+    toast({
+      title: "Content updated",
+      description: "Your changes have been saved",
+    });
+  };
+
   // Render function configuration fields
   const renderFunctionConfig = (node: FunctionNode) => {
     if (!functionDef?.configSchema) return null;
+
+    // Special rendering for Content function
+    if (node.functionType === "content") {
+      return (
+        <div className="space-y-4">
+          <Label className="text-sm font-medium">Content Configuration</Label>
+          <Card className="p-3 bg-muted/30 space-y-3">
+            <Textarea 
+              placeholder="Enter your content here or upload files..."
+              className="min-h-[100px] resize-none border-0 bg-transparent focus-visible:ring-0"
+              value={node.config.content || ""}
+              onChange={(e) => updateNodeConfig({ ...node.config, content: e.target.value })}
+            />
+            <div className="flex gap-2">
+              <input
+                ref={contentFileInputRef}
+                type="file"
+                accept=".txt,.md,.json,.xml,.csv,.yaml,.yml,.toml,.js,.jsx,.ts,.tsx,.vue,.html,.css,.scss,.sass,.py,.java,.c,.cpp,.cs,.go,.php,.rb,.sql,.sh,.log,.pdf,.docx,.xlsx,.xls"
+                multiple
+                className="hidden"
+                onChange={handleContentFileUpload}
+              />
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="flex-1 gap-2"
+                onClick={() => contentFileInputRef.current?.click()}
+                disabled={isProcessingFiles}
+              >
+                <Upload className="h-3.5 w-3.5" />
+                {isProcessingFiles ? "Processing..." : "Upload Files"}
+              </Button>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="h-9 w-9 p-0"
+                onClick={handleViewContent}
+                disabled={!node.config.content}
+                title="View/Edit Content"
+              >
+                <Eye className="h-3.5 w-3.5" />
+              </Button>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="h-9 w-9 p-0"
+                onClick={handleClearContent}
+                disabled={!node.config.content}
+                title="Clear Content"
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Upload files or enter content manually. Supports text files, PDFs, DOCX, and Excel files.
+            </p>
+          </Card>
+
+          {/* View/Edit Content Dialog */}
+          <Dialog open={isViewContentOpen} onOpenChange={setIsViewContentOpen}>
+            <DialogContent className="max-w-3xl max-h-[80vh]">
+              <DialogHeader>
+                <DialogTitle>View/Edit Content</DialogTitle>
+                <DialogDescription>
+                  Edit the content that will be output by this function
+                </DialogDescription>
+              </DialogHeader>
+              <Textarea 
+                className="min-h-[calc(90vh-210px)] resize-none font-mono text-xs"
+                value={editedContent}
+                onChange={(e) => setEditedContent(e.target.value)}
+              />
+              <div className="flex gap-2 justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => setIsViewContentOpen(false)}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleSaveEditedContent}
+                >
+                  <Save className="h-3 w-3 mr-1" />
+                  Save Changes
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Excel Selector Dialog */}
+          {excelData && (
+            <ExcelSelector
+              excelData={excelData}
+              onSelect={handleExcelSelect}
+              onClose={handleExcelClose}
+            />
+          )}
+        </div>
+      );
+    }
 
     return (
       <div className="space-y-4">
