@@ -44,7 +44,14 @@ export const parseExcelFile = async (file: File): Promise<ExcelData> => {
           
           headers.forEach((header, index) => {
             // index + 1 because ExcelJS array starts with empty element
-            rowData[header] = values[index + 1] !== undefined ? values[index + 1] : null;
+            const cellValue = values[index + 1];
+            
+            // Handle Excel formula cells - extract the result value
+            if (cellValue && typeof cellValue === 'object' && 'result' in cellValue) {
+              rowData[header] = cellValue.result !== undefined ? cellValue.result : null;
+            } else {
+              rowData[header] = cellValue !== undefined ? cellValue : null;
+            }
           });
           
           jsonData.push(rowData);
