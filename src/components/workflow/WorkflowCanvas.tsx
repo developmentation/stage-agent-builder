@@ -148,9 +148,9 @@ export const WorkflowCanvas = ({
       const fromRect = fromEl.getBoundingClientRect();
       const toRect = toEl.getBoundingClientRect();
       
-      const x1 = fromRect.left + fromRect.width / 2 - containerRect.left + scrollLeft - 2;
+      const x1 = fromRect.left + fromRect.width / 2 - containerRect.left + scrollLeft - 1;
       const y1 = fromRect.top + fromRect.height / 2 - containerRect.top + scrollTop + 5;
-      const x2 = toRect.left + toRect.width / 2 - containerRect.left + scrollLeft - 2;
+      const x2 = toRect.left + toRect.width / 2 - containerRect.left + scrollLeft - 1;
       const y2 = toRect.top + toRect.height / 2 - containerRect.top + scrollTop - 5;
       
       const controlY1 = y1 + Math.abs(y2 - y1) * 0.5;
