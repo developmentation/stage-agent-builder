@@ -469,11 +469,11 @@ export const PropertiesPanel = ({
                         Manually edit the output from this {activeNode.nodeType}
                       </DialogDescription>
                     </DialogHeader>
-                    <ScrollArea className="h-[500px]">
+                    <ScrollArea className="h-[350px]">
                       <Textarea
                         value={editedOutput}
                         onChange={(e) => setEditedOutput(e.target.value)}
-                        className="min-h-[480px] font-mono text-xs resize-none"
+                        className="min-h-[330px] font-mono text-xs resize-none"
                         placeholder="Edit output..."
                       />
                     </ScrollArea>
