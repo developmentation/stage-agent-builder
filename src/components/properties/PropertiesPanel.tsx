@@ -462,22 +462,24 @@ export const PropertiesPanel = ({
                       Edit
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh] flex flex-col">
-                    <DialogHeader>
+                  <DialogContent className="w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh] flex flex-col p-6">
+                    <DialogHeader className="pb-4">
                       <DialogTitle>Edit Output</DialogTitle>
                       <DialogDescription>
                         Manually edit the output from this {activeNode.nodeType}
                       </DialogDescription>
                     </DialogHeader>
-                    <ScrollArea className="flex-1 my-4">
-                      <Textarea
-                        value={editedOutput}
-                        onChange={(e) => setEditedOutput(e.target.value)}
-                        className="min-h-full font-mono text-xs resize-none"
-                        placeholder="Edit output..."
-                      />
-                    </ScrollArea>
-                    <div className="flex gap-2 justify-end mb-[50px]">
+                    <div className="flex-1 overflow-hidden pb-4">
+                      <ScrollArea className="h-full">
+                        <Textarea
+                          value={editedOutput}
+                          onChange={(e) => setEditedOutput(e.target.value)}
+                          className="min-h-[calc(90vh-250px)] font-mono text-xs resize-none w-full"
+                          placeholder="Edit output..."
+                        />
+                      </ScrollArea>
+                    </div>
+                    <div className="flex gap-2 justify-end pt-4 border-t">
                       <Button
                         variant="outline"
                         size="sm"
