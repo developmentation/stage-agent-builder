@@ -26,6 +26,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
   Table,
   TableBody,
@@ -784,7 +785,38 @@ export const PropertiesPanel = ({
                       <TabsContent value="view" className="flex-1 overflow-hidden mt-0">
                         <ScrollArea className="h-full">
                           <div className="prose prose-sm dark:prose-invert max-w-none p-4">
-                            <ReactMarkdown>{editedOutput}</ReactMarkdown>
+                            <ReactMarkdown
+                              remarkPlugins={[remarkGfm]}
+                              components={{
+                                table: ({ children }) => (
+                                  <Table className="my-4">
+                                    {children}
+                                  </Table>
+                                ),
+                                thead: ({ children }) => <TableHeader>{children}</TableHeader>,
+                                tbody: ({ children }) => <TableBody>{children}</TableBody>,
+                                tr: ({ children }) => <TableRow>{children}</TableRow>,
+                                th: ({ children }) => (
+                                  <TableHead className="font-bold">{children}</TableHead>
+                                ),
+                                td: ({ children }) => <TableCell>{children}</TableCell>,
+                                code: ({ inline, children, ...props }: any) => {
+                                  return inline ? (
+                                    <code className="bg-muted px-1 py-0.5 rounded text-xs font-mono" {...props}>
+                                      {children}
+                                    </code>
+                                  ) : (
+                                    <pre className="bg-muted p-3 rounded-md overflow-x-auto my-2">
+                                      <code className="text-xs font-mono" {...props}>
+                                        {children}
+                                      </code>
+                                    </pre>
+                                  );
+                                },
+                              }}
+                            >
+                              {editedOutput}
+                            </ReactMarkdown>
                           </div>
                         </ScrollArea>
                       </TabsContent>

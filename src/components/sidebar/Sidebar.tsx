@@ -9,6 +9,15 @@ import { useState, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { functionDefinitions } from "@/lib/functionDefinitions";
 import { Badge } from "@/components/ui/badge";
@@ -599,7 +608,38 @@ export const Sidebar = ({
             <TabsContent value="view" className="flex-1 overflow-hidden mt-0">
               <ScrollArea className="h-full">
                 <div className="prose prose-sm dark:prose-invert max-w-none p-4">
-                  <ReactMarkdown>{editedInput}</ReactMarkdown>
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      table: ({ children }) => (
+                        <Table className="my-4">
+                          {children}
+                        </Table>
+                      ),
+                      thead: ({ children }) => <TableHeader>{children}</TableHeader>,
+                      tbody: ({ children }) => <TableBody>{children}</TableBody>,
+                      tr: ({ children }) => <TableRow>{children}</TableRow>,
+                      th: ({ children }) => (
+                        <TableHead className="font-bold">{children}</TableHead>
+                      ),
+                      td: ({ children }) => <TableCell>{children}</TableCell>,
+                      code: ({ inline, children, ...props }: any) => {
+                        return inline ? (
+                          <code className="bg-muted px-1 py-0.5 rounded text-xs font-mono" {...props}>
+                            {children}
+                          </code>
+                        ) : (
+                          <pre className="bg-muted p-3 rounded-md overflow-x-auto my-2">
+                            <code className="text-xs font-mono" {...props}>
+                              {children}
+                            </code>
+                          </pre>
+                        );
+                      },
+                    }}
+                  >
+                    {editedInput}
+                  </ReactMarkdown>
                 </div>
               </ScrollArea>
             </TabsContent>
