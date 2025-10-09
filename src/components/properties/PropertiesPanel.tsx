@@ -462,7 +462,7 @@ export const PropertiesPanel = ({
                       Edit
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="max-w-3xl max-h-[80vh]">
+                  <DialogContent className="w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh]">
                     <DialogHeader>
                       <DialogTitle>Edit Output</DialogTitle>
                       <DialogDescription>
