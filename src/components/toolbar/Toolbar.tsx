@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
-import { Play, Plus, Save, Upload, Trash2 } from "lucide-react";
-import { useRef } from "react";
+import { Play, Plus, Save, Upload, Trash2, HelpCircle } from "lucide-react";
+import { useRef, useState } from "react";
+import { HelpModal } from "@/components/help/HelpModal";
 interface ToolbarProps {
   onAddStage: () => void;
   onSave: () => void;
@@ -16,6 +17,8 @@ export const Toolbar = ({
   onRun
 }: ToolbarProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
+  
   const handleLoadClick = () => {
     fileInputRef.current?.click();
   };
@@ -58,11 +61,16 @@ export const Toolbar = ({
           <Trash2 className="h-4 w-4" />
           Clear
         </Button>
+        <Button variant="outline" size="sm" className="gap-2" onClick={() => setHelpOpen(true)}>
+          <HelpCircle className="h-4 w-4" />
+          Help
+        </Button>
         <div className="w-px h-6 bg-border mx-2" />
         <Button className="gap-2 bg-gradient-to-r from-primary to-primary-hover hover:opacity-90" onClick={onRun}>
           <Play className="h-4 w-4" />
           Run Workflow
         </Button>
       </div>
+      <HelpModal open={helpOpen} onOpenChange={setHelpOpen} />
     </header>;
 };

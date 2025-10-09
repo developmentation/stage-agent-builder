@@ -1,7 +1,8 @@
 import { Button } from "@/components/ui/button";
-import { Library, Workflow, Settings, Plus, Play, Save, Upload, Trash2 } from "lucide-react";
+import { Library, Workflow, Settings, Plus, Play, Save, Upload, Trash2, HelpCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useRef } from "react";
+import { useRef, useState } from "react";
+import { HelpModal } from "@/components/help/HelpModal";
 
 interface MobileNavProps {
   activeTab: "library" | "workflow" | "properties";
@@ -25,6 +26,7 @@ export const MobileNav = ({
   hasSelectedAgent 
 }: MobileNavProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const handleLoadClick = () => {
     fileInputRef.current?.click();
@@ -78,6 +80,14 @@ export const MobileNav = ({
         </Button>
         <Button
           size="sm"
+          variant="outline"
+          className="gap-2"
+          onClick={() => setHelpOpen(true)}
+        >
+          <HelpCircle className="h-4 w-4" />
+        </Button>
+        <Button
+          size="sm"
           className="gap-2 bg-gradient-to-r from-primary to-primary-hover ml-auto"
           onClick={onRun}
         >
@@ -85,6 +95,7 @@ export const MobileNav = ({
           Run
         </Button>
       </div>
+      <HelpModal open={helpOpen} onOpenChange={setHelpOpen} />
 
       {/* Tab Navigation */}
       <div className="h-14 border-b border-border bg-card flex items-center">
