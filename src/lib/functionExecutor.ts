@@ -524,12 +524,15 @@ export class FunctionExecutor {
   // Google Search
   private static async executeGoogleSearch(node: FunctionNode, input: string): Promise<FunctionExecutionResult> {
     try {
+      // Get numResults config, default to 20, clamp between 1-1000
+      const numResults = Math.max(1, Math.min(1000, Number(node.config.numResults) || 20));
+      
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/google-search`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ query: input }),
+        body: JSON.stringify({ query: input, numResults }),
       });
 
       if (!response.ok) {

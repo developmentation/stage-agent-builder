@@ -411,6 +411,16 @@ export const functionDefinitions: FunctionDefinition[] = [
       description: "The search query to execute",
     },
     outputs: ["output"],
+    configSchema: {
+      numResults: {
+        type: "number",
+        label: "Number of Results",
+        description: "Number of search results to return (1-1000)",
+        default: 20,
+        required: false,
+        placeholder: "20",
+      },
+    },
   },
   {
     id: "web_scrape",

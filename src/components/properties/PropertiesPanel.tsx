@@ -140,9 +140,16 @@ export const PropertiesPanel = ({
                   type="number"
                   placeholder={schema.placeholder}
                   value={node.config[key] ?? schema.default ?? ""}
-                  onChange={(e) =>
-                    updateNodeConfig({ ...node.config, [key]: parseFloat(e.target.value) || 0 })
-                  }
+                  min={key === "numResults" ? 1 : undefined}
+                  max={key === "numResults" ? 1000 : undefined}
+                  onChange={(e) => {
+                    let value = parseFloat(e.target.value) || 0;
+                    // Apply min/max constraints for numResults
+                    if (key === "numResults") {
+                      value = Math.max(1, Math.min(1000, value));
+                    }
+                    updateNodeConfig({ ...node.config, [key]: value });
+                  }}
                   className="h-8 text-xs"
                 />
               ) : (

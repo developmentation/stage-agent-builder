@@ -11,11 +11,14 @@ serve(async (req) => {
   }
 
   try {
-    const { query, apiKey: userApiKey, searchEngineId: userSearchEngineId } = await req.json();
+    const { query, numResults = 20, apiKey: userApiKey, searchEngineId: userSearchEngineId } = await req.json();
     
     if (!query) {
       throw new Error("Query parameter is required");
     }
+    
+    // Clamp numResults between 1 and 1000
+    const requestedResults = Math.max(1, Math.min(1000, Number(numResults) || 20));
     
     // Use provided keys or fall back to environment secrets
     const apiKey = userApiKey || Deno.env.get("GOOGLE_SEARCH_API");
@@ -29,35 +32,44 @@ serve(async (req) => {
       throw new Error("Google Search Engine ID is required (not configured in secrets or provided)");
     }
 
-    console.log("Performing Google search for:", query);
+    console.log(`Performing Google search for: "${query}" (${requestedResults} results)`);
 
-    // Fetch first 10 results
-    const url1 = `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${searchEngineId}&q=${encodeURIComponent(query)}&start=1&num=10`;
-    console.log("Fetching results 1-10");
+    // Calculate number of pages needed (10 results per page)
+    const numPages = Math.ceil(requestedResults / 10);
     
-    const response1 = await fetch(url1);
-    const data1 = await response1.json();
-    
-    if (!response1.ok) {
-      throw new Error(data1.error?.message || "Google Search API error");
-    }
+    // Start background task to fetch all pages
+    const fetchAllPages = async () => {
+      const allItems: any[] = [];
+      
+      for (let page = 0; page < numPages; page++) {
+        const startIndex = page * 10 + 1;
+        const resultsPerPage = Math.min(10, requestedResults - page * 10);
+        
+        const url = `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${searchEngineId}&q=${encodeURIComponent(query)}&start=${startIndex}&num=${resultsPerPage}`;
+        console.log(`Fetching results ${startIndex}-${startIndex + resultsPerPage - 1} (page ${page + 1}/${numPages})`);
+        
+        try {
+          const response = await fetch(url);
+          const data = await response.json();
+          
+          if (!response.ok) {
+            console.warn(`Error fetching page ${page + 1}:`, data.error?.message);
+            continue;
+          }
+          
+          if (data.items) {
+            allItems.push(...data.items);
+          }
+        } catch (error) {
+          console.error(`Error fetching page ${page + 1}:`, error);
+        }
+      }
+      
+      return allItems;
+    };
 
-    // Fetch next 10 results (pagination)
-    const url2 = `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${searchEngineId}&q=${encodeURIComponent(query)}&start=11&num=10`;
-    console.log("Fetching results 11-20");
-    
-    const response2 = await fetch(url2);
-    const data2 = await response2.json();
-    
-    if (!response2.ok) {
-      console.warn("Error fetching second page:", data2.error?.message);
-    }
-
-    // Combine results from both pages
-    const allItems = [
-      ...(data1.items || []),
-      ...(data2.items || [])
-    ];
+    // Execute the fetch in background and wait for completion
+    const allItems = await fetchAllPages();
 
     const results = allItems.map((item: any) => ({
       title: item.title,
