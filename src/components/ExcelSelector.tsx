@@ -32,8 +32,10 @@ export function ExcelSelector({ excelData, onClose, onSelect }: ExcelSelectorPro
   const [doesNotContainInput, setDoesNotContainInput] = useState('');
   const [appliedContains, setAppliedContains] = useState<string[]>([]);
   const [appliedDoesNotContain, setAppliedDoesNotContain] = useState<string[]>([]);
+  const [headerRowIndex, setHeaderRowIndex] = useState<Record<number, number>>({});
+  const [processedSheets, setProcessedSheets] = useState<ExcelData['sheets']>(excelData.sheets);
 
-  const activeSheet = excelData.sheets[activeSheetIndex];
+  const activeSheet = processedSheets[activeSheetIndex];
 
   // Check if any filters are applied
   const hasActiveFilters = appliedContains.length > 0 || appliedDoesNotContain.length > 0;
@@ -95,8 +97,8 @@ export function ExcelSelector({ excelData, onClose, onSelect }: ExcelSelectorPro
   };
 
   const getFilteredSheetDataCount = (sheetIndex: number): number => {
-    if (!hasActiveFilters) return excelData.sheets[sheetIndex].jsonData.length;
-    return excelData.sheets[sheetIndex].jsonData.filter(rowMatchesFilters).length;
+    if (!hasActiveFilters) return processedSheets[sheetIndex].jsonData.length;
+    return processedSheets[sheetIndex].jsonData.filter(rowMatchesFilters).length;
   };
 
   const isSheetFullySelected = (sheetIndex: number): boolean => {
@@ -145,7 +147,7 @@ export function ExcelSelector({ excelData, onClose, onSelect }: ExcelSelectorPro
           newSelection[sheetIndex] = new Set(filteredActiveSheetIndices);
         } else {
           // For non-active sheets, filter and select
-          const sheet = excelData.sheets[sheetIndex];
+          const sheet = processedSheets[sheetIndex];
           const filteredIndices = hasActiveFilters
             ? sheet.jsonData
                 .map((row, index) => ({ row, index }))
@@ -161,7 +163,7 @@ export function ExcelSelector({ excelData, onClose, onSelect }: ExcelSelectorPro
 
   const selectFullWorkbook = () => {
     const newSelection: Record<number, Set<number>> = {};
-    excelData.sheets.forEach((sheet, sheetIndex) => {
+    processedSheets.forEach((sheet, sheetIndex) => {
       if (hasActiveFilters) {
         // Only select filtered rows
         const filteredIndices = sheet.jsonData
@@ -197,13 +199,53 @@ export function ExcelSelector({ excelData, onClose, onSelect }: ExcelSelectorPro
     return String(value);
   };
 
+  const setHeaderRow = () => {
+    // Get the selected row for the active sheet
+    const selectedRowIndices = Array.from(selectedRows[activeSheetIndex] || []);
+    if (selectedRowIndices.length !== 1) {
+      return; // Must have exactly one row selected
+    }
+
+    const newHeaderRowIndex = selectedRowIndices[0];
+    const originalSheet = excelData.sheets[activeSheetIndex];
+    
+    // Extract new headers from the selected row
+    const newHeaderRow = originalSheet.jsonData[newHeaderRowIndex];
+    const newHeaders = originalSheet.headers.map(oldHeader => {
+      const cellValue = newHeaderRow[oldHeader];
+      if (cellValue === null || cellValue === undefined) return oldHeader;
+      return String(cellValue);
+    });
+
+    // Create new data rows (everything after the new header row)
+    const newJsonData = originalSheet.jsonData.slice(newHeaderRowIndex + 1).map(oldRow => {
+      const newRow: Record<string, any> = {};
+      originalSheet.headers.forEach((oldHeader, index) => {
+        newRow[newHeaders[index]] = oldRow[oldHeader];
+      });
+      return newRow;
+    });
+
+    // Update the processed sheets
+    const updatedSheets = [...processedSheets];
+    updatedSheets[activeSheetIndex] = {
+      sheetName: originalSheet.sheetName,
+      headers: newHeaders,
+      jsonData: newJsonData
+    };
+
+    setProcessedSheets(updatedSheets);
+    setHeaderRowIndex({ ...headerRowIndex, [activeSheetIndex]: newHeaderRowIndex });
+    setSelectedRows({ ...selectedRows, [activeSheetIndex]: new Set() }); // Clear selection
+  };
+
   const confirmSelection = () => {
     const selectedData: SelectedSheetData[] = [];
     let totalRows = 0;
 
     Object.entries(selectedRows).forEach(([sheetIndexStr, rowIndices]) => {
       const sheetIndex = parseInt(sheetIndexStr);
-      const sheet = excelData.sheets[sheetIndex];
+      const sheet = processedSheets[sheetIndex];
       
       if (rowIndices.size > 0) {
         const selectedRowsData = Array.from(rowIndices)
@@ -334,6 +376,11 @@ export function ExcelSelector({ excelData, onClose, onSelect }: ExcelSelectorPro
                         {getSheetSelectionCount(index)}
                       </Badge>
                     )}
+                    {headerRowIndex[index] !== undefined && (
+                      <Badge variant="outline" className="ml-2 text-xs">
+                        H:{headerRowIndex[index] + 1}
+                      </Badge>
+                    )}
                   </button>
                 ))}
               </div>
@@ -360,6 +407,14 @@ export function ExcelSelector({ excelData, onClose, onSelect }: ExcelSelectorPro
                       className={showFilters ? 'bg-accent' : ''}
                     >
                       <Filter className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={setHeaderRow}
+                      disabled={!selectedRows[activeSheetIndex] || selectedRows[activeSheetIndex]?.size !== 1}
+                      title="Select exactly one row to set as header"
+                    >
+                      Set Header
                     </Button>
                     <Button
                       variant={isSheetFullySelected(activeSheetIndex) ? "default" : "outline"}
