@@ -403,7 +403,9 @@ const Index = () => {
         });
       }
       
-      const userPrompt = agent.userPrompt.replace("{input}", input);
+      const userPrompt = agent.userPrompt
+        .replace("{input}", input)
+        .replace("{prompt}", userInput || "No input provided");
       
       // Convert tool instances to the format expected by the edge function
       const toolsPayload = agent.tools.map(t => ({
@@ -533,7 +535,9 @@ const Index = () => {
           });
         }
         
-        const userPrompt = agent.userPrompt.replace("{input}", input);
+        const userPrompt = agent.userPrompt
+          .replace("{input}", input)
+          .replace("{prompt}", userInput || "No input provided");
         
         // Convert tool instances to the format expected by the edge function
         const toolsPayload = agent.tools.map(t => ({
