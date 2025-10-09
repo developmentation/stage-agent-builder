@@ -412,6 +412,13 @@ export const functionDefinitions: FunctionDefinition[] = [
     },
     outputs: ["output"],
     configSchema: {
+      overrideQuery: {
+        type: "string",
+        label: "Override Search Query",
+        description: "Optional: Override input with this search query",
+        required: false,
+        placeholder: "Enter search query to override input",
+      },
       numResults: {
         type: "number",
         label: "Number of Results",

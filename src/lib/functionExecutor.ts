@@ -524,6 +524,13 @@ export class FunctionExecutor {
   // Google Search
   private static async executeGoogleSearch(node: FunctionNode, input: string): Promise<FunctionExecutionResult> {
     try {
+      // Check for override query first, otherwise use input from connections
+      const searchQuery = node.config.overrideQuery ? String(node.config.overrideQuery).trim() : input;
+      
+      if (!searchQuery) {
+        throw new Error("Search query is required (provide via connection or override)");
+      }
+      
       // Get numResults config, default to 20, clamp between 1-1000
       const numResults = Math.max(1, Math.min(1000, Number(node.config.numResults) || 20));
       
@@ -532,7 +539,7 @@ export class FunctionExecutor {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ query: input, numResults }),
+        body: JSON.stringify({ query: searchQuery, numResults }),
       });
 
       if (!response.ok) {
