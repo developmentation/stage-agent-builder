@@ -629,14 +629,8 @@ export class FunctionExecutor {
 
           const data = await response.json();
           
-          // Format the result with metadata
-          let result = `**${data.title || url}**\n`;
-          result += `**URL:** ${data.url}\n`;
-          result += `**Accessed:** ${new Date(data.accessedAt).toLocaleString()}\n`;
-          if (data.isPdf) {
-            result += `**Type:** PDF Document (${data.pageCount} pages)\n`;
-          }
-          result += `\n---\n\n${data.content}\n`;
+          // Return JSON output in a code block
+          const result = `\`\`\`json\n${JSON.stringify(data, null, 2)}\n\`\`\``;
           
           return { 
             url, 
