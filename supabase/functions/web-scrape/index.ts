@@ -1,4 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+// @ts-ignore - pdf-parse doesn't have types
+import pdf from "https://esm.sh/pdf-parse@1.1.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -130,24 +132,53 @@ serve(async (req) => {
     if (isPdf) {
       console.log(`Detected PDF URL: ${url}`);
       
-      // PDF text extraction is not supported in Supabase Edge Functions
-      // Available libraries either require DOM APIs or have incompatible dependencies
-      const urlParts = url.split('/');
-      const filename = urlParts[urlParts.length - 1].split('?')[0];
-      const title = filename || "PDF Document";
+      const pdfBuffer = await response.arrayBuffer();
       
-      return new Response(
-        JSON.stringify({
-          success: true,
-          url,
-          title,
-          content: `PDF Document: ${filename}\n\nText extraction is not available in edge functions. Please download the PDF directly from: ${url}`,
-          contentLength: 0,
-          isPdf: true,
-          accessedAt
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      try {
+        console.log(`Attempting to extract text from PDF...`);
+        const data = await pdf(pdfBuffer);
+        const content = data.text;
+        const pageCount = data.numpages;
+        
+        console.log(`Successfully extracted PDF text: ${pageCount} pages, ${content.length} characters`);
+        
+        const urlParts = url.split('/');
+        const filename = urlParts[urlParts.length - 1].split('?')[0];
+        const title = filename || "PDF Document";
+        
+        return new Response(
+          JSON.stringify({
+            success: true,
+            url,
+            title,
+            content,
+            contentLength: content.length,
+            pageCount,
+            isPdf: true,
+            accessedAt
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      } catch (error) {
+        console.error(`PDF extraction failed:`, error);
+        
+        const urlParts = url.split('/');
+        const filename = urlParts[urlParts.length - 1].split('?')[0];
+        const title = filename || "PDF Document";
+        
+        return new Response(
+          JSON.stringify({
+            success: true,
+            url,
+            title,
+            content: `PDF Document: ${filename}\n\nText extraction failed: ${error instanceof Error ? error.message : 'Unknown error'}\n\nPlease download the PDF directly from: ${url}`,
+            contentLength: 0,
+            isPdf: true,
+            accessedAt
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     const html = await response.text();
