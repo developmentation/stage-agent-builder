@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { pdfText } from "jsr:@pdf/pdftext";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -117,11 +118,33 @@ serve(async (req) => {
     // Check if URL is a PDF
     const isPdf = isPdfUrl(url);
     
+    // Fetch the URL once for both PDF and non-PDF
+    const response = await smartFetch(url);
+
+    if (!response.ok) {
+      return new Response(
+        JSON.stringify({ error: `Failed to fetch URL: ${response.statusText}` }),
+        { status: response.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     if (isPdf) {
       console.log(`Detected PDF URL: ${url}`);
       
-      // PDF parsing is not supported in Deno edge functions due to DOM API requirements
-      // Return metadata only
+      const pdfBuffer = new Uint8Array(await response.arrayBuffer());
+      let content: string;
+      let pageCount = 0;
+      
+      try {
+        const pages = await pdfText(pdfBuffer);
+        content = Object.values(pages).join('\n\n');
+        pageCount = Object.keys(pages).length;
+        console.log(`Successfully extracted PDF text: ${pageCount} pages, ${content.length} characters`);
+      } catch (error) {
+        console.error(`PDF extraction failed:`, error);
+        content = "[PDF Document - Text extraction failed. Please download the PDF to view its contents.]";
+      }
+
       const urlParts = url.split('/');
       const filename = urlParts[urlParts.length - 1].split('?')[0];
       const title = filename || "PDF Document";
@@ -131,22 +154,13 @@ serve(async (req) => {
           success: true,
           url,
           title,
-          content: "[PDF Document - Text extraction not available in edge functions. Please download the PDF to view its contents.]",
-          contentLength: 0,
+          content,
+          contentLength: content.length,
+          pageCount,
           isPdf: true,
           accessedAt
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Use smart fetch with retry logic for non-PDF URLs
-    const response = await smartFetch(url);
-
-    if (!response.ok) {
-      return new Response(
-        JSON.stringify({ error: `Failed to fetch URL: ${response.statusText}` }),
-        { status: response.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
