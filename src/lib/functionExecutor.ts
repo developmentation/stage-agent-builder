@@ -628,9 +628,19 @@ export class FunctionExecutor {
           }
 
           const data = await response.json();
+          
+          // Format the result with metadata
+          let result = `**${data.title || url}**\n`;
+          result += `**URL:** ${data.url}\n`;
+          result += `**Accessed:** ${new Date(data.accessedAt).toLocaleString()}\n`;
+          if (data.isPdf) {
+            result += `**Type:** PDF Document (${data.pageCount} pages)\n`;
+          }
+          result += `\n---\n\n${data.content}\n`;
+          
           return { 
             url, 
-            result: `=== ${data.title || url} ===\n${data.content}\n`, 
+            result, 
             success: true 
           };
         } catch (error) {
