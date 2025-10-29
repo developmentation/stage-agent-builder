@@ -123,12 +123,31 @@ serve(async (req) => {
     const response = await smartFetch(url);
 
     if (!response.ok) {
-      const errorMsg = response.status === 403 
-        ? `Access denied (403 Forbidden). The website may be blocking automated requests. Try accessing: ${url}`
-        : `Failed to fetch URL: ${response.statusText}`;
+      // Handle 403 gracefully - return success with warning message so workflow continues
+      if (response.status === 403) {
+        const urlParts = url.split('/');
+        const domain = new URL(url).hostname;
+        
+        console.log(`403 Forbidden for ${url} - site is blocking automated access`);
+        
+        return new Response(
+          JSON.stringify({
+            success: true,
+            url,
+            title: `Access Restricted: ${domain}`,
+            content: `This website (${domain}) is blocking automated access. The content could not be retrieved automatically.\n\nTo access this content, please visit the URL directly: ${url}\n\nSome academic publishers and websites have anti-bot protection that prevents automated scraping.`,
+            contentLength: 0,
+            accessedAt: new Date().toISOString(),
+            blocked: true,
+            statusCode: 403
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
       
+      // For other errors, return error response
       return new Response(
-        JSON.stringify({ error: errorMsg }),
+        JSON.stringify({ error: `Failed to fetch URL: ${response.statusText}` }),
         { status: response.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
