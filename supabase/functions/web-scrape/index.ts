@@ -1,6 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-// @ts-ignore - pdf-parse doesn't have types
-import pdf from "https://esm.sh/pdf-parse@1.1.1";
+import { extractText, getDocumentProxy } from "https://esm.sh/unpdf@0.12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -132,13 +131,14 @@ serve(async (req) => {
     if (isPdf) {
       console.log(`Detected PDF URL: ${url}`);
       
-      const pdfBuffer = await response.arrayBuffer();
+      const pdfBuffer = new Uint8Array(await response.arrayBuffer());
       
       try {
-        console.log(`Attempting to extract text from PDF...`);
-        const data = await pdf(pdfBuffer);
-        const content = data.text;
-        const pageCount = data.numpages;
+        console.log(`Attempting to extract text from PDF using unpdf...`);
+        const pdf = await getDocumentProxy(pdfBuffer);
+        const { text, totalPages } = await extractText(pdf, { mergePages: true });
+        const content = text;
+        const pageCount = totalPages;
         
         console.log(`Successfully extracted PDF text: ${pageCount} pages, ${content.length} characters`);
         
@@ -174,7 +174,8 @@ serve(async (req) => {
             content: `PDF Document: ${filename}\n\nText extraction failed: ${error instanceof Error ? error.message : 'Unknown error'}\n\nPlease download the PDF directly from: ${url}`,
             contentLength: 0,
             isPdf: true,
-            accessedAt
+            accessedAt,
+            error: error instanceof Error ? error.message : 'Unknown error'
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
