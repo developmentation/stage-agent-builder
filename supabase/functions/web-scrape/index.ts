@@ -1,8 +1,8 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import * as pdfjsLib from "npm:pdfjs-dist@5.4.296";
+import * as pdfjsLib from "npm:pdfjs-dist@5.4.296/legacy/build/pdf.mjs";
 
-// Configure PDF.js worker for Deno using npm: specifier
-pdfjsLib.GlobalWorkerOptions.workerSrc = "npm:pdfjs-dist@5.4.296/build/pdf.worker.mjs";
+// Configure PDF.js worker for Deno using npm: specifier with legacy build
+pdfjsLib.GlobalWorkerOptions.workerSrc = "npm:pdfjs-dist@5.4.296/legacy/build/pdf.worker.mjs";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
