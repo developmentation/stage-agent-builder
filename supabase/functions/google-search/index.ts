@@ -47,7 +47,7 @@ serve(async (req) => {
 
         const url = `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${searchEngineId}&q=${encodeURIComponent(query)}&start=${startIndex}&num=${resultsPerPage}`;
         console.log(`Fetching results ${startIndex}-${startIndex + resultsPerPage - 1} (page ${page + 1}/${numPages})`);
-        console.log(url);
+        console.log(`REQUEST URL: ${url}`);
         try {
           const response = await fetch(url);
           const data = await response.json();
