@@ -855,54 +855,25 @@ export const PropertiesPanel = ({
               </div>
               
               <Card className="p-3 bg-muted/30 max-h-[200px] overflow-y-auto">
-                <div className="prose prose-sm dark:prose-invert max-w-none text-xs">
-                  <ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
-                    components={{
-                      table: ({ children }) => (
-                        <Table className="my-2">
-                          {children}
-                        </Table>
-                      ),
-                      thead: ({ children }) => <TableHeader>{children}</TableHeader>,
-                      tbody: ({ children }) => <TableBody>{children}</TableBody>,
-                      tr: ({ children }) => <TableRow>{children}</TableRow>,
-                      th: ({ children }) => <TableHead className="text-xs">{children}</TableHead>,
-                      td: ({ children }) => <TableCell className="text-xs">{children}</TableCell>,
-                      code: ({ inline, children, ...props }: any) => {
-                        return inline ? (
-                          <code className="text-xs font-mono bg-muted px-1 py-0.5 rounded" {...props}>
-                            {children}
-                          </code>
-                        ) : (
-                          <pre className="bg-muted p-2 rounded-md overflow-x-auto my-2">
-                            <code className="text-xs font-mono" {...props}>
-                              {children}
-                            </code>
-                          </pre>
-                        );
-                      },
-                    }}
-                  >
-                    {(() => {
-                      const output = activeNode.output;
-                      if (!output) return 'No output';
-                      // Handle conditional outputs (objects with true/false keys)
-                      if (typeof output === 'object') {
-                        const obj = output as any;
-                        if ('true' in obj || 'false' in obj) {
-                          const trueContent = obj.true || '';
-                          const falseContent = obj.false || '';
-                          if (trueContent) return trueContent;
-                          if (falseContent) return falseContent;
-                          return 'No output';
-                        }
+                <p className="text-xs whitespace-pre-wrap break-all overflow-wrap-anywhere">
+                  {(() => {
+                    const output = activeNode.output;
+                    if (!output) return 'No output';
+                    // Handle conditional outputs (objects with true/false keys)
+                    if (typeof output === 'object') {
+                      const obj = output as any;
+                      if ('true' in obj || 'false' in obj) {
+                        const trueContent = obj.true || '';
+                        const falseContent = obj.false || '';
+                        if (trueContent) return trueContent;
+                        if (falseContent) return falseContent;
+                        return 'No output';
                       }
-                      // Handle regular string output
-                      return typeof output === 'string' ? output : JSON.stringify(output, null, 2);
-                    })()}
-                  </ReactMarkdown>
-                </div>
+                    }
+                    // Handle regular string output
+                    return typeof output === 'string' ? output : JSON.stringify(output, null, 2);
+                  })()}
+                </p>
               </Card>
             </div>
           )}
