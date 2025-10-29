@@ -539,7 +539,11 @@ export class FunctionExecutor {
   private static async executeGoogleSearch(node: FunctionNode, input: string): Promise<FunctionExecutionResult> {
     try {
       // Check for override query first, otherwise use input from connections
-      const searchQuery = node.config.overrideQuery ? String(node.config.overrideQuery).trim() : input;
+      const rawQuery = node.config.overrideQuery ? String(node.config.overrideQuery) : input;
+      const searchQuery = rawQuery
+        .replace(/[\r\n]+/g, ' ')  // Replace newlines with spaces
+        .replace(/\s+/g, ' ')       // Collapse multiple spaces
+        .trim();                     // Trim leading/trailing
       
       if (!searchQuery) {
         throw new Error("Search query is required (provide via connection or override)");
