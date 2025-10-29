@@ -1,8 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import * as pdfjsLib from "npm:pdfjs-dist@5.4.296/legacy/build/pdf.mjs";
-
-// Configure PDF.js worker for Deno using npm: specifier with legacy build
-pdfjsLib.GlobalWorkerOptions.workerSrc = "npm:pdfjs-dist@5.4.296/legacy/build/pdf.worker.mjs";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -98,39 +94,6 @@ const isPdfUrl = (url: string): boolean => {
   return urlLower.endsWith('.pdf') || urlLower.includes('.pdf?');
 };
 
-// Helper function to extract text from PDF
-const extractPdfText = async (arrayBuffer: ArrayBuffer): Promise<{ content: string; pageCount: number }> => {
-  const loadingTask = pdfjsLib.getDocument({ data: arrayBuffer });
-  const pdf = await loadingTask.promise;
-  
-  let fullText = '';
-  
-  for (let i = 1; i <= pdf.numPages; i++) {
-    const page = await pdf.getPage(i);
-    const textContent = await page.getTextContent({
-      includeMarkedContent: true
-    });
-    
-    if (i > 1) {
-      fullText += `\n\n--- Page ${i} ---\n\n`;
-    }
-    
-    const pageText = textContent.items
-      .map((item: any) => item.str || '')
-      .join(' ')
-      .trim();
-    
-    if (pageText) {
-      fullText += pageText;
-    }
-  }
-  
-  return {
-    content: fullText.trim(),
-    pageCount: pdf.numPages
-  };
-};
-
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -157,56 +120,24 @@ serve(async (req) => {
     if (isPdf) {
       console.log(`Detected PDF URL: ${url}`);
       
-      // Fetch PDF as binary
-      const response = await smartFetch(url);
+      // PDF parsing is not supported in Deno edge functions due to DOM API requirements
+      // Return metadata only
+      const urlParts = url.split('/');
+      const filename = urlParts[urlParts.length - 1].split('?')[0];
+      const title = filename || "PDF Document";
       
-      if (!response.ok) {
-        return new Response(
-          JSON.stringify({ error: `Failed to fetch PDF: ${response.statusText}` }),
-          { status: response.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      
-      // Verify Content-Type
-      const contentType = response.headers.get('content-type') || '';
-      if (!contentType.includes('pdf')) {
-        console.log(`Warning: Expected PDF but got content-type: ${contentType}`);
-      }
-      
-      const arrayBuffer = await response.arrayBuffer();
-      
-      try {
-        const { content, pageCount } = await extractPdfText(arrayBuffer);
-        
-        // Extract filename from URL for title
-        const urlParts = url.split('/');
-        const filename = urlParts[urlParts.length - 1].split('?')[0];
-        const title = filename || "PDF Document";
-        
-        console.log(`Successfully extracted text from PDF: ${pageCount} pages, ${content.length} characters`);
-        
-        return new Response(
-          JSON.stringify({
-            success: true,
-            url,
-            title,
-            content,
-            contentLength: content.length,
-            pageCount,
-            isPdf: true,
-            accessedAt
-          }),
-          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      } catch (pdfError) {
-        console.error(`Error parsing PDF:`, pdfError);
-        return new Response(
-          JSON.stringify({
-            error: `Failed to parse PDF: ${pdfError instanceof Error ? pdfError.message : 'Unknown error'}`,
-          }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
+      return new Response(
+        JSON.stringify({
+          success: true,
+          url,
+          title,
+          content: "[PDF Document - Text extraction not available in edge functions. Please download the PDF to view its contents.]",
+          contentLength: 0,
+          isPdf: true,
+          accessedAt
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Use smart fetch with retry logic for non-PDF URLs
