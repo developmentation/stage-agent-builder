@@ -149,6 +149,9 @@ serve(async (req) => {
 
     console.log(`Scraping URL: ${url}, returnHtml: ${returnHtml}`);
 
+    // Capture access timestamp
+    const accessedAt = new Date().toISOString();
+
     // Check if URL is a PDF
     const isPdf = isPdfUrl(url);
     
@@ -191,7 +194,8 @@ serve(async (req) => {
             content,
             contentLength: content.length,
             pageCount,
-            isPdf: true
+            isPdf: true,
+            accessedAt
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
@@ -251,6 +255,7 @@ serve(async (req) => {
         title,
         content,
         contentLength: content.length,
+        accessedAt
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
