@@ -37,6 +37,7 @@ const getModernHeaders = () => ({
   "Sec-CH-UA-Mobile": "?0",
   "Sec-CH-UA-Platform": '"Windows"',
   "Cache-Control": "max-age=0",
+  "Referer": "https://www.google.com/", // Add referer to appear more legitimate
 });
 
 // Smart fetch with retry logic
@@ -122,8 +123,12 @@ serve(async (req) => {
     const response = await smartFetch(url);
 
     if (!response.ok) {
+      const errorMsg = response.status === 403 
+        ? `Access denied (403 Forbidden). The website may be blocking automated requests. Try accessing: ${url}`
+        : `Failed to fetch URL: ${response.statusText}`;
+      
       return new Response(
-        JSON.stringify({ error: `Failed to fetch URL: ${response.statusText}` }),
+        JSON.stringify({ error: errorMsg }),
         { status: response.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -133,11 +138,49 @@ serve(async (req) => {
       
       const pdfBuffer = new Uint8Array(await response.arrayBuffer());
       
+      // Check PDF size - skip processing if too large (> 5MB to avoid CPU limits)
+      const maxPdfSize = 5 * 1024 * 1024; // 5MB
+      if (pdfBuffer.length > maxPdfSize) {
+        const urlParts = url.split('/');
+        const filename = urlParts[urlParts.length - 1].split('?')[0];
+        const title = filename || "PDF Document";
+        
+        console.log(`PDF too large (${(pdfBuffer.length / 1024 / 1024).toFixed(2)}MB), skipping extraction`);
+        
+        return new Response(
+          JSON.stringify({
+            success: true,
+            url,
+            title,
+            content: `PDF Document: ${filename}\n\nPDF is too large for text extraction (${(pdfBuffer.length / 1024 / 1024).toFixed(2)}MB). Please download directly from: ${url}`,
+            contentLength: 0,
+            isPdf: true,
+            accessedAt,
+            skipped: true
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
       try {
         console.log(`Attempting to extract text from PDF using unpdf...`);
-        const pdf = await getDocumentProxy(pdfBuffer);
-        const { text, totalPages } = await extractText(pdf, { mergePages: true });
-        const content = text;
+        
+        // Add timeout for PDF extraction to prevent CPU exhaustion
+        const extractionTimeout = 20000; // 20 seconds max for PDF extraction
+        const extractionPromise = (async () => {
+          const pdf = await getDocumentProxy(pdfBuffer);
+          const { text, totalPages } = await extractText(pdf, { mergePages: true });
+          return { text, totalPages };
+        })();
+        
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('PDF extraction timeout')), extractionTimeout)
+        );
+        
+        const { text, totalPages } = await Promise.race([extractionPromise, timeoutPromise]) as { text: string, totalPages: number };
+        
+        // Limit content to 100k characters to avoid memory issues
+        const content = text.substring(0, 100000);
         const pageCount = totalPages;
         
         console.log(`Successfully extracted PDF text: ${pageCount} pages, ${content.length} characters`);
@@ -155,7 +198,8 @@ serve(async (req) => {
             contentLength: content.length,
             pageCount,
             isPdf: true,
-            accessedAt
+            accessedAt,
+            truncated: text.length > 100000
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
