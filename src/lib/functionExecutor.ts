@@ -60,6 +60,9 @@ export class FunctionExecutor {
         case "google_search":
           return await this.executeGoogleSearch(functionNode, input);
         
+        case "brave_search":
+          return await this.executeBraveSearch(functionNode, input);
+        
         case "web_scrape":
           return await this.executeWebScrape(functionNode, input);
         
@@ -578,6 +581,53 @@ export class FunctionExecutor {
         success: false,
         outputs: { output: "" },
         error: error instanceof Error ? error.message : "Google Search failed",
+      };
+    }
+  }
+
+  // Brave Search
+  private static async executeBraveSearch(node: FunctionNode, input: string): Promise<FunctionExecutionResult> {
+    try {
+      // Check for override query first, otherwise use input from connections
+      const rawQuery = node.config.overrideQuery ? String(node.config.overrideQuery) : input;
+      const searchQuery = rawQuery
+        .replace(/[\r\n]+/g, ' ')  // Replace newlines with spaces
+        .replace(/\s+/g, ' ')       // Collapse multiple spaces
+        .trim();                     // Trim leading/trailing
+      
+      if (!searchQuery) {
+        throw new Error("Search query is required (provide via connection or override)");
+      }
+      
+      // Get numResults config, default to 20, clamp between 1-20 (Brave API limit)
+      const numResults = Math.max(1, Math.min(20, Number(node.config.numResults) || 20));
+      
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/brave-search`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ query: searchQuery, numResults }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Brave Search failed: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      const formattedResults = data.results
+        .map((r: any, i: number) => `${i + 1}. ${r.title}\n   ${r.url}\n   ${r.description}`)
+        .join("\n\n");
+
+      return {
+        success: true,
+        outputs: { output: formattedResults },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        outputs: { output: "" },
+        error: error instanceof Error ? error.message : "Brave Search failed",
       };
     }
   }

@@ -431,6 +431,36 @@ export const functionDefinitions: FunctionDefinition[] = [
     },
   },
   {
+    id: "brave_search",
+    name: "Brave Search",
+    description: "Perform a Brave search and return top results",
+    category: "url",
+    icon: Globe,
+    color: "bg-orange-500/10 text-orange-500",
+    inputs: {
+      label: "Search query",
+      description: "The search query to execute",
+    },
+    outputs: ["output"],
+    configSchema: {
+      overrideQuery: {
+        type: "string",
+        label: "Override Search Query",
+        description: "Optional: Override input with this search query",
+        required: false,
+        placeholder: "Enter search query to override input",
+      },
+      numResults: {
+        type: "number",
+        label: "Number of Results",
+        description: "Number of search results to return (1-20)",
+        default: 20,
+        required: false,
+        placeholder: "20",
+      },
+    },
+  },
+  {
     id: "web_scrape",
     name: "Web Scrape",
     description: "Extract URLs from input and scrape each one, concatenating results",

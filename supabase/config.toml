@@ -6,6 +6,9 @@ verify_jwt = false
 [functions.google-search]
 verify_jwt = false
 
+[functions.brave-search]
+verify_jwt = false
+
 [functions.weather]
 verify_jwt = false
 
