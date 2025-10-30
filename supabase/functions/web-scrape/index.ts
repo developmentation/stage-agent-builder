@@ -123,11 +123,10 @@ serve(async (req) => {
     const response = await smartFetch(url);
 
     if (!response.ok) {
+      const domain = new URL(url).hostname;
+      
       // Handle 403 gracefully - return success with warning message so workflow continues
       if (response.status === 403) {
-        const urlParts = url.split('/');
-        const domain = new URL(url).hostname;
-        
         console.log(`403 Forbidden for ${url} - site is blocking automated access`);
         
         return new Response(
@@ -140,6 +139,25 @@ serve(async (req) => {
             accessedAt: new Date().toISOString(),
             blocked: true,
             statusCode: 403
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      // Handle 404 gracefully - return success with warning message so workflow continues
+      if (response.status === 404) {
+        console.log(`404 Not Found for ${url} - page does not exist`);
+        
+        return new Response(
+          JSON.stringify({
+            success: true,
+            url,
+            title: `Page Not Found: ${domain}`,
+            content: `The requested page could not be found at ${url}.\n\nThe URL may be incorrect, the page may have been moved or deleted, or the content may no longer be available.\n\nPlease verify the URL or try searching for the content on ${domain}.`,
+            contentLength: 0,
+            accessedAt: new Date().toISOString(),
+            notFound: true,
+            statusCode: 404
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
