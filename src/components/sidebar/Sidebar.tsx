@@ -96,6 +96,8 @@ interface SidebarProps {
   onWorkflowNameChange: (value: string) => void;
   customAgents: any[];
   onCustomAgentsChange: (agents: any[]) => void;
+  selectedModel: "gemini-2.5-flash" | "gemini-2.5-pro";
+  onSelectedModelChange: (model: "gemini-2.5-flash" | "gemini-2.5-pro") => void;
 }
 export const Sidebar = ({
   onAddAgent,
@@ -106,7 +108,9 @@ export const Sidebar = ({
   workflowName,
   onWorkflowNameChange,
   customAgents,
-  onCustomAgentsChange
+  onCustomAgentsChange,
+  selectedModel,
+  onSelectedModelChange
 }: SidebarProps) => {
   const [isAddAgentOpen, setIsAddAgentOpen] = useState(false);
   const [newAgentName, setNewAgentName] = useState("");
@@ -430,6 +434,29 @@ export const Sidebar = ({
               Workflow Name
             </Label>
             <Input id="workflow-name" placeholder="Untitled Workflow" value={workflowName} onChange={e => onWorkflowNameChange(e.target.value)} className="h-9" />
+          </div>
+
+          {/* Model Selection */}
+          <div className="space-y-2">
+            <Label htmlFor="model-select" className="text-sm font-semibold text-foreground">
+              Model
+            </Label>
+            <Select value={selectedModel} onValueChange={onSelectedModelChange}>
+              <SelectTrigger id="model-select" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="gemini-2.5-flash">
+                  Gemini 2.5 Flash (Default)
+                </SelectItem>
+                <SelectItem value="gemini-2.5-pro">
+                  Gemini 2.5 Pro (Advanced)
+                </SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Flash: Fast and efficient • Pro: Enhanced reasoning
+            </p>
           </div>
 
           {/* Input Section */}

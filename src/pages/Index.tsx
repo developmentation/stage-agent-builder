@@ -30,6 +30,7 @@ const Index = () => {
   const [workflowName, setWorkflowName] = useState<string>("Untitled Workflow");
   const [customAgents, setCustomAgents] = useState<any[]>([]);
   const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [selectedModel, setSelectedModel] = useState<"gemini-2.5-flash" | "gemini-2.5-pro">("gemini-2.5-flash");
   const [workflow, setWorkflow] = useState<Workflow>({
     stages: [],
     connections: [],
@@ -278,6 +279,7 @@ const Index = () => {
       userInput,
       workflowName,
       customAgents,
+      selectedModel,
     };
     const json = JSON.stringify(saveData, null, 2);
     const blob = new Blob([json], { type: "application/json" });
@@ -308,6 +310,7 @@ const Index = () => {
           setUserInput(loaded.userInput || "");
           setWorkflowName(loaded.workflowName || "Untitled Workflow");
           setCustomAgents(loaded.customAgents || []);
+          setSelectedModel(loaded.selectedModel || "gemini-2.5-flash");
         } else {
           // Old format (just the workflow object)
           setWorkflow(loaded);
@@ -328,6 +331,7 @@ const Index = () => {
       setUserInput("");
       setWorkflowName("Untitled Workflow");
       setCustomAgents([]); // Reset to only default agents
+      setSelectedModel("gemini-2.5-flash");
       setSelectedNode(null);
       setConnectingFrom(null);
     }
@@ -432,6 +436,7 @@ const Index = () => {
           systemPrompt: agent.systemPrompt,
           userPrompt,
           tools: toolsPayload,
+          model: selectedModel,
         }),
       });
 
@@ -572,6 +577,7 @@ const Index = () => {
             systemPrompt: agent.systemPrompt,
             userPrompt,
             tools: toolsPayload,
+            model: selectedModel,
           }),
         });
 
@@ -749,6 +755,8 @@ const Index = () => {
               onWorkflowNameChange={setWorkflowName}
               customAgents={customAgents}
               onCustomAgentsChange={setCustomAgents}
+              selectedModel={selectedModel}
+              onSelectedModelChange={setSelectedModel}
             />
           }
           mobileCanvas={
