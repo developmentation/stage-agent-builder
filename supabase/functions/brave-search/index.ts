@@ -17,8 +17,8 @@ serve(async (req) => {
       throw new Error("Query parameter is required");
     }
 
-    // Clamp numResults between 1 and 20 (Brave API limit per request)
-    const count = Math.max(1, Math.min(20, Number(numResults) || 20));
+    // Clamp numResults between 1 and 1000
+    const requestedResults = Math.max(1, Math.min(1000, Number(numResults) || 20));
 
     // Use provided key or fall back to environment secret
     const apiKey = userApiKey || Deno.env.get("BRAVE_API_KEY");
@@ -27,30 +27,56 @@ serve(async (req) => {
       throw new Error("Brave API key is required (not configured in secrets or provided)");
     }
 
-    console.log(`Performing Brave search for: "${query}" (${count} results)`);
+    console.log(`Performing Brave search for: "${query}" (${requestedResults} results)`);
 
-    const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=${count}`;
-    
-    console.log(`REQUEST URL: ${url}`);
-    
-    const response = await fetch(url, {
-      headers: {
-        "Accept": "application/json",
-        "Accept-Encoding": "gzip",
-        "X-Subscription-Token": apiKey,
-      },
-    });
+    // Calculate number of pages needed (20 results per page - Brave API limit)
+    const numPages = Math.ceil(requestedResults / 20);
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      console.error("Brave API error:", errorData);
-      throw new Error(`Brave API error: ${response.status} ${response.statusText}`);
-    }
+    // Fetch all pages
+    const fetchAllPages = async () => {
+      const allResults: any[] = [];
 
-    const data = await response.json();
+      for (let page = 0; page < numPages; page++) {
+        const offset = page * 20;
+        const resultsPerPage = Math.min(20, requestedResults - page * 20);
+
+        const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=${resultsPerPage}&offset=${offset}`;
+        console.log(`Fetching results ${offset + 1}-${offset + resultsPerPage} (page ${page + 1}/${numPages})`);
+        console.log(`REQUEST URL: ${url}`);
+        
+        try {
+          const response = await fetch(url, {
+            headers: {
+              "Accept": "application/json",
+              "Accept-Encoding": "gzip",
+              "X-Subscription-Token": apiKey,
+            },
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            console.warn(`Error fetching page ${page + 1}:`, errorData);
+            continue;
+          }
+
+          const data = await response.json();
+          
+          if (data.web?.results) {
+            allResults.push(...data.web.results);
+          }
+        } catch (error) {
+          console.error(`Error fetching page ${page + 1}:`, error);
+        }
+      }
+
+      return allResults;
+    };
+
+    // Execute the fetch and wait for completion
+    const allItems = await fetchAllPages();
 
     // Map Brave results to match Google Search format for consistency
-    const results = (data.web?.results || []).map((item: any) => ({
+    const results = allItems.map((item: any) => ({
       title: item.title,
       url: item.url,
       description: item.description,

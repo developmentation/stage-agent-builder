@@ -439,12 +439,23 @@ export const PropertiesPanel = ({
                   min={key === "numResults" ? 1 : undefined}
                   max={key === "numResults" ? 1000 : undefined}
                   onChange={(e) => {
-                    let value = parseFloat(e.target.value) || 0;
+                    const inputValue = e.target.value;
+                    // Allow empty input for editing
+                    if (inputValue === "") {
+                      updateNodeConfig({ ...node.config, [key]: "" });
+                      return;
+                    }
+                    
+                    const value = parseFloat(inputValue);
+                    if (isNaN(value)) return;
+                    
                     // Apply min/max constraints for numResults
                     if (key === "numResults") {
-                      value = Math.max(1, Math.min(1000, value));
+                      const clampedValue = Math.max(1, Math.min(1000, value));
+                      updateNodeConfig({ ...node.config, [key]: clampedValue });
+                    } else {
+                      updateNodeConfig({ ...node.config, [key]: value });
                     }
-                    updateNodeConfig({ ...node.config, [key]: value });
                   }}
                   className="h-8 text-xs"
                 />
