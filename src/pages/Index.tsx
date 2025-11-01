@@ -30,7 +30,7 @@ const Index = () => {
   const [workflowName, setWorkflowName] = useState<string>("Untitled Workflow");
   const [customAgents, setCustomAgents] = useState<any[]>([]);
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [selectedModel, setSelectedModel] = useState<"gemini-2.5-flash" | "gemini-2.5-pro">("gemini-2.5-flash");
+  const [selectedModel, setSelectedModel] = useState<"gemini-2.5-flash" | "gemini-2.5-pro" | "gemini-2.5-flash-lite">("gemini-2.5-flash");
   const [workflow, setWorkflow] = useState<Workflow>({
     stages: [],
     connections: [],

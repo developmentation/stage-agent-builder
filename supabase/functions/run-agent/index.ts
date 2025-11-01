@@ -14,7 +14,7 @@ serve(async (req) => {
     const { systemPrompt, userPrompt, tools = [], model = "gemini-2.5-flash" } = await req.json();
     
     // Validate model
-    const validModels = ["gemini-2.5-flash", "gemini-2.5-pro"];
+    const validModels = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.5-flash-lite"];
     const selectedModel = validModels.includes(model) ? model : "gemini-2.5-flash";
     
     const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");

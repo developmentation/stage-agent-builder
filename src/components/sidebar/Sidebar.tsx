@@ -96,8 +96,8 @@ interface SidebarProps {
   onWorkflowNameChange: (value: string) => void;
   customAgents: any[];
   onCustomAgentsChange: (agents: any[]) => void;
-  selectedModel: "gemini-2.5-flash" | "gemini-2.5-pro";
-  onSelectedModelChange: (model: "gemini-2.5-flash" | "gemini-2.5-pro") => void;
+  selectedModel: "gemini-2.5-flash" | "gemini-2.5-pro" | "gemini-2.5-flash-lite";
+  onSelectedModelChange: (model: "gemini-2.5-flash" | "gemini-2.5-pro" | "gemini-2.5-flash-lite") => void;
 }
 export const Sidebar = ({
   onAddAgent,
@@ -452,10 +452,13 @@ export const Sidebar = ({
                 <SelectItem value="gemini-2.5-pro">
                   Gemini 2.5 Pro (Advanced)
                 </SelectItem>
+                <SelectItem value="gemini-2.5-flash-lite">
+                  Gemini 2.5 Flash Lite (Fast)
+                </SelectItem>
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
-              Flash: Fast and efficient • Pro: Enhanced reasoning
+              Flash: Fast and efficient • Pro: Enhanced reasoning • Lite: Fastest and cheapest
             </p>
           </div>
 
