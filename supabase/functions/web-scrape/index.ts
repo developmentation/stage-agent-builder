@@ -137,7 +137,52 @@ serve(async (req) => {
     const isPdf = isPdfUrl(url);
     
     // Fetch the URL once for both PDF and non-PDF
-    const response = await smartFetch(url);
+    let response;
+    try {
+      response = await smartFetch(url);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      const domain = new URL(url).hostname;
+      
+      // Handle SSL certificate errors
+      if (errorMessage.startsWith("SSL_CERT_ERROR:")) {
+        console.log(`SSL Certificate error for ${url}`);
+        return new Response(
+          JSON.stringify({
+            success: true,
+            url,
+            title: `SSL Certificate Error: ${domain}`,
+            content: `This website (${domain}) has an SSL certificate issue that prevents automated access.\n\nError: ${errorMessage.replace("SSL_CERT_ERROR: ", "")}\n\nTo access this content, please visit the URL directly in your browser: ${url}\n\nThis is often caused by expired certificates, self-signed certificates, or certificate authority issues.`,
+            contentLength: 0,
+            accessedAt: new Date().toISOString(),
+            sslError: true,
+            statusCode: 526
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      // Handle network errors
+      if (errorMessage.startsWith("NETWORK_ERROR:")) {
+        console.log(`Network error for ${url}`);
+        return new Response(
+          JSON.stringify({
+            success: true,
+            url,
+            title: `Network Connection Error: ${domain}`,
+            content: `A network connection error occurred while trying to reach ${domain}.\n\nError: ${errorMessage.replace("NETWORK_ERROR: ", "")}\n\nThis may be a temporary issue. Please try again later or visit the URL directly: ${url}\n\nThis can be caused by server configuration issues, network problems, or HTTP/2 protocol errors.`,
+            contentLength: 0,
+            accessedAt: new Date().toISOString(),
+            networkError: true,
+            statusCode: 502
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      // For other errors, rethrow
+      throw error;
+    }
 
     if (!response.ok) {
       const domain = new URL(url).hostname;
