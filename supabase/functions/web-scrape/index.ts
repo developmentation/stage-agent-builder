@@ -64,6 +64,12 @@ const smartFetch = async (url: string, retryCount = 0): Promise<Response> => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
+    // Add exponential backoff delay before retry attempts
+    if (retryCount > 0) {
+      const delay = 2000 * Math.pow(2, retryCount - 1); // 2s, 4s, 8s
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+
     const response = await fetch(url, {
       headers,
       redirect: "follow",
@@ -73,17 +79,41 @@ const smartFetch = async (url: string, retryCount = 0): Promise<Response> => {
     clearTimeout(timeout);
 
     if (!response.ok && retryCount < maxRetries) {
-      console.log(`Retry ${retryCount + 1} for ${url} with fallback headers`);
-      await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1))); // Progressive delay
+      console.log(`Retry ${retryCount + 1} for ${url} with fallback headers (status: ${response.status})`);
       return smartFetch(url, retryCount + 1);
     }
 
     return response;
   } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    
+    // Check for SSL/certificate errors
+    if (errorMessage.includes("certificate") || errorMessage.includes("UnknownIssuer") || errorMessage.includes("TLS")) {
+      console.log(`SSL/Certificate error for ${url}: ${errorMessage}`);
+      // Return a mock response object with SSL error information
+      return {
+        ok: false,
+        status: 526,
+        statusText: "SSL Certificate Error",
+        sslError: true,
+        errorMessage,
+      } as unknown as Response;
+    }
+    
+    // Check for network/connection errors
+    if (errorMessage.includes("http2") || errorMessage.includes("stream error") || errorMessage.includes("SendRequest")) {
+      console.log(`Network/HTTP2 error for ${url}: ${errorMessage}`);
+      return {
+        ok: false,
+        status: 502,
+        statusText: "Network Error",
+        networkError: true,
+        errorMessage,
+      } as unknown as Response;
+    }
+    
     if (retryCount < maxRetries) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
       console.log(`Retry ${retryCount + 1} for ${url} due to error: ${errorMessage}`);
-      await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
       return smartFetch(url, retryCount + 1);
     }
     throw error;
@@ -124,6 +154,60 @@ serve(async (req) => {
 
     if (!response.ok) {
       const domain = new URL(url).hostname;
+      
+      // Handle SSL/Certificate errors gracefully
+      if ((response as any).sslError) {
+        console.log(`SSL Certificate error for ${url}`);
+        return new Response(
+          JSON.stringify({
+            success: true,
+            url,
+            title: `SSL Certificate Error: ${domain}`,
+            content: `This website (${domain}) has an SSL certificate issue that prevents automated access.\n\nError: ${(response as any).errorMessage}\n\nTo access this content, please visit the URL directly in your browser: ${url}\n\nThis is often caused by expired certificates, self-signed certificates, or certificate authority issues.`,
+            contentLength: 0,
+            accessedAt: new Date().toISOString(),
+            sslError: true,
+            statusCode: 526
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      // Handle network/HTTP2 errors gracefully
+      if ((response as any).networkError) {
+        console.log(`Network error for ${url}`);
+        return new Response(
+          JSON.stringify({
+            success: true,
+            url,
+            title: `Network Connection Error: ${domain}`,
+            content: `A network connection error occurred while trying to reach ${domain}.\n\nError: ${(response as any).errorMessage}\n\nThis may be a temporary issue. Please try again later or visit the URL directly: ${url}\n\nThis can be caused by server configuration issues, network problems, or HTTP/2 protocol errors.`,
+            contentLength: 0,
+            accessedAt: new Date().toISOString(),
+            networkError: true,
+            statusCode: 502
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      // Handle 429 Rate Limiting gracefully
+      if (response.status === 429) {
+        console.log(`429 Rate Limited for ${url} - too many requests`);
+        return new Response(
+          JSON.stringify({
+            success: true,
+            url,
+            title: `Rate Limited: ${domain}`,
+            content: `The website (${domain}) is rate limiting automated requests. Too many requests were made in a short period.\n\nTo access this content, please:\n1. Wait a few minutes before trying again\n2. Visit the URL directly: ${url}\n3. Reduce the number of simultaneous requests to this domain\n\nMost websites limit automated access to prevent server overload.`,
+            contentLength: 0,
+            accessedAt: new Date().toISOString(),
+            rateLimited: true,
+            statusCode: 429
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
       
       // Handle 403 gracefully - return success with warning message so workflow continues
       if (response.status === 403) {
