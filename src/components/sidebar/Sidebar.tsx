@@ -112,7 +112,9 @@ export const Sidebar = ({
   customAgents,
   onCustomAgentsChange,
   selectedModel,
-  onSelectedModelChange
+  onSelectedModelChange,
+  responseLength,
+  onResponseLengthChange
 }: SidebarProps) => {
   const [isAddAgentOpen, setIsAddAgentOpen] = useState(false);
   const [newAgentName, setNewAgentName] = useState("");

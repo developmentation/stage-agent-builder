@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { systemPrompt, userPrompt, tools = [], model = "gemini-2.5-flash" } = await req.json();
+    const { systemPrompt, userPrompt, tools = [], model = "gemini-2.5-flash", maxOutputTokens = 16384 } = await req.json();
     
     // Validate model
     const validModels = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.5-flash-lite"];
@@ -131,9 +131,27 @@ serve(async (req) => {
               ]
             }
           ],
+          safetySettings: [
+            {
+              category: "HARM_CATEGORY_HARASSMENT",
+              threshold: "BLOCK_NONE"
+            },
+            {
+              category: "HARM_CATEGORY_HATE_SPEECH",
+              threshold: "BLOCK_NONE"
+            },
+            {
+              category: "HARM_CATEGORY_SEXUALLY_EXPLICIT",
+              threshold: "BLOCK_NONE"
+            },
+            {
+              category: "HARM_CATEGORY_DANGEROUS_CONTENT",
+              threshold: "BLOCK_NONE"
+            }
+          ],
           generationConfig: {
             temperature: 0.7,
-            maxOutputTokens: 65535,
+            maxOutputTokens: maxOutputTokens,
           }
         }),
       }
