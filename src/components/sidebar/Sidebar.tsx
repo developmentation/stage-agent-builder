@@ -98,6 +98,8 @@ interface SidebarProps {
   onCustomAgentsChange: (agents: any[]) => void;
   selectedModel: "gemini-2.5-flash" | "gemini-2.5-pro" | "gemini-2.5-flash-lite";
   onSelectedModelChange: (model: "gemini-2.5-flash" | "gemini-2.5-pro" | "gemini-2.5-flash-lite") => void;
+  responseLength: number;
+  onResponseLengthChange: (length: number) => void;
 }
 export const Sidebar = ({
   onAddAgent,
@@ -459,6 +461,28 @@ export const Sidebar = ({
             </Select>
             <p className="text-xs text-muted-foreground">
               Flash: Fast and efficient • Pro: Enhanced reasoning • Lite: Fastest and cheapest
+            </p>
+          </div>
+
+          {/* Response Length Section */}
+          <div className="space-y-2">
+            <Label htmlFor="response-length-select" className="text-sm font-semibold text-foreground">
+              Response Length
+            </Label>
+            <Select value={responseLength.toString()} onValueChange={(val) => onResponseLengthChange(Number(val))}>
+              <SelectTrigger id="response-length-select" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="2048">Short (2,048 tokens)</SelectItem>
+                <SelectItem value="8192">Medium (8,192 tokens)</SelectItem>
+                <SelectItem value="16384">Large (16,384 tokens)</SelectItem>
+                <SelectItem value="32768">XL (32,768 tokens)</SelectItem>
+                <SelectItem value="65535">2XL (65,535 tokens)</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Longer responses may take more time to generate
             </p>
           </div>
 
