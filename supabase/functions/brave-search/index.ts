@@ -66,12 +66,6 @@ serve(async (req) => {
             allResults.push(...data.web.results);
             console.log(`Total accumulated results so far: ${allResults.length}`);
           }
-
-          // Add delay between requests to respect rate limits
-          if (pageOffset < numPages - 1) {
-            console.log(`Waiting 1.5s before fetching page ${pageOffset + 2} to respect rate limits...`);
-            await new Promise(resolve => setTimeout(resolve, 1500));
-          }
         } catch (error) {
           console.error(`Error fetching page ${pageOffset + 1}:`, error);
         }
