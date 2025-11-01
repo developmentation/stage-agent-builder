@@ -17,8 +17,8 @@ serve(async (req) => {
       throw new Error("Query parameter is required");
     }
 
-    // Clamp numResults between 1 and 1000
-    const requestedResults = Math.max(1, Math.min(1000, Number(numResults) || 20));
+    // Brave API limits: count max 20, offset max 9 (total 200 results)
+    const requestedResults = Math.max(1, Math.min(200, Number(numResults) || 20));
 
     // Use provided key or fall back to environment secret
     const apiKey = userApiKey || Deno.env.get("BRAVE_API_KEY");
@@ -29,19 +29,18 @@ serve(async (req) => {
 
     console.log(`Performing Brave search for: "${query}" (${requestedResults} results)`);
 
-    // Calculate number of pages needed (20 results per page - Brave API limit)
-    const numPages = Math.ceil(requestedResults / 20);
+    // Calculate number of pages needed (20 results per page, offset 0-9 for max 10 pages)
+    const numPages = Math.min(10, Math.ceil(requestedResults / 20));
 
     // Fetch all pages
     const fetchAllPages = async () => {
       const allResults: any[] = [];
 
-      for (let page = 0; page < numPages; page++) {
-        const offset = page * 20;
-        const resultsPerPage = Math.min(20, requestedResults - page * 20);
+      for (let pageOffset = 0; pageOffset < numPages; pageOffset++) {
+        const resultsPerPage = Math.min(20, requestedResults - allResults.length);
 
-        const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=${resultsPerPage}&offset=${offset}`;
-        console.log(`Fetching results ${offset + 1}-${offset + resultsPerPage} (page ${page + 1}/${numPages})`);
+        const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=${resultsPerPage}&offset=${pageOffset}`;
+        console.log(`Fetching page ${pageOffset + 1}/${numPages} (offset=${pageOffset}, count=${resultsPerPage})`);
         console.log(`REQUEST URL: ${url}`);
         
         try {
@@ -55,20 +54,26 @@ serve(async (req) => {
 
           if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
-            console.warn(`Error fetching page ${page + 1}:`, errorData);
+            console.warn(`Error fetching page ${pageOffset + 1}:`, errorData);
             continue;
           }
 
           const data = await response.json();
           
-          console.log(`Page ${page + 1} returned ${data.web?.results?.length || 0} results`);
+          console.log(`Page ${pageOffset + 1} returned ${data.web?.results?.length || 0} results`);
           
           if (data.web?.results) {
             allResults.push(...data.web.results);
             console.log(`Total accumulated results so far: ${allResults.length}`);
           }
+
+          // Add delay between requests to respect rate limits
+          if (pageOffset < numPages - 1) {
+            console.log(`Waiting 1.5s before fetching page ${pageOffset + 2} to respect rate limits...`);
+            await new Promise(resolve => setTimeout(resolve, 1500));
+          }
         } catch (error) {
-          console.error(`Error fetching page ${page + 1}:`, error);
+          console.error(`Error fetching page ${pageOffset + 1}:`, error);
         }
       }
 
