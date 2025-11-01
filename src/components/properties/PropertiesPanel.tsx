@@ -78,6 +78,10 @@ export const PropertiesPanel = ({
   const [memoryDialogOpen, setMemoryDialogOpen] = useState(false);
   const [isEditingOutput, setIsEditingOutput] = useState(false);
   const [editedOutput, setEditedOutput] = useState("");
+  const [isEditingSystemPrompt, setIsEditingSystemPrompt] = useState(false);
+  const [editedSystemPrompt, setEditedSystemPrompt] = useState("");
+  const [isEditingUserPrompt, setIsEditingUserPrompt] = useState(false);
+  const [editedUserPrompt, setEditedUserPrompt] = useState("");
   const contentFileInputRef = useRef<HTMLInputElement>(null);
   const [excelData, setExcelData] = useState<ExcelData | null>(null);
   const [excelQueue, setExcelQueue] = useState<File[]>([]);
@@ -85,6 +89,8 @@ export const PropertiesPanel = ({
   const [isViewContentOpen, setIsViewContentOpen] = useState(false);
   const [editedContent, setEditedContent] = useState("");
   const [outputTab, setOutputTab] = useState("edit");
+  const [systemPromptTab, setSystemPromptTab] = useState("edit");
+  const [userPromptTab, setUserPromptTab] = useState("edit");
 
   // Use selectedNode if provided, otherwise fall back to selectedAgent
   const activeNode = selectedNode || selectedAgent;
@@ -651,9 +657,86 @@ export const PropertiesPanel = ({
           {activeNode.nodeType === "agent" && (
             <>
               <div className="space-y-2">
-                <Label htmlFor="system-prompt" className="text-sm font-medium">
-                  System Prompt
-                </Label>
+                <div className="flex items-center justify-between gap-2">
+                  <Label htmlFor="system-prompt" className="text-sm font-medium">
+                    System Prompt
+                  </Label>
+                  <Dialog open={isEditingSystemPrompt} onOpenChange={setIsEditingSystemPrompt}>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 flex-shrink-0"
+                        onClick={() => {
+                          setEditedSystemPrompt((activeNode as AgentNode).systemPrompt);
+                        }}
+                      >
+                        <Eye className="h-3 w-3 mr-1" />
+                        Edit
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh] flex flex-col p-6">
+                      <DialogHeader className="pb-4">
+                        <DialogTitle>Edit System Prompt</DialogTitle>
+                        <DialogDescription>
+                          Define the agent&apos;s role and behavior
+                        </DialogDescription>
+                      </DialogHeader>
+                      <Tabs value={systemPromptTab} onValueChange={setSystemPromptTab} className="flex-1 flex flex-col overflow-hidden">
+                        <TabsList className="w-full justify-start mb-4">
+                          <TabsTrigger value="edit">Edit</TabsTrigger>
+                          <TabsTrigger value="view">View</TabsTrigger>
+                        </TabsList>
+                        
+                        <TabsContent value="edit" className="flex-1 overflow-hidden mt-0">
+                          <ScrollArea className="h-full">
+                            <Textarea
+                              value={editedSystemPrompt}
+                              onChange={(e) => setEditedSystemPrompt(e.target.value)}
+                              className="min-h-[calc(90vh-270px)] font-mono text-xs resize-none w-full"
+                              placeholder="You are a helpful assistant..."
+                            />
+                          </ScrollArea>
+                        </TabsContent>
+                        
+                        <TabsContent value="view" className="flex-1 overflow-hidden mt-0">
+                          <ScrollArea className="h-full">
+                            <div className="prose prose-sm dark:prose-invert max-w-none p-4">
+                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                {editedSystemPrompt}
+                              </ReactMarkdown>
+                            </div>
+                          </ScrollArea>
+                        </TabsContent>
+                      </Tabs>
+                      
+                      <div className="flex gap-2 justify-end pt-4 border-t">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setIsEditingSystemPrompt(false);
+                            setSystemPromptTab("edit");
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => {
+                            onUpdateAgent(activeNode.id, { systemPrompt: editedSystemPrompt });
+                            setIsEditingSystemPrompt(false);
+                            setSystemPromptTab("edit");
+                          }}
+                        >
+                          <Save className="h-3 w-3 mr-1" />
+                          Save Changes
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
                 <Textarea
                   id="system-prompt"
                   placeholder="You are a helpful assistant..."
@@ -664,14 +747,91 @@ export const PropertiesPanel = ({
                   }
                 />
                 <p className="text-xs text-muted-foreground">
-                  Define the agent's role and behavior
+                  Define the agent&apos;s role and behavior
                 </p>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="user-prompt" className="text-sm font-medium">
-                  User Prompt Template
-                </Label>
+                <div className="flex items-center justify-between gap-2">
+                  <Label htmlFor="user-prompt" className="text-sm font-medium">
+                    User Prompt Template
+                  </Label>
+                  <Dialog open={isEditingUserPrompt} onOpenChange={setIsEditingUserPrompt}>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 px-2 flex-shrink-0"
+                        onClick={() => {
+                          setEditedUserPrompt((activeNode as AgentNode).userPrompt);
+                        }}
+                      >
+                        <Eye className="h-3 w-3 mr-1" />
+                        Edit
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh] flex flex-col p-6">
+                      <DialogHeader className="pb-4">
+                        <DialogTitle>Edit User Prompt Template</DialogTitle>
+                        <DialogDescription>
+                          Use {"{input}"} for stage inputs and {"{prompt}"} for workflow input
+                        </DialogDescription>
+                      </DialogHeader>
+                      <Tabs value={userPromptTab} onValueChange={setUserPromptTab} className="flex-1 flex flex-col overflow-hidden">
+                        <TabsList className="w-full justify-start mb-4">
+                          <TabsTrigger value="edit">Edit</TabsTrigger>
+                          <TabsTrigger value="view">View</TabsTrigger>
+                        </TabsList>
+                        
+                        <TabsContent value="edit" className="flex-1 overflow-hidden mt-0">
+                          <ScrollArea className="h-full">
+                            <Textarea
+                              value={editedUserPrompt}
+                              onChange={(e) => setEditedUserPrompt(e.target.value)}
+                              className="min-h-[calc(90vh-270px)] font-mono text-xs resize-none w-full"
+                              placeholder="Analyze the following: {input}"
+                            />
+                          </ScrollArea>
+                        </TabsContent>
+                        
+                        <TabsContent value="view" className="flex-1 overflow-hidden mt-0">
+                          <ScrollArea className="h-full">
+                            <div className="prose prose-sm dark:prose-invert max-w-none p-4">
+                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                                {editedUserPrompt}
+                              </ReactMarkdown>
+                            </div>
+                          </ScrollArea>
+                        </TabsContent>
+                      </Tabs>
+                      
+                      <div className="flex gap-2 justify-end pt-4 border-t">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setIsEditingUserPrompt(false);
+                            setUserPromptTab("edit");
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          variant="default"
+                          size="sm"
+                          onClick={() => {
+                            onUpdateAgent(activeNode.id, { userPrompt: editedUserPrompt });
+                            setIsEditingUserPrompt(false);
+                            setUserPromptTab("edit");
+                          }}
+                        >
+                          <Save className="h-3 w-3 mr-1" />
+                          Save Changes
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
                 <Textarea
                   id="user-prompt"
                   placeholder="Analyze the following: {input}"
