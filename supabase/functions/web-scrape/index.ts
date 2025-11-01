@@ -90,26 +90,13 @@ const smartFetch = async (url: string, retryCount = 0): Promise<Response> => {
     // Check for SSL/certificate errors
     if (errorMessage.includes("certificate") || errorMessage.includes("UnknownIssuer") || errorMessage.includes("TLS")) {
       console.log(`SSL/Certificate error for ${url}: ${errorMessage}`);
-      // Return a mock response object with SSL error information
-      return {
-        ok: false,
-        status: 526,
-        statusText: "SSL Certificate Error",
-        sslError: true,
-        errorMessage,
-      } as unknown as Response;
+      throw new Error(`SSL_CERT_ERROR: ${errorMessage}`);
     }
     
     // Check for network/connection errors
     if (errorMessage.includes("http2") || errorMessage.includes("stream error") || errorMessage.includes("SendRequest")) {
       console.log(`Network/HTTP2 error for ${url}: ${errorMessage}`);
-      return {
-        ok: false,
-        status: 502,
-        statusText: "Network Error",
-        networkError: true,
-        errorMessage,
-      } as unknown as Response;
+      throw new Error(`NETWORK_ERROR: ${errorMessage}`);
     }
     
     if (retryCount < maxRetries) {
