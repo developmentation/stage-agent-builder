@@ -40,12 +40,6 @@ serve(async (req) => {
         const offset = page * 20;
         const resultsPerPage = Math.min(20, requestedResults - page * 20);
 
-        // Add delay between requests to respect rate limits (except first request)
-        if (page > 0) {
-          console.log(`Waiting 1.5s before fetching page ${page + 1} to respect rate limits...`);
-          await new Promise(resolve => setTimeout(resolve, 1500));
-        }
-
         const url = `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=${resultsPerPage}&offset=${offset}`;
         console.log(`Fetching results ${offset + 1}-${offset + resultsPerPage} (page ${page + 1}/${numPages})`);
         console.log(`REQUEST URL: ${url}`);
