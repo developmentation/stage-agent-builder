@@ -61,8 +61,11 @@ serve(async (req) => {
 
           const data = await response.json();
           
+          console.log(`Page ${page + 1} returned ${data.web?.results?.length || 0} results`);
+          
           if (data.web?.results) {
             allResults.push(...data.web.results);
+            console.log(`Total accumulated results so far: ${allResults.length}`);
           }
         } catch (error) {
           console.error(`Error fetching page ${page + 1}:`, error);
