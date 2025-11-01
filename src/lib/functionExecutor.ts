@@ -599,8 +599,8 @@ export class FunctionExecutor {
         throw new Error("Search query is required (provide via connection or override)");
       }
       
-      // Get numResults config, default to 20, clamp between 1-20 (Brave API limit)
-      const numResults = Math.max(1, Math.min(20, Number(node.config.numResults) || 20));
+      // Get numResults config, default to 20, clamp between 1-1000
+      const numResults = Math.max(1, Math.min(1000, Number(node.config.numResults) || 20));
       
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/brave-search`, {
         method: "POST",
