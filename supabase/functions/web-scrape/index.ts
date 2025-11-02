@@ -584,10 +584,10 @@ serve(async (req) => {
       try {
         console.log(`Attempting to extract text from PDF using unpdf...`);
         
-        // Lazy-load unpdf only when needed to prevent boot failures
+        // Lazy-load unpdf with jsdelivr CDN (more reliable for Deno)
         let unpdf: any;
         try {
-          unpdf = await import("https://esm.sh/unpdf@0.12.1");
+          unpdf = await import("https://cdn.jsdelivr.net/npm/unpdf@0.12.1/+esm");
         } catch (importError) {
           throw new Error(`Failed to load PDF processing library: ${importError instanceof Error ? importError.message : 'Unknown error'}`);
         }
@@ -663,10 +663,10 @@ serve(async (req) => {
       try {
         console.log(`Attempting to extract text from DOCX using mammoth...`);
         
-        // Lazy-load mammoth only when needed to prevent boot failures
+        // Lazy-load mammoth with jsdelivr CDN (more reliable for Deno)
         let mammoth: any;
         try {
-          mammoth = await import("https://esm.sh/mammoth@1.11.0");
+          mammoth = await import("https://cdn.jsdelivr.net/npm/mammoth@1.11.0/+esm");
         } catch (importError) {
           throw new Error(`Failed to load DOCX processing library: ${importError instanceof Error ? importError.message : 'Unknown error'}`);
         }
