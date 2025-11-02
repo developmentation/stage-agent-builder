@@ -119,65 +119,50 @@ const isPdfUrl = (url: string): boolean => {
   return urlLower.endsWith('.pdf') || urlLower.includes('.pdf?');
 };
 
-// Helper function to detect unsupported file types
-const getFileTypeInfo = (url: string): { isSupported: boolean; fileType: string; extension: string } => {
+// Helper function to detect DOCX URLs
+const isDocxUrl = (url: string): boolean => {
   const urlLower = url.toLowerCase();
-  
-  // Extract file extension
-  const urlPath = urlLower.split('?')[0]; // Remove query params
+  return urlLower.endsWith('.docx') || urlLower.includes('.docx?');
+};
+
+// Helper function to check if URL is an unsupported file type
+const isUnsupportedFileType = (url: string): { isUnsupported: boolean; fileType: string; extension: string } => {
+  const urlLower = url.toLowerCase();
+  const urlPath = urlLower.split('?')[0];
   const parts = urlPath.split('.');
   const extension = parts.length > 1 ? parts[parts.length - 1] : '';
   
-  // Supported text-based formats
-  const textFormats = ['txt', 'md', 'json', 'xml', 'csv', 'html', 'htm', 'yaml', 'yml'];
-  
-  // Supported formats (web pages without extension are assumed HTML)
-  if (!extension || extension === 'html' || extension === 'htm' || textFormats.includes(extension)) {
-    return { isSupported: true, fileType: extension || 'webpage', extension };
+  // Old Word format - unsupported
+  if (extension === 'doc') {
+    return { isUnsupported: true, fileType: 'Microsoft Word Document (DOC)', extension: 'doc' };
   }
   
-  // PDF is supported
-  if (extension === 'pdf') {
-    return { isSupported: true, fileType: 'PDF', extension };
-  }
-  
-  // Microsoft Office formats - unsupported
-  if (['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(extension)) {
-    return { isSupported: false, fileType: 'Microsoft Office Document', extension };
+  // Other Office formats - unsupported
+  if (['xls', 'xlsx', 'ppt', 'pptx'].includes(extension)) {
+    return { isUnsupported: true, fileType: 'Microsoft Office Document', extension };
   }
   
   // Archive formats - unsupported
   if (['zip', 'rar', '7z', 'tar', 'gz'].includes(extension)) {
-    return { isSupported: false, fileType: 'Archive File', extension };
+    return { isUnsupported: true, fileType: 'Archive File', extension };
   }
   
   // Image formats - unsupported
   if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp', 'ico'].includes(extension)) {
-    return { isSupported: false, fileType: 'Image File', extension };
+    return { isUnsupported: true, fileType: 'Image File', extension };
   }
   
   // Video/Audio formats - unsupported
   if (['mp4', 'avi', 'mov', 'wmv', 'flv', 'mp3', 'wav', 'ogg', 'm4a'].includes(extension)) {
-    return { isSupported: false, fileType: 'Media File', extension };
+    return { isUnsupported: true, fileType: 'Media File', extension };
   }
   
   // Executable/Binary formats - unsupported
   if (['exe', 'dll', 'so', 'dylib', 'bin'].includes(extension)) {
-    return { isSupported: false, fileType: 'Binary/Executable File', extension };
+    return { isUnsupported: true, fileType: 'Binary/Executable File', extension };
   }
   
-  // Other known document formats - unsupported
-  if (['rtf', 'odt', 'ods', 'odp', 'epub', 'mobi'].includes(extension)) {
-    return { isSupported: false, fileType: 'Document File', extension };
-  }
-  
-  // Unknown extension
-  if (extension) {
-    return { isSupported: false, fileType: 'Unknown File Type', extension };
-  }
-  
-  // No extension, assume it's a webpage
-  return { isSupported: true, fileType: 'webpage', extension: '' };
+  return { isUnsupported: false, fileType: '', extension };
 };
 
 serve(async (req) => {
@@ -200,14 +185,13 @@ serve(async (req) => {
     // Capture access timestamp
     const accessedAt = new Date().toISOString();
 
-    // Check file type before attempting to fetch
-    const fileTypeInfo = getFileTypeInfo(url);
+    // Check if file type is unsupported
+    const unsupportedCheck = isUnsupportedFileType(url);
     
-    if (!fileTypeInfo.isSupported) {
-      const domain = new URL(url).hostname;
+    if (unsupportedCheck.isUnsupported) {
       const urlParts = url.split('/');
       const filename = urlParts[urlParts.length - 1].split('?')[0];
-      const ext = fileTypeInfo.extension.toUpperCase();
+      const ext = unsupportedCheck.extension.toUpperCase();
       
       console.log(`Detected unsupported file type: ${ext} - ${url}`);
       
@@ -216,10 +200,10 @@ serve(async (req) => {
           success: true,
           url,
           title: `Unsupported File: ${filename}`,
-          content: `${fileTypeInfo.fileType} (${ext}): ${filename}\n\nDirect link: ${url}\n\nThis file type cannot be automatically processed from a URL.\n\nSupported formats for web scraping:\n- Web pages (HTML)\n- PDF documents\n- Text files (TXT, MD, JSON, XML, CSV, YAML)\n\nFor other file types:\n1. Download the file manually from the link above\n2. Use the file upload feature in your workflow if the format is supported for upload\n\nNote: Some formats like DOC, DOCX, and XLSX can be processed when uploaded directly.`,
+          content: `${unsupportedCheck.fileType} (${ext}): ${filename}\n\nDirect link: ${url}\n\nThis file type cannot be automatically processed from a URL.\n\nSupported formats for web scraping:\n- Web pages (HTML)\n- PDF documents\n- DOCX documents\n- Text-based files\n\nFor other file types, please download manually and upload directly if the format is supported.`,
           contentLength: 0,
-          fileType: fileTypeInfo.fileType,
-          extension: fileTypeInfo.extension,
+          fileType: unsupportedCheck.fileType,
+          extension: unsupportedCheck.extension,
           accessedAt,
           unsupportedFormat: true
         }),
@@ -227,6 +211,9 @@ serve(async (req) => {
       );
     }
 
+    // Check if URL is a DOCX
+    const isDocx = isDocxUrl(url);
+    
     // Check if URL is a PDF
     const isPdf = isPdfUrl(url);
     
@@ -483,6 +470,61 @@ serve(async (req) => {
             content: `PDF Document: ${filename}\n\nText extraction failed: ${error instanceof Error ? error.message : 'Unknown error'}\n\nPlease download the PDF directly from: ${url}`,
             contentLength: 0,
             isPdf: true,
+            accessedAt,
+            error: error instanceof Error ? error.message : 'Unknown error'
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+    }
+
+    if (isDocx) {
+      console.log(`Detected DOCX URL: ${url}`);
+      
+      const docxBuffer = new Uint8Array(await response.arrayBuffer());
+      
+      try {
+        console.log(`Attempting to extract text from DOCX using mammoth...`);
+        
+        // Dynamic import of mammoth
+        const mammoth = await import("https://esm.sh/mammoth@1.11.0");
+        
+        const result = await mammoth.extractRawText({ arrayBuffer: docxBuffer.buffer });
+        const content = result.value.trim();
+        
+        console.log(`Successfully extracted DOCX text: ${content.length} characters`);
+        
+        const urlParts = url.split('/');
+        const filename = urlParts[urlParts.length - 1].split('?')[0];
+        const title = filename || "DOCX Document";
+        
+        return new Response(
+          JSON.stringify({
+            success: true,
+            url,
+            title,
+            content,
+            contentLength: content.length,
+            isDocx: true,
+            accessedAt
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      } catch (error) {
+        console.error(`DOCX extraction failed:`, error);
+        
+        const urlParts = url.split('/');
+        const filename = urlParts[urlParts.length - 1].split('?')[0];
+        const title = filename || "DOCX Document";
+        
+        return new Response(
+          JSON.stringify({
+            success: true,
+            url,
+            title,
+            content: `DOCX Document: ${filename}\n\nText extraction failed: ${error instanceof Error ? error.message : 'Unknown error'}\n\nPlease download the DOCX directly from: ${url}`,
+            contentLength: 0,
+            isDocx: true,
             accessedAt,
             error: error instanceof Error ? error.message : 'Unknown error'
           }),
