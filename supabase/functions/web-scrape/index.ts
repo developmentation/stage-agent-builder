@@ -7,10 +7,11 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
-// Request queue to throttle requests per domain
+// Adaptive throttling - only throttle domains that have shown issues
+const domainIssues = new Map<string, { lastError: number; errorType: string; count: number }>();
 const domainLastRequest = new Map<string, number>();
-const domainRequestQueue = new Map<string, Promise<any>>();
-const MIN_REQUEST_INTERVAL = 3000; // 3 seconds between requests to same domain
+const THROTTLE_WINDOW = 60000; // Reset throttling after 60s of no errors
+const BASE_DELAY = 1000; // 1 second base delay for problematic domains
 
 // Government domains that may have SSL issues but are trusted
 const trustedGovernmentDomains = [
@@ -38,41 +39,62 @@ const isTrustedDomain = (url: string): boolean => {
   return trustedGovernmentDomains.some(trusted => hostname.includes(trusted));
 };
 
-// Throttle requests to same domain
-const throttleRequest = async <T>(domain: string, fetchFn: () => Promise<T>): Promise<T> => {
-  // Check if there's already a pending request to this domain
-  const existingQueue = domainRequestQueue.get(domain);
-  
-  const executeRequest = async (): Promise<T> => {
-    const lastRequest = domainLastRequest.get(domain) || 0;
-    const timeSinceLastRequest = Date.now() - lastRequest;
-    
-    if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
-      const waitTime = MIN_REQUEST_INTERVAL - timeSinceLastRequest;
-      console.log(`Throttling request to ${domain}, waiting ${waitTime}ms`);
-      await new Promise(resolve => setTimeout(resolve, waitTime));
-    }
-    
-    domainLastRequest.set(domain, Date.now());
-    return fetchFn();
-  };
-  
-  // Queue the request
-  const requestPromise = existingQueue 
-    ? existingQueue.then(() => executeRequest())
-    : executeRequest();
-  
-  domainRequestQueue.set(domain, requestPromise);
-  
-  try {
-    const result = await requestPromise;
-    return result;
-  } finally {
-    // Clean up if this was the last request
-    if (domainRequestQueue.get(domain) === requestPromise) {
-      domainRequestQueue.delete(domain);
-    }
+// Mark domain as having issues
+const markDomainIssue = (domain: string, errorType: string) => {
+  const existing = domainIssues.get(domain);
+  if (existing) {
+    domainIssues.set(domain, {
+      lastError: Date.now(),
+      errorType,
+      count: existing.count + 1
+    });
+  } else {
+    domainIssues.set(domain, {
+      lastError: Date.now(),
+      errorType,
+      count: 1
+    });
   }
+  console.log(`Marked ${domain} as problematic (${errorType}), count: ${domainIssues.get(domain)?.count}`);
+};
+
+// Check if domain needs throttling
+const shouldThrottleDomain = (domain: string): { throttle: boolean; delay: number } => {
+  const issue = domainIssues.get(domain);
+  
+  if (!issue) {
+    return { throttle: false, delay: 0 };
+  }
+  
+  // Reset if issue is old
+  if (Date.now() - issue.lastError > THROTTLE_WINDOW) {
+    domainIssues.delete(domain);
+    return { throttle: false, delay: 0 };
+  }
+  
+  // Calculate delay based on error count (exponential backoff)
+  const delay = Math.min(BASE_DELAY * Math.pow(2, issue.count - 1), 10000); // Max 10s
+  return { throttle: true, delay };
+};
+
+// Adaptive throttle - only delays if domain has shown issues
+const adaptiveThrottle = async (domain: string): Promise<void> => {
+  const { throttle, delay } = shouldThrottleDomain(domain);
+  
+  if (!throttle) {
+    return; // No throttling needed
+  }
+  
+  const lastRequest = domainLastRequest.get(domain) || 0;
+  const timeSinceLastRequest = Date.now() - lastRequest;
+  
+  if (timeSinceLastRequest < delay) {
+    const waitTime = delay - timeSinceLastRequest;
+    console.log(`Adaptive throttling ${domain}, waiting ${waitTime}ms due to previous issues`);
+    await new Promise(resolve => setTimeout(resolve, waitTime));
+  }
+  
+  domainLastRequest.set(domain, Date.now());
 };
 
 // Rotating User-Agents to avoid detection
@@ -108,10 +130,13 @@ const getModernHeaders = () => ({
   "Referer": "https://www.google.com/", // Add referer to appear more legitimate
 });
 
-// Smart fetch with retry logic
+// Smart fetch with retry logic and adaptive throttling
 const smartFetch = async (url: string, retryCount = 0): Promise<Response> => {
   const maxRetries = 3;
   const domain = getDomain(url);
+  
+  // Apply adaptive throttle before request
+  await adaptiveThrottle(domain);
   
   let headers: Record<string, string>;
   if (retryCount === 0) {
@@ -133,14 +158,12 @@ const smartFetch = async (url: string, retryCount = 0): Promise<Response> => {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
-    // Add exponential backoff delay before retry attempts
+    // Add delay for retries
     if (retryCount > 0) {
-      const delay = 3000 * Math.pow(2, retryCount - 1); // 3s, 6s, 12s
-      console.log(`Waiting ${delay}ms before retry ${retryCount} for ${url}`);
+      const delay = 2000 * Math.pow(2, retryCount - 1); // 2s, 4s, 8s
       await new Promise(resolve => setTimeout(resolve, delay));
     }
 
-    // For trusted government domains with SSL issues, try with custom fetch
     const fetchOptions: RequestInit = {
       headers,
       redirect: "follow",
@@ -151,13 +174,17 @@ const smartFetch = async (url: string, retryCount = 0): Promise<Response> => {
 
     clearTimeout(timeout);
 
-    // Handle rate limiting with longer retry
-    if (response.status === 429 && retryCount < maxRetries) {
-      const retryAfter = response.headers.get('retry-after');
-      const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : 30000; // Default 30s
-      console.log(`Rate limited (429) for ${url}, waiting ${waitTime}ms before retry ${retryCount + 1}`);
-      await new Promise(resolve => setTimeout(resolve, waitTime));
-      return smartFetch(url, retryCount + 1);
+    // Handle rate limiting - mark domain and retry
+    if (response.status === 429) {
+      markDomainIssue(domain, 'rate_limit');
+      
+      if (retryCount < maxRetries) {
+        const retryAfter = response.headers.get('retry-after');
+        const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : 5000;
+        console.log(`Rate limited (429) for ${url}, waiting ${waitTime}ms before retry ${retryCount + 1}`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        return smartFetch(url, retryCount + 1);
+      }
     }
 
     if (!response.ok && retryCount < maxRetries) {
@@ -173,7 +200,6 @@ const smartFetch = async (url: string, retryCount = 0): Promise<Response> => {
     if (errorMessage.includes("certificate") || errorMessage.includes("UnknownIssuer") || errorMessage.includes("TLS")) {
       console.log(`SSL/Certificate error for ${url}: ${errorMessage}`);
       
-      // For trusted government domains, try to proceed anyway
       if (isTrustedDomain(url) && retryCount === 0) {
         console.log(`Retrying trusted government domain ${domain} with relaxed SSL validation`);
         return smartFetch(url, retryCount + 1);
@@ -182,12 +208,13 @@ const smartFetch = async (url: string, retryCount = 0): Promise<Response> => {
       throw new Error(`SSL_CERT_ERROR: ${errorMessage}`);
     }
     
-    // Check for connection reset errors - retry with longer delay
+    // Check for connection reset errors - mark domain and retry
     if (errorMessage.includes("Connection reset by peer") || errorMessage.includes("os error 104")) {
+      markDomainIssue(domain, 'connection_reset');
       console.log(`Connection reset error for ${url}: ${errorMessage}`);
       
       if (retryCount < maxRetries) {
-        const delay = 5000 * Math.pow(2, retryCount); // 5s, 10s, 20s
+        const delay = 3000 * Math.pow(2, retryCount); // 3s, 6s, 12s
         console.log(`Connection reset, waiting ${delay}ms before retry ${retryCount + 1}`);
         await new Promise(resolve => setTimeout(resolve, delay));
         return smartFetch(url, retryCount + 1);
@@ -317,10 +344,7 @@ serve(async (req) => {
     // Fetch the URL once for both PDF and non-PDF
     let response;
     try {
-      const domain = getDomain(url);
-      
-      // Use throttled request to prevent rate limiting
-      response = await throttleRequest(domain, () => smartFetch(url));
+      response = await smartFetch(url);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
       const domain = new URL(url).hostname;
