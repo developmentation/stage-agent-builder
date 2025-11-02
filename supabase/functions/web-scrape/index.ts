@@ -525,6 +525,27 @@ serve(async (req) => {
         );
       }
       
+      // Handle 503, 502, 504 gracefully - return success with warning message so workflow continues
+      if (response.status === 503 || response.status === 502 || response.status === 504) {
+        const statusText = response.status === 503 ? 'Service Unavailable' : 
+                          response.status === 502 ? 'Bad Gateway' : 'Gateway Timeout';
+        console.log(`${response.status} ${statusText} for ${url} - server is temporarily unavailable`);
+        
+        return new Response(
+          JSON.stringify({
+            success: true,
+            url,
+            title: `Service Unavailable: ${domain}`,
+            content: `The website at ${url} is temporarily unavailable (${response.status} ${statusText}).\n\nThis typically means:\n- The server is overloaded or down for maintenance\n- There are temporary network issues\n- The service is experiencing high traffic\n\nThe content could not be retrieved at this time. Please try again later.`,
+            contentLength: 0,
+            accessedAt: new Date().toISOString(),
+            serviceUnavailable: true,
+            statusCode: response.status
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
       // For other errors, return error response
       return new Response(
         JSON.stringify({ error: `Failed to fetch URL: ${response.statusText}` }),
