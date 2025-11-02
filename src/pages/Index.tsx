@@ -294,6 +294,7 @@ const Index = () => {
       workflowName,
       customAgents,
       selectedModel,
+      responseLength,
       thinkingEnabled,
       thinkingBudget,
     };
@@ -327,6 +328,7 @@ const Index = () => {
           setWorkflowName(loaded.workflowName || "Untitled Workflow");
           setCustomAgents(loaded.customAgents || []);
           setSelectedModel(loaded.selectedModel || "gemini-2.5-flash");
+          setResponseLength(loaded.responseLength ?? 8192);
           setThinkingEnabled(loaded.thinkingEnabled || false);
           setThinkingBudget(loaded.thinkingBudget ?? 0);
         } else {
