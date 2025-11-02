@@ -93,6 +93,12 @@ const smartFetch = async (url: string, retryCount = 0): Promise<Response> => {
       throw new Error(`SSL_CERT_ERROR: ${errorMessage}`);
     }
     
+    // Check for connection reset errors
+    if (errorMessage.includes("Connection reset by peer") || errorMessage.includes("os error 104")) {
+      console.log(`Connection reset error for ${url}: ${errorMessage}`);
+      throw new Error(`CONNECTION_RESET: ${errorMessage}`);
+    }
+    
     // Check for network/connection errors
     if (errorMessage.includes("http2") || errorMessage.includes("stream error") || errorMessage.includes("SendRequest")) {
       console.log(`Network/HTTP2 error for ${url}: ${errorMessage}`);
@@ -245,6 +251,24 @@ serve(async (req) => {
             accessedAt: new Date().toISOString(),
             sslError: true,
             statusCode: 526
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      // Handle connection reset errors
+      if (errorMessage.startsWith("CONNECTION_RESET:")) {
+        console.log(`Connection reset error for ${url}`);
+        return new Response(
+          JSON.stringify({
+            success: true,
+            url,
+            title: `Connection Reset: ${domain}`,
+            content: `The server at ${domain} reset the connection while trying to access this resource.\n\nDirect link: ${url}\n\nThis typically means:\n- The server is actively blocking automated access\n- The server is experiencing technical issues\n- The resource is temporarily unavailable\n- Rate limiting or security measures are in place\n\nSuggestions:\n1. Try accessing the URL directly in your browser: ${url}\n2. Wait a few minutes and try again\n3. If this is a file, try downloading it manually and uploading it directly\n4. Contact the website administrator if the issue persists`,
+            contentLength: 0,
+            accessedAt: new Date().toISOString(),
+            connectionReset: true,
+            statusCode: 502
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
