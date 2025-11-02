@@ -53,13 +53,13 @@ serve(async (req) => {
           });
 
           if (!response.ok) {
-            const errorData = await response.json().catch(() => ({}));
-            console.warn(`Error fetching page ${pageOffset + 1}:`, errorData);
+            const errorText = await response.text();
+            console.error(`Brave API error (status ${response.status}):`, errorText);
             continue;
           }
 
           const data = await response.json();
-          
+          console.log(`Full Brave API response:`, JSON.stringify(data, null, 2));
           console.log(`Page ${pageOffset + 1} returned ${data.web?.results?.length || 0} results`);
           
           if (data.web?.results) {
