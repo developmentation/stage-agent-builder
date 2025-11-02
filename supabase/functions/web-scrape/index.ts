@@ -584,8 +584,13 @@ serve(async (req) => {
       try {
         console.log(`Attempting to extract text from PDF using unpdf...`);
         
-        // Dynamic import of unpdf to prevent boot failures
-        const unpdf = await import("https://esm.sh/unpdf@0.12.1");
+        // Lazy-load unpdf only when needed to prevent boot failures
+        let unpdf: any;
+        try {
+          unpdf = await import("https://esm.sh/unpdf@0.12.1");
+        } catch (importError) {
+          throw new Error(`Failed to load PDF processing library: ${importError instanceof Error ? importError.message : 'Unknown error'}`);
+        }
         
         // Add timeout for PDF extraction to prevent CPU exhaustion
         const extractionTimeout = 20000; // 20 seconds max for PDF extraction
@@ -658,8 +663,13 @@ serve(async (req) => {
       try {
         console.log(`Attempting to extract text from DOCX using mammoth...`);
         
-        // Dynamic import of mammoth
-        const mammoth = await import("https://esm.sh/mammoth@1.11.0");
+        // Lazy-load mammoth only when needed to prevent boot failures
+        let mammoth: any;
+        try {
+          mammoth = await import("https://esm.sh/mammoth@1.11.0");
+        } catch (importError) {
+          throw new Error(`Failed to load DOCX processing library: ${importError instanceof Error ? importError.message : 'Unknown error'}`);
+        }
         
         const result = await mammoth.extractRawText({ arrayBuffer: docxBuffer.buffer });
         let content = result.value.trim();
