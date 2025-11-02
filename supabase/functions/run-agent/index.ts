@@ -123,16 +123,12 @@ serve(async (req) => {
     };
 
     // Add thinking config for supported models (not gemini-2.5-pro)
-    // When thinkingEnabled is true, use thinkingBudget value
-    // When thinkingEnabled is false, explicitly set to 0 to disable
-    if (selectedModel !== "gemini-2.5-pro") {
-      if (thinkingEnabled) {
-        generationConfig.thinkingBudget = thinkingBudget;
-        console.log(`Added thinkingBudget: ${thinkingBudget} (enabled)`);
-      } else {
-        generationConfig.thinkingBudget = 0;
-        console.log(`Set thinkingBudget to 0 (disabled)`);
-      }
+    // Only include thinkingBudget when thinking is actually enabled
+    if (selectedModel !== "gemini-2.5-pro" && thinkingEnabled && thinkingBudget !== 0) {
+      generationConfig.thinkingBudget = thinkingBudget;
+      console.log(`Added thinkingBudget: ${thinkingBudget} (thinking enabled)`);
+    } else {
+      console.log(`Thinking disabled - not sending thinkingBudget parameter`);
     }
     
     const response = await fetch(
