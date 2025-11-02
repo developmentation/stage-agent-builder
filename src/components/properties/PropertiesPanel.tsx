@@ -112,6 +112,9 @@ export const PropertiesPanel = ({
     );
   }
 
+  // Show running banner if node is running
+  const isRunning = activeNode.status === "running";
+
   // Get function definition if it's a function node
   const functionDef = activeNode.nodeType === "function" 
     ? getFunctionById((activeNode as FunctionNode).functionType)
@@ -631,6 +634,16 @@ export const PropertiesPanel = ({
           </Button>
         )}
       </div>
+
+      {/* Running Banner */}
+      {activeNode.status === "running" && (
+        <div className="bg-warning/20 border-b border-warning/40 px-4 py-3 flex items-center gap-2">
+          <Play className="h-4 w-4 text-warning animate-pulse" />
+          <span className="text-sm font-medium text-warning">
+            {activeNode.nodeType === "agent" ? "Agent" : "Function"} is currently running...
+          </span>
+        </div>
+      )}
 
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-6">

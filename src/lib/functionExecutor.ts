@@ -602,12 +602,16 @@ export class FunctionExecutor {
       // Get numResults config, default to 20, clamp between 1-1000
       const numResults = Math.max(1, Math.min(1000, Number(node.config.numResults) || 20));
       
+      // Get truncate config
+      const truncateResults = node.config.truncateResults === true;
+      const maxCharacters = truncateResults ? Math.max(1, Number(node.config.maxCharacters) || 5000) : undefined;
+      
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/brave-search`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ query: searchQuery, numResults }),
+        body: JSON.stringify({ query: searchQuery, numResults, maxCharacters }),
       });
 
       if (!response.ok) {
@@ -661,6 +665,10 @@ export class FunctionExecutor {
 
       // Get returnHtml config option
       const returnHtml = node.config.returnHtml === true;
+      
+      // Get truncate config
+      const truncateResults = node.config.truncateResults === true;
+      const maxCharacters = truncateResults ? Math.max(1, Number(node.config.maxCharacters) || 5000) : undefined;
 
       // Helper function to scrape a single URL
       const scrapeUrl = async (url: string): Promise<{ url: string; result: string; success: boolean }> => {
@@ -670,7 +678,7 @@ export class FunctionExecutor {
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ url, returnHtml }),
+            body: JSON.stringify({ url, returnHtml, maxCharacters }),
           });
 
           if (!response.ok) {

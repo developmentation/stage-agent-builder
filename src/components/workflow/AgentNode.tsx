@@ -16,6 +16,7 @@ interface AgentNodeProps {
   onDelete: () => void;
   onToggleMinimize: () => void;
   onPortClick: (agentId: string, isOutput: boolean) => void;
+  onRun?: () => void;
 }
 
 const agentIcons = {
@@ -31,7 +32,7 @@ const statusConfig = {
   error: { icon: AlertCircle, color: "text-destructive", bg: "bg-destructive/10" },
 };
 
-export const AgentNode = ({ agent, isSelected, isConnecting, agentNumber, stageIndex, layoutId = 'default', onSelect, onDelete, onToggleMinimize, onPortClick }: AgentNodeProps) => {
+export const AgentNode = ({ agent, isSelected, isConnecting, agentNumber, stageIndex, layoutId = 'default', onSelect, onDelete, onToggleMinimize, onPortClick, onRun }: AgentNodeProps) => {
   const Icon = agentIcons[agent.type as keyof typeof agentIcons] || Bot;
   const statusInfo = statusConfig[agent.status];
   const StatusIcon = statusInfo.icon;
@@ -102,6 +103,13 @@ export const AgentNode = ({ agent, isSelected, isConnecting, agentNumber, stageI
         description: "Could not copy to clipboard",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleRun = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onRun) {
+      onRun();
     }
   };
 
@@ -193,6 +201,17 @@ export const AgentNode = ({ agent, isSelected, isConnecting, agentNumber, stageI
             <div className="flex items-center justify-between gap-2">
               <h4 className="text-sm font-semibold text-foreground truncate">{agent.name}</h4>
               <div className="flex items-center gap-0.5 flex-shrink-0">
+                {onRun && agent.status !== "running" && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0"
+                    onClick={handleRun}
+                    title="Run agent"
+                  >
+                    <Play className="h-3 w-3 text-primary" />
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="sm"

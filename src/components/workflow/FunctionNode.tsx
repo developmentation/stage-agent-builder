@@ -17,6 +17,7 @@ interface FunctionNodeProps {
   onDelete: () => void;
   onToggleMinimize: () => void;
   onPortClick: (nodeId: string, isOutput: boolean, outputPort?: string) => void;
+  onRun?: () => void;
 }
 
 const statusConfig = {
@@ -36,7 +37,8 @@ export const FunctionNode = ({
   onSelect, 
   onDelete, 
   onToggleMinimize, 
-  onPortClick 
+  onPortClick,
+  onRun 
 }: FunctionNodeProps) => {
   const functionDef = getFunctionById(node.functionType);
   const Icon = functionDef?.icon || Circle;
@@ -79,6 +81,13 @@ export const FunctionNode = ({
         description: "Could not copy to clipboard",
         variant: "destructive",
       });
+    }
+  };
+
+  const handleRun = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onRun) {
+      onRun();
     }
   };
 
@@ -193,6 +202,17 @@ export const FunctionNode = ({
             <div className="flex items-center justify-between gap-2">
               <h4 className="text-sm font-semibold text-foreground truncate">{node.name}</h4>
               <div className="flex items-center gap-0.5 flex-shrink-0">
+                {onRun && node.status !== "running" && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0"
+                    onClick={handleRun}
+                    title="Run function"
+                  >
+                    <Play className="h-3 w-3 text-primary" />
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   size="sm"

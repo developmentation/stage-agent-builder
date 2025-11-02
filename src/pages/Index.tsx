@@ -780,6 +780,8 @@ const Index = () => {
               onStartConnection={handleStartConnection}
               onCompleteConnection={handleCompleteConnection}
               onDeleteConnection={deleteConnection}
+              onRunAgent={runSingleAgent}
+              onRunFunction={runSingleFunction}
             />
           }
           desktopCanvas={
@@ -799,6 +801,8 @@ const Index = () => {
               onStartConnection={handleStartConnection}
               onCompleteConnection={handleCompleteConnection}
               onDeleteConnection={deleteConnection}
+              onRunAgent={runSingleAgent}
+              onRunFunction={runSingleFunction}
             />
           }
           properties={

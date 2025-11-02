@@ -131,7 +131,11 @@ const getModernHeaders = () => ({
 });
 
 // Smart fetch with retry logic and adaptive throttling
-const smartFetch = async (url: string, retryCount = 0): Promise<Response> => {
+const smartFetch = async (
+  url: string, 
+  retryCount = 0,
+  options: { returnHtml?: boolean; maxCharacters?: number } = {}
+): Promise<Response> => {
   const maxRetries = 3;
   const domain = getDomain(url);
   
@@ -183,13 +187,13 @@ const smartFetch = async (url: string, retryCount = 0): Promise<Response> => {
         const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : 5000;
         console.log(`Rate limited (429) for ${url}, waiting ${waitTime}ms before retry ${retryCount + 1}`);
         await new Promise(resolve => setTimeout(resolve, waitTime));
-        return smartFetch(url, retryCount + 1);
+        return smartFetch(url, retryCount + 1, options);
       }
     }
 
     if (!response.ok && retryCount < maxRetries) {
       console.log(`Retry ${retryCount + 1} for ${url} with fallback headers (status: ${response.status})`);
-      return smartFetch(url, retryCount + 1);
+      return smartFetch(url, retryCount + 1, options);
     }
 
     return response;
@@ -202,7 +206,7 @@ const smartFetch = async (url: string, retryCount = 0): Promise<Response> => {
       
       if (isTrustedDomain(url) && retryCount === 0) {
         console.log(`Retrying trusted government domain ${domain} with relaxed SSL validation`);
-        return smartFetch(url, retryCount + 1);
+        return smartFetch(url, retryCount + 1, options);
       }
       
       throw new Error(`SSL_CERT_ERROR: ${errorMessage}`);
@@ -217,7 +221,7 @@ const smartFetch = async (url: string, retryCount = 0): Promise<Response> => {
         const delay = 3000 * Math.pow(2, retryCount); // 3s, 6s, 12s
         console.log(`Connection reset, waiting ${delay}ms before retry ${retryCount + 1}`);
         await new Promise(resolve => setTimeout(resolve, delay));
-        return smartFetch(url, retryCount + 1);
+        return smartFetch(url, retryCount + 1, options);
       }
       
       throw new Error(`CONNECTION_RESET: ${errorMessage}`);
@@ -231,7 +235,7 @@ const smartFetch = async (url: string, retryCount = 0): Promise<Response> => {
     
     if (retryCount < maxRetries) {
       console.log(`Retry ${retryCount + 1} for ${url} due to error: ${errorMessage}`);
-      return smartFetch(url, retryCount + 1);
+      return smartFetch(url, retryCount + 1, options);
     }
     throw error;
   }
@@ -295,7 +299,7 @@ serve(async (req) => {
   }
 
   try {
-    const { url, returnHtml } = await req.json();
+    const { url, returnHtml, maxCharacters } = await req.json();
 
     if (!url) {
       return new Response(
@@ -344,7 +348,7 @@ serve(async (req) => {
     // Fetch the URL once for both PDF and non-PDF
     let response;
     try {
-      response = await smartFetch(url);
+      response = await smartFetch(url, 0, { returnHtml, maxCharacters });
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
       const domain = new URL(url).hostname;
@@ -574,8 +578,9 @@ serve(async (req) => {
         
         const { text, totalPages } = await Promise.race([extractionPromise, timeoutPromise]) as { text: string, totalPages: number };
         
-        // Limit content to 100k characters to avoid memory issues
-        const content = text.substring(0, 100000);
+        // Apply character limit based on config or default to 100k to avoid memory issues
+        const charLimit = maxCharacters || 100000;
+        const content = text.substring(0, charLimit);
         const pageCount = totalPages;
         
         console.log(`Successfully extracted PDF text: ${pageCount} pages, ${content.length} characters`);
@@ -594,7 +599,8 @@ serve(async (req) => {
             pageCount,
             isPdf: true,
             accessedAt,
-            truncated: text.length > 100000
+            truncated: text.length > charLimit,
+            originalLength: text.length
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
@@ -633,7 +639,13 @@ serve(async (req) => {
         const mammoth = await import("https://esm.sh/mammoth@1.11.0");
         
         const result = await mammoth.extractRawText({ arrayBuffer: docxBuffer.buffer });
-        const content = result.value.trim();
+        let content = result.value.trim();
+        const originalLength = content.length;
+        
+        // Apply character limit if specified
+        if (maxCharacters && content.length > maxCharacters) {
+          content = content.substring(0, maxCharacters);
+        }
         
         console.log(`Successfully extracted DOCX text: ${content.length} characters`);
         
@@ -649,7 +661,9 @@ serve(async (req) => {
             content,
             contentLength: content.length,
             isDocx: true,
-            accessedAt
+            accessedAt,
+            truncated: maxCharacters && originalLength > maxCharacters,
+            originalLength
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
@@ -683,10 +697,14 @@ serve(async (req) => {
     const title = titleMatch ? titleMatch[1].trim() : "No title found";
 
     let content: string;
+    let originalLength: number;
     
     if (returnHtml) {
       // Return raw HTML
-      content = html;
+      originalLength = html.length;
+      content = maxCharacters && html.length > maxCharacters 
+        ? html.substring(0, maxCharacters) 
+        : html;
       console.log(`Successfully scraped ${url}: ${content.length} characters (HTML)`);
     } else {
       // Simple HTML parsing - extract text content
@@ -698,8 +716,10 @@ serve(async (req) => {
         .replace(/\s+/g, " ") // Normalize whitespace
         .trim();
 
-      // Limit to first 5000 characters
-      textContent = textContent.substring(0, 5000);
+      originalLength = textContent.length;
+      // Apply character limit (default 5000 if not specified)
+      const charLimit = maxCharacters || 5000;
+      textContent = textContent.substring(0, charLimit);
       content = textContent;
       console.log(`Successfully scraped ${url}: ${content.length} characters (text)`);
     }
@@ -711,7 +731,9 @@ serve(async (req) => {
         title,
         content,
         contentLength: content.length,
-        accessedAt
+        accessedAt,
+        truncated: maxCharacters && originalLength > maxCharacters,
+        originalLength
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
