@@ -164,6 +164,10 @@ serve(async (req) => {
     }
 
     const data = await response.json();
+    
+    // Log full response for debugging
+    console.log("Full Gemini API response:", JSON.stringify(data, null, 2));
+    
     const output = data.candidates?.[0]?.content?.parts?.[0]?.text || "No output generated";
     
     console.log("Agent output generated:", output.substring(0, 100));
