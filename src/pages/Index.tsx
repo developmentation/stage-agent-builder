@@ -32,6 +32,8 @@ const Index = () => {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [selectedModel, setSelectedModel] = useState<"gemini-2.5-flash" | "gemini-2.5-pro" | "gemini-2.5-flash-lite">("gemini-2.5-flash");
   const [responseLength, setResponseLength] = useState<number>(16384);
+  const [thinkingEnabled, setThinkingEnabled] = useState<boolean>(false);
+  const [thinkingBudget, setThinkingBudget] = useState<number>(0);
   const [workflow, setWorkflow] = useState<Workflow>({
     stages: [],
     connections: [],
@@ -40,6 +42,17 @@ const Index = () => {
   const addLog = (type: LogEntry["type"], message: string) => {
     const time = new Date().toLocaleTimeString('en-US', { hour12: false });
     setLogs((prev) => [...prev, { time, type, message }]);
+  };
+
+  const handleThinkingEnabledChange = (enabled: boolean) => {
+    setThinkingEnabled(enabled);
+    // When enabling thinking, default to -1 (fully activated) if currently 0
+    if (enabled && thinkingBudget === 0) {
+      setThinkingBudget(-1);
+    } else if (!enabled) {
+      // When disabling, reset to 0
+      setThinkingBudget(0);
+    }
   };
 
   const addStage = () => {
@@ -281,6 +294,8 @@ const Index = () => {
       workflowName,
       customAgents,
       selectedModel,
+      thinkingEnabled,
+      thinkingBudget,
     };
     const json = JSON.stringify(saveData, null, 2);
     const blob = new Blob([json], { type: "application/json" });
@@ -312,6 +327,8 @@ const Index = () => {
           setWorkflowName(loaded.workflowName || "Untitled Workflow");
           setCustomAgents(loaded.customAgents || []);
           setSelectedModel(loaded.selectedModel || "gemini-2.5-flash");
+          setThinkingEnabled(loaded.thinkingEnabled || false);
+          setThinkingBudget(loaded.thinkingBudget ?? 0);
         } else {
           // Old format (just the workflow object)
           setWorkflow(loaded);
@@ -333,6 +350,8 @@ const Index = () => {
       setWorkflowName("Untitled Workflow");
       setCustomAgents([]); // Reset to only default agents
       setSelectedModel("gemini-2.5-flash");
+      setThinkingEnabled(false);
+      setThinkingBudget(0);
       setSelectedNode(null);
       setConnectingFrom(null);
     }
@@ -439,6 +458,8 @@ const Index = () => {
           tools: toolsPayload,
           model: selectedModel,
           maxOutputTokens: responseLength,
+          thinkingEnabled,
+          thinkingBudget,
         }),
       });
 
@@ -580,6 +601,9 @@ const Index = () => {
             userPrompt,
             tools: toolsPayload,
             model: selectedModel,
+            maxOutputTokens: responseLength,
+            thinkingEnabled,
+            thinkingBudget,
           }),
         });
 
@@ -761,6 +785,10 @@ const Index = () => {
               onSelectedModelChange={setSelectedModel}
               responseLength={responseLength}
               onResponseLengthChange={setResponseLength}
+              thinkingEnabled={thinkingEnabled}
+              onThinkingEnabledChange={handleThinkingEnabledChange}
+              thinkingBudget={thinkingBudget}
+              onThinkingBudgetChange={setThinkingBudget}
             />
           }
           mobileCanvas={

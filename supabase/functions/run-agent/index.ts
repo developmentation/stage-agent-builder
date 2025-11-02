@@ -11,7 +11,7 @@ serve(async (req) => {
   }
 
   try {
-    const { systemPrompt, userPrompt, tools = [], model = "gemini-2.5-flash", maxOutputTokens = 32768 } = await req.json();
+    const { systemPrompt, userPrompt, tools = [], model = "gemini-2.5-flash", maxOutputTokens = 32768, thinkingEnabled = false, thinkingBudget = 0 } = await req.json();
     
     // Validate model
     const validModels = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.5-flash-lite"];
@@ -110,13 +110,33 @@ serve(async (req) => {
       }
     }
 
-    // Call Gemini API directly with selected model
+    // Call Gemini API directly with selected model using streaming
     const finalPrompt = toolResults ? `${userPrompt}\n\nTool Results:${toolResults}` : userPrompt;
     
-    console.log(`Using Gemini API with model: ${selectedModel}`);
+    console.log(`Using Gemini API with model: ${selectedModel}, streaming enabled`);
+    console.log(`Thinking: ${thinkingEnabled ? 'enabled' : 'disabled'}, budget: ${thinkingBudget}`);
+    
+    // Build generation config
+    const generationConfig: any = {
+      temperature: 0.7,
+      maxOutputTokens: maxOutputTokens,
+    };
+
+    // Add thinking config for supported models (not gemini-2.5-pro)
+    // When thinkingEnabled is true, use thinkingBudget value
+    // When thinkingEnabled is false, explicitly set to 0 to disable
+    if (selectedModel !== "gemini-2.5-pro") {
+      if (thinkingEnabled) {
+        generationConfig.thinkingBudget = thinkingBudget;
+        console.log(`Added thinkingBudget: ${thinkingBudget} (enabled)`);
+      } else {
+        generationConfig.thinkingBudget = 0;
+        console.log(`Set thinkingBudget to 0 (disabled)`);
+      }
+    }
     
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${selectedModel}:streamGenerateContent?key=${GEMINI_API_KEY}&alt=sse`,
       {
         method: "POST",
         headers: {
@@ -149,10 +169,7 @@ serve(async (req) => {
               threshold: "BLOCK_NONE"
             }
           ],
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: maxOutputTokens,
-          }
+          generationConfig
         }),
       }
     );
@@ -163,27 +180,59 @@ serve(async (req) => {
       throw new Error(`Gemini API error: ${response.status}`);
     }
 
-    const data = await response.json();
-    
-    // Log full response for debugging
-    console.log("Full Gemini API response:", JSON.stringify(data, null, 2));
-    
-    const candidate = data.candidates?.[0];
-    const finishReason = candidate?.finishReason;
-    const output = candidate?.content?.parts?.[0]?.text || "";
-    
-    if (!output) {
-      if (finishReason === "MAX_TOKENS") {
-        console.error("Gemini hit MAX_TOKENS limit - response was truncated");
-        return new Response(JSON.stringify({ 
-          error: "Response exceeded maximum length. Try reducing input size or increasing maxOutputTokens.",
-          finishReason: "MAX_TOKENS"
-        }), {
-          status: 400,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+    // Stream response and collect all chunks on backend
+    let collectedOutput = "";
+    let finishReason = "";
+    const reader = response.body?.getReader();
+    const decoder = new TextDecoder();
+
+    if (!reader) {
+      throw new Error("No response body reader available");
+    }
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (!line.trim() || line.startsWith(':')) continue;
+          if (!line.startsWith('data: ')) continue;
+
+          const jsonStr = line.slice(6).trim();
+          if (!jsonStr) continue;
+
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const candidate = parsed.candidates?.[0];
+            
+            // Collect text content
+            const text = candidate?.content?.parts?.[0]?.text;
+            if (text) {
+              collectedOutput += text;
+            }
+
+            // Track finish reason
+            if (candidate?.finishReason) {
+              finishReason = candidate.finishReason;
+            }
+          } catch (parseError) {
+            console.error("Failed to parse SSE chunk:", parseError);
+          }
+        }
       }
-      console.error("No output generated - finishReason:", finishReason);
+    } finally {
+      reader.releaseLock();
+    }
+
+    console.log(`Collected ${collectedOutput.length} characters, finishReason: ${finishReason}`);
+    
+    // Even if we hit MAX_TOKENS, we now have partial output
+    if (!collectedOutput) {
+      console.error("No output collected from stream");
       return new Response(JSON.stringify({ 
         error: "No output was generated by the model",
         finishReason 
@@ -193,9 +242,14 @@ serve(async (req) => {
       });
     }
     
-    console.log("Agent output generated:", output.substring(0, 100));
+    console.log("Agent output generated:", collectedOutput.substring(0, 100));
 
-    return new Response(JSON.stringify({ output, toolOutputs }), {
+    return new Response(JSON.stringify({ 
+      output: collectedOutput, 
+      toolOutputs,
+      finishReason,
+      truncated: finishReason === "MAX_TOKENS"
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (error) {

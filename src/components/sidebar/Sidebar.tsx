@@ -3,6 +3,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Upload, Search, FileText, Bot, Plus, Download, Trash2, X, Eye } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useState, useRef } from "react";
@@ -100,10 +101,13 @@ interface SidebarProps {
   onSelectedModelChange: (model: "gemini-2.5-flash" | "gemini-2.5-pro" | "gemini-2.5-flash-lite") => void;
   responseLength: number;
   onResponseLengthChange: (length: number) => void;
+  thinkingEnabled: boolean;
+  onThinkingEnabledChange: (enabled: boolean) => void;
+  thinkingBudget: number;
+  onThinkingBudgetChange: (budget: number) => void;
 }
 export const Sidebar = ({
   onAddAgent,
-  onAddNode,
   workflow,
   userInput,
   onUserInputChange,
@@ -114,7 +118,12 @@ export const Sidebar = ({
   selectedModel,
   onSelectedModelChange,
   responseLength,
-  onResponseLengthChange
+  onResponseLengthChange,
+  thinkingEnabled,
+  onThinkingEnabledChange,
+  thinkingBudget,
+  onThinkingBudgetChange,
+  onAddNode,
 }: SidebarProps) => {
   const [isAddAgentOpen, setIsAddAgentOpen] = useState(false);
   const [newAgentName, setNewAgentName] = useState("");
@@ -487,6 +496,67 @@ export const Sidebar = ({
               Longer responses may take more time to generate
             </p>
           </div>
+
+          {/* Thinking Budget Section */}
+          {selectedModel !== "gemini-2.5-pro" && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="thinking-enabled" className="text-sm font-semibold text-foreground">
+                  Thinking Enabled
+                </Label>
+                <Switch
+                  id="thinking-enabled"
+                  checked={thinkingEnabled}
+                  onCheckedChange={onThinkingEnabledChange}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Enable model thinking for complex reasoning
+              </p>
+              
+              {thinkingEnabled && (
+                <div className="space-y-2 mt-3">
+                  <Label htmlFor="thinking-budget-select" className="text-sm font-medium text-foreground">
+                    Thinking Budget
+                  </Label>
+                  <Select 
+                    value={thinkingBudget.toString()} 
+                    onValueChange={(val) => onThinkingBudgetChange(Number(val))}
+                  >
+                    <SelectTrigger id="thinking-budget-select" className="w-full">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="-1">Fully Activated (Auto)</SelectItem>
+                      {selectedModel === "gemini-2.5-flash" && (
+                        <>
+                          <SelectItem value="1024">Small (1,024 tokens)</SelectItem>
+                          <SelectItem value="4096">Medium (4,096 tokens)</SelectItem>
+                          <SelectItem value="8192">Large (8,192 tokens)</SelectItem>
+                          <SelectItem value="16384">XL (16,384 tokens)</SelectItem>
+                          <SelectItem value="24576">Max (24,576 tokens)</SelectItem>
+                        </>
+                      )}
+                      {selectedModel === "gemini-2.5-flash-lite" && (
+                        <>
+                          <SelectItem value="512">Minimum (512 tokens)</SelectItem>
+                          <SelectItem value="2048">Small (2,048 tokens)</SelectItem>
+                          <SelectItem value="4096">Medium (4,096 tokens)</SelectItem>
+                          <SelectItem value="8192">Large (8,192 tokens)</SelectItem>
+                          <SelectItem value="16384">XL (16,384 tokens)</SelectItem>
+                          <SelectItem value="24576">Max (24,576 tokens)</SelectItem>
+                        </>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    {selectedModel === "gemini-2.5-flash" && "Range: 0-24,576 tokens"}
+                    {selectedModel === "gemini-2.5-flash-lite" && "Range: 512-24,576 tokens"}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Input Section */}
           <div className="space-y-3">
