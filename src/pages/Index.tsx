@@ -825,11 +825,40 @@ const Index = () => {
       const stage = workflow.stages[i];
       if (stage.nodes.length === 0) continue;
 
-      const agentCount = stage.nodes.filter(n => n.nodeType === "agent").length;
-      const functionCount = stage.nodes.filter(n => n.nodeType === "function").length;
+      // Filter nodes to only execute those whose dependencies are met
+      // A node's dependencies are met if ALL incoming connections come from current or previous stages
+      const nodesToExecute = stage.nodes.filter(node => {
+        const incomingConnections = workflow.connections.filter(c => c.toNodeId === node.id);
+        
+        // If no incoming connections, node can execute
+        if (incomingConnections.length === 0) return true;
+        
+        // Check if all incoming connections come from current or previous stages
+        return incomingConnections.every(conn => {
+          const fromNode = allNodes.find(n => n.id === conn.fromNodeId);
+          if (!fromNode) return false;
+          
+          // Find which stage the source node is in
+          const fromStageIndex = workflow.stages.findIndex(s => 
+            s.nodes.some(n => n.id === conn.fromNodeId)
+          );
+          
+          // Only execute if source is in current or previous stages
+          return fromStageIndex <= i;
+        });
+      });
+
+      // Skip stage if no nodes should execute
+      if (nodesToExecute.length === 0) {
+        addLog("info", `▸ Stage ${i + 1}: Skipped (no nodes ready for execution)`);
+        continue;
+      }
+
+      const agentCount = nodesToExecute.filter(n => n.nodeType === "agent").length;
+      const functionCount = nodesToExecute.filter(n => n.nodeType === "function").length;
       addLog("info", `▸ Stage ${i + 1}: Processing ${agentCount} agent(s) and ${functionCount} function(s)`);
 
-      const nodePromises = stage.nodes.map(async (node) => {
+      const nodePromises = nodesToExecute.map(async (node) => {
         // Get incoming connections for this node
         const incomingConnections = workflow.connections.filter(
           (c) => c.toNodeId === node.id
