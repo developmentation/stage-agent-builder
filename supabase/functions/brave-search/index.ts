@@ -60,13 +60,10 @@ serve(async (req) => {
 
           const data = await response.json();
           console.log(`Full Brave API response:`, JSON.stringify(data, null, 2));
+          console.log(`Page ${pageOffset + 1} returned ${data.web?.results?.length || 0} results`);
           
-          // Brave API returns results in mixed.main array, not web.results
-          const results = data.mixed?.main || [];
-          console.log(`Page ${pageOffset + 1} returned ${results.length} results`);
-          
-          if (results.length > 0) {
-            allResults.push(...results);
+          if (data.web?.results) {
+            allResults.push(...data.web.results);
             console.log(`Total accumulated results so far: ${allResults.length}`);
           }
         } catch (error) {

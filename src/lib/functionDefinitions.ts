@@ -458,20 +458,6 @@ export const functionDefinitions: FunctionDefinition[] = [
         required: false,
         placeholder: "20",
       },
-      truncateResults: {
-        type: "boolean",
-        label: "Truncate Results",
-        description: "Limit the character length of scraped content",
-        default: false,
-      },
-      maxCharacters: {
-        type: "number",
-        label: "Max Characters",
-        description: "Maximum characters per result (applies to web pages, PDFs, and DOCX)",
-        default: 5000,
-        required: false,
-        placeholder: "5000",
-      },
     },
   },
   {
