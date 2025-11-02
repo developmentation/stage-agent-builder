@@ -113,11 +113,65 @@ const isPdfUrl = (url: string): boolean => {
   return urlLower.endsWith('.pdf') || urlLower.includes('.pdf?');
 };
 
-// Helper function to detect DOC/DOCX URLs
-const isDocUrl = (url: string): boolean => {
+// Helper function to detect unsupported file types
+const getFileTypeInfo = (url: string): { isSupported: boolean; fileType: string; extension: string } => {
   const urlLower = url.toLowerCase();
-  return urlLower.endsWith('.doc') || urlLower.includes('.doc?') || 
-         urlLower.endsWith('.docx') || urlLower.includes('.docx?');
+  
+  // Extract file extension
+  const urlPath = urlLower.split('?')[0]; // Remove query params
+  const parts = urlPath.split('.');
+  const extension = parts.length > 1 ? parts[parts.length - 1] : '';
+  
+  // Supported text-based formats
+  const textFormats = ['txt', 'md', 'json', 'xml', 'csv', 'html', 'htm', 'yaml', 'yml'];
+  
+  // Supported formats (web pages without extension are assumed HTML)
+  if (!extension || extension === 'html' || extension === 'htm' || textFormats.includes(extension)) {
+    return { isSupported: true, fileType: extension || 'webpage', extension };
+  }
+  
+  // PDF is supported
+  if (extension === 'pdf') {
+    return { isSupported: true, fileType: 'PDF', extension };
+  }
+  
+  // Microsoft Office formats - unsupported
+  if (['doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx'].includes(extension)) {
+    return { isSupported: false, fileType: 'Microsoft Office Document', extension };
+  }
+  
+  // Archive formats - unsupported
+  if (['zip', 'rar', '7z', 'tar', 'gz'].includes(extension)) {
+    return { isSupported: false, fileType: 'Archive File', extension };
+  }
+  
+  // Image formats - unsupported
+  if (['jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'webp', 'ico'].includes(extension)) {
+    return { isSupported: false, fileType: 'Image File', extension };
+  }
+  
+  // Video/Audio formats - unsupported
+  if (['mp4', 'avi', 'mov', 'wmv', 'flv', 'mp3', 'wav', 'ogg', 'm4a'].includes(extension)) {
+    return { isSupported: false, fileType: 'Media File', extension };
+  }
+  
+  // Executable/Binary formats - unsupported
+  if (['exe', 'dll', 'so', 'dylib', 'bin'].includes(extension)) {
+    return { isSupported: false, fileType: 'Binary/Executable File', extension };
+  }
+  
+  // Other known document formats - unsupported
+  if (['rtf', 'odt', 'ods', 'odp', 'epub', 'mobi'].includes(extension)) {
+    return { isSupported: false, fileType: 'Document File', extension };
+  }
+  
+  // Unknown extension
+  if (extension) {
+    return { isSupported: false, fileType: 'Unknown File Type', extension };
+  }
+  
+  // No extension, assume it's a webpage
+  return { isSupported: true, fileType: 'webpage', extension: '' };
 };
 
 serve(async (req) => {
@@ -140,24 +194,26 @@ serve(async (req) => {
     // Capture access timestamp
     const accessedAt = new Date().toISOString();
 
-    // Check if URL is a DOC/DOCX file
-    if (isDocUrl(url)) {
+    // Check file type before attempting to fetch
+    const fileTypeInfo = getFileTypeInfo(url);
+    
+    if (!fileTypeInfo.isSupported) {
       const domain = new URL(url).hostname;
       const urlParts = url.split('/');
       const filename = urlParts[urlParts.length - 1].split('?')[0];
-      const fileType = filename.toLowerCase().endsWith('.docx') ? 'DOCX' : 'DOC';
+      const ext = fileTypeInfo.extension.toUpperCase();
       
-      console.log(`Detected ${fileType} file: ${url} - not supported for web scraping`);
+      console.log(`Detected unsupported file type: ${ext} - ${url}`);
       
       return new Response(
         JSON.stringify({
           success: true,
           url,
-          title: `${fileType} Document: ${filename}`,
-          content: `Microsoft Word Document (${fileType}): ${filename}\n\nDirect download link: ${url}\n\nNote: ${fileType} files cannot be automatically extracted from URLs. To process this document:\n1. Download the file from the link above\n2. Upload it directly using the file upload feature in your workflow\n\nThe file upload feature supports extracting text from both DOC and DOCX files.`,
+          title: `Unsupported File: ${filename}`,
+          content: `${fileTypeInfo.fileType} (${ext}): ${filename}\n\nDirect link: ${url}\n\nThis file type cannot be automatically processed from a URL.\n\nSupported formats for web scraping:\n- Web pages (HTML)\n- PDF documents\n- Text files (TXT, MD, JSON, XML, CSV, YAML)\n\nFor other file types:\n1. Download the file manually from the link above\n2. Use the file upload feature in your workflow if the format is supported for upload\n\nNote: Some formats like DOC, DOCX, and XLSX can be processed when uploaded directly.`,
           contentLength: 0,
-          isDoc: true,
-          fileType,
+          fileType: fileTypeInfo.fileType,
+          extension: fileTypeInfo.extension,
           accessedAt,
           unsupportedFormat: true
         }),
