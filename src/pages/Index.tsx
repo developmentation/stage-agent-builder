@@ -577,7 +577,15 @@ const Index = () => {
     const controller = runningControllers.get(nodeId);
     if (controller) {
       controller.abort();
-      addLog("info", "Stopping node execution...");
+      // Immediately reset status to idle
+      updateNode(nodeId, { status: "idle" });
+      // Remove from running controllers
+      setRunningControllers(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(nodeId);
+        return newMap;
+      });
+      addLog("warning", "Node execution stopped by user");
     }
   };
 
