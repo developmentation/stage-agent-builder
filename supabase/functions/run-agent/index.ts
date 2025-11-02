@@ -122,13 +122,15 @@ serve(async (req) => {
       maxOutputTokens: maxOutputTokens,
     };
 
-    // Add thinking config for supported models (not gemini-2.5-pro)
-    // Only include thinkingBudget when thinking is actually enabled
-    if (selectedModel !== "gemini-2.5-pro" && thinkingEnabled && thinkingBudget !== 0) {
-      generationConfig.thinkingBudget = thinkingBudget;
-      console.log(`Added thinkingBudget: ${thinkingBudget} (thinking enabled)`);
-    } else {
-      console.log(`Thinking disabled - not sending thinkingBudget parameter`);
+    // Add thinking config for supported models
+    // 2.5 Pro: Cannot disable thinking, range 128-32768
+    // 2.5 Flash: Can disable with 0, range 0-24576
+    // 2.5 Flash Lite: Can disable with 0, range 512-24576
+    if (selectedModel !== "gemini-2.5-pro") {
+      generationConfig.thinkingConfig = {
+        thinkingBudget: thinkingEnabled ? thinkingBudget : 0
+      };
+      console.log(`Added thinkingConfig with budget: ${thinkingEnabled ? thinkingBudget : 0} (${thinkingEnabled ? 'enabled' : 'disabled'})`);
     }
     
     const response = await fetch(
