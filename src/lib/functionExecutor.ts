@@ -602,16 +602,12 @@ export class FunctionExecutor {
       // Get numResults config, default to 20, clamp between 1-1000
       const numResults = Math.max(1, Math.min(1000, Number(node.config.numResults) || 20));
       
-      // Get truncate config
-      const truncateResults = node.config.truncateResults === true;
-      const maxCharacters = truncateResults ? Math.max(1, Number(node.config.maxCharacters) || 5000) : undefined;
-      
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/brave-search`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ query: searchQuery, numResults, maxCharacters }),
+        body: JSON.stringify({ query: searchQuery, numResults }),
       });
 
       if (!response.ok) {
