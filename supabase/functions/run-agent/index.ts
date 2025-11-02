@@ -189,8 +189,12 @@ serve(async (req) => {
     }
 
     // Stream response and collect all chunks on backend
+    // Add timeout to prevent edge function timeout (150s limit, we'll use 120s to be safe)
+    const TIMEOUT_MS = 120000; // 120 seconds
+    const startTime = Date.now();
     let collectedOutput = "";
     let finishReason = "";
+    let timedOut = false;
     const reader = response.body?.getReader();
     const decoder = new TextDecoder();
 
@@ -200,6 +204,14 @@ serve(async (req) => {
 
     try {
       while (true) {
+        // Check if we're approaching timeout
+        if (Date.now() - startTime > TIMEOUT_MS) {
+          console.warn("Approaching edge function timeout, returning partial results");
+          timedOut = true;
+          finishReason = "TIMEOUT";
+          break;
+        }
+
         const { done, value } = await reader.read();
         if (done) break;
 
@@ -236,9 +248,9 @@ serve(async (req) => {
       reader.releaseLock();
     }
 
-    console.log(`Collected ${collectedOutput.length} characters, finishReason: ${finishReason}`);
+    console.log(`Collected ${collectedOutput.length} characters, finishReason: ${finishReason}, timedOut: ${timedOut}`);
     
-    // Even if we hit MAX_TOKENS, we now have partial output
+    // Even if we hit MAX_TOKENS or timeout, we now have partial output
     if (!collectedOutput) {
       console.error("No output collected from stream");
       return new Response(JSON.stringify({ 
@@ -256,7 +268,8 @@ serve(async (req) => {
       output: collectedOutput, 
       toolOutputs,
       finishReason,
-      truncated: finishReason === "MAX_TOKENS"
+      truncated: finishReason === "MAX_TOKENS" || timedOut,
+      timedOut
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
