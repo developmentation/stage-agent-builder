@@ -203,6 +203,10 @@ serve(async (req) => {
           return;
         }
 
+        let textBuffer = "";
+        let chunkCount = 0;
+        let lastTextLength = 0;
+        
         try {
           // First, send tool outputs if any
           if (toolOutputs.length > 0) {
@@ -212,13 +216,22 @@ serve(async (req) => {
 
           while (true) {
             const { done, value } = await reader.read();
-            if (done) break;
+            if (done) {
+              console.log(`Stream complete. Total chunks: ${chunkCount}, Final text length: ${lastTextLength}`);
+              break;
+            }
 
-            const chunk = decoder.decode(value, { stream: true });
-            const lines = chunk.split('\n');
+            chunkCount++;
+            textBuffer += decoder.decode(value, { stream: true });
+            
+            // Process complete lines only
+            let newlineIndex: number;
+            while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
+              let line = textBuffer.slice(0, newlineIndex);
+              textBuffer = textBuffer.slice(newlineIndex + 1);
 
-            for (const line of lines) {
-              if (!line.trim() || line.startsWith(':')) continue;
+              if (line.endsWith("\r")) line = line.slice(0, -1);
+              if (line.trim() === "" || line.startsWith(':')) continue;
               if (!line.startsWith('data: ')) continue;
 
               const jsonStr = line.slice(6).trim();
@@ -233,12 +246,14 @@ serve(async (req) => {
                 const finishReason = candidate?.finishReason;
                 
                 if (text) {
+                  lastTextLength += text.length;
                   // Send text delta to client
                   const deltaEvent = `data: ${JSON.stringify({ type: 'delta', text })}\n\n`;
                   controller.enqueue(encoder.encode(deltaEvent));
                 }
 
                 if (finishReason) {
+                  console.log(`Stream finishing with reason: ${finishReason}, Total text sent: ${lastTextLength} chars`);
                   // Send finish event to client
                   const doneEvent = `data: ${JSON.stringify({ 
                     type: 'done', 
@@ -248,15 +263,20 @@ serve(async (req) => {
                   controller.enqueue(encoder.encode(doneEvent));
                 }
               } catch (parseError) {
-                console.error("Failed to parse SSE chunk:", parseError);
+                console.error(`Failed to parse SSE chunk at chunk ${chunkCount}:`, parseError, `Line: ${line.substring(0, 100)}...`);
               }
             }
           }
           
+          console.log(`Closing stream controller normally`);
           controller.close();
         } catch (error) {
           console.error("Stream error:", error);
-          controller.error(error);
+          try {
+            controller.error(error);
+          } catch (controllerError) {
+            console.error("Failed to signal error to controller:", controllerError);
+          }
         } finally {
           reader.releaseLock();
         }

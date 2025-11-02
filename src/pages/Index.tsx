@@ -479,12 +479,18 @@ const Index = () => {
 
       let accumulatedOutput = "";
       let textBuffer = "";
+      let lastUpdate = Date.now();
+      let chunksReceived = 0;
       
       try {
         while (true) {
           const { done, value } = await reader.read();
-          if (done) break;
+          if (done) {
+            console.log(`Client stream ended. Total chunks: ${chunksReceived}, Final output length: ${accumulatedOutput.length}`);
+            break;
+          }
 
+          chunksReceived++;
           textBuffer += decoder.decode(value, { stream: true });
           
           // Process complete lines
@@ -512,19 +518,31 @@ const Index = () => {
               } else if (parsed.type === 'delta' && parsed.text) {
                 // Accumulate text and update node in real-time
                 accumulatedOutput += parsed.text;
-                updateNode(nodeId, { output: accumulatedOutput });
+                
+                // Throttle UI updates to avoid excessive re-renders
+                const now = Date.now();
+                if (now - lastUpdate > 100) {
+                  updateNode(nodeId, { output: accumulatedOutput });
+                  lastUpdate = now;
+                }
               } else if (parsed.type === 'done') {
                 // Stream complete
-                console.log(`Stream finished. Reason: ${parsed.finishReason}`);
+                console.log(`Stream finished. Reason: ${parsed.finishReason}, Total output length: ${accumulatedOutput.length}`);
                 if (parsed.truncated) {
                   addLog("warning", `Response was truncated (${parsed.finishReason})`);
                 }
               }
             } catch (parseError) {
-              console.error("Failed to parse SSE chunk:", parseError);
+              console.error(`Failed to parse SSE chunk at line ${chunksReceived}:`, parseError);
             }
           }
         }
+        
+        // Final update to ensure latest content is shown
+        updateNode(nodeId, { output: accumulatedOutput });
+      } catch (streamError) {
+        console.error("Stream reading error:", streamError);
+        addLog("error", `Stream error: ${streamError}`);
       } finally {
         reader.releaseLock();
       }
@@ -672,12 +690,18 @@ const Index = () => {
 
         let accumulatedOutput = "";
         let textBuffer = "";
+        let lastUpdate = Date.now();
+        let chunksReceived = 0;
         
         try {
           while (true) {
             const { done, value } = await reader.read();
-            if (done) break;
+            if (done) {
+              console.log(`Workflow agent stream ended. Total chunks: ${chunksReceived}, Final output length: ${accumulatedOutput.length}`);
+              break;
+            }
 
+            chunksReceived++;
             textBuffer += decoder.decode(value, { stream: true });
             
             // Process complete lines
@@ -705,19 +729,31 @@ const Index = () => {
                 } else if (parsed.type === 'delta' && parsed.text) {
                   // Accumulate text and update node in real-time
                   accumulatedOutput += parsed.text;
-                  updateNode(nodeId, { output: accumulatedOutput });
+                  
+                  // Throttle UI updates to avoid excessive re-renders
+                  const now = Date.now();
+                  if (now - lastUpdate > 100) {
+                    updateNode(nodeId, { output: accumulatedOutput });
+                    lastUpdate = now;
+                  }
                 } else if (parsed.type === 'done') {
                   // Stream complete
-                  console.log(`Stream finished. Reason: ${parsed.finishReason}`);
+                  console.log(`Workflow agent finished. Reason: ${parsed.finishReason}, Total output length: ${accumulatedOutput.length}`);
                   if (parsed.truncated) {
                     addLog("warning", `Response was truncated (${parsed.finishReason})`);
                   }
                 }
               } catch (parseError) {
-                console.error("Failed to parse SSE chunk:", parseError);
+                console.error(`Failed to parse SSE chunk at line ${chunksReceived}:`, parseError);
               }
             }
           }
+          
+          // Final update to ensure latest content is shown
+          updateNode(nodeId, { output: accumulatedOutput });
+        } catch (streamError) {
+          console.error("Stream reading error:", streamError);
+          addLog("error", `Stream error: ${streamError}`);
         } finally {
           reader.releaseLock();
         }
