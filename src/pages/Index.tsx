@@ -34,7 +34,6 @@ const Index = () => {
   const [responseLength, setResponseLength] = useState<number>(16384);
   const [thinkingEnabled, setThinkingEnabled] = useState<boolean>(false);
   const [thinkingBudget, setThinkingBudget] = useState<number>(0);
-  const [runningControllers, setRunningControllers] = useState<Map<string, AbortController>>(new Map());
   const [workflow, setWorkflow] = useState<Workflow>({
     stages: [],
     connections: [],
@@ -448,10 +447,6 @@ const Index = () => {
       
       addLog("running", `Agent ${agent.name} processing with AI...`);
       
-      // Create abort controller for this agent
-      const abortController = new AbortController();
-      setRunningControllers(prev => new Map(prev).set(nodeId, abortController));
-      
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/run-agent`, {
         method: "POST",
         headers: {
@@ -466,7 +461,6 @@ const Index = () => {
           thinkingEnabled,
           thinkingBudget,
         }),
-        signal: abortController.signal,
       });
 
       if (!response.ok) {
@@ -557,35 +551,8 @@ const Index = () => {
       addLog("success", `Agent ${agent.name} completed successfully`);
     } catch (error) {
       console.error("Agent execution failed:", error);
-      if ((error as Error).name === 'AbortError') {
-        updateNode(nodeId, { status: "idle", output: agent.output });
-        addLog("warning", `Agent ${agent.name} stopped by user`);
-      } else {
-        updateNode(nodeId, { status: "error", output: `Error: ${error}` });
-        addLog("error", `Agent ${agent.name} failed: ${error}`);
-      }
-    } finally {
-      setRunningControllers(prev => {
-        const newMap = new Map(prev);
-        newMap.delete(nodeId);
-        return newMap;
-      });
-    }
-  };
-
-  const stopNode = (nodeId: string) => {
-    const controller = runningControllers.get(nodeId);
-    if (controller) {
-      controller.abort();
-      // Immediately reset status to idle
-      updateNode(nodeId, { status: "idle" });
-      // Remove from running controllers
-      setRunningControllers(prev => {
-        const newMap = new Map(prev);
-        newMap.delete(nodeId);
-        return newMap;
-      });
-      addLog("warning", "Node execution stopped by user");
+      updateNode(nodeId, { status: "error", output: `Error: ${error}` });
+      addLog("error", `Agent ${agent.name} failed: ${error}`);
     }
   };
 
@@ -691,10 +658,6 @@ const Index = () => {
         
         addLog("running", `Agent ${agent.name} processing with AI...`);
         
-        // Create abort controller for this agent in workflow
-        const abortController = new AbortController();
-        setRunningControllers(prev => new Map(prev).set(nodeId, abortController));
-        
         const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/run-agent`, {
           method: "POST",
           headers: {
@@ -709,7 +672,6 @@ const Index = () => {
             thinkingEnabled,
             thinkingBudget,
           }),
-          signal: abortController.signal,
         });
 
         if (!response.ok) {
@@ -982,7 +944,6 @@ const Index = () => {
               onDeleteConnection={deleteConnection}
               onRunAgent={runSingleAgent}
               onRunFunction={runSingleFunction}
-              onStopNode={stopNode}
             />
           }
           desktopCanvas={
@@ -1004,7 +965,6 @@ const Index = () => {
               onDeleteConnection={deleteConnection}
               onRunAgent={runSingleAgent}
               onRunFunction={runSingleFunction}
-              onStopNode={stopNode}
             />
           }
           properties={
@@ -1019,7 +979,6 @@ const Index = () => {
               onDeselectAgent={() => setSelectedNode(null)}
               onRunAgent={runSingleAgent}
               onRunFunction={runSingleFunction}
-              onStopNode={stopNode}
             />
           }
           onAddStage={addStage}

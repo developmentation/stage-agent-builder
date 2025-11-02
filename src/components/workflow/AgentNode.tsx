@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, FileText, Bot, Play, CheckCircle2, AlertCircle, Circle, Trash2, Minimize2, Maximize2, Download, Copy, X } from "lucide-react";
+import { Search, FileText, Bot, Play, CheckCircle2, AlertCircle, Circle, Trash2, Minimize2, Maximize2, Download, Copy } from "lucide-react";
 import type { Agent } from "@/pages/Index";
 import { useToast } from "@/hooks/use-toast";
 
@@ -17,7 +17,6 @@ interface AgentNodeProps {
   onToggleMinimize: () => void;
   onPortClick: (agentId: string, isOutput: boolean) => void;
   onRun?: () => void;
-  onStop?: () => void;
 }
 
 const agentIcons = {
@@ -33,7 +32,7 @@ const statusConfig = {
   error: { icon: AlertCircle, color: "text-destructive", bg: "bg-destructive/10" },
 };
 
-export const AgentNode = ({ agent, isSelected, isConnecting, agentNumber, stageIndex, layoutId = 'default', onSelect, onDelete, onToggleMinimize, onPortClick, onRun, onStop }: AgentNodeProps) => {
+export const AgentNode = ({ agent, isSelected, isConnecting, agentNumber, stageIndex, layoutId = 'default', onSelect, onDelete, onToggleMinimize, onPortClick, onRun }: AgentNodeProps) => {
   const Icon = agentIcons[agent.type as keyof typeof agentIcons] || Bot;
   const statusInfo = statusConfig[agent.status];
   const StatusIcon = statusInfo.icon;
@@ -111,13 +110,6 @@ export const AgentNode = ({ agent, isSelected, isConnecting, agentNumber, stageI
     e.stopPropagation();
     if (onRun) {
       onRun();
-    }
-  };
-
-  const handleStop = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (onStop) {
-      onStop();
     }
   };
 
@@ -209,17 +201,7 @@ export const AgentNode = ({ agent, isSelected, isConnecting, agentNumber, stageI
             <div className="flex items-center justify-between gap-2">
               <h4 className="text-sm font-semibold text-foreground truncate">{agent.name}</h4>
               <div className="flex items-center gap-0.5 flex-shrink-0">
-                {agent.status === "running" && onStop ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 w-6 p-0"
-                    onClick={handleStop}
-                    title="Stop agent"
-                  >
-                    <X className="h-3 w-3 text-destructive" />
-                  </Button>
-                ) : onRun && agent.status !== "running" && (
+                {onRun && agent.status !== "running" && (
                   <Button
                     variant="ghost"
                     size="sm"

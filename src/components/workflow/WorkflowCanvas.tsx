@@ -21,7 +21,6 @@ interface WorkflowCanvasProps {
   onDeleteConnection: (connectionId: string) => void;
   onRunAgent?: (agentId: string, customInput?: string) => void;
   onRunFunction?: (functionId: string, customInput?: string) => void;
-  onStopNode?: (nodeId: string) => void;
 }
 
 export const WorkflowCanvas = ({
@@ -42,7 +41,6 @@ export const WorkflowCanvas = ({
   onDeleteConnection,
   onRunAgent,
   onRunFunction,
-  onStopNode,
 }: WorkflowCanvasProps) => {
   const [forceUpdate, setForceUpdate] = useState(0);
   const [svgDimensions, setSvgDimensions] = useState({ width: 0, height: 0 });
@@ -289,7 +287,6 @@ export const WorkflowCanvas = ({
                     onPortClick={handlePortClick}
                     onRunAgent={onRunAgent}
                     onRunFunction={onRunFunction}
-                    onStopNode={onStopNode}
                   />
                 ))
               )}

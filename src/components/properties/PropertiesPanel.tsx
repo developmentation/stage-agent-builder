@@ -51,7 +51,6 @@ interface PropertiesPanelProps {
   onDeselectAgent: () => void;
   onRunAgent: (agentId: string, customInput?: string) => void;
   onRunFunction?: (functionId: string, customInput?: string) => void;
-  onStopNode?: (nodeId: string) => void;
 }
 
 const availableTools = [
@@ -73,7 +72,6 @@ export const PropertiesPanel = ({
   onDeselectAgent,
   onRunAgent,
   onRunFunction,
-  onStopNode,
 }: PropertiesPanelProps) => {
   const [toolDialogOpen, setToolDialogOpen] = useState(false);
   const [configDialogInstance, setConfigDialogInstance] = useState<string | null>(null);
@@ -639,26 +637,11 @@ export const PropertiesPanel = ({
 
       {/* Running Banner */}
       {activeNode.status === "running" && (
-        <div className="bg-warning/20 border-b border-warning/40 px-4 py-3">
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <Play className="h-4 w-4 text-warning animate-pulse" />
-              <span className="text-sm font-medium text-warning">
-                {activeNode.nodeType === "agent" ? "Agent" : "Function"} is currently running...
-              </span>
-            </div>
-            {onStopNode && (
-              <Button
-                onClick={() => onStopNode(activeNode.id)}
-                variant="destructive"
-                size="sm"
-                className="h-8"
-              >
-                <X className="h-4 w-4 mr-2" />
-                Stop
-              </Button>
-            )}
-          </div>
+        <div className="bg-warning/20 border-b border-warning/40 px-4 py-3 flex items-center gap-2">
+          <Play className="h-4 w-4 text-warning animate-pulse" />
+          <span className="text-sm font-medium text-warning">
+            {activeNode.nodeType === "agent" ? "Agent" : "Function"} is currently running...
+          </span>
         </div>
       )}
 
