@@ -599,9 +599,9 @@ serve(async (req) => {
         
         const { text, totalPages } = await Promise.race([extractionPromise, timeoutPromise]) as { text: string, totalPages: number };
         
-        // Apply character limit based on config or default to 100k to avoid memory issues
-        const charLimit = maxCharacters || 100000;
-        const content = text.substring(0, charLimit);
+        // Apply character limit only if specified, otherwise return all content
+        const originalLength = text.length;
+        const content = maxCharacters && maxCharacters > 0 ? text.substring(0, maxCharacters) : text;
         const pageCount = totalPages;
         
         console.log(`Successfully extracted PDF text: ${pageCount} pages, ${content.length} characters`);
@@ -620,8 +620,8 @@ serve(async (req) => {
             pageCount,
             isPdf: true,
             accessedAt,
-            truncated: text.length > charLimit,
-            originalLength: text.length
+            truncated: maxCharacters && maxCharacters > 0 && originalLength > maxCharacters,
+            originalLength
           }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
@@ -663,8 +663,8 @@ serve(async (req) => {
         let content = result.value.trim();
         const originalLength = content.length;
         
-        // Apply character limit if specified
-        if (maxCharacters && content.length > maxCharacters) {
+        // Apply character limit only if specified
+        if (maxCharacters && maxCharacters > 0 && content.length > maxCharacters) {
           content = content.substring(0, maxCharacters);
         }
         
@@ -723,7 +723,7 @@ serve(async (req) => {
     if (returnHtml) {
       // Return raw HTML
       originalLength = html.length;
-      content = maxCharacters && html.length > maxCharacters 
+      content = maxCharacters && maxCharacters > 0 && html.length > maxCharacters 
         ? html.substring(0, maxCharacters) 
         : html;
       console.log(`Successfully scraped ${url}: ${content.length} characters (HTML)`);
@@ -738,9 +738,10 @@ serve(async (req) => {
         .trim();
 
       originalLength = textContent.length;
-      // Apply character limit (default 5000 if not specified)
-      const charLimit = maxCharacters || 5000;
-      textContent = textContent.substring(0, charLimit);
+      // Apply character limit only if specified
+      if (maxCharacters && maxCharacters > 0) {
+        textContent = textContent.substring(0, maxCharacters);
+      }
       content = textContent;
       console.log(`Successfully scraped ${url}: ${content.length} characters (text)`);
     }
@@ -753,7 +754,7 @@ serve(async (req) => {
         content,
         contentLength: content.length,
         accessedAt,
-        truncated: maxCharacters && originalLength > maxCharacters,
+        truncated: maxCharacters && maxCharacters > 0 && originalLength > maxCharacters,
         originalLength
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
