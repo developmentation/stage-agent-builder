@@ -737,6 +737,7 @@ export const Sidebar = ({
                   <ReactMarkdown
                     remarkPlugins={[remarkGfm]}
                     components={{
+                      p: ({ children }) => <div className="mb-4">{children}</div>,
                       table: ({ children }) => (
                         <Table className="my-4">
                           {children}

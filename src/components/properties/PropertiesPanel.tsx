@@ -714,11 +714,22 @@ export const PropertiesPanel = ({
                         
                         <TabsContent value="view" className="flex-1 overflow-hidden mt-0">
                           <ScrollArea className="h-full">
-                            <div className="prose prose-sm dark:prose-invert max-w-none p-4">
-                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          <div className="prose prose-sm dark:prose-invert max-w-none p-4">
+                            {activeNode?.status === "running" ? (
+                              <pre className="whitespace-pre-wrap font-mono text-xs p-4 bg-muted rounded-lg">
+                                {editedSystemPrompt}
+                              </pre>
+                            ) : (
+                              <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                components={{
+                                  p: ({ children }) => <div className="mb-4">{children}</div>,
+                                }}
+                              >
                                 {editedSystemPrompt}
                               </ReactMarkdown>
-                            </div>
+                            )}
+                          </div>
                           </ScrollArea>
                         </TabsContent>
                       </Tabs>
@@ -809,11 +820,22 @@ export const PropertiesPanel = ({
                         
                         <TabsContent value="view" className="flex-1 overflow-hidden mt-0">
                           <ScrollArea className="h-full">
-                            <div className="prose prose-sm dark:prose-invert max-w-none p-4">
-                              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          <div className="prose prose-sm dark:prose-invert max-w-none p-4">
+                            {activeNode?.status === "running" ? (
+                              <pre className="whitespace-pre-wrap font-mono text-xs p-4 bg-muted rounded-lg">
+                                {editedUserPrompt}
+                              </pre>
+                            ) : (
+                              <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                components={{
+                                  p: ({ children }) => <div className="mb-4">{children}</div>,
+                                }}
+                              >
                                 {editedUserPrompt}
                               </ReactMarkdown>
-                            </div>
+                            )}
+                          </div>
                           </ScrollArea>
                         </TabsContent>
                       </Tabs>
@@ -969,12 +991,18 @@ export const PropertiesPanel = ({
                       <TabsContent value="view" className="flex-1 overflow-hidden mt-0">
                         <ScrollArea className="h-full">
                           <div className="prose prose-sm dark:prose-invert max-w-none p-4">
-                            <ReactMarkdown
-                              remarkPlugins={[remarkGfm]}
-                              components={{
-                                table: ({ children }) => (
-                                  <Table className="my-4">
-                                    {children}
+                            {activeNode?.status === "running" ? (
+                              <pre className="whitespace-pre-wrap font-mono text-xs p-4 bg-muted rounded-lg">
+                                {editedOutput}
+                              </pre>
+                            ) : (
+                              <ReactMarkdown
+                                remarkPlugins={[remarkGfm]}
+                                components={{
+                                  p: ({ children }) => <div className="mb-4">{children}</div>,
+                                  table: ({ children }) => (
+                                    <Table className="my-4">
+                                      {children}
                                   </Table>
                                 ),
                                 thead: ({ children }) => <TableHeader>{children}</TableHeader>,
@@ -996,11 +1024,12 @@ export const PropertiesPanel = ({
                                       </code>
                                     </pre>
                                   );
-                                },
-                              }}
-                            >
-                              {editedOutput}
-                            </ReactMarkdown>
+                                  },
+                                }}
+                              >
+                                {editedOutput}
+                              </ReactMarkdown>
+                            )}
                           </div>
                         </ScrollArea>
                       </TabsContent>
