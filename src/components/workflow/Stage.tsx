@@ -27,6 +27,7 @@ interface StageProps {
   onPortClick: (agentId: string, isOutput: boolean, outputPort?: string) => void;
   onRunAgent?: (agentId: string, customInput?: string) => void;
   onRunFunction?: (functionId: string, customInput?: string) => void;
+  onStopNode?: (nodeId: string) => void;
 }
 
 export const Stage = ({
@@ -47,6 +48,7 @@ export const Stage = ({
   onPortClick,
   onRunAgent,
   onRunFunction,
+  onStopNode,
 }: StageProps) => {
   const [isAddAgentOpen, setIsAddAgentOpen] = useState(false);
   const [isAddFunctionOpen, setIsAddFunctionOpen] = useState(false);
@@ -227,6 +229,7 @@ export const Stage = ({
                     onToggleMinimize={() => onToggleMinimize(node.id)}
                     onPortClick={onPortClick}
                     onRun={onRunAgent ? () => onRunAgent(node.id) : undefined}
+                    onStop={onStopNode ? () => onStopNode(node.id) : undefined}
                   />
                 ) : node.nodeType === "function" ? (
                   <FunctionNode
@@ -241,6 +244,7 @@ export const Stage = ({
                     onToggleMinimize={() => onToggleMinimize(node.id)}
                     onPortClick={onPortClick}
                     onRun={onRunFunction ? () => onRunFunction(node.id) : undefined}
+                    onStop={onStopNode ? () => onStopNode(node.id) : undefined}
                   />
                 ) : (
                   <div className="text-xs text-muted-foreground p-2">Tool nodes coming soon</div>

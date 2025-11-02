@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Play, CheckCircle2, AlertCircle, Circle, Trash2, Minimize2, Download, Copy } from "lucide-react";
+import { Play, CheckCircle2, AlertCircle, Circle, Trash2, Minimize2, Download, Copy, X } from "lucide-react";
 import type { FunctionNode as FunctionNodeType } from "@/types/workflow";
 import { useToast } from "@/hooks/use-toast";
 import { getFunctionById } from "@/lib/functionDefinitions";
@@ -18,6 +18,7 @@ interface FunctionNodeProps {
   onToggleMinimize: () => void;
   onPortClick: (nodeId: string, isOutput: boolean, outputPort?: string) => void;
   onRun?: () => void;
+  onStop?: () => void;
 }
 
 const statusConfig = {
@@ -38,7 +39,8 @@ export const FunctionNode = ({
   onDelete, 
   onToggleMinimize, 
   onPortClick,
-  onRun 
+  onRun,
+  onStop 
 }: FunctionNodeProps) => {
   const functionDef = getFunctionById(node.functionType);
   const Icon = functionDef?.icon || Circle;
@@ -88,6 +90,13 @@ export const FunctionNode = ({
     e.stopPropagation();
     if (onRun) {
       onRun();
+    }
+  };
+
+  const handleStop = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onStop) {
+      onStop();
     }
   };
 
@@ -202,7 +211,17 @@ export const FunctionNode = ({
             <div className="flex items-center justify-between gap-2">
               <h4 className="text-sm font-semibold text-foreground truncate">{node.name}</h4>
               <div className="flex items-center gap-0.5 flex-shrink-0">
-                {onRun && node.status !== "running" && (
+                {node.status === "running" && onStop ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 w-6 p-0"
+                    onClick={handleStop}
+                    title="Stop function"
+                  >
+                    <X className="h-3 w-3 text-destructive" />
+                  </Button>
+                ) : onRun && node.status !== "running" && (
                   <Button
                     variant="ghost"
                     size="sm"
