@@ -465,7 +465,9 @@ const Index = () => {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || `Server error: ${response.status}`);
+        const fullError = errorData.error || `Server error: ${response.status}`;
+        console.error("Full error from edge function:", errorData);
+        throw new Error(fullError);
       }
 
       const data = await response.json();
@@ -609,7 +611,9 @@ const Index = () => {
 
         if (!response.ok) {
           const errorData = await response.json();
-          throw new Error(errorData.error || `Server error: ${response.status}`);
+          const fullError = errorData.error || `Server error: ${response.status}`;
+          console.error("Full error from edge function:", errorData);
+          throw new Error(fullError);
         }
 
         const data = await response.json();

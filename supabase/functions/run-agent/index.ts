@@ -175,7 +175,17 @@ serve(async (req) => {
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Gemini API error:", response.status, errorText);
-      throw new Error(`Gemini API error: ${response.status}`);
+      
+      // Try to parse error details
+      let errorDetails = errorText;
+      try {
+        const errorJson = JSON.parse(errorText);
+        errorDetails = JSON.stringify(errorJson, null, 2);
+      } catch (e) {
+        // Keep original text if not JSON
+      }
+      
+      throw new Error(`Gemini API error (${response.status}): ${errorDetails}`);
     }
 
     // Stream response and collect all chunks on backend
@@ -252,7 +262,16 @@ serve(async (req) => {
     });
   } catch (error) {
     console.error('Error in run-agent function:', error);
-    return new Response(JSON.stringify({ error: error instanceof Error ? error.message : 'Unknown error' }), {
+    
+    // Return detailed error information
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    
+    return new Response(JSON.stringify({ 
+      error: errorMessage,
+      stack: errorStack,
+      details: 'Full error details are available in the edge function logs'
+    }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
