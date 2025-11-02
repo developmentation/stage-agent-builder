@@ -286,6 +286,25 @@ serve(async (req) => {
     if (!response.ok) {
       const domain = new URL(url).hostname;
       
+      // Handle redirect responses (3xx) that weren't followed
+      if (response.status >= 300 && response.status < 400) {
+        console.log(`Redirect response ${response.status} for ${url}`);
+        const redirectLocation = response.headers.get('location');
+        return new Response(
+          JSON.stringify({
+            success: true,
+            url,
+            title: `Redirect: ${domain}`,
+            content: `This URL redirects to another location${redirectLocation ? `: ${redirectLocation}` : ''}.\n\nOriginal URL: ${url}\n\nThe content could not be retrieved automatically. Please try:\n1. Visiting the URL directly in your browser\n2. Using the final destination URL if known\n3. Checking if the resource has moved permanently`,
+            contentLength: 0,
+            accessedAt: new Date().toISOString(),
+            redirect: true,
+            statusCode: response.status
+          }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
       // Handle SSL/Certificate errors gracefully
       if ((response as any).sslError) {
         console.log(`SSL Certificate error for ${url}`);
