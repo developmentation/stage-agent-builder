@@ -464,25 +464,72 @@ const Index = () => {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        const fullError = errorData.error || `Server error: ${response.status}`;
-        console.error("Full error from edge function:", errorData);
-        throw new Error(fullError);
+        const errorText = await response.text();
+        console.error("Full error from edge function:", errorText);
+        throw new Error(errorText || `Server error: ${response.status}`);
       }
 
-      const data = await response.json();
-      const output = data.output || "No output generated";
-      const toolOutputs = data.toolOutputs || [];
+      // Handle streaming response
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
       
-      // Log tool outputs
-      if (toolOutputs.length > 0) {
-        toolOutputs.forEach((toolOutput: any) => {
-          console.log(`Tool Output [${toolOutput.toolId}]:`, toolOutput.output);
-          addLog("info", `Tool Output [${toolOutput.toolId}]: ${JSON.stringify(toolOutput.output, null, 2)}`);
-        });
+      if (!reader) {
+        throw new Error("No response body reader available");
+      }
+
+      let accumulatedOutput = "";
+      let textBuffer = "";
+      
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+
+          textBuffer += decoder.decode(value, { stream: true });
+          
+          // Process complete lines
+          let newlineIndex: number;
+          while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
+            let line = textBuffer.slice(0, newlineIndex);
+            textBuffer = textBuffer.slice(newlineIndex + 1);
+
+            if (line.endsWith("\r")) line = line.slice(0, -1);
+            if (line.startsWith(":") || line.trim() === "") continue;
+            if (!line.startsWith("data: ")) continue;
+
+            const jsonStr = line.slice(6).trim();
+            if (!jsonStr) continue;
+
+            try {
+              const parsed = JSON.parse(jsonStr);
+              
+              if (parsed.type === 'tools' && parsed.toolOutputs) {
+                // Log tool outputs
+                parsed.toolOutputs.forEach((toolOutput: any) => {
+                  console.log(`Tool Output [${toolOutput.toolId}]:`, toolOutput.output);
+                  addLog("info", `Tool Output [${toolOutput.toolId}]: ${JSON.stringify(toolOutput.output, null, 2)}`);
+                });
+              } else if (parsed.type === 'delta' && parsed.text) {
+                // Accumulate text and update node in real-time
+                accumulatedOutput += parsed.text;
+                updateNode(nodeId, { output: accumulatedOutput });
+              } else if (parsed.type === 'done') {
+                // Stream complete
+                console.log(`Stream finished. Reason: ${parsed.finishReason}`);
+                if (parsed.truncated) {
+                  addLog("warning", `Response was truncated (${parsed.finishReason})`);
+                }
+              }
+            } catch (parseError) {
+              console.error("Failed to parse SSE chunk:", parseError);
+            }
+          }
+        }
+      } finally {
+        reader.releaseLock();
       }
       
-      updateNode(nodeId, { status: "complete", output });
+      updateNode(nodeId, { status: "complete", output: accumulatedOutput || "No output generated" });
       addLog("success", `Agent ${agent.name} completed successfully`);
     } catch (error) {
       console.error("Agent execution failed:", error);
@@ -610,27 +657,74 @@ const Index = () => {
         });
 
         if (!response.ok) {
-          const errorData = await response.json();
-          const fullError = errorData.error || `Server error: ${response.status}`;
-          console.error("Full error from edge function:", errorData);
-          throw new Error(fullError);
+          const errorText = await response.text();
+          console.error("Full error from edge function:", errorText);
+          throw new Error(errorText || `Server error: ${response.status}`);
         }
 
-        const data = await response.json();
-        const output = data.output || "No output generated";
-        const toolOutputs = data.toolOutputs || [];
+        // Handle streaming response
+        const reader = response.body?.getReader();
+        const decoder = new TextDecoder();
         
-        // Log tool outputs
-        if (toolOutputs.length > 0) {
-          toolOutputs.forEach((toolOutput: any) => {
-            console.log(`Tool Output [${toolOutput.toolId}]:`, toolOutput.output);
-            addLog("info", `Tool Output [${toolOutput.toolId}]: ${JSON.stringify(toolOutput.output, null, 2)}`);
-          });
+        if (!reader) {
+          throw new Error("No response body reader available");
+        }
+
+        let accumulatedOutput = "";
+        let textBuffer = "";
+        
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            textBuffer += decoder.decode(value, { stream: true });
+            
+            // Process complete lines
+            let newlineIndex: number;
+            while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
+              let line = textBuffer.slice(0, newlineIndex);
+              textBuffer = textBuffer.slice(newlineIndex + 1);
+
+              if (line.endsWith("\r")) line = line.slice(0, -1);
+              if (line.startsWith(":") || line.trim() === "") continue;
+              if (!line.startsWith("data: ")) continue;
+
+              const jsonStr = line.slice(6).trim();
+              if (!jsonStr) continue;
+
+              try {
+                const parsed = JSON.parse(jsonStr);
+                
+                if (parsed.type === 'tools' && parsed.toolOutputs) {
+                  // Log tool outputs
+                  parsed.toolOutputs.forEach((toolOutput: any) => {
+                    console.log(`Tool Output [${toolOutput.toolId}]:`, toolOutput.output);
+                    addLog("info", `Tool Output [${toolOutput.toolId}]: ${JSON.stringify(toolOutput.output, null, 2)}`);
+                  });
+                } else if (parsed.type === 'delta' && parsed.text) {
+                  // Accumulate text and update node in real-time
+                  accumulatedOutput += parsed.text;
+                  updateNode(nodeId, { output: accumulatedOutput });
+                } else if (parsed.type === 'done') {
+                  // Stream complete
+                  console.log(`Stream finished. Reason: ${parsed.finishReason}`);
+                  if (parsed.truncated) {
+                    addLog("warning", `Response was truncated (${parsed.finishReason})`);
+                  }
+                }
+              } catch (parseError) {
+                console.error("Failed to parse SSE chunk:", parseError);
+              }
+            }
+          }
+        } finally {
+          reader.releaseLock();
         }
         
-        updateNode(nodeId, { status: "complete", output });
-        addLog("success", `✓ Agent ${agent.name} completed (output length: ${output.length} chars)`);
-        return output;
+        updateNode(nodeId, { status: "complete", output: accumulatedOutput || "No output generated" });
+        addLog("success", `✓ Agent ${agent.name} completed (output length: ${accumulatedOutput.length} chars)`);
+        return accumulatedOutput;
       } catch (error) {
         console.error("Agent execution failed:", error);
         const errorMsg = `Error: ${error}`;
