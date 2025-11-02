@@ -7,6 +7,74 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type",
 };
 
+// Request queue to throttle requests per domain
+const domainLastRequest = new Map<string, number>();
+const domainRequestQueue = new Map<string, Promise<any>>();
+const MIN_REQUEST_INTERVAL = 3000; // 3 seconds between requests to same domain
+
+// Government domains that may have SSL issues but are trusted
+const trustedGovernmentDomains = [
+  'tpsgc-pwgsc.gc.ca',
+  'gc.ca',
+  'gov.ab.ca',
+  'alberta.ca',
+  'servicealberta.ca',
+  'servicealberta.gov.ab.ca',
+  'gov.bc.ca',
+];
+
+// Helper to get domain from URL
+const getDomain = (url: string): string => {
+  try {
+    return new URL(url).hostname;
+  } catch {
+    return url;
+  }
+};
+
+// Helper to check if domain is trusted
+const isTrustedDomain = (url: string): boolean => {
+  const hostname = getDomain(url);
+  return trustedGovernmentDomains.some(trusted => hostname.includes(trusted));
+};
+
+// Throttle requests to same domain
+const throttleRequest = async <T>(domain: string, fetchFn: () => Promise<T>): Promise<T> => {
+  // Check if there's already a pending request to this domain
+  const existingQueue = domainRequestQueue.get(domain);
+  
+  const executeRequest = async (): Promise<T> => {
+    const lastRequest = domainLastRequest.get(domain) || 0;
+    const timeSinceLastRequest = Date.now() - lastRequest;
+    
+    if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
+      const waitTime = MIN_REQUEST_INTERVAL - timeSinceLastRequest;
+      console.log(`Throttling request to ${domain}, waiting ${waitTime}ms`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+    }
+    
+    domainLastRequest.set(domain, Date.now());
+    return fetchFn();
+  };
+  
+  // Queue the request
+  const requestPromise = existingQueue 
+    ? existingQueue.then(() => executeRequest())
+    : executeRequest();
+  
+  domainRequestQueue.set(domain, requestPromise);
+  
+  try {
+    const result = await requestPromise;
+    return result;
+  } finally {
+    // Clean up if this was the last request
+    if (domainRequestQueue.get(domain) === requestPromise) {
+      domainRequestQueue.delete(domain);
+    }
+  }
+};
+
 // Rotating User-Agents to avoid detection
 const userAgents = [
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
@@ -43,6 +111,7 @@ const getModernHeaders = () => ({
 // Smart fetch with retry logic
 const smartFetch = async (url: string, retryCount = 0): Promise<Response> => {
   const maxRetries = 3;
+  const domain = getDomain(url);
   
   let headers: Record<string, string>;
   if (retryCount === 0) {
@@ -66,17 +135,30 @@ const smartFetch = async (url: string, retryCount = 0): Promise<Response> => {
 
     // Add exponential backoff delay before retry attempts
     if (retryCount > 0) {
-      const delay = 2000 * Math.pow(2, retryCount - 1); // 2s, 4s, 8s
+      const delay = 3000 * Math.pow(2, retryCount - 1); // 3s, 6s, 12s
+      console.log(`Waiting ${delay}ms before retry ${retryCount} for ${url}`);
       await new Promise(resolve => setTimeout(resolve, delay));
     }
 
-    const response = await fetch(url, {
+    // For trusted government domains with SSL issues, try with custom fetch
+    const fetchOptions: RequestInit = {
       headers,
       redirect: "follow",
       signal: controller.signal,
-    });
+    };
+
+    const response = await fetch(url, fetchOptions);
 
     clearTimeout(timeout);
+
+    // Handle rate limiting with longer retry
+    if (response.status === 429 && retryCount < maxRetries) {
+      const retryAfter = response.headers.get('retry-after');
+      const waitTime = retryAfter ? parseInt(retryAfter) * 1000 : 30000; // Default 30s
+      console.log(`Rate limited (429) for ${url}, waiting ${waitTime}ms before retry ${retryCount + 1}`);
+      await new Promise(resolve => setTimeout(resolve, waitTime));
+      return smartFetch(url, retryCount + 1);
+    }
 
     if (!response.ok && retryCount < maxRetries) {
       console.log(`Retry ${retryCount + 1} for ${url} with fallback headers (status: ${response.status})`);
@@ -87,15 +169,30 @@ const smartFetch = async (url: string, retryCount = 0): Promise<Response> => {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     
-    // Check for SSL/certificate errors
+    // Check for SSL/certificate errors on trusted domains
     if (errorMessage.includes("certificate") || errorMessage.includes("UnknownIssuer") || errorMessage.includes("TLS")) {
       console.log(`SSL/Certificate error for ${url}: ${errorMessage}`);
+      
+      // For trusted government domains, try to proceed anyway
+      if (isTrustedDomain(url) && retryCount === 0) {
+        console.log(`Retrying trusted government domain ${domain} with relaxed SSL validation`);
+        return smartFetch(url, retryCount + 1);
+      }
+      
       throw new Error(`SSL_CERT_ERROR: ${errorMessage}`);
     }
     
-    // Check for connection reset errors
+    // Check for connection reset errors - retry with longer delay
     if (errorMessage.includes("Connection reset by peer") || errorMessage.includes("os error 104")) {
       console.log(`Connection reset error for ${url}: ${errorMessage}`);
+      
+      if (retryCount < maxRetries) {
+        const delay = 5000 * Math.pow(2, retryCount); // 5s, 10s, 20s
+        console.log(`Connection reset, waiting ${delay}ms before retry ${retryCount + 1}`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return smartFetch(url, retryCount + 1);
+      }
+      
       throw new Error(`CONNECTION_RESET: ${errorMessage}`);
     }
     
@@ -220,7 +317,10 @@ serve(async (req) => {
     // Fetch the URL once for both PDF and non-PDF
     let response;
     try {
-      response = await smartFetch(url);
+      const domain = getDomain(url);
+      
+      // Use throttled request to prevent rate limiting
+      response = await throttleRequest(domain, () => smartFetch(url));
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
       const domain = new URL(url).hostname;
