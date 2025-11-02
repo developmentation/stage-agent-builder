@@ -1,5 +1,4 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { extractText, getDocumentProxy } from "https://esm.sh/unpdf@0.12.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -585,11 +584,14 @@ serve(async (req) => {
       try {
         console.log(`Attempting to extract text from PDF using unpdf...`);
         
+        // Dynamic import of unpdf to prevent boot failures
+        const unpdf = await import("https://esm.sh/unpdf@0.12.1");
+        
         // Add timeout for PDF extraction to prevent CPU exhaustion
         const extractionTimeout = 20000; // 20 seconds max for PDF extraction
         const extractionPromise = (async () => {
-          const pdf = await getDocumentProxy(pdfBuffer);
-          const { text, totalPages } = await extractText(pdf, { mergePages: true });
+          const pdf = await unpdf.getDocumentProxy(pdfBuffer);
+          const { text, totalPages } = await unpdf.extractText(pdf, { mergePages: true });
           return { text, totalPages };
         })();
         
