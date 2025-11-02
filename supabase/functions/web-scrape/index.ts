@@ -113,6 +113,13 @@ const isPdfUrl = (url: string): boolean => {
   return urlLower.endsWith('.pdf') || urlLower.includes('.pdf?');
 };
 
+// Helper function to detect DOC/DOCX URLs
+const isDocUrl = (url: string): boolean => {
+  const urlLower = url.toLowerCase();
+  return urlLower.endsWith('.doc') || urlLower.includes('.doc?') || 
+         urlLower.endsWith('.docx') || urlLower.includes('.docx?');
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -132,6 +139,31 @@ serve(async (req) => {
 
     // Capture access timestamp
     const accessedAt = new Date().toISOString();
+
+    // Check if URL is a DOC/DOCX file
+    if (isDocUrl(url)) {
+      const domain = new URL(url).hostname;
+      const urlParts = url.split('/');
+      const filename = urlParts[urlParts.length - 1].split('?')[0];
+      const fileType = filename.toLowerCase().endsWith('.docx') ? 'DOCX' : 'DOC';
+      
+      console.log(`Detected ${fileType} file: ${url} - not supported for web scraping`);
+      
+      return new Response(
+        JSON.stringify({
+          success: true,
+          url,
+          title: `${fileType} Document: ${filename}`,
+          content: `Microsoft Word Document (${fileType}): ${filename}\n\nDirect download link: ${url}\n\nNote: ${fileType} files cannot be automatically extracted from URLs. To process this document:\n1. Download the file from the link above\n2. Upload it directly using the file upload feature in your workflow\n\nThe file upload feature supports extracting text from both DOC and DOCX files.`,
+          contentLength: 0,
+          isDoc: true,
+          fileType,
+          accessedAt,
+          unsupportedFormat: true
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Check if URL is a PDF
     const isPdf = isPdfUrl(url);
