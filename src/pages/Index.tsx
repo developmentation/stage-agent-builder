@@ -332,8 +332,11 @@ const Index = () => {
           setThinkingEnabled(loaded.thinkingEnabled || false);
           setThinkingBudget(loaded.thinkingBudget ?? 0);
         } else {
-          // Old format (just the workflow object)
-          setWorkflow(loaded);
+          // Old format (just the workflow object) - ensure stages array exists
+          setWorkflow({
+            stages: loaded.stages || [],
+            connections: loaded.connections || [],
+          });
         }
         
         setSelectedNode(null);
