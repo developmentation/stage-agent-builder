@@ -102,20 +102,25 @@ serve(async (req) => {
     console.log("Calling Anthropic API with model:", model);
 
     // Create a readable stream for SSE
+    console.log("Starting to stream response to client");
+    
     const stream = new ReadableStream({
       async start(controller) {
         const encoder = new TextEncoder();
-
-        // Send tool outputs first if any
-        if (toolResults.length > 0) {
-          const toolMessage = JSON.stringify({
-            type: 'tools',
-            toolOutputs: toolResults
-          });
-          controller.enqueue(encoder.encode(`data: ${toolMessage}\n\n`));
-        }
+        const decoder = new TextDecoder();
+        
+        let textBuffer = "";
+        let chunkCount = 0;
+        let lastTextLength = 0;
+        let reader;
 
         try {
+          // Send tool outputs first if any
+          if (toolResults.length > 0) {
+            const toolEvent = `data: ${JSON.stringify({ type: 'tools', toolOutputs: toolResults })}\n\n`;
+            controller.enqueue(encoder.encode(toolEvent));
+          }
+
           // Stream the response from Anthropic using fetch API
           const response = await fetch("https://api.anthropic.com/v1/messages", {
             method: "POST",
@@ -141,65 +146,78 @@ serve(async (req) => {
             throw new Error(`Anthropic API error: ${response.status} ${errorText}`);
           }
 
-          const reader = response.body?.getReader();
-          const decoder = new TextDecoder();
+          reader = response.body?.getReader();
           
           if (!reader) {
             throw new Error("No response body reader available");
           }
 
-          let buffer = "";
           while (true) {
             const { done, value } = await reader.read();
-            if (done) break;
+            if (done) {
+              console.log(`Stream complete. Total chunks: ${chunkCount}, Final text length: ${lastTextLength}`);
+              break;
+            }
 
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split("\n");
-            buffer = lines.pop() || "";
+            chunkCount++;
+            textBuffer += decoder.decode(value, { stream: true });
+            
+            // Process complete lines only
+            let newlineIndex: number;
+            while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
+              let line = textBuffer.slice(0, newlineIndex);
+              textBuffer = textBuffer.slice(newlineIndex + 1);
 
-            for (const line of lines) {
-              if (line.startsWith("data: ")) {
-                const data = line.slice(6).trim();
-                if (data === "[DONE]") continue;
+              if (line.endsWith("\r")) line = line.slice(0, -1);
+              if (line.trim() === "" || line.startsWith(':')) continue;
+              if (!line.startsWith('data: ')) continue;
+
+              const jsonStr = line.slice(6).trim();
+              if (!jsonStr) continue;
+
+              try {
+                const parsed = JSON.parse(jsonStr);
                 
-                try {
-                  const parsed = JSON.parse(data);
-                  
-                  if (parsed.type === "content_block_delta" && parsed.delta?.type === "text_delta") {
-                    const deltaMessage = JSON.stringify({
-                      type: 'delta',
-                      text: parsed.delta.text
-                    });
-                    controller.enqueue(encoder.encode(`data: ${deltaMessage}\n\n`));
-                  } else if (parsed.type === "message_stop") {
-                    // Message is complete
-                    const completeMessage = JSON.stringify({
-                      type: 'complete'
-                    });
-                    controller.enqueue(encoder.encode(`data: ${completeMessage}\n\n`));
-                  } else if (parsed.type === "error") {
-                    const errorMessage = JSON.stringify({
-                      type: 'error',
-                      error: parsed.error?.message || "Unknown error"
-                    });
-                    controller.enqueue(encoder.encode(`data: ${errorMessage}\n\n`));
-                  }
-                } catch (e) {
-                  console.error("Error parsing SSE line:", e);
+                if (parsed.type === "content_block_delta" && parsed.delta?.type === "text_delta") {
+                  const text = parsed.delta.text;
+                  lastTextLength += text.length;
+                  // Send text delta to client
+                  const deltaEvent = `data: ${JSON.stringify({ type: 'delta', text })}\n\n`;
+                  controller.enqueue(encoder.encode(deltaEvent));
+                } else if (parsed.type === "message_stop") {
+                  console.log(`Stream finishing with reason: STOP, Total text sent: ${lastTextLength} chars`);
+                  // Send finish event to client
+                  const doneEvent = `data: ${JSON.stringify({ type: 'done', finishReason: 'STOP' })}\n\n`;
+                  controller.enqueue(encoder.encode(doneEvent));
+                } else if (parsed.type === "error") {
+                  const errorMessage = JSON.stringify({
+                    type: 'error',
+                    error: parsed.error?.message || "Unknown error"
+                  });
+                  controller.enqueue(encoder.encode(`data: ${errorMessage}\n\n`));
                 }
+              } catch (parseError) {
+                console.error(`Failed to parse SSE chunk at chunk ${chunkCount}:`, parseError);
               }
             }
           }
           
+          console.log(`Closing stream controller normally`);
           controller.close();
         } catch (error) {
           console.error('Error in Anthropic stream:', error);
-          const errorMessage = JSON.stringify({
-            type: 'error',
-            error: error instanceof Error ? error.message : 'Unknown error'
-          });
-          controller.enqueue(encoder.encode(`data: ${errorMessage}\n\n`));
-          controller.close();
+          try {
+            const errorMessage = JSON.stringify({
+              type: 'error',
+              error: error instanceof Error ? error.message : 'Unknown error'
+            });
+            controller.enqueue(encoder.encode(`data: ${errorMessage}\n\n`));
+            controller.close();
+          } catch (controllerError) {
+            console.error("Failed to signal error to controller:", controllerError);
+          }
+        } finally {
+          reader?.releaseLock();
         }
       },
     });
