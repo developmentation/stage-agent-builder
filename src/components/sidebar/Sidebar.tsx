@@ -449,6 +449,27 @@ export const Sidebar = ({
             <Input id="workflow-name" placeholder="Untitled Workflow" value={workflowName} onChange={e => onWorkflowNameChange(e.target.value)} className="h-9" />
           </div>
 
+          {/* Input Section */}
+          <div className="space-y-3">
+            <h3 className="text-sm font-semibold text-foreground">Prompt</h3>
+            <Card className="p-3 bg-muted/30">
+              <Textarea placeholder="Enter your initial prompt or paste text here..." className="min-h-[100px] resize-none border-0 bg-transparent focus-visible:ring-0" value={userInput} onChange={e => onUserInputChange(e.target.value)} />
+              <div className="flex gap-2 mt-3">
+                <input ref={fileUploadInputRef} type="file" accept=".txt,.md,.json,.xml,.csv,.yaml,.yml,.toml,.js,.jsx,.ts,.tsx,.vue,.html,.css,.scss,.sass,.py,.java,.c,.cpp,.cs,.go,.php,.rb,.sql,.sh,.log,.pdf,.docx,.xlsx,.xls" multiple className="hidden" onChange={handleFileUpload} />
+                <Button size="sm" variant="outline" className="flex-1 gap-2" onClick={() => fileUploadInputRef.current?.click()} disabled={isProcessingFiles}>
+                  <Upload className="h-3.5 w-3.5" />
+                  {isProcessingFiles ? "Processing..." : "Upload Files"}
+                </Button>
+                <Button size="sm" variant="outline" className="h-9 w-9 p-0" onClick={handleViewInput} disabled={!userInput} title="View/Edit Input">
+                  <Eye className="h-3.5 w-3.5" />
+                </Button>
+                <Button size="sm" variant="outline" className="h-9 w-9 p-0" onClick={handleClearInput} disabled={!userInput} title="Clear Input">
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </Card>
+          </div>
+
           {/* Model Selection */}
           <div className="space-y-2">
             <Label htmlFor="model-select" className="text-sm font-semibold text-foreground">
@@ -572,27 +593,6 @@ export const Sidebar = ({
               )}
             </div>
           )}
-
-          {/* Input Section */}
-          <div className="space-y-3">
-            <h3 className="text-sm font-semibold text-foreground">Prompt</h3>
-            <Card className="p-3 bg-muted/30">
-              <Textarea placeholder="Enter your initial prompt or paste text here..." className="min-h-[100px] resize-none border-0 bg-transparent focus-visible:ring-0" value={userInput} onChange={e => onUserInputChange(e.target.value)} />
-              <div className="flex gap-2 mt-3">
-                <input ref={fileUploadInputRef} type="file" accept=".txt,.md,.json,.xml,.csv,.yaml,.yml,.toml,.js,.jsx,.ts,.tsx,.vue,.html,.css,.scss,.sass,.py,.java,.c,.cpp,.cs,.go,.php,.rb,.sql,.sh,.log,.pdf,.docx,.xlsx,.xls" multiple className="hidden" onChange={handleFileUpload} />
-                <Button size="sm" variant="outline" className="flex-1 gap-2" onClick={() => fileUploadInputRef.current?.click()} disabled={isProcessingFiles}>
-                  <Upload className="h-3.5 w-3.5" />
-                  {isProcessingFiles ? "Processing..." : "Upload Files"}
-                </Button>
-                <Button size="sm" variant="outline" className="h-9 w-9 p-0" onClick={handleViewInput} disabled={!userInput} title="View/Edit Input">
-                  <Eye className="h-3.5 w-3.5" />
-                </Button>
-                <Button size="sm" variant="outline" className="h-9 w-9 p-0" onClick={handleClearInput} disabled={!userInput} title="Clear Input">
-                  <X className="h-3.5 w-3.5" />
-                </Button>
-              </div>
-            </Card>
-          </div>
 
           {/* Agent Templates */}
           <div className="space-y-3">
