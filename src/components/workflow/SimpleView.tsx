@@ -5,6 +5,7 @@ import { Download, Eye, FileText, Loader2, CheckCircle2, Clock, Pause, Folder, F
 import { Workflow, WorkflowNode } from "@/types/workflow";
 import JSZip from "jszip";
 import { useState, useEffect, useRef } from "react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Dialog,
   DialogContent,
@@ -37,6 +38,7 @@ interface SimpleViewProps {
 }
 
 export const SimpleView = ({ workflow, userInput, onUserInputChange, onRunAgent, onRunFunction }: SimpleViewProps) => {
+  const isMobile = useIsMobile();
   const [viewingOutput, setViewingOutput] = useState<{ nodeName: string; output: string } | null>(null);
   const [outputTab, setOutputTab] = useState("view");
   
@@ -272,23 +274,24 @@ export const SimpleView = ({ workflow, userInput, onUserInputChange, onRunAgent,
             return (
               <Card key={stage.id} className={cn("border-l-4 transition-all duration-300", getStatusColor(stageStatus))}>
                 {/* Stage folder header */}
-                <div className="flex items-center justify-between p-4 border-b border-border bg-muted/20">
-                  <div className="flex items-center gap-3">
-                    <Folder className="h-5 w-5 text-muted-foreground" />
-                    <div>
-                      <h3 className="font-semibold text-foreground">{stage.name}</h3>
+                <div className="flex items-center justify-between p-3 sm:p-4 border-b border-border bg-muted/20">
+                  <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                    <Folder className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground flex-shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-semibold text-foreground text-sm sm:text-base truncate">{stage.name}</h3>
                       <p className="text-xs text-muted-foreground mt-0.5">
                         {stage.nodes.length} node{stage.nodes.length === 1 ? "" : "s"}
                         {stageNodes.length > 0 && ` • ${stageNodes.length} output${stageNodes.length === 1 ? "" : "s"}`}
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
                     {getStatusIcon(stageStatus)}
                     {stage.nodes.length > 0 && (
                       <Button
                         variant="default"
                         size="sm"
+                        className={cn(isMobile && "px-2")}
                         onClick={() => {
                           // Run all agents and functions in this stage
                           stage.nodes.forEach((node) => {
@@ -301,18 +304,19 @@ export const SimpleView = ({ workflow, userInput, onUserInputChange, onRunAgent,
                         }}
                         disabled={stageStatus === "running"}
                       >
-                        <Play className="h-4 w-4 mr-2" />
-                        Run Stage
+                        <Play className="h-4 w-4" />
+                        {!isMobile && <span className="ml-2">Run Stage</span>}
                       </Button>
                     )}
                     {stageNodes.length > 0 && (
                       <Button
                         variant="ghost"
                         size="sm"
+                        className={cn(isMobile && "px-2")}
                         onClick={() => downloadStage(stage.name)}
                       >
-                        <Download className="h-4 w-4 mr-2" />
-                        Download
+                        <Download className="h-4 w-4" />
+                        {!isMobile && <span className="ml-2">Download</span>}
                       </Button>
                     )}
                   </div>
