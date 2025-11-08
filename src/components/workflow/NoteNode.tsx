@@ -104,11 +104,18 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
     // If already selected and not editing, enter edit mode
     if (selected && !isEditing) {
       e.stopPropagation();
+      e.preventDefault();
       setIsEditing(true);
     }
   };
 
-  const handleBlur = () => {
+  const handleTextareaBlur = (e: React.FocusEvent) => {
+    // Only exit edit mode if clicking completely outside the note
+    const relatedTarget = e.relatedTarget as HTMLElement;
+    if (relatedTarget && relatedTarget.closest('.react-flow__node')) {
+      return;
+    }
+    
     setIsEditing(false);
     setShowColorPicker(false);
     // Save content when leaving edit mode
@@ -207,8 +214,13 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
               ref={textareaRef}
               value={localContent}
               onChange={handleContentChange}
-              onBlur={handleBlur}
-              onMouseDown={(e) => e.stopPropagation()}
+              onBlur={handleTextareaBlur}
+              onMouseDown={(e) => {
+                e.stopPropagation();
+              }}
+              onFocus={(e) => {
+                e.stopPropagation();
+              }}
               className="w-full h-full bg-transparent border-none outline-none resize-none text-center nodrag"
               style={{
                 fontSize: `${fontSize}px`,
