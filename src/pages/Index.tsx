@@ -293,17 +293,51 @@ const Index = () => {
   };
 
   const deleteNode = (stageId: string, nodeId: string) => {
-    setWorkflow((prev) => ({
-      ...prev,
-      stages: prev.stages.map((stage) => ({
-        ...stage,
-        nodes: stage.nodes.filter((node) => node.id !== nodeId),
-      })),
-      // Remove all connections involving this node
-      connections: prev.connections.filter(
-        (conn) => conn.fromNodeId !== nodeId && conn.toNodeId !== nodeId
-      ),
-    }));
+    setWorkflow((prev) => {
+      const targetStage = prev.stages.find(s => s.id === stageId);
+      if (!targetStage) return prev;
+
+      const remainingNodes = targetStage.nodes.filter((node) => node.id !== nodeId);
+
+      // If deleting the last node, preserve the stage position
+      let updatedStagePosition = targetStage.position;
+      if (remainingNodes.length === 0 && targetStage.nodes.length > 0) {
+        // Calculate current stage position from nodes before deletion
+        const stagePaddingLeft = 40;
+        const stagePaddingTop = 100;
+        const nodeWidth = 250;
+        const nodeHeight = 150;
+
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        targetStage.nodes.forEach((node, nodeIndex) => {
+          const nodeX = node.position?.x ?? (nodeIndex % 2) * 280;
+          const nodeY = node.position?.y ?? Math.floor(nodeIndex / 2) * 180;
+          minX = Math.min(minX, nodeX);
+          minY = Math.min(minY, nodeY);
+          maxX = Math.max(maxX, nodeX + nodeWidth);
+          maxY = Math.max(maxY, nodeY + nodeHeight);
+        });
+
+        // Store the stage position so it stays where it is
+        updatedStagePosition = {
+          x: minX - stagePaddingLeft,
+          y: minY - stagePaddingTop,
+        };
+      }
+
+      return {
+        ...prev,
+        stages: prev.stages.map((stage) => 
+          stage.id === stageId 
+            ? { ...stage, nodes: remainingNodes, position: updatedStagePosition }
+            : stage
+        ),
+        connections: prev.connections.filter(
+          (conn) => conn.fromNodeId !== nodeId && conn.toNodeId !== nodeId
+        ),
+      };
+    });
+
     if (selectedNode === nodeId) {
       setSelectedNode(null);
     }
