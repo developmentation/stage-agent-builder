@@ -15,8 +15,7 @@ import type {
   Stage,
   Connection,
   ToolInstance,
-  LogEntry,
-  Note
+  LogEntry 
 } from "@/types/workflow";
 import { FunctionExecutor } from "@/lib/functionExecutor";
 
@@ -319,38 +318,6 @@ const Index = () => {
         ),
       };
     });
-  };
-
-  // Note management functions
-  const addNote = () => {
-    const newNote = {
-      id: `note-${Date.now()}`,
-      content: "",
-      position: { x: 100, y: 100 },
-      size: { width: 250, height: 200 },
-      color: "#fef3c7", // Default yellow
-    };
-    
-    setWorkflow((prev) => ({
-      ...prev,
-      notes: [...(prev.notes || []), newNote],
-    }));
-  };
-
-  const updateNote = (noteId: string, updates: Partial<Note>) => {
-    setWorkflow((prev) => ({
-      ...prev,
-      notes: (prev.notes || []).map((note) =>
-        note.id === noteId ? { ...note, ...updates } : note
-      ),
-    }));
-  };
-
-  const deleteNote = (noteId: string) => {
-    setWorkflow((prev) => ({
-      ...prev,
-      notes: (prev.notes || []).filter((note) => note.id !== noteId),
-    }));
   };
 
   const addToolInstance = (nodeId: string, toolId: string) => {
@@ -1152,9 +1119,6 @@ const Index = () => {
                 onUpdateStagePosition={updateStagePosition}
                 onUpdateNodePosition={updateNodePosition}
                 onToggleViewMode={toggleViewMode}
-                onAddNote={addNote}
-                onUpdateNote={updateNote}
-                onDeleteNote={deleteNote}
               />
             ) : (
               <WorkflowCanvas 
@@ -1207,9 +1171,6 @@ const Index = () => {
                 onUpdateStagePosition={updateStagePosition}
                 onUpdateNodePosition={updateNodePosition}
                 onToggleViewMode={toggleViewMode}
-                onAddNote={addNote}
-                onUpdateNote={updateNote}
-                onDeleteNote={deleteNote}
               />
             ) : (
               <WorkflowCanvas 

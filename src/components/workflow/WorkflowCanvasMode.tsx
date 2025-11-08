@@ -15,26 +15,22 @@ import ReactFlow, {
   ReactFlowProvider,
   Panel,
   addEdge,
-  NodeResizeControl,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import './EdgeStyles.css';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, StickyNote } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import type { Workflow, WorkflowNode, Stage as StageType, Note } from "@/types/workflow";
+import { Plus, Grid3x3, Layers } from "lucide-react";
+import type { Workflow, WorkflowNode, Stage as StageType } from "@/types/workflow";
 import { AgentSelector } from "@/components/AgentSelector";
 import { FunctionSelector } from "@/components/FunctionSelector";
 import { StageNode } from "./StageNode";
 import { WorkflowNodeComponent } from "./WorkflowNodeComponent";
-import { NoteNode } from "./NoteNode";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 const nodeTypes: NodeTypes = {
   stage: StageNode,
   workflowNode: WorkflowNodeComponent,
-  note: NoteNode,
 };
 
 interface WorkflowCanvasModeProps {
@@ -58,9 +54,6 @@ interface WorkflowCanvasModeProps {
   onDeleteConnection?: (connectionId: string) => void;
   onCompleteConnection?: (fromNodeId: string, toNodeId: string, fromOutputPort?: string) => void;
   onToggleViewMode?: () => void;
-  onAddNote?: () => void;
-  onUpdateNote?: (noteId: string, updates: Partial<Note>) => void;
-  onDeleteNote?: (noteId: string) => void;
 }
 
 export function WorkflowCanvasMode({
@@ -83,38 +76,12 @@ export function WorkflowCanvasMode({
   onDeleteConnection,
   onCompleteConnection,
   onToggleViewMode,
-  onAddNote,
-  onUpdateNote,
-  onDeleteNote,
 }: WorkflowCanvasModeProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [showAddAgent, setShowAddAgent] = useState<string | null>(null);
   const [showAddFunction, setShowAddFunction] = useState<string | null>(null);
   const isMobile = useIsMobile();
-
-  // Custom nodes change handler to intercept resize events
-  const handleNodesChange = useCallback(
-    (changes: any[]) => {
-      onNodesChange(changes);
-      
-      // Handle dimension changes for notes
-      changes.forEach((change: any) => {
-        if (change.type === 'dimensions' && change.id.startsWith('note-')) {
-          const noteId = change.id.replace('note-', '');
-          if (change.dimensions) {
-            onUpdateNote?.(noteId, { 
-              size: { 
-                width: change.dimensions.width, 
-                height: change.dimensions.height 
-              } 
-            });
-          }
-        }
-      });
-    },
-    [onNodesChange, onUpdateNote]
-  );
 
   // Calculate stage bounds and offset - memoized to prevent recalculation during dragging
   const stageBounds = useMemo(() => {
@@ -223,31 +190,6 @@ export function WorkflowCanvasMode({
       });
     });
 
-    // Add note nodes
-    if (workflow.notes) {
-      workflow.notes.forEach((note) => {
-        flowNodes.push({
-          id: `note-${note.id}`,
-          type: 'note',
-          position: note.position,
-          data: {
-            content: note.content,
-            color: note.color,
-            onUpdate: (content: string) => onUpdateNote?.(note.id, { content }),
-            onDelete: () => onDeleteNote?.(note.id),
-            onColorChange: (color: string) => onUpdateNote?.(note.id, { color }),
-          },
-          style: {
-            width: note.size.width,
-            height: note.size.height,
-            zIndex: 5,
-          },
-          draggable: true,
-          resizing: true,
-        });
-      });
-    }
-
     setNodes(flowNodes);
 
     // Create edges from connections with proper styling
@@ -334,11 +276,7 @@ export function WorkflowCanvasMode({
   // Handle node drag end to update positions (only update on drag END to prevent flashing)
   const onNodeDragStop = useCallback(
     (event: React.MouseEvent, node: Node) => {
-      if (node.id.startsWith('note-')) {
-        // Update note position
-        const noteId = node.id.replace('note-', '');
-        onUpdateNote?.(noteId, { position: node.position });
-      } else if (node.id.startsWith('stage-')) {
+      if (node.id.startsWith('stage-')) {
         const stageId = node.id.replace('stage-', '');
         const stage = workflow.stages.find(s => s.id === stageId);
         if (stage) {
@@ -374,7 +312,7 @@ export function WorkflowCanvasMode({
         }
       }
     },
-    [workflow.stages, stageBounds, onUpdateStagePosition, onUpdateNodePosition, onUpdateNote]
+    [workflow.stages, stageBounds, onUpdateStagePosition, onUpdateNodePosition]
   );
 
   return (
@@ -383,19 +321,10 @@ export function WorkflowCanvasMode({
         <ReactFlow
           nodes={nodes}
           edges={edges}
-          onNodesChange={handleNodesChange}
+          onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onEdgesDelete={onEdgesDelete}
           onNodeDragStop={onNodeDragStop}
-          onNodesDelete={(nodes) => {
-            // Handle note deletion when delete key is pressed
-            nodes.forEach((node) => {
-              if (node.id.startsWith('note-')) {
-                const noteId = node.id.replace('note-', '');
-                onDeleteNote?.(noteId);
-              }
-            });
-          }}
           onConnect={onConnect}
           nodeTypes={nodeTypes}
           connectionLineType={ConnectionLineType.Bezier}
@@ -410,9 +339,6 @@ export function WorkflowCanvasMode({
           }}
           edgesUpdatable={false}
           edgesFocusable={true}
-          nodesDraggable={true}
-          nodesConnectable={true}
-          elementsSelectable={true}
         >
           <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
           <Controls />
@@ -424,18 +350,18 @@ export function WorkflowCanvasMode({
           />
           <Panel position="top-left">
             <Card className="p-2">
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button onClick={onAddNote} size="sm" variant="outline">
-                      <StickyNote className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Add Note</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <div className="flex gap-2">
+                <Button onClick={onAddStage} size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Stage
+                </Button>
+                {isMobile && onToggleViewMode && (
+                  <Button onClick={onToggleViewMode} size="sm" variant="outline">
+                    <Layers className="h-4 w-4 mr-2" />
+                    Stacked
+                  </Button>
+                )}
+              </div>
             </Card>
           </Panel>
         </ReactFlow>
