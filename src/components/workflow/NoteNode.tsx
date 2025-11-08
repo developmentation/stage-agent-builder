@@ -2,7 +2,7 @@ import { memo, useState, useRef, useEffect } from "react";
 import { NodeProps, NodeResizer } from "reactflow";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Palette, Trash2 } from "lucide-react";
+import { Palette, Trash2, Pencil } from "lucide-react";
 import type { Note } from "@/types/workflow";
 
 interface NoteNodeData {
@@ -89,33 +89,27 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
     }
   }, [selected, isEditing, onDelete]);
 
-  // Reset editing mode when deselected
+  // Handle clicks outside to exit edit mode
   useEffect(() => {
-    if (!selected && isEditing) {
-      setIsEditing(false);
-      // Save content on deselect
-      if (localContent !== note.content) {
-        onUpdate({ content: localContent });
-      }
+    if (isEditing) {
+      const handleClickOutside = (e: MouseEvent) => {
+        const target = e.target as HTMLElement;
+        if (!target.closest('.note-container')) {
+          setIsEditing(false);
+          setShowColorPicker(false);
+          if (localContent !== note.content) {
+            onUpdate({ content: localContent });
+          }
+        }
+      };
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected, isEditing]);
+  }, [isEditing, localContent, note.content, onUpdate]);
 
-  const handleContentClick = (e: React.MouseEvent) => {
-    // Only handle when selected - enter edit mode
-    if (selected && !isEditing) {
-      e.stopPropagation();
-      setIsEditing(true);
-    }
-  };
-
-  const handleTextareaBlur = () => {
-    // Just exit edit mode and save
-    setIsEditing(false);
-    setShowColorPicker(false);
-    if (localContent !== note.content) {
-      onUpdate({ content: localContent });
-    }
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsEditing(true);
   };
 
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -131,7 +125,7 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
   return (
     <>
       <NodeResizer
-        isVisible={selected && !isEditing}
+        isVisible={!isEditing}
         minWidth={150}
         minHeight={100}
         maxWidth={600}
@@ -152,9 +146,18 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
           overflow: "hidden",
         }}
       >
-        {/* Toolbar - only show when selected and not editing */}
-        {selected && !isEditing && (
+        {/* Toolbar - only show when not editing */}
+        {!isEditing && (
           <div className="absolute top-2 right-2 flex gap-1 z-10">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleEditClick}
+              className="h-6 w-6 p-0 nodrag"
+              style={{ backgroundColor: note.color }}
+            >
+              <Pencil className="h-3 w-3" />
+            </Button>
             <div className="relative">
               <Button
                 variant="ghost"
@@ -201,14 +204,12 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
         <div
           className="w-full h-full flex items-center justify-center p-4"
           style={{ overflow: "hidden" }}
-          onClick={selected && !isEditing ? handleContentClick : undefined}
         >
           {isEditing ? (
             <textarea
               ref={textareaRef}
               value={localContent}
               onChange={handleContentChange}
-              onBlur={handleTextareaBlur}
               onMouseDown={(e) => e.stopPropagation()}
               className="w-full h-full bg-transparent border-none outline-none resize-none text-center nodrag"
               style={{
@@ -230,7 +231,7 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
                 wordBreak: "break-word",
               }}
             >
-              {note.content || "Click to edit..."}
+              {note.content || "Click pencil to edit..."}
             </div>
           )}
         </div>
