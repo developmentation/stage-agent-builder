@@ -1,5 +1,5 @@
-import { memo, useState, useEffect, useRef } from "react";
-import { Handle, Position, NodeProps, NodeResizer } from "reactflow";
+import React, { memo, useState, useEffect, useRef } from "react";
+import { NodeProps, NodeResizer } from "reactflow";
 import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
