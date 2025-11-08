@@ -98,7 +98,8 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
         onUpdate({ content: localContent });
       }
     }
-  }, [selected, isEditing, localContent, note.content, onUpdate]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selected, isEditing]);
 
   const handleContentClick = (e: React.MouseEvent) => {
     // Only handle when selected - enter edit mode
