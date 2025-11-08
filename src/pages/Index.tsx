@@ -489,6 +489,7 @@ const Index = () => {
       let textBuffer = "";
       let lastUpdate = Date.now();
       let chunksReceived = 0;
+      let isFirstDelta = true;
       
       try {
         while (true) {
@@ -524,6 +525,12 @@ const Index = () => {
                   addLog("info", `Tool Output [${toolOutput.toolId}]: ${JSON.stringify(toolOutput.output, null, 2)}`);
                 });
               } else if (parsed.type === 'delta' && parsed.text) {
+                // Clear output on first delta to prevent jumpy updates
+                if (isFirstDelta) {
+                  updateNode(nodeId, { output: "" });
+                  isFirstDelta = false;
+                }
+                
                 // Accumulate text and update node in real-time
                 accumulatedOutput += parsed.text;
                 
@@ -703,6 +710,7 @@ const Index = () => {
         let textBuffer = "";
         let lastUpdate = Date.now();
         let chunksReceived = 0;
+        let isFirstDelta = true;
         
         try {
           while (true) {
@@ -738,6 +746,12 @@ const Index = () => {
                     addLog("info", `Tool Output [${toolOutput.toolId}]: ${JSON.stringify(toolOutput.output, null, 2)}`);
                   });
                 } else if (parsed.type === 'delta' && parsed.text) {
+                  // Clear output on first delta to prevent jumpy updates
+                  if (isFirstDelta) {
+                    updateNode(nodeId, { output: "" });
+                    isFirstDelta = false;
+                  }
+                  
                   // Accumulate text and update node in real-time
                   accumulatedOutput += parsed.text;
                   
