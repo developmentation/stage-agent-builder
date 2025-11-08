@@ -87,8 +87,9 @@ export function WorkflowCanvasMode({
   const stageBounds = useMemo(() => {
     const bounds: Record<string, { width: number; height: number; stageX: number; stageY: number }> = {};
     
-    const stagePaddingSides = 40; // Left, right, bottom padding
+    const stagePaddingSides = 40; // Left, right padding
     const stagePaddingTop = 60; // Top padding for nodes (after header)
+    const stagePaddingBottom = 40; // Bottom padding
     const stageHeaderHeight = 60;
     const nodeWidth = 250;
     const nodeHeight = 150;
@@ -114,13 +115,14 @@ export function WorkflowCanvasMode({
         maxY = Math.max(maxY, nodeY + nodeHeight);
       });
 
-      // Stage position is based on the bounding box of nodes
+      // Stage position: nodes start at minX/minY, subtract padding to get stage edges
       const stageX = minX - stagePaddingSides;
-      const stageY = minY - stagePaddingTop;
+      const stageY = minY - stagePaddingTop; // This is where the stage content starts (below header)
       
-      // Stage size is the span of the bounding box plus padding
+      // Stage size: width is node span + left and right padding
       const stageWidth = Math.max(400, maxX - minX + stagePaddingSides * 2);
-      const stageHeight = Math.max(300, maxY - minY + stagePaddingTop + stagePaddingSides);
+      // Height is node span + top padding (for nodes) + bottom padding (no extra header since stageY is content area)
+      const stageHeight = Math.max(300, maxY - minY + stagePaddingTop + stagePaddingBottom);
 
       bounds[stage.id] = { width: stageWidth, height: stageHeight, stageX, stageY };
     });
