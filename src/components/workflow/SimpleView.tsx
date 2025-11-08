@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Download, Eye, FileText, Loader2, CheckCircle2, Clock, Pause, Folder, File, ChevronDown } from "lucide-react";
+import { Download, Eye, FileText, Loader2, CheckCircle2, Clock, Pause, Folder, File, Play } from "lucide-react";
 import { Workflow, WorkflowNode } from "@/types/workflow";
 import JSZip from "jszip";
 import { useState, useEffect, useRef } from "react";
@@ -32,9 +32,11 @@ interface SimpleViewProps {
   workflow: Workflow;
   userInput?: string;
   onUserInputChange?: (input: string) => void;
+  onRunAgent?: (agentId: string) => void;
+  onRunFunction?: (functionId: string) => void;
 }
 
-export const SimpleView = ({ workflow, userInput, onUserInputChange }: SimpleViewProps) => {
+export const SimpleView = ({ workflow, userInput, onUserInputChange, onRunAgent, onRunFunction }: SimpleViewProps) => {
   const [viewingOutput, setViewingOutput] = useState<{ nodeName: string; output: string } | null>(null);
   const [outputTab, setOutputTab] = useState("view");
   const [expandedNodes, setExpandedNodes] = useState<string[]>([]);
@@ -295,8 +297,8 @@ export const SimpleView = ({ workflow, userInput, onUserInputChange }: SimpleVie
                     <Accordion type="multiple" value={expandedNodes} onValueChange={setExpandedNodes}>
                       {stageNodes.map((node) => (
                         <AccordionItem key={node.id} value={node.id} className="border-none">
-                          <AccordionTrigger className="rounded-md hover:bg-muted/50 transition-colors p-3 hover:no-underline group">
-                            <div className="flex items-center justify-between w-full">
+                          <AccordionTrigger className="rounded-md hover:bg-muted/50 transition-colors p-3 hover:no-underline group [&>svg]:ml-auto">
+                            <div className="flex items-center justify-between w-full pr-2">
                               <div className="flex items-center gap-3 flex-1 min-w-0">
                                 <File className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                                 <div className="flex-1 min-w-0 text-left">
@@ -310,6 +312,22 @@ export const SimpleView = ({ workflow, userInput, onUserInputChange }: SimpleVie
                                 </div>
                               </div>
                               <div className="flex items-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (node.nodeType === "agent" && onRunAgent) {
+                                      onRunAgent(node.id);
+                                    } else if (node.nodeType === "function" && onRunFunction) {
+                                      onRunFunction(node.id);
+                                    }
+                                  }}
+                                  disabled={node.status === "running"}
+                                >
+                                  <Play className="h-4 w-4" />
+                                </Button>
                                 <Button
                                   variant="ghost"
                                   size="sm"
@@ -335,7 +353,6 @@ export const SimpleView = ({ workflow, userInput, onUserInputChange }: SimpleVie
                                 >
                                   <Download className="h-4 w-4" />
                                 </Button>
-                                <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 ml-2" />
                               </div>
                             </div>
                           </AccordionTrigger>

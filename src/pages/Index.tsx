@@ -1421,6 +1421,8 @@ const Index = () => {
                 workflow={workflow}
                 userInput={userInput}
                 onUserInputChange={setUserInput}
+                onRunAgent={runSingleAgent}
+                onRunFunction={runSingleFunction}
               />
             ) : workflow.viewMode === "canvas" ? (
               <WorkflowCanvasMode
