@@ -15,7 +15,8 @@ import type {
   Stage,
   Connection,
   ToolInstance,
-  LogEntry 
+  LogEntry,
+  StickyNote
 } from "@/types/workflow";
 import { FunctionExecutor } from "@/lib/functionExecutor";
 
@@ -38,6 +39,7 @@ const Index = () => {
   const [workflow, setWorkflow] = useState<Workflow>({
     stages: [],
     connections: [],
+    stickyNotes: [],
     viewMode: "stacked",
   });
 
@@ -390,6 +392,7 @@ const Index = () => {
           setWorkflow({
             stages: loaded.stages || [],
             connections: loaded.connections || [],
+            stickyNotes: loaded.stickyNotes || [],
           });
         }
         
@@ -404,7 +407,7 @@ const Index = () => {
 
   const clearWorkflow = () => {
     if (confirm("Are you sure you want to clear the entire workflow?")) {
-      setWorkflow({ stages: [], connections: [] });
+      setWorkflow({ stages: [], connections: [], stickyNotes: [] });
       setUserInput("");
       setWorkflowName("Untitled Workflow");
       setCustomAgents([]); // Reset to only default agents
@@ -465,6 +468,36 @@ const Index = () => {
     setWorkflow((prev) => ({
       ...prev,
       connections: prev.connections.filter((conn) => conn.id !== connectionId),
+    }));
+  };
+
+  const addStickyNote = () => {
+    const newNote = {
+      id: `note-${Date.now()}`,
+      content: "New note",
+      color: "yellow",
+      position: { x: 100, y: 100 },
+      size: { width: 200, height: 200 },
+    };
+    setWorkflow((prev) => ({
+      ...prev,
+      stickyNotes: [...(prev.stickyNotes || []), newNote],
+    }));
+  };
+
+  const updateStickyNote = (noteId: string, updates: any) => {
+    setWorkflow((prev) => ({
+      ...prev,
+      stickyNotes: (prev.stickyNotes || []).map((note) =>
+        note.id === noteId ? { ...note, ...updates } : note
+      ),
+    }));
+  };
+
+  const deleteStickyNote = (noteId: string) => {
+    setWorkflow((prev) => ({
+      ...prev,
+      stickyNotes: (prev.stickyNotes || []).filter((note) => note.id !== noteId),
     }));
   };
 
@@ -1084,6 +1117,9 @@ const Index = () => {
                 onUpdateStagePosition={updateStagePosition}
                 onUpdateNodePosition={updateNodePosition}
                 onToggleViewMode={toggleViewMode}
+                onAddStickyNote={addStickyNote}
+                onUpdateStickyNote={updateStickyNote}
+                onDeleteStickyNote={deleteStickyNote}
               />
             ) : (
               <WorkflowCanvas 
@@ -1136,6 +1172,9 @@ const Index = () => {
                 onUpdateStagePosition={updateStagePosition}
                 onUpdateNodePosition={updateNodePosition}
                 onToggleViewMode={toggleViewMode}
+                onAddStickyNote={addStickyNote}
+                onUpdateStickyNote={updateStickyNote}
+                onDeleteStickyNote={deleteStickyNote}
               />
             ) : (
               <WorkflowCanvas 

@@ -20,17 +20,20 @@ import 'reactflow/dist/style.css';
 import './EdgeStyles.css';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Grid3x3, Layers } from "lucide-react";
-import type { Workflow, WorkflowNode, Stage as StageType } from "@/types/workflow";
+import { Plus, Grid3x3, Layers, StickyNote as StickyNoteIcon } from "lucide-react";
+import type { Workflow, WorkflowNode, Stage as StageType, StickyNote as StickyNoteType } from "@/types/workflow";
 import { AgentSelector } from "@/components/AgentSelector";
 import { FunctionSelector } from "@/components/FunctionSelector";
 import { StageNode } from "./StageNode";
 import { WorkflowNodeComponent } from "./WorkflowNodeComponent";
 import { useIsMobile } from "@/hooks/use-mobile";
 
+import { StickyNoteNode } from "./StickyNoteNode";
+
 const nodeTypes: NodeTypes = {
   stage: StageNode,
   workflowNode: WorkflowNodeComponent,
+  stickyNote: StickyNoteNode,
 };
 
 interface WorkflowCanvasModeProps {
@@ -54,6 +57,9 @@ interface WorkflowCanvasModeProps {
   onDeleteConnection?: (connectionId: string) => void;
   onCompleteConnection?: (fromNodeId: string, toNodeId: string, fromOutputPort?: string) => void;
   onToggleViewMode?: () => void;
+  onAddStickyNote?: () => void;
+  onUpdateStickyNote?: (id: string, updates: Partial<StickyNoteType>) => void;
+  onDeleteStickyNote?: (id: string) => void;
 }
 
 export function WorkflowCanvasMode({
@@ -76,6 +82,9 @@ export function WorkflowCanvasMode({
   onDeleteConnection,
   onCompleteConnection,
   onToggleViewMode,
+  onAddStickyNote,
+  onUpdateStickyNote,
+  onDeleteStickyNote,
 }: WorkflowCanvasModeProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -185,6 +194,25 @@ export function WorkflowCanvasMode({
       });
     });
 
+    // Add sticky notes
+    const stickyNotes = workflow.stickyNotes || [];
+    stickyNotes.forEach((note) => {
+      flowNodes.push({
+        id: `sticky-${note.id}`,
+        type: 'stickyNote',
+        position: note.position,
+        data: {
+          note,
+          onUpdate: onUpdateStickyNote,
+          onDelete: onDeleteStickyNote,
+        },
+        draggable: true,
+        style: {
+          zIndex: 5,
+        },
+      });
+    });
+
     setNodes(flowNodes);
 
     // Create edges from connections with proper styling
@@ -211,7 +239,7 @@ export function WorkflowCanvasMode({
     }));
 
     setEdges(flowEdges);
-  }, [workflow, selectedNode, isConnecting, stageBounds]);
+  }, [workflow, selectedNode, isConnecting, stageBounds, onUpdateStickyNote, onDeleteStickyNote]);
 
   // Handle connection between nodes
   const onConnect = useCallback(
@@ -271,7 +299,12 @@ export function WorkflowCanvasMode({
   // Handle node drag end to update positions (only update on drag END to prevent flashing)
   const onNodeDragStop = useCallback(
     (event: React.MouseEvent, node: Node) => {
-      if (node.id.startsWith('stage-')) {
+      if (node.id.startsWith('sticky-')) {
+        const stickyId = node.id.replace('sticky-', '');
+        if (onUpdateStickyNote) {
+          onUpdateStickyNote(stickyId, { position: node.position });
+        }
+      } else if (node.id.startsWith('stage-')) {
         const stageId = node.id.replace('stage-', '');
         const stage = workflow.stages.find(s => s.id === stageId);
         if (stage) {
@@ -292,7 +325,7 @@ export function WorkflowCanvasMode({
         }
       }
     },
-    [workflow.stages, stageBounds, onUpdateStagePosition, onUpdateNodePosition]
+    [workflow.stages, stageBounds, onUpdateStagePosition, onUpdateNodePosition, onUpdateStickyNote]
   );
 
   return (
@@ -335,10 +368,10 @@ export function WorkflowCanvasMode({
                   <Plus className="h-4 w-4 mr-2" />
                   Add Stage
                 </Button>
-                {isMobile && onToggleViewMode && (
-                  <Button onClick={onToggleViewMode} size="sm" variant="outline">
-                    <Layers className="h-4 w-4 mr-2" />
-                    Stacked
+                {onAddStickyNote && (
+                  <Button onClick={onAddStickyNote} size="sm" variant="outline">
+                    <StickyNoteIcon className="h-4 w-4 mr-2" />
+                    Note
                   </Button>
                 )}
               </div>
