@@ -137,12 +137,15 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
         }}
       />
       <Card
-        className="note-container relative shadow-lg border-2 transition-all duration-200"
+        className="note-container relative shadow-lg transition-all duration-200 cursor-move"
         style={{
           backgroundColor: note.color,
           width: note.size.width,
           height: note.size.height,
           overflow: "hidden",
+          pointerEvents: "all",
+          border: selected ? "2px solid hsl(var(--primary))" : "2px solid transparent",
+          boxShadow: selected ? "0 0 0 1px hsl(var(--primary))" : undefined,
         }}
       >
         {/* Toolbar - show when selected and not editing */}
