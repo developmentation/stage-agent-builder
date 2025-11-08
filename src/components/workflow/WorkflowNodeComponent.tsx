@@ -105,6 +105,13 @@ export const WorkflowNodeComponent = memo(({ data }: NodeProps<WorkflowNodeCompo
                   </Badge>
                 </div>
               )}
+              {node.nodeType === "function" && (
+                <div className="flex gap-1 mt-1">
+                  <Badge variant="outline" className="text-xs">
+                    {(node as FunctionNode).output?.length || 0} chars
+                  </Badge>
+                </div>
+              )}
             </div>
           </div>
           <div className="flex flex-col gap-1">
