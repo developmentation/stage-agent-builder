@@ -20,7 +20,7 @@ import 'reactflow/dist/style.css';
 import './EdgeStyles.css';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Grid3x3, Layers } from "lucide-react";
+import { AlignVerticalJustifyCenter, AlignHorizontalJustifyCenter, Grid3x3 } from "lucide-react";
 import type { Workflow, WorkflowNode, Stage as StageType } from "@/types/workflow";
 import { AgentSelector } from "@/components/AgentSelector";
 import { FunctionSelector } from "@/components/FunctionSelector";
@@ -54,6 +54,9 @@ interface WorkflowCanvasModeProps {
   onDeleteConnection?: (connectionId: string) => void;
   onCompleteConnection?: (fromNodeId: string, toNodeId: string, fromOutputPort?: string) => void;
   onToggleViewMode?: () => void;
+  onAutoLayoutVertical?: () => void;
+  onAutoLayoutHorizontal?: () => void;
+  onAutoLayoutGrid?: () => void;
 }
 
 export function WorkflowCanvasMode({
@@ -76,6 +79,9 @@ export function WorkflowCanvasMode({
   onDeleteConnection,
   onCompleteConnection,
   onToggleViewMode,
+  onAutoLayoutVertical,
+  onAutoLayoutHorizontal,
+  onAutoLayoutGrid,
 }: WorkflowCanvasModeProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -380,16 +386,30 @@ export function WorkflowCanvasMode({
           <Panel position="top-left">
             <Card className="p-2">
               <div className="flex gap-2">
-                <Button onClick={onAddStage} size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Stage
+                <Button 
+                  onClick={onAutoLayoutVertical} 
+                  size="sm"
+                  variant="outline"
+                  title="Arrange vertically"
+                >
+                  <AlignVerticalJustifyCenter className="h-4 w-4" />
                 </Button>
-                {isMobile && onToggleViewMode && (
-                  <Button onClick={onToggleViewMode} size="sm" variant="outline">
-                    <Layers className="h-4 w-4 mr-2" />
-                    Stacked
-                  </Button>
-                )}
+                <Button 
+                  onClick={onAutoLayoutHorizontal} 
+                  size="sm"
+                  variant="outline"
+                  title="Arrange horizontally"
+                >
+                  <AlignHorizontalJustifyCenter className="h-4 w-4" />
+                </Button>
+                <Button 
+                  onClick={onAutoLayoutGrid} 
+                  size="sm"
+                  variant="outline"
+                  title="Arrange in grid"
+                >
+                  <Grid3x3 className="h-4 w-4" />
+                </Button>
               </div>
             </Card>
           </Panel>

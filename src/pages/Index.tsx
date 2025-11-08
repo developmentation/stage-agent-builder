@@ -85,6 +85,103 @@ const Index = () => {
     }));
   };
 
+  const autoLayoutVertical = () => {
+    const stageGap = 50;
+    const nodeGap = 30;
+    const startX = 100;
+    let currentY = 100;
+
+    setWorkflow((prev) => {
+      const updatedStages = prev.stages.map((stage) => {
+        // Arrange nodes in a grid within the stage
+        const nodesPerRow = Math.ceil(Math.sqrt(stage.nodes.length)) || 1;
+        const updatedNodes = stage.nodes.map((node, index) => {
+          const row = Math.floor(index / nodesPerRow);
+          const col = index % nodesPerRow;
+          const nodeX = startX + 40 + col * (250 + nodeGap);
+          const nodeY = currentY + 100 + row * (150 + nodeGap);
+          return { ...node, position: { x: nodeX, y: nodeY } };
+        });
+
+        const stageHeight = stage.nodes.length > 0 
+          ? Math.ceil(stage.nodes.length / nodesPerRow) * (150 + nodeGap) + 124
+          : 300;
+        
+        const updatedStage = { ...stage, nodes: updatedNodes };
+        currentY += stageHeight + stageGap;
+        
+        return updatedStage;
+      });
+
+      return { ...prev, stages: updatedStages };
+    });
+  };
+
+  const autoLayoutHorizontal = () => {
+    const stageGap = 50;
+    const nodeGap = 30;
+    const startY = 100;
+    let currentX = 100;
+
+    setWorkflow((prev) => {
+      const updatedStages = prev.stages.map((stage) => {
+        // Arrange nodes in a grid within the stage
+        const nodesPerRow = Math.ceil(Math.sqrt(stage.nodes.length)) || 1;
+        const updatedNodes = stage.nodes.map((node, index) => {
+          const row = Math.floor(index / nodesPerRow);
+          const col = index % nodesPerRow;
+          const nodeX = currentX + 40 + col * (250 + nodeGap);
+          const nodeY = startY + 100 + row * (150 + nodeGap);
+          return { ...node, position: { x: nodeX, y: nodeY } };
+        });
+
+        const stageWidth = stage.nodes.length > 0
+          ? nodesPerRow * (250 + nodeGap) + 64
+          : 400;
+        
+        const updatedStage = { ...stage, nodes: updatedNodes };
+        currentX += stageWidth + stageGap;
+        
+        return updatedStage;
+      });
+
+      return { ...prev, stages: updatedStages };
+    });
+  };
+
+  const autoLayoutGrid = () => {
+    const stageGap = 50;
+    const nodeGap = 30;
+    const startX = 100;
+    const startY = 100;
+    
+    const stagesPerRow = Math.ceil(Math.sqrt(workflow.stages.length)) || 1;
+
+    setWorkflow((prev) => {
+      const updatedStages = prev.stages.map((stage, stageIndex) => {
+        const stageRow = Math.floor(stageIndex / stagesPerRow);
+        const stageCol = stageIndex % stagesPerRow;
+        
+        // Arrange nodes in a grid within the stage
+        const nodesPerRow = Math.ceil(Math.sqrt(stage.nodes.length)) || 1;
+        const stageBaseX = startX + stageCol * (600 + stageGap);
+        const stageBaseY = startY + stageRow * (500 + stageGap);
+        
+        const updatedNodes = stage.nodes.map((node, index) => {
+          const row = Math.floor(index / nodesPerRow);
+          const col = index % nodesPerRow;
+          const nodeX = stageBaseX + 40 + col * (250 + nodeGap);
+          const nodeY = stageBaseY + 100 + row * (150 + nodeGap);
+          return { ...node, position: { x: nodeX, y: nodeY } };
+        });
+        
+        return { ...stage, nodes: updatedNodes };
+      });
+
+      return { ...prev, stages: updatedStages };
+    });
+  };
+
   const addStage = () => {
     // Calculate position for new stage - below all existing stages
     let newStageY = 100; // Start position
@@ -1243,6 +1340,9 @@ const Index = () => {
                 onUpdateStagePosition={updateStagePosition}
                 onUpdateNodePosition={updateNodePosition}
                 onToggleViewMode={toggleViewMode}
+                onAutoLayoutVertical={autoLayoutVertical}
+                onAutoLayoutHorizontal={autoLayoutHorizontal}
+                onAutoLayoutGrid={autoLayoutGrid}
               />
             ) : (
               <WorkflowCanvas 
@@ -1295,6 +1395,9 @@ const Index = () => {
                 onUpdateStagePosition={updateStagePosition}
                 onUpdateNodePosition={updateNodePosition}
                 onToggleViewMode={toggleViewMode}
+                onAutoLayoutVertical={autoLayoutVertical}
+                onAutoLayoutHorizontal={autoLayoutHorizontal}
+                onAutoLayoutGrid={autoLayoutGrid}
               />
             ) : (
               <WorkflowCanvas 
