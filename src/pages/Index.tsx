@@ -1155,6 +1155,8 @@ const Index = () => {
           onLoad={loadWorkflow}
           onClear={clearWorkflow}
           hasSelectedAgent={!!selectedNodeData}
+          viewMode={workflow.viewMode}
+          onToggleViewMode={toggleViewMode}
         />
         
         <OutputLog logs={logs} />

@@ -285,6 +285,9 @@ export function WorkflowCanvasMode({
         const stage = workflow.stages.find(s => `stage-${s.id}` === node.parentNode);
         if (stage) {
           const bounds = stageBounds[stage.id];
+          const workflowNode = stage.nodes.find(n => n.id === node.id);
+          
+          // Calculate new relative position
           const nodeRelativePosition = { 
             x: node.position.x - 40 + bounds.offsetX, 
             y: node.position.y - 60 + bounds.offsetY 
@@ -292,19 +295,24 @@ export function WorkflowCanvasMode({
           onUpdateNodePosition(node.id, nodeRelativePosition);
           
           // If this is the only node in the stage, move the stage with it
-          if (stage.nodes.length === 1) {
-            const stageNode = nodes.find(n => n.id === `stage-${stage.id}`);
-            if (stageNode) {
-              onUpdateStagePosition(stage.id, {
-                x: stageNode.position.x - bounds.offsetX,
-                y: stageNode.position.y - bounds.offsetY
-              });
-            }
+          if (stage.nodes.length === 1 && workflowNode) {
+            const oldX = workflowNode.position?.x ?? 0;
+            const oldY = workflowNode.position?.y ?? 0;
+            const deltaX = nodeRelativePosition.x - oldX;
+            const deltaY = nodeRelativePosition.y - oldY;
+            
+            // Apply the same delta to the stage position
+            const currentStageX = stage.position?.x ?? 0;
+            const currentStageY = stage.position?.y ?? 0;
+            onUpdateStagePosition(stage.id, {
+              x: currentStageX + deltaX,
+              y: currentStageY + deltaY
+            });
           }
         }
       }
     },
-    [workflow.stages, stageBounds, nodes, onUpdateStagePosition, onUpdateNodePosition]
+    [workflow.stages, stageBounds, onUpdateStagePosition, onUpdateNodePosition]
   );
 
   return (
