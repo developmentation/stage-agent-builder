@@ -20,17 +20,25 @@ import 'reactflow/dist/style.css';
 import './EdgeStyles.css';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Grid3x3, Layers } from "lucide-react";
-import type { Workflow, WorkflowNode, Stage as StageType } from "@/types/workflow";
+import { StickyNote } from "lucide-react";
+import type { Workflow, WorkflowNode, Stage as StageType, Note } from "@/types/workflow";
 import { AgentSelector } from "@/components/AgentSelector";
 import { FunctionSelector } from "@/components/FunctionSelector";
 import { StageNode } from "./StageNode";
 import { WorkflowNodeComponent } from "./WorkflowNodeComponent";
+import { NoteNode } from "./NoteNode";
 import { useIsMobile } from "@/hooks/use-mobile";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const nodeTypes: NodeTypes = {
   stage: StageNode,
   workflowNode: WorkflowNodeComponent,
+  note: NoteNode,
 };
 
 interface WorkflowCanvasModeProps {
@@ -54,6 +62,9 @@ interface WorkflowCanvasModeProps {
   onDeleteConnection?: (connectionId: string) => void;
   onCompleteConnection?: (fromNodeId: string, toNodeId: string, fromOutputPort?: string) => void;
   onToggleViewMode?: () => void;
+  onAddNote?: () => void;
+  onUpdateNote?: (noteId: string, updates: Partial<Note>) => void;
+  onDeleteNote?: (noteId: string) => void;
 }
 
 export function WorkflowCanvasMode({
@@ -76,6 +87,9 @@ export function WorkflowCanvasMode({
   onDeleteConnection,
   onCompleteConnection,
   onToggleViewMode,
+  onAddNote,
+  onUpdateNote,
+  onDeleteNote,
 }: WorkflowCanvasModeProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -190,6 +204,27 @@ export function WorkflowCanvasMode({
       });
     });
 
+    // Add notes to the canvas
+    const notes = workflow.notes || [];
+    notes.forEach((note) => {
+      flowNodes.push({
+        id: note.id,
+        type: 'note',
+        position: note.position,
+        data: {
+          note,
+          onUpdate: onUpdateNote,
+          onDelete: onDeleteNote,
+        },
+        style: {
+          width: note.size.width,
+          height: note.size.height,
+          zIndex: 5,
+        },
+        draggable: true,
+      });
+    });
+
     setNodes(flowNodes);
 
     // Create edges from connections with proper styling
@@ -273,10 +308,47 @@ export function WorkflowCanvasMode({
     [workflow.connections, onDeleteConnection]
   );
 
+  // Handle node changes for resizing
+  const handleNodesChange = useCallback(
+    (changes: any[]) => {
+      onNodesChange(changes);
+      
+      // Handle note resizing
+      changes.forEach((change) => {
+        if (change.type === 'dimensions' && change.dimensions && onUpdateNote) {
+          const node = nodes.find(n => n.id === change.id);
+          if (node?.type === 'note') {
+            onUpdateNote(change.id, {
+              size: {
+                width: change.dimensions.width,
+                height: change.dimensions.height,
+              },
+            });
+          }
+        }
+      });
+    },
+    [onNodesChange, nodes, onUpdateNote]
+  );
+
+  // Handle node deletion
+  const onNodesDelete = useCallback(
+    (nodesToDelete: Node[]) => {
+      nodesToDelete.forEach((node) => {
+        if (node.type === 'note' && onDeleteNote) {
+          onDeleteNote(node.id);
+        }
+      });
+    },
+    [onDeleteNote]
+  );
+
   // Handle node drag end to update positions (only update on drag END to prevent flashing)
   const onNodeDragStop = useCallback(
     (event: React.MouseEvent, node: Node) => {
-      if (node.id.startsWith('stage-')) {
+      if (node.type === 'note' && onUpdateNote) {
+        onUpdateNote(node.id, { position: node.position });
+      } else if (node.id.startsWith('stage-')) {
         const stageId = node.id.replace('stage-', '');
         const stage = workflow.stages.find(s => s.id === stageId);
         if (stage) {
@@ -321,9 +393,10 @@ export function WorkflowCanvasMode({
         <ReactFlow
           nodes={nodes}
           edges={edges}
-          onNodesChange={onNodesChange}
+          onNodesChange={handleNodesChange}
           onEdgesChange={onEdgesChange}
           onEdgesDelete={onEdgesDelete}
+          onNodesDelete={onNodesDelete}
           onNodeDragStop={onNodeDragStop}
           onConnect={onConnect}
           nodeTypes={nodeTypes}
@@ -350,18 +423,18 @@ export function WorkflowCanvasMode({
           />
           <Panel position="top-left">
             <Card className="p-2">
-              <div className="flex gap-2">
-                <Button onClick={onAddStage} size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Stage
-                </Button>
-                {isMobile && onToggleViewMode && (
-                  <Button onClick={onToggleViewMode} size="sm" variant="outline">
-                    <Layers className="h-4 w-4 mr-2" />
-                    Stacked
-                  </Button>
-                )}
-              </div>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button onClick={onAddNote} size="icon" variant="outline">
+                      <StickyNote className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Add Note</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </Card>
           </Panel>
         </ReactFlow>
