@@ -15,6 +15,7 @@ import ReactFlow, {
   ReactFlowProvider,
   Panel,
   addEdge,
+  useReactFlow,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import './EdgeStyles.css';
@@ -65,13 +66,13 @@ interface WorkflowCanvasModeProps {
   onDeleteConnection?: (connectionId: string) => void;
   onCompleteConnection?: (fromNodeId: string, toNodeId: string, fromOutputPort?: string) => void;
   onToggleViewMode?: () => void;
-  onAddStickyNote?: () => void;
+  onAddStickyNote?: (position?: { x: number; y: number }) => void;
   onUpdateStickyNote?: (id: string, updates: Partial<StickyNoteType>) => void;
   onDeleteStickyNote?: (id: string) => void;
-  onAddTextBox?: () => void;
+  onAddTextBox?: (position?: { x: number; y: number }) => void;
   onUpdateTextBox?: (id: string, updates: Partial<TextBoxType>) => void;
   onDeleteTextBox?: (id: string) => void;
-  onAddShape?: (type: "rectangle" | "circle" | "triangle") => void;
+  onAddShape?: (type: "rectangle" | "circle" | "triangle", position?: { x: number; y: number }) => void;
   onUpdateShape?: (id: string, updates: Partial<ShapeType>) => void;
   onDeleteShape?: (id: string) => void;
   onAddDrawing?: (path: string, position: { x: number; y: number }) => void;
@@ -88,6 +89,7 @@ export function WorkflowCanvasMode({
   onAddStage,
   onDeleteStage,
   onRenameStage,
+  onReorderStages,
   onAddAgent,
   onAddFunction,
   onDeleteNode,
@@ -114,6 +116,83 @@ export function WorkflowCanvasMode({
   drawingMode,
   onSetDrawingMode,
 }: WorkflowCanvasModeProps) {
+  return (
+    <ReactFlowProvider>
+      <WorkflowCanvasModeInner
+        workflow={workflow}
+        selectedNode={selectedNode}
+        isConnecting={isConnecting}
+        onSelectNode={onSelectNode}
+        onAddStage={onAddStage}
+        onDeleteStage={onDeleteStage}
+        onRenameStage={onRenameStage}
+        onReorderStages={onReorderStages}
+        onAddAgent={onAddAgent}
+        onAddFunction={onAddFunction}
+        onDeleteNode={onDeleteNode}
+        onRunAgent={onRunAgent}
+        onStartConnection={onStartConnection}
+        onPortClick={onPortClick}
+        onUpdateNode={onUpdateNode}
+        onUpdateStagePosition={onUpdateStagePosition}
+        onUpdateNodePosition={onUpdateNodePosition}
+        onDeleteConnection={onDeleteConnection}
+        onCompleteConnection={onCompleteConnection}
+        onToggleViewMode={onToggleViewMode}
+        onAddStickyNote={onAddStickyNote}
+        onUpdateStickyNote={onUpdateStickyNote}
+        onDeleteStickyNote={onDeleteStickyNote}
+        onAddTextBox={onAddTextBox}
+        onUpdateTextBox={onUpdateTextBox}
+        onDeleteTextBox={onDeleteTextBox}
+        onAddShape={onAddShape}
+        onUpdateShape={onUpdateShape}
+        onDeleteShape={onDeleteShape}
+        onAddDrawing={onAddDrawing}
+        onDeleteDrawing={onDeleteDrawing}
+        drawingMode={drawingMode}
+        onSetDrawingMode={onSetDrawingMode}
+      />
+    </ReactFlowProvider>
+  );
+}
+
+function WorkflowCanvasModeInner({
+  workflow,
+  selectedNode,
+  isConnecting,
+  onSelectNode,
+  onAddStage,
+  onDeleteStage,
+  onRenameStage,
+  onReorderStages,
+  onAddAgent,
+  onAddFunction,
+  onDeleteNode,
+  onRunAgent,
+  onStartConnection,
+  onPortClick,
+  onUpdateNode,
+  onUpdateStagePosition,
+  onUpdateNodePosition,
+  onDeleteConnection,
+  onCompleteConnection,
+  onToggleViewMode,
+  onAddStickyNote,
+  onUpdateStickyNote,
+  onDeleteStickyNote,
+  onAddTextBox,
+  onUpdateTextBox,
+  onDeleteTextBox,
+  onAddShape,
+  onUpdateShape,
+  onDeleteShape,
+  onAddDrawing,
+  onDeleteDrawing,
+  drawingMode,
+  onSetDrawingMode,
+}: WorkflowCanvasModeProps) {
+  const { project, getViewport } = useReactFlow();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [showAddAgent, setShowAddAgent] = useState<string | null>(null);
@@ -124,17 +203,20 @@ export function WorkflowCanvasMode({
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
   
-  // Track highest z-index for new elements
-  const getNextZIndex = useCallback(() => {
-    const allElements = [
-      ...(workflow.stickyNotes || []),
-      ...(workflow.textBoxes || []),
-      ...(workflow.shapes || []),
-      ...(workflow.drawings || []),
-    ];
-    const maxZ = Math.max(0, ...allElements.map(el => el.zIndex || 0));
-    return maxZ + 1;
-  }, [workflow]);
+  // Get viewport center for placing new elements
+  const getViewportCenter = useCallback(() => {
+    const viewport = getViewport();
+    const canvasCenter = {
+      x: window.innerWidth / 2,
+      y: window.innerHeight / 2,
+    };
+    
+    // Convert screen coordinates to flow coordinates
+    return project({
+      x: canvasCenter.x,
+      y: canvasCenter.y,
+    });
+  }, [getViewport, project]);
 
   // Calculate stage bounds and offset - memoized to prevent recalculation during dragging
   const stageBounds = useMemo(() => {
@@ -452,27 +534,31 @@ export function WorkflowCanvasMode({
     event.preventDefault();
     event.stopPropagation();
     
-    const reactFlowBounds = event.currentTarget.getBoundingClientRect();
-    const position = {
-      x: event.clientX - reactFlowBounds.left,
-      y: event.clientY - reactFlowBounds.top,
-    };
+    const viewport = getViewport();
+    const canvasBounds = event.currentTarget.getBoundingClientRect();
+    
+    // Get mouse position in screen coordinates
+    const screenX = event.clientX - canvasBounds.left;
+    const screenY = event.clientY - canvasBounds.top;
+    
+    // Convert to flow coordinates
+    const flowPos = project({ x: screenX, y: screenY });
     
     setIsDrawingPath(true);
-    setDrawingPath([position]);
-  }, [drawingMode, onAddDrawing]);
+    setDrawingPath([flowPos]);
+  }, [drawingMode, onAddDrawing, getViewport, project]);
 
   const handleMouseMove = useCallback((event: React.MouseEvent) => {
     if (!isDrawingPath || !drawingMode) return;
     
-    const reactFlowBounds = event.currentTarget.getBoundingClientRect();
-    const position = {
-      x: event.clientX - reactFlowBounds.left,
-      y: event.clientY - reactFlowBounds.top,
-    };
+    const canvasBounds = event.currentTarget.getBoundingClientRect();
+    const screenX = event.clientX - canvasBounds.left;
+    const screenY = event.clientY - canvasBounds.top;
     
-    setDrawingPath(prev => [...prev, position]);
-  }, [isDrawingPath, drawingMode]);
+    const flowPos = project({ x: screenX, y: screenY });
+    
+    setDrawingPath(prev => [...prev, flowPos]);
+  }, [isDrawingPath, drawingMode, project]);
 
   const handleMouseUp = useCallback(() => {
     if (!isDrawingPath || !onAddDrawing || drawingPath.length < 2) {
@@ -501,7 +587,7 @@ export function WorkflowCanvasMode({
       return `${path} L ${point.x} ${point.y}`;
     }, '');
 
-    // Pass the path and position separately
+    // Pass the path and position (in flow coordinates)
     onAddDrawing(pathData, { x: minX, y: minY });
     setIsDrawingPath(false);
     setDrawingPath([]);
@@ -554,9 +640,9 @@ export function WorkflowCanvasMode({
           />
           <Panel position="top-left">
             <Card className="p-2">
-              <div className="flex flex-wrap gap-1">
+               <div className="flex flex-wrap gap-1">
                 <Button 
-                  onClick={onAddStickyNote} 
+                  onClick={() => onAddStickyNote?.(getViewportCenter())} 
                   size="sm" 
                   variant="outline"
                   title="Add sticky note"
@@ -565,7 +651,7 @@ export function WorkflowCanvasMode({
                   <StickyNoteIcon className="h-4 w-4" />
                 </Button>
                 <Button 
-                  onClick={onAddTextBox} 
+                  onClick={() => onAddTextBox?.(getViewportCenter())} 
                   size="sm" 
                   variant="outline"
                   title="Add text box"
@@ -574,7 +660,7 @@ export function WorkflowCanvasMode({
                   <Type className="h-4 w-4" />
                 </Button>
                 <Button 
-                  onClick={() => onAddShape?.('rectangle')} 
+                  onClick={() => onAddShape?.('rectangle', getViewportCenter())} 
                   size="sm" 
                   variant="outline"
                   title="Add rectangle"
@@ -583,7 +669,7 @@ export function WorkflowCanvasMode({
                   <Square className="h-4 w-4" />
                 </Button>
                 <Button 
-                  onClick={() => onAddShape?.('circle')} 
+                  onClick={() => onAddShape?.('circle', getViewportCenter())} 
                   size="sm" 
                   variant="outline"
                   title="Add circle"
@@ -592,7 +678,7 @@ export function WorkflowCanvasMode({
                   <Circle className="h-4 w-4" />
                 </Button>
                 <Button 
-                  onClick={() => onAddShape?.('triangle')} 
+                  onClick={() => onAddShape?.('triangle', getViewportCenter())} 
                   size="sm" 
                   variant="outline"
                   title="Add triangle"
@@ -601,7 +687,13 @@ export function WorkflowCanvasMode({
                   <Triangle className="h-4 w-4" />
                 </Button>
                 <Button 
-                  onClick={() => onSetDrawingMode?.(!drawingMode)} 
+                  onClick={() => {
+                    onSetDrawingMode?.(!drawingMode);
+                    if (drawingMode) {
+                      setIsDrawingPath(false);
+                      setDrawingPath([]);
+                    }
+                  }}
                   size="sm" 
                   variant={drawingMode ? "default" : "outline"}
                   title="Draw freeform"

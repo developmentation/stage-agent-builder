@@ -32,8 +32,12 @@ export const TextBoxNode = memo(({ data, selected }: NodeProps<TextBoxNodeData>)
   }, [textBox.content]);
 
   const handleClick = (e: React.MouseEvent) => {
+    // Don't interfere with selection
+  };
+
+  const handleDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (selected && !isEditing) {
+    if (!isEditing) {
       setIsEditing(true);
       onEditStart(textBox.id);
     }
@@ -77,6 +81,7 @@ export const TextBoxNode = memo(({ data, selected }: NodeProps<TextBoxNodeData>)
           minHeight: 50,
         }}
         onClick={handleClick}
+        onDoubleClick={handleDoubleClick}
       >
         {/* Toolbar */}
         {selected && !isEditing && (

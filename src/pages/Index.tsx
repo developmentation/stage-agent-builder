@@ -496,13 +496,14 @@ const Index = () => {
     return maxZ + 1;
   };
 
-  const addStickyNote = () => {
+  const addStickyNote = (position?: { x: number; y: number }) => {
     const nextZ = getNextZIndex();
+    const pos = position || { x: 100, y: 100 };
     const newNote = {
       id: `note-${Date.now()}`,
       content: "New note",
       color: "yellow",
-      position: { x: 100, y: 100 },
+      position: pos,
       size: { width: 200, height: 200 },
       zIndex: nextZ,
     };
@@ -528,13 +529,14 @@ const Index = () => {
     }));
   };
 
-  const addTextBox = () => {
+  const addTextBox = (position?: { x: number; y: number }) => {
     const nextZ = getNextZIndex();
+    const pos = position || { x: 150, y: 150 };
     const newTextBox = {
       id: `textbox-${Date.now()}`,
-      content: "# New text box\nClick to edit",
+      content: "# New text box\nDouble-click to edit",
       fontSize: 16,
-      position: { x: 150, y: 150 },
+      position: pos,
       width: 300,
       zIndex: nextZ,
     };
@@ -560,12 +562,13 @@ const Index = () => {
     }));
   };
 
-  const addShape = (type: "rectangle" | "circle" | "triangle") => {
+  const addShape = (type: "rectangle" | "circle" | "triangle", position?: { x: number; y: number }) => {
     const nextZ = getNextZIndex();
+    const pos = position || { x: 200, y: 200 };
     const newShape = {
       id: `shape-${Date.now()}`,
       type,
-      position: { x: 200, y: 200 },
+      position: pos,
       size: { width: 150, height: 150 },
       color: "#3b82f6",
       fillOpacity: 0.3,
