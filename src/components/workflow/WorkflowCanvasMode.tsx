@@ -87,7 +87,8 @@ export function WorkflowCanvasMode({
   const stageBounds = useMemo(() => {
     const bounds: Record<string, { width: number; height: number; stageX: number; stageY: number }> = {};
     
-    const stagePadding = 40;
+    const stagePaddingSides = 40; // Left, right, bottom padding
+    const stagePaddingTop = 60; // Top padding for nodes (after header)
     const stageHeaderHeight = 60;
     const nodeWidth = 250;
     const nodeHeight = 150;
@@ -114,12 +115,12 @@ export function WorkflowCanvasMode({
       });
 
       // Stage position is based on the bounding box of nodes
-      const stageX = minX - stagePadding;
-      const stageY = minY - stageHeaderHeight;
+      const stageX = minX - stagePaddingSides;
+      const stageY = minY - stagePaddingTop;
       
       // Stage size is the span of the bounding box plus padding
-      const stageWidth = Math.max(400, maxX - minX + stagePadding * 2);
-      const stageHeight = Math.max(300, maxY - minY + stageHeaderHeight + stagePadding);
+      const stageWidth = Math.max(400, maxX - minX + stagePaddingSides * 2);
+      const stageHeight = Math.max(300, maxY - minY + stagePaddingTop + stagePaddingSides);
 
       bounds[stage.id] = { width: stageWidth, height: stageHeight, stageX, stageY };
     });
@@ -167,7 +168,7 @@ export function WorkflowCanvasMode({
         flowNodes.push({
           id: node.id,
           type: 'workflowNode',
-          position: { x: stagePadding + (nodeX - bounds.stageX - stagePadding), y: stageHeaderHeight + (nodeY - bounds.stageY - stageHeaderHeight) },
+          position: { x: 40 + (nodeX - bounds.stageX - 40), y: 60 + (nodeY - bounds.stageY - 60) },
           data: {
             node,
             selected: selectedNode?.id === node.id,
@@ -295,11 +296,11 @@ export function WorkflowCanvasMode({
         if (stage) {
           const bounds = stageBounds[stage.id];
           
-          // Calculate node position in absolute coordinates
-          const nodeAbsoluteX = bounds.stageX + node.position.x;
-          const nodeAbsoluteY = bounds.stageY + node.position.y;
+          // Calculate node position in absolute coordinates (accounting for stage padding)
+          const nodeAbsoluteX = bounds.stageX + 40 + node.position.x;
+          const nodeAbsoluteY = bounds.stageY + 60 + node.position.y;
           
-          // Store the absolute position (accounting for stage padding and header)
+          // Store the absolute position (removing the padding offsets)
           const nodeRelativePosition = { 
             x: nodeAbsoluteX - 40,
             y: nodeAbsoluteY - 60
