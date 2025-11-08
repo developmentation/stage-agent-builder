@@ -59,7 +59,8 @@ const Index = () => {
 
   const toggleViewMode = () => {
     setWorkflow((prev) => {
-      const newViewMode = prev.viewMode === "stacked" ? "canvas" : "stacked";
+      // Treat undefined/null/stacked as stacked, only canvas as canvas
+      const newViewMode = prev.viewMode === "canvas" ? "stacked" : "canvas";
       
       // Initialize stage positions when switching to canvas mode for the first time
       if (newViewMode === "canvas") {
