@@ -100,27 +100,15 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
     }
   }, [selected, isEditing, localContent, note.content, onUpdate]);
 
-  const handleCardClick = (e: React.MouseEvent) => {
-    // Don't interfere with toolbar clicks or resize handles
-    if ((e.target as HTMLElement).closest('.nodrag, .react-flow__resize-control')) {
-      return;
-    }
-
-    // If already selected and not editing, enter edit mode on the content area
+  const handleContentClick = (e: React.MouseEvent) => {
+    // If already selected and not editing, enter edit mode
     if (selected && !isEditing) {
       e.stopPropagation();
-      e.preventDefault();
       setIsEditing(true);
     }
   };
 
-  const handleBlur = (e: React.FocusEvent) => {
-    // Only blur if we're not clicking on another part of the note
-    const relatedTarget = e.relatedTarget as HTMLElement;
-    if (relatedTarget && relatedTarget.closest('.note-container')) {
-      return;
-    }
-    
+  const handleBlur = () => {
     setIsEditing(false);
     setShowColorPicker(false);
     // Save content when leaving edit mode
@@ -161,13 +149,6 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
           width: note.size.width,
           height: note.size.height,
           overflow: "hidden",
-        }}
-        onClick={handleCardClick}
-        onMouseDown={(e) => {
-          // Prevent dragging when clicking to edit
-          if (selected && !isEditing) {
-            e.stopPropagation();
-          }
         }}
       >
         {/* Toolbar - only show when selected and not editing */}
@@ -219,6 +200,7 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
         <div
           className="w-full h-full flex items-center justify-center p-4"
           style={{ overflow: "hidden" }}
+          onClick={handleContentClick}
         >
           {isEditing ? (
             <textarea
@@ -226,6 +208,7 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
               value={localContent}
               onChange={handleContentChange}
               onBlur={handleBlur}
+              onMouseDown={(e) => e.stopPropagation()}
               className="w-full h-full bg-transparent border-none outline-none resize-none text-center nodrag"
               style={{
                 fontSize: `${fontSize}px`,
