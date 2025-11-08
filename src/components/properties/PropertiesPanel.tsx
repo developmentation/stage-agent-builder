@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { X, Plus, Settings, Play, Database, Download, Eye, Save, Upload } from "lucide-react";
+import { X, Plus, Settings, Play, Database, Download, Eye, EyeOff, Save, Upload } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { useState, useRef } from "react";
@@ -91,6 +91,7 @@ export const PropertiesPanel = ({
   const [outputTab, setOutputTab] = useState("edit");
   const [systemPromptTab, setSystemPromptTab] = useState("edit");
   const [userPromptTab, setUserPromptTab] = useState("edit");
+  const [showBearerToken, setShowBearerToken] = useState(false);
 
   // Use selectedNode if provided, otherwise fall back to selectedAgent
   const activeNode = selectedNode || selectedAgent;
@@ -468,6 +469,32 @@ export const PropertiesPanel = ({
                   }}
                   className="h-8 text-xs"
                 />
+              ) : key === "bearerToken" ? (
+                <div className="relative">
+                  <Input
+                    id={key}
+                    type={showBearerToken ? "text" : "password"}
+                    placeholder={schema.placeholder}
+                    value={node.config[key] ?? schema.default ?? ""}
+                    onChange={(e) =>
+                      updateNodeConfig({ ...node.config, [key]: e.target.value })
+                    }
+                    className="h-8 text-xs pr-8"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-8 w-8 p-0 hover:bg-transparent"
+                    onClick={() => setShowBearerToken(!showBearerToken)}
+                  >
+                    {showBearerToken ? (
+                      <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
+                    ) : (
+                      <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                    )}
+                  </Button>
+                </div>
               ) : (
                 <Input
                   id={key}
