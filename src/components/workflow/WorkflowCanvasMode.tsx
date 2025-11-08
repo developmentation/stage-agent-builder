@@ -115,8 +115,10 @@ export function WorkflowCanvasMode({
       const offsetX = Math.min(0, minX - stagePadding);
       const offsetY = Math.min(0, minY - stageHeaderHeight);
 
-      const stageWidth = Math.max(400, maxX - minX + stagePadding * 2);
-      const stageHeight = Math.max(300, maxY - minY + stageHeaderHeight + stagePadding);
+      // Width/height must account for the absolute positions when offsetX/Y is 0
+      // When nodes are in positive territory, we need full extent from 0 to maxX
+      const stageWidth = Math.max(400, maxX - offsetX + stagePadding);
+      const stageHeight = Math.max(300, maxY - offsetY + stagePadding);
 
       bounds[stage.id] = { width: stageWidth, height: stageHeight, offsetX, offsetY };
     });

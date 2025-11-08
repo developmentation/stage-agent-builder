@@ -221,7 +221,7 @@ const Index = () => {
     }));
   };
 
-  const deleteNode = (nodeId: string) => {
+  const deleteNode = (stageId: string, nodeId: string) => {
     setWorkflow((prev) => ({
       ...prev,
       stages: prev.stages.map((stage) => ({
@@ -240,7 +240,9 @@ const Index = () => {
 
   // Legacy method for backward compatibility
   const deleteAgent = (nodeId: string) => {
-    deleteNode(nodeId);
+    // For legacy calls, we don't know the stage ID, so we pass empty string
+    const stage = workflow.stages.find(s => s.nodes.some(n => n.id === nodeId));
+    deleteNode(stage?.id || '', nodeId);
   };
 
   const deleteStage = (stageId: string) => {
