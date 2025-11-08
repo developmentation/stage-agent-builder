@@ -32,45 +32,55 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
     setLocalContent(note.content);
   }, [note.content]);
 
-  // Calculate font size based on card dimensions and content
+  // Calculate font size to fit all content within the card
   const calculateFontSize = (content: string, width: number, height: number) => {
-    if (!content || content.length === 0) {
-      // Base size scales with card dimensions
-      const baseSize = Math.min(width, height) / 10;
-      return Math.max(12, Math.min(24, baseSize));
-    }
+    if (!content || content.length === 0) return 20;
     
     const availableWidth = width - 32; // padding
     const availableHeight = height - 32;
     
-    // Count actual lines including word-wrapped lines
-    const lines = content.split('\n');
-    let totalLines = 0;
+    // Split content into lines and handle word wrapping at 25 chars
+    const processedLines: string[] = [];
+    const contentLines = content.split('\n');
     
-    lines.forEach(line => {
+    contentLines.forEach(line => {
       if (line.length === 0) {
-        totalLines += 1;
+        processedLines.push('');
       } else {
-        // Estimate wrapped lines based on available width
-        // Average char width is ~0.6 of font size, so at 16px font, ~25 chars fit in 250px
-        const estimatedCharsPerLine = Math.floor(availableWidth / 9.6); // Assume 16px font baseline
-        totalLines += Math.max(1, Math.ceil(line.length / estimatedCharsPerLine));
+        // Break long lines at 25 characters
+        const words = line.split(' ');
+        let currentLine = '';
+        
+        words.forEach(word => {
+          if ((currentLine + ' ' + word).trim().length <= 25) {
+            currentLine = currentLine ? currentLine + ' ' + word : word;
+          } else {
+            if (currentLine) processedLines.push(currentLine);
+            currentLine = word;
+          }
+        });
+        
+        if (currentLine) processedLines.push(currentLine);
       }
     });
     
-    // Calculate font size based on height constraint
-    const lineHeight = 1.3;
-    const fontSizeByHeight = (availableHeight / Math.max(1, totalLines)) / lineHeight;
+    const lineCount = Math.max(1, processedLines.length);
+    const longestLine = processedLines.reduce((max, line) => 
+      line.length > max.length ? line : max, ''
+    );
     
-    // Scale with card width too, but prioritize fitting vertically
-    const baseScale = width / 250; // 250px as baseline width
-    const scaledSize = 16 * baseScale; // 16px as baseline font
+    // Estimate character width (roughly 0.6 of font size for most fonts)
+    const charsPerLine = Math.max(1, longestLine.length);
+    const fontSizeByWidth = (availableWidth / charsPerLine) / 0.6;
     
-    // Use the smaller of scaled size and height-constrained size
-    const fontSize = Math.min(scaledSize, fontSizeByHeight);
+    // Consider height constraints with line height
+    const fontSizeByHeight = (availableHeight / lineCount) / 1.3; // 1.3 is line-height
     
-    // Clamp between 8px and 28px
-    return Math.max(8, Math.min(28, fontSize));
+    // Use the smaller of the two to ensure all content fits
+    const fontSize = Math.min(fontSizeByWidth, fontSizeByHeight);
+    
+    // Clamp between 6px and 24px (lowered minimum to accommodate more text)
+    return Math.max(6, Math.min(24, fontSize));
   };
 
   const fontSize = calculateFontSize(
@@ -144,26 +154,16 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
   };
 
   return (
-    <div style={{ position: 'relative', width: note.size.width, height: note.size.height }}>
+    <>
       <NodeResizer
         isVisible={!isEditing}
         minWidth={150}
         minHeight={100}
         maxWidth={600}
         maxHeight={600}
-        handleStyle={{
-          width: '12px',
-          height: '12px',
-        }}
-        lineStyle={{
-          borderWidth: '2px',
-        }}
-        keepAspectRatio={false}
-        shouldResize={() => true}
         onResize={(e, params) => {
           onUpdate({
             size: { width: params.width, height: params.height },
-            position: { x: params.x, y: params.y },
           });
         }}
       />
@@ -180,9 +180,9 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
             variant="ghost"
             size="sm"
             onClick={handleEditClick}
-            className="h-7 w-7 p-0 bg-background border border-border hover:bg-accent shadow-sm"
+            className="h-8 w-8 p-0 bg-background border border-border hover:bg-accent shadow-sm"
           >
-            <Pencil className="h-3 w-3" />
+            <Pencil className="h-4 w-4" />
           </Button>
           <div className="relative">
             <Button
@@ -192,9 +192,9 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
                 e.stopPropagation();
                 setShowColorPicker(!showColorPicker);
               }}
-              className="h-7 w-7 p-0 bg-background border border-border hover:bg-accent shadow-sm"
+              className="h-8 w-8 p-0 bg-background border border-border hover:bg-accent shadow-sm"
             >
-              <Palette className="h-3 w-3" />
+              <Palette className="h-4 w-4" />
             </Button>
             {showColorPicker && (
               <div className="absolute top-8 right-0 p-2 bg-background border rounded-md shadow-lg flex gap-1 nodrag z-50">
@@ -219,9 +219,9 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
               e.stopPropagation();
               onDelete();
             }}
-            className="h-7 w-7 p-0 bg-background border border-border hover:bg-accent shadow-sm"
+            className="h-8 w-8 p-0 bg-background border border-border hover:bg-accent shadow-sm"
           >
-            <Trash2 className="h-3 w-3" />
+            <Trash2 className="h-4 w-4" />
           </Button>
         </div>
       )}
@@ -277,7 +277,7 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
           )}
         </div>
       </Card>
-    </div>
+    </>
   );
 });
 
