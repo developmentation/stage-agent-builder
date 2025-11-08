@@ -17,6 +17,7 @@ import ReactFlow, {
   addEdge,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
+import './EdgeStyles.css';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Plus, Trash2 } from "lucide-react";
@@ -182,7 +183,7 @@ export function WorkflowCanvasMode({
 
     setNodes(flowNodes);
 
-    // Create edges from connections
+    // Create edges from connections with proper styling
     const flowEdges: Edge[] = workflow.connections.map((conn) => ({
       id: conn.id,
       source: conn.fromNodeId,
@@ -195,7 +196,10 @@ export function WorkflowCanvasMode({
         width: 20,
         height: 20,
       },
-      style: { stroke: 'hsl(var(--primary))', strokeWidth: 2 },
+      style: { 
+        stroke: 'hsl(var(--primary))', 
+        strokeWidth: 2,
+      },
       zIndex: 100,
     }));
 
@@ -205,12 +209,14 @@ export function WorkflowCanvasMode({
   // Handle connection between nodes
   const onConnect = useCallback(
     (connection: Connection) => {
+      console.log("Canvas onConnect triggered:", connection);
       if (connection.source && connection.target && onCompleteConnection) {
         // Create the connection in the workflow data model
         const fromNodeId = connection.source;
         const toNodeId = connection.target;
         const fromOutputPort = connection.sourceHandle || undefined;
         
+        console.log("Calling onCompleteConnection:", fromNodeId, "->", toNodeId, "port:", fromOutputPort);
         // Call the parent's connection completion handler
         onCompleteConnection(fromNodeId, toNodeId, fromOutputPort);
       }
@@ -221,14 +227,18 @@ export function WorkflowCanvasMode({
   // Handle edge deletion
   const onEdgesDelete = useCallback(
     (edgesToDelete: Edge[]) => {
-      if (!onDeleteConnection) return;
+      console.log("Canvas onEdgesDelete triggered:", edgesToDelete);
+      if (!onDeleteConnection) {
+        console.log("No onDeleteConnection handler provided");
+        return;
+      }
       
       edgesToDelete.forEach((edge) => {
         // Find the corresponding workflow connection and delete it
         const connection = workflow.connections.find(
-          (c) => c.fromNodeId === edge.source && c.toNodeId === edge.target && 
-                 (edge.sourceHandle ? c.fromOutputPort === edge.sourceHandle : true)
+          (c) => c.id === edge.id
         );
+        console.log("Found connection to delete:", connection);
         if (connection) {
           onDeleteConnection(connection.id);
         }
@@ -281,7 +291,11 @@ export function WorkflowCanvasMode({
           minZoom={0.2}
           maxZoom={2}
           defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
-          elevateEdgesOnSelect
+          deleteKeyCode="Delete"
+          defaultEdgeOptions={{
+            style: { stroke: 'hsl(var(--primary))', strokeWidth: 2 },
+            animated: true,
+          }}
           edgesUpdatable={false}
           edgesFocusable={true}
         >
