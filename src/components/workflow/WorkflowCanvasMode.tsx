@@ -15,6 +15,7 @@ import ReactFlow, {
   ReactFlowProvider,
   Panel,
   addEdge,
+  useReactFlow,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import './EdgeStyles.css';
@@ -45,8 +46,8 @@ interface WorkflowCanvasModeProps {
   onDeleteStage: (stageId: string) => void;
   onRenameStage: (stageId: string, newName: string) => void;
   onReorderStages: (sourceIndex: number, targetIndex: number) => void;
-  onAddAgent: (stageId: string, agent: any) => void;
-  onAddFunction: (stageId: string, functionType: string) => void;
+  onAddAgent: (stageId: string, agent: any, position?: { x: number; y: number }) => void;
+  onAddFunction: (stageId: string, functionType: string, position?: { x: number; y: number }) => void;
   onDeleteNode: (stageId: string, nodeId: string) => void;
   onRunAgent: (nodeId: string) => void;
   onStartConnection: (nodeId: string, outputPort?: string) => void;
@@ -62,7 +63,7 @@ interface WorkflowCanvasModeProps {
   onDeleteStickyNote?: (id: string) => void;
 }
 
-export function WorkflowCanvasMode({
+function WorkflowCanvasModeInner({
   workflow,
   selectedNode,
   isConnecting,
@@ -91,6 +92,19 @@ export function WorkflowCanvasMode({
   const [showAddAgent, setShowAddAgent] = useState<string | null>(null);
   const [showAddFunction, setShowAddFunction] = useState<string | null>(null);
   const isMobile = useIsMobile();
+  const { project } = useReactFlow();
+
+  // Get viewport center in flow coordinates
+  const getViewportCenter = useCallback(() => {
+    const bounds = document.querySelector('.react-flow__viewport')?.getBoundingClientRect();
+    if (!bounds) return { x: 0, y: 0 };
+    
+    const centerX = bounds.width / 2;
+    const centerY = bounds.height / 2;
+    
+    // Convert screen coordinates to flow coordinates
+    return project({ x: centerX, y: centerY });
+  }, [project]);
 
   // Calculate stage bounds and position - recalculated when any node position changes
   const stageBounds = useMemo(() => {
@@ -450,7 +464,8 @@ export function WorkflowCanvasMode({
           open={true}
           onOpenChange={(open) => !open && setShowAddAgent(null)}
           onSelectAgent={(agent) => {
-            onAddAgent(showAddAgent, agent);
+            const center = getViewportCenter();
+            onAddAgent(showAddAgent, agent, center);
             setShowAddAgent(null);
           }}
         />
@@ -462,11 +477,20 @@ export function WorkflowCanvasMode({
           open={true}
           onOpenChange={(open) => !open && setShowAddFunction(null)}
           onSelectFunction={(functionDef) => {
-            onAddFunction(showAddFunction, functionDef.id);
+            const center = getViewportCenter();
+            onAddFunction(showAddFunction, functionDef.id, center);
             setShowAddFunction(null);
           }}
         />
       )}
     </div>
+  );
+}
+
+export function WorkflowCanvasMode(props: WorkflowCanvasModeProps) {
+  return (
+    <ReactFlowProvider>
+      <WorkflowCanvasModeInner {...props} />
+    </ReactFlowProvider>
   );
 }
