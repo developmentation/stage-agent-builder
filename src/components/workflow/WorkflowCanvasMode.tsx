@@ -43,7 +43,7 @@ interface WorkflowCanvasModeProps {
   onRenameStage: (stageId: string, newName: string) => void;
   onReorderStages: (sourceIndex: number, targetIndex: number) => void;
   onAddAgent: (stageId: string, agent: any) => void;
-  onAddFunction: (stageId: string, functionType: string) => void;
+  onAddFunction: (stageId: string, functionDef: any) => void;
   onDeleteNode: (stageId: string, nodeId: string) => void;
   onRunAgent: (nodeId: string) => void;
   onStartConnection: (nodeId: string, outputPort?: string) => void;
@@ -285,14 +285,26 @@ export function WorkflowCanvasMode({
         const stage = workflow.stages.find(s => `stage-${s.id}` === node.parentNode);
         if (stage) {
           const bounds = stageBounds[stage.id];
-          onUpdateNodePosition(node.id, { 
+          const nodeRelativePosition = { 
             x: node.position.x - 40 + bounds.offsetX, 
             y: node.position.y - 60 + bounds.offsetY 
-          });
+          };
+          onUpdateNodePosition(node.id, nodeRelativePosition);
+          
+          // If this is the only node in the stage, move the stage with it
+          if (stage.nodes.length === 1) {
+            const stageNode = nodes.find(n => n.id === `stage-${stage.id}`);
+            if (stageNode) {
+              onUpdateStagePosition(stage.id, {
+                x: stageNode.position.x - bounds.offsetX,
+                y: stageNode.position.y - bounds.offsetY
+              });
+            }
+          }
         }
       }
     },
-    [workflow.stages, stageBounds, onUpdateStagePosition, onUpdateNodePosition]
+    [workflow.stages, stageBounds, nodes, onUpdateStagePosition, onUpdateNodePosition]
   );
 
   return (
@@ -365,7 +377,7 @@ export function WorkflowCanvasMode({
           open={true}
           onOpenChange={(open) => !open && setShowAddFunction(null)}
           onSelectFunction={(functionDef) => {
-            onAddFunction(showAddFunction, functionDef.id);
+            onAddFunction(showAddFunction, functionDef);
             setShowAddFunction(null);
           }}
         />

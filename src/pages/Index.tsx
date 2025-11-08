@@ -60,7 +60,7 @@ const Index = () => {
   const toggleViewMode = () => {
     setWorkflow((prev) => ({
       ...prev,
-      viewMode: prev.viewMode === "stacked" ? "canvas" : "stacked",
+      viewMode: (prev.viewMode || "stacked") === "stacked" ? "canvas" : "stacked",
     }));
   };
 

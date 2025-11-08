@@ -50,14 +50,13 @@ export const Toolbar = ({
           <Plus className="h-4 w-4" />
           Add Stage
         </Button>
-        <div className="w-px h-6 bg-border mx-2" />
         <Button 
           onClick={onToggleViewMode} 
-          variant={viewMode === "canvas" ? "default" : "outline"}
+          variant={(viewMode || "stacked") === "canvas" ? "default" : "outline"}
           size="sm"
           className="gap-2"
         >
-          {viewMode === "canvas" ? (
+          {(viewMode || "stacked") === "canvas" ? (
             <>
               <LayoutGrid className="h-4 w-4" />
               Canvas
