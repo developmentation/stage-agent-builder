@@ -13,6 +13,17 @@ serve(async (req) => {
   try {
     const { systemPrompt, userPrompt, tools = [], model = "gemini-2.5-flash", maxOutputTokens = 32768, thinkingEnabled = false, thinkingBudget = 0 } = await req.json();
     
+    // Ensure maxOutputTokens is a valid number
+    let validMaxTokens = 32768;
+    if (typeof maxOutputTokens === 'number' && maxOutputTokens > 0) {
+      validMaxTokens = maxOutputTokens;
+    } else if (typeof maxOutputTokens === 'string') {
+      const parsed = parseInt(maxOutputTokens, 10);
+      if (!isNaN(parsed) && parsed > 0) {
+        validMaxTokens = parsed;
+      }
+    }
+    
     // Validate model
     const validModels = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.5-flash-lite"];
     const selectedModel = validModels.includes(model) ? model : "gemini-2.5-flash";
@@ -119,7 +130,7 @@ serve(async (req) => {
     // Build generation config
     const generationConfig: any = {
       temperature: 0.7,
-      maxOutputTokens: maxOutputTokens,
+      maxOutputTokens: validMaxTokens,
     };
 
     // Add thinking config for supported models

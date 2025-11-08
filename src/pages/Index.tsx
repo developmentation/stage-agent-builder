@@ -665,7 +665,9 @@ const Index = () => {
           setWorkflowName(loaded.workflowName || "Untitled Workflow");
           setCustomAgents(loaded.customAgents || []);
           setSelectedModel(loaded.selectedModel || "gemini-2.5-flash");
-          setResponseLength(loaded.responseLength ?? 8192);
+          // Ensure responseLength is always a number, not a string like "2xl"
+          const loadedLength = loaded.responseLength ?? 8192;
+          setResponseLength(typeof loadedLength === 'number' ? loadedLength : 8192);
           setThinkingEnabled(loaded.thinkingEnabled || false);
           setThinkingBudget(loaded.thinkingBudget ?? 0);
         } else {
