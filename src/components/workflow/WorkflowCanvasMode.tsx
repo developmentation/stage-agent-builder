@@ -294,7 +294,6 @@ export function WorkflowCanvasMode({
           },
         },
         draggable: true,
-        selectable: true,
         style: {
           zIndex: 5, // Below workflow nodes but above stages
         },
