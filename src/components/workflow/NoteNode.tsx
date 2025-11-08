@@ -43,53 +43,34 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
 
   // Calculate font size to fit all content within the card
   const calculateFontSize = (content: string, width: number, height: number) => {
-    if (!content || content.length === 0) return 20;
+    if (!content || content.length === 0) return 32;
     
-    const availableWidth = width - 32; // padding
-    const availableHeight = height - 32;
+    const availableWidth = width - 40; // padding
+    const availableHeight = height - 40;
     
-    // Split content into lines and handle word wrapping at 25 chars
-    const processedLines: string[] = [];
-    const contentLines = content.split('\n');
+    // Simple calculation based on content length and available space
+    const lines = content.split('\n');
+    const lineCount = Math.max(1, lines.length);
     
-    contentLines.forEach(line => {
-      if (line.length === 0) {
-        processedLines.push('');
-      } else {
-        // Break long lines at 35 characters
-        const words = line.split(' ');
-        let currentLine = '';
-        
-        words.forEach(word => {
-          if ((currentLine + ' ' + word).trim().length <= 35) {
-            currentLine = currentLine ? currentLine + ' ' + word : word;
-          } else {
-            if (currentLine) processedLines.push(currentLine);
-            currentLine = word;
-          }
-        });
-        
-        if (currentLine) processedLines.push(currentLine);
-      }
-    });
-    
-    const lineCount = Math.max(1, processedLines.length);
-    const longestLine = processedLines.reduce((max, line) => 
+    // Find the longest line
+    const longestLine = lines.reduce((max, line) => 
       line.length > max.length ? line : max, ''
     );
     
-    // Estimate character width (roughly 0.6 of font size for most fonts)
+    // Estimate character width (roughly 0.55 of font size for most fonts)
     const charsPerLine = Math.max(1, longestLine.length);
-    const fontSizeByWidth = (availableWidth / charsPerLine) / 0.6;
     
-    // Consider height constraints with line height
-    const fontSizeByHeight = (availableHeight / lineCount) / 1.3; // 1.3 is line-height
+    // Calculate font size based on width constraint
+    const fontSizeByWidth = (availableWidth / charsPerLine) / 0.55;
+    
+    // Calculate font size based on height constraint (1.4 line height)
+    const fontSizeByHeight = (availableHeight / lineCount) / 1.4;
     
     // Use the smaller of the two to ensure all content fits
     const fontSize = Math.min(fontSizeByWidth, fontSizeByHeight);
     
-    // Clamp between 6px and 24px (lowered minimum to accommodate more text)
-    return Math.max(6, Math.min(24, fontSize));
+    // Clamp between 10px and 48px for better scaling
+    return Math.max(10, Math.min(48, fontSize));
   };
 
   // Use local size during resize for immediate visual feedback
