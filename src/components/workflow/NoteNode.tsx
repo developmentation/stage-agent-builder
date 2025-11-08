@@ -32,55 +32,45 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
     setLocalContent(note.content);
   }, [note.content]);
 
-  // Calculate font size to fit all content within the card
+  // Calculate font size based on card dimensions and content
   const calculateFontSize = (content: string, width: number, height: number) => {
-    if (!content || content.length === 0) return 20;
+    if (!content || content.length === 0) {
+      // Base size scales with card dimensions
+      const baseSize = Math.min(width, height) / 10;
+      return Math.max(12, Math.min(24, baseSize));
+    }
     
     const availableWidth = width - 32; // padding
     const availableHeight = height - 32;
     
-    // Split content into lines and handle word wrapping at 25 chars
-    const processedLines: string[] = [];
-    const contentLines = content.split('\n');
+    // Count actual lines including word-wrapped lines
+    const lines = content.split('\n');
+    let totalLines = 0;
     
-    contentLines.forEach(line => {
+    lines.forEach(line => {
       if (line.length === 0) {
-        processedLines.push('');
+        totalLines += 1;
       } else {
-        // Break long lines at 25 characters
-        const words = line.split(' ');
-        let currentLine = '';
-        
-        words.forEach(word => {
-          if ((currentLine + ' ' + word).trim().length <= 25) {
-            currentLine = currentLine ? currentLine + ' ' + word : word;
-          } else {
-            if (currentLine) processedLines.push(currentLine);
-            currentLine = word;
-          }
-        });
-        
-        if (currentLine) processedLines.push(currentLine);
+        // Estimate wrapped lines based on available width
+        // Average char width is ~0.6 of font size, so at 16px font, ~25 chars fit in 250px
+        const estimatedCharsPerLine = Math.floor(availableWidth / 9.6); // Assume 16px font baseline
+        totalLines += Math.max(1, Math.ceil(line.length / estimatedCharsPerLine));
       }
     });
     
-    const lineCount = Math.max(1, processedLines.length);
-    const longestLine = processedLines.reduce((max, line) => 
-      line.length > max.length ? line : max, ''
-    );
+    // Calculate font size based on height constraint
+    const lineHeight = 1.3;
+    const fontSizeByHeight = (availableHeight / Math.max(1, totalLines)) / lineHeight;
     
-    // Estimate character width (roughly 0.6 of font size for most fonts)
-    const charsPerLine = Math.max(1, longestLine.length);
-    const fontSizeByWidth = (availableWidth / charsPerLine) / 0.6;
+    // Scale with card width too, but prioritize fitting vertically
+    const baseScale = width / 250; // 250px as baseline width
+    const scaledSize = 16 * baseScale; // 16px as baseline font
     
-    // Consider height constraints with line height
-    const fontSizeByHeight = (availableHeight / lineCount) / 1.3; // 1.3 is line-height
+    // Use the smaller of scaled size and height-constrained size
+    const fontSize = Math.min(scaledSize, fontSizeByHeight);
     
-    // Use the smaller of the two to ensure all content fits
-    const fontSize = Math.min(fontSizeByWidth, fontSizeByHeight);
-    
-    // Clamp between 6px and 24px (lowered minimum to accommodate more text)
-    return Math.max(6, Math.min(24, fontSize));
+    // Clamp between 8px and 28px
+    return Math.max(8, Math.min(28, fontSize));
   };
 
   const fontSize = calculateFontSize(
