@@ -1193,7 +1193,7 @@ const Index = () => {
                 onReorderStages={reorderStages}
                 onAddAgent={addAgent}
                 onAddFunction={addFunction}
-                onDeleteNode={deleteAgent}
+                onDeleteNode={deleteNode}
                 onRunAgent={runSingleAgent}
                 onStartConnection={handleStartConnection}
                 onPortClick={(nodeId, outputPort) => {
@@ -1245,7 +1245,7 @@ const Index = () => {
                 onReorderStages={reorderStages}
                 onAddAgent={addAgent}
                 onAddFunction={addFunction}
-                onDeleteNode={deleteAgent}
+                onDeleteNode={deleteNode}
                 onRunAgent={runSingleAgent}
                 onStartConnection={handleStartConnection}
                 onPortClick={(nodeId, outputPort) => {
