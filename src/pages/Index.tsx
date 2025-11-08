@@ -1360,7 +1360,13 @@ const Index = () => {
           }
           mobileCanvas={
             workflow.viewMode === "simple" ? (
-              <SimpleView workflow={workflow} />
+              <SimpleView 
+                workflow={workflow}
+                userInput={userInput}
+                onUserInputChange={setUserInput}
+                onRunAgent={runSingleAgent}
+                onRunFunction={runSingleFunction}
+              />
             ) : workflow.viewMode === "canvas" ? (
               <WorkflowCanvasMode
                 workflow={workflow}

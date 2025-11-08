@@ -325,20 +325,10 @@ export const SimpleView = ({ workflow, userInput, onUserInputChange, onRunAgent,
                                   className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    console.log('Play button clicked', { 
-                                      nodeId: node.id, 
-                                      nodeType: node.nodeType,
-                                      hasRunAgent: !!onRunAgent,
-                                      hasRunFunction: !!onRunFunction
-                                    });
                                     if (node.nodeType === "agent" && onRunAgent) {
-                                      console.log('Calling onRunAgent');
                                       onRunAgent(node.id);
                                     } else if (node.nodeType === "function" && onRunFunction) {
-                                      console.log('Calling onRunFunction');
                                       onRunFunction(node.id);
-                                    } else {
-                                      console.log('No callback matched');
                                     }
                                   }}
                                   disabled={node.status === "running"}
