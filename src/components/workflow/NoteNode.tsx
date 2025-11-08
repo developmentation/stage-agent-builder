@@ -222,10 +222,12 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
                 onMouseDown={(e) => e.stopPropagation()}
                 className="w-full h-full bg-transparent border-none outline-none resize-none text-center nodrag"
                 style={{
-                  fontSize: `${fontSize}px`,
+                  fontSize: "16px",
                   lineHeight: "1.3",
                   whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
                   overflowY: "auto",
+                  overflowWrap: "break-word",
                 }}
                 placeholder="Type your note..."
               />
