@@ -25,8 +25,6 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [localContent, setLocalContent] = useState(data.note.content);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const clickCountRef = useRef(0);
-  const clickTimerRef = useRef<NodeJS.Timeout | null>(null);
   const { note, onUpdate, onDelete } = data;
 
   // Sync local content when note content changes externally
@@ -103,20 +101,26 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
   }, [selected, isEditing, localContent, note.content, onUpdate]);
 
   const handleCardClick = (e: React.MouseEvent) => {
-    // Don't interfere with toolbar clicks
-    if ((e.target as HTMLElement).closest('.nodrag')) {
+    // Don't interfere with toolbar clicks or resize handles
+    if ((e.target as HTMLElement).closest('.nodrag, .react-flow__resize-control')) {
       return;
     }
 
-    // If already selected and not editing, enter edit mode
+    // If already selected and not editing, enter edit mode on the content area
     if (selected && !isEditing) {
       e.stopPropagation();
+      e.preventDefault();
       setIsEditing(true);
     }
-    // If not selected, let ReactFlow handle the selection (first click)
   };
 
-  const handleBlur = () => {
+  const handleBlur = (e: React.FocusEvent) => {
+    // Only blur if we're not clicking on another part of the note
+    const relatedTarget = e.relatedTarget as HTMLElement;
+    if (relatedTarget && relatedTarget.closest('.note-container')) {
+      return;
+    }
+    
     setIsEditing(false);
     setShowColorPicker(false);
     // Save content when leaving edit mode
@@ -150,7 +154,7 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
         }}
       />
       <Card
-        className="relative shadow-lg border-2 transition-all duration-200"
+        className="note-container relative shadow-lg border-2 transition-all duration-200"
         style={{
           backgroundColor: note.color,
           borderColor: selected ? "hsl(var(--primary))" : "transparent",
@@ -159,6 +163,12 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
           overflow: "hidden",
         }}
         onClick={handleCardClick}
+        onMouseDown={(e) => {
+          // Prevent dragging when clicking to edit
+          if (selected && !isEditing) {
+            e.stopPropagation();
+          }
+        }}
       >
         {/* Toolbar - only show when selected and not editing */}
         {selected && !isEditing && (
