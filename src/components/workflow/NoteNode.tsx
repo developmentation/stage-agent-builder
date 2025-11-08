@@ -163,6 +163,7 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
         onResize={(e, params) => {
           onUpdate({
             size: { width: params.width, height: params.height },
+            position: { x: params.x, y: params.y },
           });
         }}
       />
