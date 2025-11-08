@@ -87,9 +87,11 @@ export function WorkflowCanvasMode({
   const stageBounds = useMemo(() => {
     const bounds: Record<string, { width: number; height: number; stageX: number; stageY: number }> = {};
     
-    const stagePaddingSides = 40; // Left, right padding
-    const stagePaddingTop = 60; // Top padding for nodes (after header)
-    const stagePaddingBottom = 40; // Bottom padding
+    // Asymmetric padding to account for p-4 class in StageNode content div
+    const stagePaddingLeft = 40; // Left padding (no p-4 interference)
+    const stagePaddingRight = 24; // 24px + 16px from p-4 = 40px effective
+    const stagePaddingTop = 100; // Header (~60-70px) + gap (30-40px)
+    const stagePaddingBottom = 24; // 24px + 16px from p-4 = 40px effective
     const stageHeaderHeight = 60;
     const nodeWidth = 250;
     const nodeHeight = 150;
@@ -115,13 +117,12 @@ export function WorkflowCanvasMode({
         maxY = Math.max(maxY, nodeY + nodeHeight);
       });
 
-      // Stage position: nodes start at minX/minY, subtract padding to get stage edges
-      const stageX = minX - stagePaddingSides;
-      const stageY = minY - stagePaddingTop; // This is where the stage content starts (below header)
+      // Stage position: subtract padding to get stage edges
+      const stageX = minX - stagePaddingLeft;
+      const stageY = minY - stagePaddingTop;
       
-      // Stage size: width is node span + left and right padding
-      const stageWidth = Math.max(400, maxX - minX + stagePaddingSides * 2);
-      // Height is node span + top padding (for nodes) + bottom padding (no extra header since stageY is content area)
+      // Stage size with asymmetric padding
+      const stageWidth = Math.max(400, maxX - minX + stagePaddingLeft + stagePaddingRight);
       const stageHeight = Math.max(300, maxY - minY + stagePaddingTop + stagePaddingBottom);
 
       bounds[stage.id] = { width: stageWidth, height: stageHeight, stageX, stageY };
@@ -170,7 +171,7 @@ export function WorkflowCanvasMode({
         flowNodes.push({
           id: node.id,
           type: 'workflowNode',
-          position: { x: 40 + (nodeX - bounds.stageX - 40), y: 60 + (nodeY - bounds.stageY - 60) },
+          position: { x: 40 + (nodeX - bounds.stageX - 40), y: 100 + (nodeY - bounds.stageY - 100) },
           data: {
             node,
             selected: selectedNode?.id === node.id,
@@ -300,12 +301,12 @@ export function WorkflowCanvasMode({
           
           // Calculate node position in absolute coordinates (accounting for stage padding)
           const nodeAbsoluteX = bounds.stageX + 40 + node.position.x;
-          const nodeAbsoluteY = bounds.stageY + 60 + node.position.y;
+          const nodeAbsoluteY = bounds.stageY + 100 + node.position.y;
           
           // Store the absolute position (removing the padding offsets)
           const nodeRelativePosition = { 
             x: nodeAbsoluteX - 40,
-            y: nodeAbsoluteY - 60
+            y: nodeAbsoluteY - 100
           };
           onUpdateNodePosition(node.id, nodeRelativePosition);
         }
