@@ -299,7 +299,7 @@ export function WorkflowCanvasMode({
   const onNodeDragStop = useCallback(
     (event: React.MouseEvent, node: Node, nodes: Node[]) => {
       if (node.id.startsWith('stage-')) {
-        // Stage was dragged - move all child nodes by the delta
+        // Stage was dragged
         const stageId = node.id.replace('stage-', '');
         const stage = workflow.stages.find(s => s.id === stageId);
         if (!stage) return;
@@ -308,15 +308,23 @@ export function WorkflowCanvasMode({
         const deltaX = node.position.x - oldBounds.x;
         const deltaY = node.position.y - oldBounds.y;
 
-        // Update all child node positions by the delta
-        stage.nodes.forEach((workflowNode) => {
-          const currentX = workflowNode.position?.x ?? 0;
-          const currentY = workflowNode.position?.y ?? 0;
-          onUpdateNodePosition(workflowNode.id, {
-            x: currentX + deltaX,
-            y: currentY + deltaY,
+        if (stage.nodes.length === 0) {
+          // Empty stage - save its position directly
+          onUpdateStagePosition(stageId, {
+            x: node.position.x,
+            y: node.position.y,
           });
-        });
+        } else {
+          // Stage with nodes - update all child node positions by the delta
+          stage.nodes.forEach((workflowNode) => {
+            const currentX = workflowNode.position?.x ?? 0;
+            const currentY = workflowNode.position?.y ?? 0;
+            onUpdateNodePosition(workflowNode.id, {
+              x: currentX + deltaX,
+              y: currentY + deltaY,
+            });
+          });
+        }
       } else if (node.parentNode) {
         // Individual node was dragged
         const stage = workflow.stages.find(s => `stage-${s.id}` === node.parentNode);
@@ -333,7 +341,7 @@ export function WorkflowCanvasMode({
         onUpdateNodePosition(node.id, { x: absoluteX, y: absoluteY });
       }
     },
-    [workflow.stages, stageBounds, onUpdateNodePosition]
+    [workflow.stages, stageBounds, onUpdateNodePosition, onUpdateStagePosition]
   );
 
   return (
