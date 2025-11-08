@@ -169,6 +169,36 @@ const Index = () => {
   };
 
   const addNode = (stageId: string, template: any, nodeType: "agent" | "function" | "tool" = "agent") => {
+    // Find the target stage and calculate position based on existing nodes
+    const targetStage = workflow.stages.find(s => s.id === stageId);
+    let position = { x: 0, y: 0 };
+    
+    if (targetStage && targetStage.nodes.length > 0) {
+      // Find leftmost X and lowest Y among existing nodes
+      let leftmostX = Infinity;
+      let lowestY = -Infinity;
+      const nodeHeight = 150; // Standard node height
+      const verticalGap = 30; // Gap between nodes
+      
+      targetStage.nodes.forEach(node => {
+        const nodeX = node.position?.x ?? 0;
+        const nodeY = node.position?.y ?? 0;
+        
+        if (nodeX < leftmostX) {
+          leftmostX = nodeX;
+        }
+        if (nodeY > lowestY) {
+          lowestY = nodeY;
+        }
+      });
+      
+      // Position new node at leftmost X and below lowest Y
+      position = {
+        x: leftmostX,
+        y: lowestY + nodeHeight + verticalGap
+      };
+    }
+    
     let newNode: WorkflowNode;
 
     if (nodeType === "agent") {
@@ -181,6 +211,7 @@ const Index = () => {
         userPrompt: template.defaultUserPrompt || "Process the following input: {input}",
         tools: [],
         status: "idle",
+        position,
       } as AgentNode;
     } else if (nodeType === "function") {
       newNode = {
@@ -191,6 +222,7 @@ const Index = () => {
         config: {},
         outputPorts: template.outputs || ["output"], // Use 'outputs' from function definition
         status: "idle",
+        position,
       } as FunctionNode;
     } else {
       newNode = {
@@ -200,6 +232,7 @@ const Index = () => {
         toolType: template.id,
         config: {},
         status: "idle",
+        position,
       } as ToolNode;
     }
 
