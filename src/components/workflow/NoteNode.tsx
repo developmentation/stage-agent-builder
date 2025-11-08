@@ -24,20 +24,21 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
   const [isEditing, setIsEditing] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const { note, onUpdate, onDelete } = data;
 
-  // Calculate font size based on content length
+  // Calculate font size based on content length to fit within the note
   const calculateFontSize = (content: string, width: number, height: number) => {
+    if (!content || content.length === 0) return 20;
+    
     const area = width * height;
     const contentLength = content.length;
     
-    if (contentLength === 0) return 24;
+    // More aggressive scaling - starts at 20px and scales down more dramatically
+    const scaleFactor = Math.sqrt(area / (contentLength * 15));
+    const fontSize = Math.max(8, Math.min(20, scaleFactor));
     
-    // Base size calculation - scale down as content grows
-    const baseSize = Math.sqrt(area / contentLength) * 2;
-    
-    // Clamp between 10px and 24px
-    return Math.max(10, Math.min(24, baseSize));
+    return fontSize;
   };
 
   const fontSize = calculateFontSize(
@@ -54,7 +55,7 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
     }
   }, [isEditing]);
 
-  // Handle keyboard shortcuts
+  // Handle keyboard shortcuts when selected but not editing
   useEffect(() => {
     if (selected && !isEditing) {
       const handleKeyDown = (e: KeyboardEvent) => {
@@ -68,18 +69,14 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
     }
   }, [selected, isEditing, onDelete]);
 
-  const handleCardClick = () => {
-    if (!isEditing) {
-      // First click - just select (handled by ReactFlow)
-    }
-  };
-
-  const handleTextClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
+  const handleCardClick = (e: React.MouseEvent) => {
+    // Clicking on the card when not selected = select it (first click)
+    // When selected but not editing, clicking on text area = enter edit mode (second click)
     if (selected && !isEditing) {
-      // Second click (when already selected) - enter edit mode
+      // Already selected, this is the second click - enter edit mode
       setIsEditing(true);
     }
+    // If not selected, ReactFlow will handle selecting it (first click)
   };
 
   const handleBlur = () => {
@@ -111,12 +108,13 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
         }}
       />
       <Card
-        className="relative shadow-lg border-2 transition-all duration-200 overflow-hidden"
+        className="relative shadow-lg border-2 transition-all duration-200"
         style={{
           backgroundColor: note.color,
           borderColor: selected ? "hsl(var(--primary))" : "transparent",
           width: note.size.width,
           height: note.size.height,
+          overflow: "hidden",
         }}
         onClick={handleCardClick}
       >
@@ -167,8 +165,8 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
 
         {/* Content area */}
         <div
-          className="w-full h-full flex items-center justify-center p-4 cursor-text"
-          onClick={handleTextClick}
+          className="w-full h-full flex items-center justify-center p-4"
+          style={{ overflow: "hidden" }}
         >
           {isEditing ? (
             <textarea
@@ -179,16 +177,22 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
               className="w-full h-full bg-transparent border-none outline-none resize-none text-center nodrag"
               style={{
                 fontSize: `${fontSize}px`,
-                lineHeight: "1.4",
+                lineHeight: "1.3",
+                overflow: "hidden",
               }}
               placeholder="Type your note..."
             />
           ) : (
             <div
-              className="w-full h-full overflow-auto text-center break-words whitespace-pre-wrap"
+              ref={contentRef}
+              className="w-full h-full flex items-center justify-center text-center break-words"
               style={{
                 fontSize: `${fontSize}px`,
-                lineHeight: "1.4",
+                lineHeight: "1.3",
+                overflow: "hidden",
+                wordWrap: "break-word",
+                overflowWrap: "break-word",
+                hyphens: "auto",
               }}
             >
               {note.content || "Click to edit..."}
