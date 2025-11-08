@@ -205,15 +205,15 @@ export const SimpleView = ({ workflow, userInput, onUserInputChange }: SimpleVie
   const getStatusColor = (status: string) => {
     switch (status) {
       case "running":
-        return "border-l-warning bg-warning/5";
+        return "!border-l-warning bg-warning/5";
       case "complete":
-        return "border-l-success bg-success/5";
+        return "!border-l-success bg-success/5";
       case "error":
-        return "border-l-destructive bg-destructive/5";
+        return "!border-l-destructive bg-destructive/5";
       case "paused":
-        return "border-l-muted-foreground bg-muted/30";
+        return "!border-l-muted-foreground bg-muted/30";
       default:
-        return "border-l-border bg-muted/10";
+        return "!border-l-border bg-muted/10";
     }
   };
 
@@ -226,12 +226,10 @@ export const SimpleView = ({ workflow, userInput, onUserInputChange }: SimpleVie
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-4 max-w-5xl mx-auto">
           {/* Empty state */}
-          {!hasOutputs && (
-            <div className="text-center py-16">
-              <FileText className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
-              <h3 className="text-lg font-semibold text-foreground mb-2">No Outputs Yet</h3>
+          {!hasOutputs && workflow.stages.length === 0 && (
+            <div className="p-4 text-center">
               <p className="text-sm text-muted-foreground">
-                Run your workflow to see results here
+                Run your workflow to see outputs here
               </p>
             </div>
           )}
@@ -292,14 +290,8 @@ export const SimpleView = ({ workflow, userInput, onUserInputChange }: SimpleVie
                                 </div>
                               </div>
                               <div className="flex items-center gap-1">
-                                <AccordionTrigger className="p-0 hover:no-underline">
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-8 w-8 p-0"
-                                  >
-                                    <ChevronDown className="h-4 w-4 transition-transform duration-200" />
-                                  </Button>
+                                <AccordionTrigger className="p-0 hover:no-underline [&[data-state=open]>svg]:rotate-180">
+                                  <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200" />
                                 </AccordionTrigger>
                                 <Button
                                   variant="ghost"
@@ -324,10 +316,10 @@ export const SimpleView = ({ workflow, userInput, onUserInputChange }: SimpleVie
                                 </Button>
                               </div>
                             </div>
-                            <AccordionContent className="px-3 pb-3">
-                              <div className="mt-2 p-3 bg-muted/30 rounded-md border border-border">
-                                <ScrollArea className="max-h-[300px]">
-                                  <pre className="text-xs text-foreground whitespace-pre-wrap font-mono">
+                            <AccordionContent className="px-3 pb-3 pt-0">
+                              <div className="p-3 bg-muted/30 rounded-md border border-border max-h-[400px] overflow-hidden">
+                                <ScrollArea className="h-full max-h-[380px]">
+                                  <pre className="text-xs text-foreground whitespace-pre-wrap font-mono pr-4">
                                     {formatOutput(node.output)}
                                   </pre>
                                 </ScrollArea>
