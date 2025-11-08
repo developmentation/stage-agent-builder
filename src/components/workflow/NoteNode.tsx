@@ -122,6 +122,13 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
     setShowColorPicker(false);
   };
 
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!isEditing) {
+      setIsEditing(true);
+    }
+  };
+
   return (
     <>
       <NodeResizer
@@ -145,6 +152,7 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
           height: note.size.height,
           overflow: "hidden",
         }}
+        onDoubleClick={handleDoubleClick}
       >
         {/* Toolbar - only show when not editing */}
         {!isEditing && (
@@ -206,22 +214,23 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
           style={{ overflow: "hidden" }}
         >
           {isEditing ? (
-            <div className="w-full h-full flex items-center justify-center">
-              <textarea
-                ref={textareaRef}
-                value={localContent}
-                onChange={handleContentChange}
-                onMouseDown={(e) => e.stopPropagation()}
-                className="w-full h-full bg-transparent border-none outline-none resize-none text-center nodrag"
-                style={{
-                  fontSize: `${fontSize}px`,
-                  lineHeight: "1.3",
-                  overflow: "hidden",
-                  whiteSpace: "pre-wrap",
-                }}
-                placeholder="Type your note..."
-              />
-            </div>
+            <textarea
+              ref={textareaRef}
+              value={localContent}
+              onChange={handleContentChange}
+              onMouseDown={(e) => e.stopPropagation()}
+              className="w-full h-full bg-transparent border-none outline-none resize-none text-center flex items-center nodrag"
+              style={{
+                fontSize: `${fontSize}px`,
+                lineHeight: "1.3",
+                overflow: "hidden",
+                whiteSpace: "pre-wrap",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+              placeholder="Type your note..."
+            />
           ) : (
             <div
               className="w-full h-full flex items-center justify-center text-center"
