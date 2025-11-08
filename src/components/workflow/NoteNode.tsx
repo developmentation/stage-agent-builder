@@ -170,9 +170,9 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
       {/* Toolbar - positioned above the card */}
       {!isEditing && (
         <div 
-          className="absolute flex gap-1 z-10 nodrag"
+          className="absolute flex gap-0.5 z-10 nodrag"
           style={{
-            top: "-40px",
+            top: "-34px",
             right: "0px",
           }}
         >
@@ -180,7 +180,7 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
             variant="ghost"
             size="sm"
             onClick={handleEditClick}
-            className="h-8 w-8 p-0 bg-background/80 hover:bg-background"
+            className="h-8 w-8 p-0 bg-background border border-border hover:bg-accent shadow-sm"
           >
             <Pencil className="h-4 w-4" />
           </Button>
@@ -192,7 +192,7 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
                 e.stopPropagation();
                 setShowColorPicker(!showColorPicker);
               }}
-              className="h-8 w-8 p-0 bg-background/80 hover:bg-background"
+              className="h-8 w-8 p-0 bg-background border border-border hover:bg-accent shadow-sm"
             >
               <Palette className="h-4 w-4" />
             </Button>
@@ -219,7 +219,7 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
               e.stopPropagation();
               onDelete();
             }}
-            className="h-8 w-8 p-0 bg-background/80 hover:bg-background"
+            className="h-8 w-8 p-0 bg-background border border-border hover:bg-accent shadow-sm"
           >
             <Trash2 className="h-4 w-4" />
           </Button>
