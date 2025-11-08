@@ -174,10 +174,12 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
         maxWidth={600}
         maxHeight={600}
         handleStyle={{
-          width: '12px',
-          height: '12px',
+          width: '16px',
+          height: '16px',
           borderRadius: '2px',
+          touchAction: 'none',
         }}
+        handleClassName="nodrag nopan"
         onResizeStart={() => {
           setIsResizing(true);
         }}
