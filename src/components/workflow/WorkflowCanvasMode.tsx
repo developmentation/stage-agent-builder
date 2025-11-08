@@ -15,6 +15,7 @@ import ReactFlow, {
   ReactFlowProvider,
   Panel,
   addEdge,
+  useReactFlow,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import './EdgeStyles.css';
@@ -29,6 +30,40 @@ import { WorkflowNodeComponent } from "./WorkflowNodeComponent";
 import { NoteNode } from "./NoteNode";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
+// Internal component that has access to ReactFlow instance
+function AddNoteButton({ onAddNote }: { onAddNote?: (x?: number, y?: number) => void }) {
+  const reactFlowInstance = useReactFlow();
+
+  const handleAddNote = () => {
+    if (!onAddNote) return;
+    
+    // Get the current viewport
+    const viewport = reactFlowInstance.getViewport();
+    const { x, y, zoom } = viewport;
+    
+    // Get the canvas dimensions (roughly center of visible area)
+    const centerX = (window.innerWidth / 2 - x) / zoom;
+    const centerY = (window.innerHeight / 2 - y) / zoom;
+    
+    onAddNote(centerX, centerY);
+  };
+
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button 
+          onClick={handleAddNote}
+          size="sm"
+          variant="outline"
+        >
+          <StickyNote className="h-4 w-4" />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>Add note</TooltipContent>
+    </Tooltip>
+  );
+}
 
 const nodeTypes: NodeTypes = {
   stage: StageNode,
@@ -60,7 +95,7 @@ interface WorkflowCanvasModeProps {
   onAutoLayoutVertical?: () => void;
   onAutoLayoutHorizontal?: () => void;
   onAutoLayoutGrid?: () => void;
-  onAddNote?: () => void;
+  onAddNote?: (x?: number, y?: number) => void;
   onUpdateNote?: (noteId: string, updates: Partial<Note>) => void;
   onDeleteNote?: (noteId: string) => void;
 }
@@ -473,18 +508,7 @@ export function WorkflowCanvasMode({
                     </TooltipTrigger>
                     <TooltipContent>Toggle mini map</TooltipContent>
                   </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button 
-                        onClick={onAddNote} 
-                        size="sm"
-                        variant="outline"
-                      >
-                        <StickyNote className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Add note</TooltipContent>
-                  </Tooltip>
+                  <AddNoteButton onAddNote={onAddNote} />
                 </div>
               </TooltipProvider>
             </Card>

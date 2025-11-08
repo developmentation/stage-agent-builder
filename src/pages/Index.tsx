@@ -781,12 +781,12 @@ const Index = () => {
     }));
   };
 
-  const addNote = () => {
+  const addNote = (x?: number, y?: number) => {
     const newNote: Note = {
       id: `note-${Date.now()}`,
       content: "",
-      position: { x: 200, y: 200 }, // Default position
-      size: { width: 200, height: 200 }, // Default size
+      position: { x: x ?? 200, y: y ?? 200 },
+      size: { width: 200, height: 200 },
       color: "#fef3c7", // Default yellow
     };
     setWorkflow((prev) => ({

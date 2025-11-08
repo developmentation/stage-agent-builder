@@ -94,7 +94,8 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
     if (isEditing) {
       const handleClickOutside = (e: MouseEvent) => {
         const target = e.target as HTMLElement;
-        if (!target.closest('.note-container')) {
+        // Check if click is outside the note container
+        if (!target.closest('.note-container') && !target.closest('.nodrag')) {
           setIsEditing(false);
           setShowColorPicker(false);
           if (localContent !== note.content) {
@@ -102,8 +103,9 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
           }
         }
       };
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
+      // Use capture phase to catch clicks before other handlers
+      document.addEventListener('mousedown', handleClickOutside, true);
+      return () => document.removeEventListener('mousedown', handleClickOutside, true);
     }
   }, [isEditing, localContent, note.content, onUpdate]);
 
