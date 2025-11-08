@@ -12,7 +12,7 @@ interface DrawingNodeData {
 export const DrawingNode = memo(({ data, selected }: NodeProps<DrawingNodeData>) => {
   const { drawing, onDelete } = data;
 
-  // Calculate bounding box from path
+  // Calculate bounding box from path for sizing
   const getBBox = () => {
     try {
       const tempSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");

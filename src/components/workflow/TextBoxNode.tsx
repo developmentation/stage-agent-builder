@@ -3,6 +3,7 @@ import { NodeProps, NodeResizer } from "reactflow";
 import { Button } from "@/components/ui/button";
 import { Trash2, Plus, Minus } from "lucide-react";
 import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import type { TextBox } from "@/types/workflow";
 
 interface TextBoxNodeData {
@@ -25,6 +26,10 @@ export const TextBoxNode = memo(({ data, selected }: NodeProps<TextBoxNodeData>)
       textareaRef.current.focus();
     }
   }, [isEditing]);
+
+  useEffect(() => {
+    setContent(textBox.content);
+  }, [textBox.content]);
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -58,13 +63,14 @@ export const TextBoxNode = memo(({ data, selected }: NodeProps<TextBoxNodeData>)
         onResize={(_, params) => {
           onUpdate(textBox.id, { width: params.width });
         }}
+        keepAspectRatio={false}
       />
       <div
         ref={contentRef}
         className={`
           bg-background border-2 border-border rounded-md p-4 cursor-pointer
           ${selected ? "ring-2 ring-primary" : ""}
-          relative group overflow-hidden
+          relative group
         `}
         style={{
           width: textBox.width,
@@ -119,16 +125,24 @@ export const TextBoxNode = memo(({ data, selected }: NodeProps<TextBoxNodeData>)
             onChange={(e) => setContent(e.target.value)}
             onBlur={handleBlur}
             className="w-full min-h-[100px] bg-transparent border-none outline-none resize-none text-foreground"
-            style={{ fontSize: `${textBox.fontSize}px` }}
+            style={{ 
+              fontSize: `${textBox.fontSize}px`,
+              whiteSpace: 'pre-wrap',
+              wordWrap: 'break-word',
+            }}
             onClick={(e) => e.stopPropagation()}
             placeholder="Enter markdown text..."
           />
         ) : (
           <div
             className="w-full prose prose-sm dark:prose-invert max-w-none"
-            style={{ fontSize: `${textBox.fontSize}px` }}
+            style={{ 
+              fontSize: `${textBox.fontSize}px`,
+              whiteSpace: 'pre-wrap',
+              wordWrap: 'break-word',
+            }}
           >
-            <ReactMarkdown>{content || "Click to edit"}</ReactMarkdown>
+            <ReactMarkdown remarkPlugins={[remarkGfm]}>{content || "Click to edit"}</ReactMarkdown>
           </div>
         )}
       </div>

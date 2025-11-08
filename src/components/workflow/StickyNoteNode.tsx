@@ -93,6 +93,7 @@ export const StickyNoteNode = memo(({ data, selected }: NodeProps<StickyNoteNode
             size: { width: params.width, height: params.height },
           });
         }}
+        keepAspectRatio={false}
       />
       <div
         ref={containerRef}

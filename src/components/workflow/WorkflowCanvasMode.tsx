@@ -250,7 +250,8 @@ export function WorkflowCanvasMode({
           onUpdate: onUpdateStickyNote,
           onDelete: onDeleteStickyNote,
         },
-        draggable: true,
+        draggable: !drawingMode,
+        selectable: !drawingMode,
         style: {
           zIndex: note.zIndex || 5,
         },
@@ -272,8 +273,8 @@ export function WorkflowCanvasMode({
           onEditStart: (id: string) => setEditingTextBoxId(id),
           onEditEnd: () => setEditingTextBoxId(null),
         },
-        draggable: !isEditingThis,
-        selectable: !isEditingThis,
+        draggable: !isEditingThis && !drawingMode,
+        selectable: !isEditingThis && !drawingMode,
         style: {
           zIndex: textBox.zIndex || 5,
         },
@@ -292,7 +293,8 @@ export function WorkflowCanvasMode({
           onUpdate: onUpdateShape,
           onDelete: onDeleteShape,
         },
-        draggable: true,
+        draggable: !drawingMode,
+        selectable: !drawingMode,
         style: {
           zIndex: shape.zIndex || 5,
         },
@@ -310,10 +312,10 @@ export function WorkflowCanvasMode({
           drawing,
           onDelete: onDeleteDrawing,
         },
-        draggable: true,
+        draggable: !drawingMode,
+        selectable: !drawingMode,
         style: {
           zIndex: drawing.zIndex || 4,
-          pointerEvents: 'all',
         },
       });
     });
@@ -344,7 +346,7 @@ export function WorkflowCanvasMode({
     }));
 
     setEdges(flowEdges);
-  }, [workflow, selectedNode, isConnecting, stageBounds, onUpdateStickyNote, onDeleteStickyNote, onUpdateTextBox, onDeleteTextBox, onUpdateShape, onDeleteShape, onDeleteDrawing, editingTextBoxId]);
+  }, [workflow, selectedNode, isConnecting, stageBounds, onUpdateStickyNote, onDeleteStickyNote, onUpdateTextBox, onDeleteTextBox, onUpdateShape, onDeleteShape, onDeleteDrawing, editingTextBoxId, drawingMode]);
 
   // Handle connection between nodes
   const onConnect = useCallback(

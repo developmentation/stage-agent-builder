@@ -80,6 +80,7 @@ export const ShapeNode = memo(({ data, selected }: NodeProps<ShapeNodeData>) => 
             size: { width: params.width, height: params.height },
           });
         }}
+        keepAspectRatio={false}
       />
       <div
         className={`relative group ${selected ? "ring-2 ring-primary rounded" : ""}`}
