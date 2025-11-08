@@ -103,7 +103,7 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
       const handleClickOutside = (e: MouseEvent) => {
         const target = e.target as HTMLElement;
         // Check if click is outside the note container
-        if (!target.closest('.note-container') && !target.closest('.nodrag')) {
+        if (!target.closest('.note-container')) {
           setIsEditing(false);
           setShowColorPicker(false);
           if (localContent !== note.content) {
@@ -155,12 +155,13 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
           width: note.size.width,
           height: note.size.height,
           overflow: "visible",
+          pointerEvents: isEditing ? "auto" : "none",
         }}
         onDoubleClick={handleDoubleClick}
       >
         {/* Toolbar - only show when not editing */}
         {!isEditing && (
-          <div className="absolute top-2 right-2 flex gap-1 z-10">
+          <div className="absolute top-2 right-2 flex gap-1 z-10" style={{ pointerEvents: "auto" }}>
             <Button
               variant="ghost"
               size="sm"
@@ -215,7 +216,7 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
         {/* Content area */}
         <div
           className="w-full h-full flex items-center justify-center p-4"
-          style={{ overflow: "hidden", position: "relative" }}
+          style={{ overflow: "hidden", position: "relative", pointerEvents: isEditing ? "auto" : "none" }}
         >
           {isEditing ? (
             <div className="w-full h-full flex items-center justify-center">
