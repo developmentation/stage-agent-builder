@@ -1,6 +1,9 @@
 import { ReactNode, useState } from "react";
 import { MobileNav } from "./MobileNav";
 import { cn } from "@/lib/utils";
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 interface ResponsiveLayoutProps {
   sidebar: ReactNode;
@@ -80,17 +83,29 @@ export const ResponsiveLayout = ({
 
       {/* Desktop Layout */}
       <div className="hidden lg:flex flex-1 overflow-hidden">
-        <div className="w-80 border-r border-border overflow-y-auto">
-          {sidebar}
-        </div>
-        
-        <div className="flex-1 flex flex-col overflow-hidden min-w-[600px]">
-          {desktopCanvas}
-        </div>
-        
-        <div className="w-80 xl:w-96 border-l border-border overflow-y-auto">
-          {properties}
-        </div>
+        <ResizablePanelGroup direction="horizontal">
+          <ResizablePanel defaultSize={20} minSize={15} maxSize={30} collapsible collapsedSize={0}>
+            <div className="h-full border-r border-border overflow-y-auto relative">
+              {sidebar}
+            </div>
+          </ResizablePanel>
+          
+          <ResizableHandle withHandle />
+          
+          <ResizablePanel defaultSize={60} minSize={40}>
+            <div className="flex-1 flex flex-col overflow-hidden h-full">
+              {desktopCanvas}
+            </div>
+          </ResizablePanel>
+          
+          <ResizableHandle withHandle />
+          
+          <ResizablePanel defaultSize={20} minSize={15} maxSize={30} collapsible collapsedSize={0}>
+            <div className="h-full border-l border-border overflow-y-auto relative">
+              {properties}
+            </div>
+          </ResizablePanel>
+        </ResizablePanelGroup>
       </div>
     </>
   );
