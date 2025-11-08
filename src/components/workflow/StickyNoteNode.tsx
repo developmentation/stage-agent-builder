@@ -25,22 +25,28 @@ export const StickyNoteNode = memo(({ data, selected }: NodeProps<StickyNoteNode
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Calculate dynamic font size based on content length and container size
+  // Calculate dynamic font size to fit all content without scrolling
   const calculateFontSize = () => {
     if (!containerRef.current) return 16;
     
-    const containerArea = note.size.width * note.size.height;
+    const availableWidth = note.size.width - 32; // accounting for padding
+    const availableHeight = note.size.height - 32;
     const contentLength = content.length;
     
     if (contentLength === 0) return 16;
     
-    // Base calculation: more content = smaller font
-    let fontSize = Math.sqrt(containerArea / contentLength) * 2;
+    // Estimate characters per line based on width
+    const avgCharWidth = 0.6; // rough estimate
+    const charsPerLine = Math.floor(availableWidth / avgCharWidth);
+    const estimatedLines = Math.ceil(contentLength / charsPerLine);
     
-    // Clamp between 10px and 24px
-    fontSize = Math.max(10, Math.min(24, fontSize));
+    // Calculate font size that fits height
+    let fontSize = Math.floor(availableHeight / (estimatedLines * 1.3)); // 1.3 is line height
     
-    return Math.floor(fontSize);
+    // Clamp between 8px and 24px
+    fontSize = Math.max(8, Math.min(24, fontSize));
+    
+    return fontSize;
   };
 
   const fontSize = calculateFontSize();
@@ -115,8 +121,8 @@ export const StickyNoteNode = memo(({ data, selected }: NodeProps<StickyNoteNode
             value={content}
             onChange={(e) => setContent(e.target.value)}
             onBlur={handleBlur}
-            className="w-full h-full bg-transparent border-none outline-none resize-none text-foreground font-handwriting"
-            style={{ fontSize: `${fontSize}px` }}
+            className="w-full h-full bg-transparent border-none outline-none resize-none text-foreground font-handwriting overflow-hidden"
+            style={{ fontSize: `${fontSize}px`, lineHeight: "1.3" }}
             onClick={(e) => e.stopPropagation()}
           />
         ) : (

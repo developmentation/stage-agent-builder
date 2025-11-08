@@ -40,8 +40,12 @@ const Index = () => {
     stages: [],
     connections: [],
     stickyNotes: [],
+    textBoxes: [],
+    shapes: [],
+    drawings: [],
     viewMode: "stacked",
   });
+  const [drawingMode, setDrawingMode] = useState(false);
 
   const addLog = (type: LogEntry["type"], message: string) => {
     const time = new Date().toLocaleTimeString('en-US', { hour12: false });
@@ -393,6 +397,9 @@ const Index = () => {
             stages: loaded.stages || [],
             connections: loaded.connections || [],
             stickyNotes: loaded.stickyNotes || [],
+            textBoxes: loaded.textBoxes || [],
+            shapes: loaded.shapes || [],
+            drawings: loaded.drawings || [],
           });
         }
         
@@ -407,7 +414,14 @@ const Index = () => {
 
   const clearWorkflow = () => {
     if (confirm("Are you sure you want to clear the entire workflow?")) {
-      setWorkflow({ stages: [], connections: [], stickyNotes: [] });
+      setWorkflow({ 
+        stages: [], 
+        connections: [], 
+        stickyNotes: [], 
+        textBoxes: [], 
+        shapes: [], 
+        drawings: [] 
+      });
       setUserInput("");
       setWorkflowName("Untitled Workflow");
       setCustomAgents([]); // Reset to only default agents
@@ -498,6 +512,89 @@ const Index = () => {
     setWorkflow((prev) => ({
       ...prev,
       stickyNotes: (prev.stickyNotes || []).filter((note) => note.id !== noteId),
+    }));
+  };
+
+  const addTextBox = () => {
+    const newTextBox = {
+      id: `textbox-${Date.now()}`,
+      content: "# New text box\nClick to edit",
+      fontSize: 16,
+      position: { x: 150, y: 150 },
+      width: 300,
+    };
+    setWorkflow((prev) => ({
+      ...prev,
+      textBoxes: [...(prev.textBoxes || []), newTextBox],
+    }));
+  };
+
+  const updateTextBox = (textBoxId: string, updates: any) => {
+    setWorkflow((prev) => ({
+      ...prev,
+      textBoxes: (prev.textBoxes || []).map((tb) =>
+        tb.id === textBoxId ? { ...tb, ...updates } : tb
+      ),
+    }));
+  };
+
+  const deleteTextBox = (textBoxId: string) => {
+    setWorkflow((prev) => ({
+      ...prev,
+      textBoxes: (prev.textBoxes || []).filter((tb) => tb.id !== textBoxId),
+    }));
+  };
+
+  const addShape = (type: "rectangle" | "circle" | "triangle") => {
+    const newShape = {
+      id: `shape-${Date.now()}`,
+      type,
+      position: { x: 200, y: 200 },
+      size: { width: 150, height: 150 },
+      color: "#3b82f6",
+      fillOpacity: 0.3,
+      strokeColor: "#3b82f6",
+      strokeWidth: 2,
+    };
+    setWorkflow((prev) => ({
+      ...prev,
+      shapes: [...(prev.shapes || []), newShape],
+    }));
+  };
+
+  const updateShape = (shapeId: string, updates: any) => {
+    setWorkflow((prev) => ({
+      ...prev,
+      shapes: (prev.shapes || []).map((shape) =>
+        shape.id === shapeId ? { ...shape, ...updates } : shape
+      ),
+    }));
+  };
+
+  const deleteShape = (shapeId: string) => {
+    setWorkflow((prev) => ({
+      ...prev,
+      shapes: (prev.shapes || []).filter((shape) => shape.id !== shapeId),
+    }));
+  };
+
+  const addDrawing = (path: string) => {
+    const newDrawing = {
+      id: `drawing-${Date.now()}`,
+      path,
+      color: "#000000",
+      strokeWidth: 2,
+    };
+    setWorkflow((prev) => ({
+      ...prev,
+      drawings: [...(prev.drawings || []), newDrawing],
+    }));
+  };
+
+  const deleteDrawing = (drawingId: string) => {
+    setWorkflow((prev) => ({
+      ...prev,
+      drawings: (prev.drawings || []).filter((drawing) => drawing.id !== drawingId),
     }));
   };
 
@@ -1120,6 +1217,16 @@ const Index = () => {
                 onAddStickyNote={addStickyNote}
                 onUpdateStickyNote={updateStickyNote}
                 onDeleteStickyNote={deleteStickyNote}
+                onAddTextBox={addTextBox}
+                onUpdateTextBox={updateTextBox}
+                onDeleteTextBox={deleteTextBox}
+                onAddShape={addShape}
+                onUpdateShape={updateShape}
+                onDeleteShape={deleteShape}
+                onAddDrawing={addDrawing}
+                onDeleteDrawing={deleteDrawing}
+                drawingMode={drawingMode}
+                onSetDrawingMode={setDrawingMode}
               />
             ) : (
               <WorkflowCanvas 
@@ -1175,6 +1282,16 @@ const Index = () => {
                 onAddStickyNote={addStickyNote}
                 onUpdateStickyNote={updateStickyNote}
                 onDeleteStickyNote={deleteStickyNote}
+                onAddTextBox={addTextBox}
+                onUpdateTextBox={updateTextBox}
+                onDeleteTextBox={deleteTextBox}
+                onAddShape={addShape}
+                onUpdateShape={updateShape}
+                onDeleteShape={deleteShape}
+                onAddDrawing={addDrawing}
+                onDeleteDrawing={deleteDrawing}
+                drawingMode={drawingMode}
+                onSetDrawingMode={setDrawingMode}
               />
             ) : (
               <WorkflowCanvas 

@@ -20,20 +20,27 @@ import 'reactflow/dist/style.css';
 import './EdgeStyles.css';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Grid3x3, Layers, StickyNote as StickyNoteIcon } from "lucide-react";
-import type { Workflow, WorkflowNode, Stage as StageType, StickyNote as StickyNoteType } from "@/types/workflow";
+import { StickyNote as StickyNoteIcon, Type, Square, Circle, Triangle, Pencil, Plus } from "lucide-react";
+import type { Workflow, WorkflowNode, Stage as StageType, StickyNote as StickyNoteType, TextBox as TextBoxType, Shape as ShapeType, Drawing as DrawingType } from "@/types/workflow";
 import { AgentSelector } from "@/components/AgentSelector";
 import { FunctionSelector } from "@/components/FunctionSelector";
 import { StageNode } from "./StageNode";
 import { WorkflowNodeComponent } from "./WorkflowNodeComponent";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 import { StickyNoteNode } from "./StickyNoteNode";
+import { TextBoxNode } from "./TextBoxNode";
+import { ShapeNode } from "./ShapeNode";
+import { DrawingNode } from "./DrawingNode";
 
 const nodeTypes: NodeTypes = {
   stage: StageNode,
   workflowNode: WorkflowNodeComponent,
   stickyNote: StickyNoteNode,
+  textBox: TextBoxNode,
+  shape: ShapeNode,
+  drawing: DrawingNode,
 };
 
 interface WorkflowCanvasModeProps {
@@ -60,6 +67,16 @@ interface WorkflowCanvasModeProps {
   onAddStickyNote?: () => void;
   onUpdateStickyNote?: (id: string, updates: Partial<StickyNoteType>) => void;
   onDeleteStickyNote?: (id: string) => void;
+  onAddTextBox?: () => void;
+  onUpdateTextBox?: (id: string, updates: Partial<TextBoxType>) => void;
+  onDeleteTextBox?: (id: string) => void;
+  onAddShape?: (type: "rectangle" | "circle" | "triangle") => void;
+  onUpdateShape?: (id: string, updates: Partial<ShapeType>) => void;
+  onDeleteShape?: (id: string) => void;
+  onAddDrawing?: (path: string) => void;
+  onDeleteDrawing?: (id: string) => void;
+  drawingMode?: boolean;
+  onSetDrawingMode?: (enabled: boolean) => void;
 }
 
 export function WorkflowCanvasMode({
@@ -85,11 +102,25 @@ export function WorkflowCanvasMode({
   onAddStickyNote,
   onUpdateStickyNote,
   onDeleteStickyNote,
+  onAddTextBox,
+  onUpdateTextBox,
+  onDeleteTextBox,
+  onAddShape,
+  onUpdateShape,
+  onDeleteShape,
+  onAddDrawing,
+  onDeleteDrawing,
+  drawingMode,
+  onSetDrawingMode,
 }: WorkflowCanvasModeProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [showAddAgent, setShowAddAgent] = useState<string | null>(null);
   const [showAddFunction, setShowAddFunction] = useState<string | null>(null);
+  const [editingTextBoxId, setEditingTextBoxId] = useState<string | null>(null);
+  const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [currentPath, setCurrentPath] = useState<string>("");
   const isMobile = useIsMobile();
 
   // Calculate stage bounds and offset - memoized to prevent recalculation during dragging
@@ -207,8 +238,70 @@ export function WorkflowCanvasMode({
           onDelete: onDeleteStickyNote,
         },
         draggable: true,
+        selected: selectedElementId === `sticky-${note.id}`,
         style: {
           zIndex: 5,
+        },
+      });
+    });
+
+    // Add text boxes
+    const textBoxes = workflow.textBoxes || [];
+    textBoxes.forEach((textBox) => {
+      flowNodes.push({
+        id: `textbox-${textBox.id}`,
+        type: 'textBox',
+        position: textBox.position,
+        data: {
+          textBox,
+          selected: selectedElementId === `textbox-${textBox.id}`,
+          onUpdate: onUpdateTextBox,
+          onDelete: onDeleteTextBox,
+          onEditStart: (id: string) => setEditingTextBoxId(id),
+        },
+        draggable: !editingTextBoxId,
+        selected: selectedElementId === `textbox-${textBox.id}`,
+        style: {
+          zIndex: 5,
+        },
+      });
+    });
+
+    // Add shapes
+    const shapes = workflow.shapes || [];
+    shapes.forEach((shape) => {
+      flowNodes.push({
+        id: `shape-${shape.id}`,
+        type: 'shape',
+        position: shape.position,
+        data: {
+          shape,
+          onUpdate: onUpdateShape,
+          onDelete: onDeleteShape,
+        },
+        draggable: true,
+        selected: selectedElementId === `shape-${shape.id}`,
+        style: {
+          zIndex: 5,
+        },
+      });
+    });
+
+    // Add drawings
+    const drawings = workflow.drawings || [];
+    drawings.forEach((drawing) => {
+      flowNodes.push({
+        id: `drawing-${drawing.id}`,
+        type: 'drawing',
+        position: { x: 0, y: 0 },
+        data: {
+          drawing,
+          onDelete: onDeleteDrawing,
+        },
+        draggable: false,
+        selected: selectedElementId === `drawing-${drawing.id}`,
+        style: {
+          zIndex: 4,
         },
       });
     });
@@ -239,7 +332,7 @@ export function WorkflowCanvasMode({
     }));
 
     setEdges(flowEdges);
-  }, [workflow, selectedNode, isConnecting, stageBounds, onUpdateStickyNote, onDeleteStickyNote]);
+  }, [workflow, selectedNode, isConnecting, stageBounds, onUpdateStickyNote, onDeleteStickyNote, onUpdateTextBox, onDeleteTextBox, onUpdateShape, onDeleteShape, onDeleteDrawing, selectedElementId, editingTextBoxId]);
 
   // Handle connection between nodes
   const onConnect = useCallback(
@@ -304,6 +397,16 @@ export function WorkflowCanvasMode({
         if (onUpdateStickyNote) {
           onUpdateStickyNote(stickyId, { position: node.position });
         }
+      } else if (node.id.startsWith('textbox-')) {
+        const textBoxId = node.id.replace('textbox-', '');
+        if (onUpdateTextBox) {
+          onUpdateTextBox(textBoxId, { position: node.position });
+        }
+      } else if (node.id.startsWith('shape-')) {
+        const shapeId = node.id.replace('shape-', '');
+        if (onUpdateShape) {
+          onUpdateShape(shapeId, { position: node.position });
+        }
       } else if (node.id.startsWith('stage-')) {
         const stageId = node.id.replace('stage-', '');
         const stage = workflow.stages.find(s => s.id === stageId);
@@ -325,8 +428,38 @@ export function WorkflowCanvasMode({
         }
       }
     },
-    [workflow.stages, stageBounds, onUpdateStagePosition, onUpdateNodePosition, onUpdateStickyNote]
+    [workflow.stages, stageBounds, onUpdateStagePosition, onUpdateNodePosition, onUpdateStickyNote, onUpdateTextBox, onUpdateShape]
   );
+
+  // Handle selection
+  const handleNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
+    setSelectedElementId(node.id);
+  }, []);
+
+  // Handle keydown for delete
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Delete' && selectedElementId) {
+        if (selectedElementId.startsWith('sticky-')) {
+          const id = selectedElementId.replace('sticky-', '');
+          onDeleteStickyNote?.(id);
+        } else if (selectedElementId.startsWith('textbox-')) {
+          const id = selectedElementId.replace('textbox-', '');
+          onDeleteTextBox?.(id);
+        } else if (selectedElementId.startsWith('shape-')) {
+          const id = selectedElementId.replace('shape-', '');
+          onDeleteShape?.(id);
+        } else if (selectedElementId.startsWith('drawing-')) {
+          const id = selectedElementId.replace('drawing-', '');
+          onDeleteDrawing?.(id);
+        }
+        setSelectedElementId(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [selectedElementId, onDeleteStickyNote, onDeleteTextBox, onDeleteShape, onDeleteDrawing]);
 
   return (
     <div className="h-full w-full relative">
@@ -338,6 +471,7 @@ export function WorkflowCanvasMode({
           onEdgesChange={onEdgesChange}
           onEdgesDelete={onEdgesDelete}
           onNodeDragStop={onNodeDragStop}
+          onNodeClick={handleNodeClick}
           onConnect={onConnect}
           nodeTypes={nodeTypes}
           connectionLineType={ConnectionLineType.Bezier}
@@ -363,17 +497,61 @@ export function WorkflowCanvasMode({
           />
           <Panel position="top-left">
             <Card className="p-2">
-              <div className="flex gap-2">
-                <Button onClick={onAddStage} size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Stage
+              <div className="flex flex-wrap gap-1">
+                <Button 
+                  onClick={onAddStickyNote} 
+                  size="sm" 
+                  variant="outline"
+                  title="Add sticky note"
+                  className="h-8 w-8 p-0"
+                >
+                  <StickyNoteIcon className="h-4 w-4" />
                 </Button>
-                {onAddStickyNote && (
-                  <Button onClick={onAddStickyNote} size="sm" variant="outline">
-                    <StickyNoteIcon className="h-4 w-4 mr-2" />
-                    Note
-                  </Button>
-                )}
+                <Button 
+                  onClick={onAddTextBox} 
+                  size="sm" 
+                  variant="outline"
+                  title="Add text box"
+                  className="h-8 w-8 p-0"
+                >
+                  <Type className="h-4 w-4" />
+                </Button>
+                <Button 
+                  onClick={() => onAddShape?.('rectangle')} 
+                  size="sm" 
+                  variant="outline"
+                  title="Add rectangle"
+                  className="h-8 w-8 p-0"
+                >
+                  <Square className="h-4 w-4" />
+                </Button>
+                <Button 
+                  onClick={() => onAddShape?.('circle')} 
+                  size="sm" 
+                  variant="outline"
+                  title="Add circle"
+                  className="h-8 w-8 p-0"
+                >
+                  <Circle className="h-4 w-4" />
+                </Button>
+                <Button 
+                  onClick={() => onAddShape?.('triangle')} 
+                  size="sm" 
+                  variant="outline"
+                  title="Add triangle"
+                  className="h-8 w-8 p-0"
+                >
+                  <Triangle className="h-4 w-4" />
+                </Button>
+                <Button 
+                  onClick={() => onSetDrawingMode?.(!drawingMode)} 
+                  size="sm" 
+                  variant={drawingMode ? "default" : "outline"}
+                  title="Draw freeform"
+                  className="h-8 w-8 p-0"
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
               </div>
             </Card>
           </Panel>
