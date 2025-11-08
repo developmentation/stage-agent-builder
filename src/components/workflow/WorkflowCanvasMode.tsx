@@ -104,7 +104,7 @@ export function WorkflowCanvasMode({
     }> = {};
     
     const stagePadding = 40;
-    const stageHeaderHeight = 60;
+    const stageHeaderHeight = 135; // Increased from 60 to 135 for button visibility
     const nodeWidth = 250;
     const nodeHeight = 150;
     const minStageWidth = 400;
@@ -177,7 +177,7 @@ export function WorkflowCanvasMode({
   useEffect(() => {
     const flowNodes: Node[] = [];
     const stagePadding = 40;
-    const stageHeaderHeight = 60;
+    const stageHeaderHeight = 135; // Match the calculation in stageBounds
 
     // Create all stage and node elements using calculated bounds
     workflow.stages.forEach((stage, stageIndex) => {
@@ -190,7 +190,7 @@ export function WorkflowCanvasMode({
         contentMinY: 0,
       };
 
-      // Add stage node at calculated position (not manually draggable)
+      // Add stage node at calculated position (manually draggable)
       flowNodes.push({
         id: `stage-${stage.id}`,
         type: 'stage',
@@ -209,7 +209,7 @@ export function WorkflowCanvasMode({
           height: bounds.height,
           zIndex: 1,
         },
-        draggable: false, // Stage follows nodes, not manually draggable
+        draggable: true, // Allow manual stage dragging
       });
 
       // Add workflow nodes within the stage - positioned relative to stage's top-left
@@ -355,8 +355,26 @@ export function WorkflowCanvasMode({
           onUpdateStickyNote(stickyId, { position: node.position });
         }
       } else if (node.id.startsWith('stage-')) {
-        // Don't allow manual stage dragging - stages follow their nodes
-        return;
+        // Update stage position when manually dragged
+        const stageId = node.id.replace('stage-', '');
+        const stage = workflow.stages.find(s => s.id === stageId);
+        if (stage) {
+          const bounds = stageBounds[stageId];
+          const oldStageX = bounds.stageX;
+          const oldStageY = bounds.stageY;
+          const deltaX = node.position.x - oldStageX;
+          const deltaY = node.position.y - oldStageY;
+          
+          // Update all nodes in the stage by the same delta
+          stage.nodes.forEach((stageNode) => {
+            const currentX = stageNode.position?.x ?? 0;
+            const currentY = stageNode.position?.y ?? 0;
+            onUpdateNodePosition(stageNode.id, { 
+              x: currentX + deltaX, 
+              y: currentY + deltaY 
+            });
+          });
+        }
       } else if (node.parentNode) {
         const stage = workflow.stages.find(s => `stage-${s.id}` === node.parentNode);
         if (stage) {
