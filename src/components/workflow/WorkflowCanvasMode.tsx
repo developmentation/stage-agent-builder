@@ -73,6 +73,35 @@ export function WorkflowCanvasMode({
   const [showAddAgent, setShowAddAgent] = useState<string | null>(null);
   const [showAddFunction, setShowAddFunction] = useState<string | null>(null);
 
+  // Calculate stage bounds dynamically
+  const calculateStageBounds = useCallback((stage: StageType) => {
+    const stagePadding = 40;
+    const stageHeaderHeight = 60;
+    const nodeWidth = 250;
+    const nodeHeight = 150;
+    
+    if (stage.nodes.length === 0) {
+      return { width: 400, height: 300 };
+    }
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    
+    stage.nodes.forEach((node, nodeIndex) => {
+      const nodeX = node.position?.x ?? (nodeIndex % 2) * 280;
+      const nodeY = node.position?.y ?? Math.floor(nodeIndex / 2) * 180;
+      
+      minX = Math.min(minX, nodeX);
+      minY = Math.min(minY, nodeY);
+      maxX = Math.max(maxX, nodeX + nodeWidth);
+      maxY = Math.max(maxY, nodeY + nodeHeight);
+    });
+
+    const stageWidth = Math.max(400, maxX - minX + stagePadding * 2);
+    const stageHeight = Math.max(300, maxY - minY + stageHeaderHeight + stagePadding);
+
+    return { width: stageWidth, height: stageHeight };
+  }, []);
+
   // Convert workflow to ReactFlow nodes and edges
   useEffect(() => {
     const flowNodes: Node[] = [];
@@ -85,25 +114,9 @@ export function WorkflowCanvasMode({
       const stageX = stage.position?.x ?? stageIndex * 400;
       const stageY = stage.position?.y ?? 100;
 
-      // Calculate stage bounds based on contained nodes
-      let minX = 0, minY = 0, maxX = 300, maxY = 200;
-      
-      if (stage.nodes.length > 0) {
-        stage.nodes.forEach((node, nodeIndex) => {
-          const nodeX = node.position?.x ?? (nodeIndex % 2) * nodeSpacing;
-          const nodeY = node.position?.y ?? Math.floor(nodeIndex / 2) * 180;
-          
-          minX = Math.min(minX, nodeX);
-          minY = Math.min(minY, nodeY);
-          maxX = Math.max(maxX, nodeX + 250);
-          maxY = Math.max(maxY, nodeY + 150);
-        });
-      }
+      const { width: stageWidth, height: stageHeight } = calculateStageBounds(stage);
 
-      const stageWidth = Math.max(400, maxX - minX + stagePadding * 2);
-      const stageHeight = Math.max(300, maxY - minY + stageHeaderHeight + stagePadding);
-
-      // Add stage node
+      // Add stage node with lower z-index
       flowNodes.push({
         id: `stage-${stage.id}`,
         type: 'stage',
@@ -120,11 +133,12 @@ export function WorkflowCanvasMode({
         style: {
           width: stageWidth,
           height: stageHeight,
+          zIndex: 1,
         },
         draggable: true,
       });
 
-      // Add workflow nodes within the stage (using RELATIVE positions)
+      // Add workflow nodes within the stage (using RELATIVE positions, no extent constraint)
       stage.nodes.forEach((node, nodeIndex) => {
         const nodeX = node.position?.x ?? (nodeIndex % 2) * nodeSpacing;
         const nodeY = node.position?.y ?? Math.floor(nodeIndex / 2) * 180;
@@ -143,8 +157,10 @@ export function WorkflowCanvasMode({
             onPortClick: (outputPort?: string) => onPortClick(node.id, outputPort),
           },
           parentNode: `stage-${stage.id}`,
-          extent: 'parent' as const,
           draggable: true,
+          style: {
+            zIndex: 10,
+          },
         });
       });
     });
@@ -170,6 +186,49 @@ export function WorkflowCanvasMode({
     setEdges(flowEdges);
   }, [workflow, selectedNode, isConnecting]);
 
+  // Handle node drag to dynamically resize stages
+  const handleNodesChange = useCallback(
+    (changes: any[]) => {
+      onNodesChange(changes);
+      
+      // Check if any child nodes moved, and recalculate stage bounds
+      const movedNodes = changes.filter(
+        (change) => change.type === 'position' && change.dragging === false && !change.id.startsWith('stage-')
+      );
+      
+      if (movedNodes.length > 0) {
+        setNodes((nds) => {
+          const updatedNodes = [...nds];
+          
+          // Update stage bounds for each affected stage
+          workflow.stages.forEach((stage) => {
+            const { width: stageWidth, height: stageHeight } = calculateStageBounds(stage);
+            const stageNodeIndex = updatedNodes.findIndex((n) => n.id === `stage-${stage.id}`);
+            
+            if (stageNodeIndex !== -1) {
+              updatedNodes[stageNodeIndex] = {
+                ...updatedNodes[stageNodeIndex],
+                data: {
+                  ...updatedNodes[stageNodeIndex].data,
+                  width: stageWidth,
+                  height: stageHeight,
+                },
+                style: {
+                  ...updatedNodes[stageNodeIndex].style,
+                  width: stageWidth,
+                  height: stageHeight,
+                },
+              };
+            }
+          });
+          
+          return updatedNodes;
+        });
+      }
+    },
+    [onNodesChange, workflow.stages, calculateStageBounds]
+  );
+
   // Handle node drag end to update positions
   const onNodeDragStop = useCallback(
     (event: React.MouseEvent, node: Node) => {
@@ -190,7 +249,7 @@ export function WorkflowCanvasMode({
         <ReactFlow
           nodes={nodes}
           edges={edges}
-          onNodesChange={onNodesChange}
+          onNodesChange={handleNodesChange}
           onEdgesChange={onEdgesChange}
           onNodeDragStop={onNodeDragStop}
           nodeTypes={nodeTypes}
@@ -199,6 +258,7 @@ export function WorkflowCanvasMode({
           minZoom={0.2}
           maxZoom={2}
           defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
+          elevateEdgesOnSelect
         >
           <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
           <Controls />
