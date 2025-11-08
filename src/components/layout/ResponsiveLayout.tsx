@@ -61,7 +61,7 @@ export const ResponsiveLayout = ({
           </div>
           <div
             className={cn(
-              "h-full overflow-hidden",
+              "h-full w-full overflow-hidden",
               mobileTab !== "workflow" && "hidden"
             )}
           >

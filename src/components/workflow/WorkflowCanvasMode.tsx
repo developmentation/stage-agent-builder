@@ -296,7 +296,7 @@ export function WorkflowCanvasMode({
   );
 
   return (
-    <div className="h-full w-full relative">
+    <div className="h-full w-full relative" key={`canvas-${workflow.viewMode}`}>
       <ReactFlowProvider>
         <ReactFlow
           nodes={nodes}
