@@ -4,12 +4,26 @@
   stroke-width: 2;
 }
 
+.react-flow__edge.selected .react-flow__edge-path,
 .react-flow__edge.selected .react-flow__edge-path {
-  stroke: hsl(var(--primary));
+  stroke: hsl(48 96% 53%); /* Yellow color */
   stroke-width: 4;
-  filter: drop-shadow(0 0 4px hsl(var(--primary)));
+  filter: drop-shadow(0 0 6px hsl(48 96% 53% / 0.5));
 }
 
 .react-flow__edge:hover .react-flow__edge-path {
   stroke-width: 3;
+  stroke: hsl(var(--primary));
 }
+
+.react-flow__edge.animated .react-flow__edge-path {
+  stroke-dasharray: 5;
+  animation: dashdraw 0.5s linear infinite;
+}
+
+@keyframes dashdraw {
+  from {
+    stroke-dashoffset: 10;
+  }
+}
+

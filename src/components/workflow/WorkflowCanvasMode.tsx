@@ -189,7 +189,7 @@ export function WorkflowCanvasMode({
       source: conn.fromNodeId,
       target: conn.toNodeId,
       sourceHandle: conn.fromOutputPort,
-      type: ConnectionLineType.SmoothStep,
+      type: 'default', // Use default for smooth bezier curves
       animated: true,
       markerEnd: {
         type: MarkerType.ArrowClosed,
@@ -211,17 +211,22 @@ export function WorkflowCanvasMode({
     (connection: Connection) => {
       console.log("Canvas onConnect triggered:", connection);
       if (connection.source && connection.target && onCompleteConnection) {
-        // Create the connection in the workflow data model
         const fromNodeId = connection.source;
         const toNodeId = connection.target;
         const fromOutputPort = connection.sourceHandle || undefined;
         
         console.log("Calling onCompleteConnection:", fromNodeId, "->", toNodeId, "port:", fromOutputPort);
+        
         // Call the parent's connection completion handler
         onCompleteConnection(fromNodeId, toNodeId, fromOutputPort);
+        
+        // Reset connecting state
+        if (onStartConnection) {
+          onStartConnection(null);
+        }
       }
     },
-    [onCompleteConnection]
+    [onCompleteConnection, onStartConnection]
   );
 
   // Handle edge deletion
@@ -286,13 +291,14 @@ export function WorkflowCanvasMode({
           onNodeDragStop={onNodeDragStop}
           onConnect={onConnect}
           nodeTypes={nodeTypes}
-          connectionLineType={ConnectionLineType.SmoothStep}
+          connectionLineType={ConnectionLineType.Bezier}
           fitView
           minZoom={0.2}
           maxZoom={2}
           defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
           deleteKeyCode="Delete"
           defaultEdgeOptions={{
+            type: 'default',
             style: { stroke: 'hsl(var(--primary))', strokeWidth: 2 },
             animated: true,
           }}
