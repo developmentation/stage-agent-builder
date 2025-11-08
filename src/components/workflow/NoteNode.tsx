@@ -23,22 +23,44 @@ const NOTE_COLORS = [
 export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
   const [isEditing, setIsEditing] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const [localContent, setLocalContent] = useState(data.note.content);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const contentRef = useRef<HTMLDivElement>(null);
+  const clickCountRef = useRef(0);
+  const clickTimerRef = useRef<NodeJS.Timeout | null>(null);
   const { note, onUpdate, onDelete } = data;
 
-  // Calculate font size based on content length to fit within the note
+  // Sync local content when note content changes externally
+  useEffect(() => {
+    if (!isEditing) {
+      setLocalContent(note.content);
+    }
+  }, [note.content, isEditing]);
+
+  // Calculate font size based on longest line width
   const calculateFontSize = (content: string, width: number, height: number) => {
     if (!content || content.length === 0) return 20;
     
-    const area = width * height;
-    const contentLength = content.length;
+    const lines = content.split('\n');
+    const longestLine = lines.reduce((max, line) => 
+      line.length > max.length ? line : max, ''
+    );
     
-    // More aggressive scaling - starts at 20px and scales down more dramatically
-    const scaleFactor = Math.sqrt(area / (contentLength * 15));
-    const fontSize = Math.max(8, Math.min(20, scaleFactor));
+    const availableWidth = width - 32; // padding
+    const availableHeight = height - 32;
     
-    return fontSize;
+    // Estimate character width (roughly 0.6 of font size for most fonts)
+    const charsPerLine = longestLine.length || 1;
+    const fontSizeByWidth = (availableWidth / charsPerLine) / 0.6;
+    
+    // Also consider height constraints
+    const lineCount = Math.max(1, lines.length);
+    const fontSizeByHeight = (availableHeight / lineCount) / 1.3; // 1.3 is line-height
+    
+    // Use the smaller of the two to ensure fit
+    const fontSize = Math.min(fontSizeByWidth, fontSizeByHeight);
+    
+    // Clamp between 8px and 24px
+    return Math.max(8, Math.min(24, fontSize));
   };
 
   const fontSize = calculateFontSize(
@@ -69,23 +91,43 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
     }
   }, [selected, isEditing, onDelete]);
 
+  // Reset editing mode when deselected
+  useEffect(() => {
+    if (!selected && isEditing) {
+      setIsEditing(false);
+      // Save content on deselect
+      if (localContent !== note.content) {
+        onUpdate({ content: localContent });
+      }
+    }
+  }, [selected, isEditing, localContent, note.content, onUpdate]);
+
   const handleCardClick = (e: React.MouseEvent) => {
-    // Clicking on the card when not selected = select it (first click)
-    // When selected but not editing, clicking on text area = enter edit mode (second click)
+    // Don't interfere with toolbar clicks
+    if ((e.target as HTMLElement).closest('.nodrag')) {
+      return;
+    }
+
+    // If already selected and not editing, enter edit mode
     if (selected && !isEditing) {
-      // Already selected, this is the second click - enter edit mode
+      e.stopPropagation();
       setIsEditing(true);
     }
-    // If not selected, ReactFlow will handle selecting it (first click)
+    // If not selected, let ReactFlow handle the selection (first click)
   };
 
   const handleBlur = () => {
     setIsEditing(false);
     setShowColorPicker(false);
+    // Save content when leaving edit mode
+    if (localContent !== note.content) {
+      onUpdate({ content: localContent });
+    }
   };
 
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    onUpdate({ content: e.target.value });
+    // Use local state for smooth typing
+    setLocalContent(e.target.value);
   };
 
   const handleColorChange = (color: string) => {
@@ -171,7 +213,7 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
           {isEditing ? (
             <textarea
               ref={textareaRef}
-              value={note.content}
+              value={localContent}
               onChange={handleContentChange}
               onBlur={handleBlur}
               className="w-full h-full bg-transparent border-none outline-none resize-none text-center nodrag"
@@ -179,20 +221,19 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
                 fontSize: `${fontSize}px`,
                 lineHeight: "1.3",
                 overflow: "hidden",
+                whiteSpace: "pre-wrap",
               }}
               placeholder="Type your note..."
             />
           ) : (
             <div
-              ref={contentRef}
-              className="w-full h-full flex items-center justify-center text-center break-words"
+              className="w-full h-full flex items-center justify-center text-center"
               style={{
                 fontSize: `${fontSize}px`,
                 lineHeight: "1.3",
                 overflow: "hidden",
-                wordWrap: "break-word",
-                overflowWrap: "break-word",
-                hyphens: "auto",
+                whiteSpace: "pre-wrap",
+                wordBreak: "break-word",
               }}
             >
               {note.content || "Click to edit..."}
