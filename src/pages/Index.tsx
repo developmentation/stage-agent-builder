@@ -15,8 +15,7 @@ import type {
   Stage,
   Connection,
   ToolInstance,
-  LogEntry,
-  Note 
+  LogEntry 
 } from "@/types/workflow";
 import { FunctionExecutor } from "@/lib/functionExecutor";
 
@@ -39,7 +38,6 @@ const Index = () => {
   const [workflow, setWorkflow] = useState<Workflow>({
     stages: [],
     connections: [],
-    notes: [],
     viewMode: "stacked",
   });
 
@@ -88,32 +86,10 @@ const Index = () => {
   };
 
   const addStage = () => {
-    // Calculate position: leftmost x, 50px below bottommost stage
-    let position = { x: 0, y: 0 }; // Default for first stage (matches WorkflowCanvasMode default)
-    
-    if (workflow.stages.length > 0) {
-      // Find leftmost x position (default to 0 to match WorkflowCanvasMode's empty stage default)
-      const leftmostX = Math.min(...workflow.stages.map(s => s.position?.x ?? 0));
-      
-      // Find bottommost y position (need to account for stage height)
-      const bottommostY = Math.max(...workflow.stages.map(s => {
-        const y = s.position?.y ?? 0;
-        // Estimate stage height based on nodes or use minimum 300px
-        const estimatedHeight = s.nodes.length > 0 ? 400 : 300;
-        return y + estimatedHeight;
-      }));
-      
-      position = {
-        x: leftmostX,
-        y: bottommostY + 50
-      };
-    }
-    
     const newStage: Stage = {
       id: `stage-${Date.now()}`,
       name: `Stage ${workflow.stages.length + 1}`,
       nodes: [],
-      position,
     };
     setWorkflow((prev) => ({
       ...prev,
@@ -167,38 +143,6 @@ const Index = () => {
   };
 
   const addNode = (stageId: string, template: any, nodeType: "agent" | "function" | "tool" = "agent") => {
-    const stage = workflow.stages.find(s => s.id === stageId);
-    
-    // Calculate position: leftmost x, below bottommost y
-    let position = { x: 0, y: 0 };
-    if (stage) {
-      if (stage.nodes.length === 0) {
-        // First node in stage: position relative to stage's current position
-        const stageX = stage.position?.x ?? 0;
-        const stageY = stage.position?.y ?? 0;
-        // Add padding offsets to place node inside stage correctly
-        position = {
-          x: stageX + 40,  // stagePaddingLeft
-          y: stageY + 100  // stagePaddingTop
-        };
-      } else {
-        // Subsequent nodes: stack on left side below existing nodes
-        const nodeHeight = 150; // Standard node height
-        const verticalSpacing = 30; // Space between nodes
-        
-        // Find leftmost x position
-        const leftmostX = Math.min(...stage.nodes.map(n => n.position?.x ?? 0));
-        
-        // Find bottommost y position
-        const bottommostY = Math.max(...stage.nodes.map(n => (n.position?.y ?? 0) + nodeHeight));
-        
-        position = {
-          x: leftmostX,
-          y: bottommostY + verticalSpacing
-        };
-      }
-    }
-    
     let newNode: WorkflowNode;
 
     if (nodeType === "agent") {
@@ -211,7 +155,6 @@ const Index = () => {
         userPrompt: template.defaultUserPrompt || "Process the following input: {input}",
         tools: [],
         status: "idle",
-        position,
       } as AgentNode;
     } else if (nodeType === "function") {
       newNode = {
@@ -222,7 +165,6 @@ const Index = () => {
         config: {},
         outputPorts: template.outputs || ["output"], // Use 'outputs' from function definition
         status: "idle",
-        position,
       } as FunctionNode;
     } else {
       newNode = {
@@ -232,7 +174,6 @@ const Index = () => {
         toolType: template.id,
         config: {},
         status: "idle",
-        position,
       } as ToolNode;
     }
 
@@ -441,7 +382,7 @@ const Index = () => {
 
   const clearWorkflow = () => {
     if (confirm("Are you sure you want to clear the entire workflow?")) {
-      setWorkflow({ stages: [], connections: [], notes: [] });
+      setWorkflow({ stages: [], connections: [] });
       setUserInput("");
       setWorkflowName("Untitled Workflow");
       setCustomAgents([]); // Reset to only default agents
@@ -502,36 +443,6 @@ const Index = () => {
     setWorkflow((prev) => ({
       ...prev,
       connections: prev.connections.filter((conn) => conn.id !== connectionId),
-    }));
-  };
-
-  const addNote = () => {
-    const newNote: Note = {
-      id: `note-${Date.now()}`,
-      content: "",
-      position: { x: 100, y: 100 },
-      size: { width: 250, height: 200 },
-      color: "45 95% 85%", // Yellow by default
-    };
-    setWorkflow((prev) => ({
-      ...prev,
-      notes: [...(prev.notes || []), newNote],
-    }));
-  };
-
-  const updateNote = (noteId: string, updates: Partial<Note>) => {
-    setWorkflow((prev) => ({
-      ...prev,
-      notes: (prev.notes || []).map((note) =>
-        note.id === noteId ? { ...note, ...updates } : note
-      ),
-    }));
-  };
-
-  const deleteNote = (noteId: string) => {
-    setWorkflow((prev) => ({
-      ...prev,
-      notes: (prev.notes || []).filter((note) => note.id !== noteId),
     }));
   };
 
@@ -1151,9 +1062,6 @@ const Index = () => {
                 onUpdateStagePosition={updateStagePosition}
                 onUpdateNodePosition={updateNodePosition}
                 onToggleViewMode={toggleViewMode}
-                onAddNote={addNote}
-                onUpdateNote={updateNote}
-                onDeleteNote={deleteNote}
               />
             ) : (
               <WorkflowCanvas 
@@ -1206,9 +1114,6 @@ const Index = () => {
                 onUpdateStagePosition={updateStagePosition}
                 onUpdateNodePosition={updateNodePosition}
                 onToggleViewMode={toggleViewMode}
-                onAddNote={addNote}
-                onUpdateNote={updateNote}
-                onDeleteNote={deleteNote}
               />
             ) : (
               <WorkflowCanvas 
