@@ -1059,6 +1059,7 @@ const Index = () => {
                 onUpdateNode={updateNode}
                 onUpdateStagePosition={updateStagePosition}
                 onUpdateNodePosition={updateNodePosition}
+                onToggleViewMode={toggleViewMode}
               />
             ) : (
               <WorkflowCanvas 
@@ -1110,6 +1111,7 @@ const Index = () => {
                 onUpdateNode={updateNode}
                 onUpdateStagePosition={updateStagePosition}
                 onUpdateNodePosition={updateNodePosition}
+                onToggleViewMode={toggleViewMode}
               />
             ) : (
               <WorkflowCanvas 

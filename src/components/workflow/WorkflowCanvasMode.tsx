@@ -20,12 +20,13 @@ import 'reactflow/dist/style.css';
 import './EdgeStyles.css';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Grid3x3, Layers } from "lucide-react";
 import type { Workflow, WorkflowNode, Stage as StageType } from "@/types/workflow";
 import { AgentSelector } from "@/components/AgentSelector";
 import { FunctionSelector } from "@/components/FunctionSelector";
 import { StageNode } from "./StageNode";
 import { WorkflowNodeComponent } from "./WorkflowNodeComponent";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const nodeTypes: NodeTypes = {
   stage: StageNode,
@@ -52,6 +53,7 @@ interface WorkflowCanvasModeProps {
   onUpdateNodePosition: (nodeId: string, position: { x: number; y: number }) => void;
   onDeleteConnection?: (connectionId: string) => void;
   onCompleteConnection?: (fromNodeId: string, toNodeId: string, fromOutputPort?: string) => void;
+  onToggleViewMode?: () => void;
 }
 
 export function WorkflowCanvasMode({
@@ -73,11 +75,13 @@ export function WorkflowCanvasMode({
   onUpdateNodePosition,
   onDeleteConnection,
   onCompleteConnection,
+  onToggleViewMode,
 }: WorkflowCanvasModeProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [showAddAgent, setShowAddAgent] = useState<string | null>(null);
   const [showAddFunction, setShowAddFunction] = useState<string | null>(null);
+  const isMobile = useIsMobile();
 
   // Calculate stage bounds and offset - memoized to prevent recalculation during dragging
   const stageBounds = useMemo(() => {
@@ -128,8 +132,8 @@ export function WorkflowCanvasMode({
 
     // Create all stage and node elements using pre-calculated bounds
     workflow.stages.forEach((stage, stageIndex) => {
-      const stageX = stage.position?.x ?? stageIndex * 400;
-      const stageY = stage.position?.y ?? 100;
+      const stageX = stage.position?.x ?? 100;
+      const stageY = stage.position?.y ?? stageIndex * 400;
       const bounds = stageBounds[stage.id] || { width: 400, height: 300, offsetX: 0, offsetY: 0 };
 
       // Add stage node
@@ -326,10 +330,18 @@ export function WorkflowCanvasMode({
           />
           <Panel position="top-left">
             <Card className="p-2">
-              <Button onClick={onAddStage} size="sm">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Stage
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={onAddStage} size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Stage
+                </Button>
+                {isMobile && onToggleViewMode && (
+                  <Button onClick={onToggleViewMode} size="sm" variant="outline">
+                    <Layers className="h-4 w-4 mr-2" />
+                    Stacked
+                  </Button>
+                )}
+              </div>
             </Card>
           </Panel>
         </ReactFlow>
