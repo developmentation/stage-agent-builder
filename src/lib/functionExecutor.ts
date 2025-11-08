@@ -799,28 +799,50 @@ export class FunctionExecutor {
         }
       }
 
-      const fetchOptions: RequestInit = {
-        method,
-        headers,
-      };
-
+      // Prepare body for non-GET/HEAD requests
+      let body = undefined;
       if (method !== "GET" && method !== "HEAD") {
-        fetchOptions.body = input;
+        body = input;
       }
 
-      const response = await fetch(url, fetchOptions);
-      const contentType = response.headers.get("content-type");
-      
-      let responseData;
-      if (contentType?.includes("application/json")) {
-        responseData = await response.json();
-        responseData = JSON.stringify(responseData, null, 2);
-      } else {
-        responseData = await response.text();
-      }
+      // Call the api-call edge function to make the request
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/api-call`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          url,
+          method,
+          headers,
+          body,
+        }),
+      });
 
       if (!response.ok) {
-        throw new Error(`API call failed: ${response.status} ${response.statusText}\n${responseData}`);
+        throw new Error(`Edge function call failed: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+
+      // Check if the proxied API call was successful
+      if (result.error) {
+        throw new Error(`API call failed: ${result.error}`);
+      }
+
+      if (result.status && result.status >= 400) {
+        const errorMsg = typeof result.data === 'string' 
+          ? result.data 
+          : JSON.stringify(result.data);
+        throw new Error(`API call failed: ${result.status} ${result.statusText}\n${errorMsg}`);
+      }
+
+      // Format the response data
+      let responseData;
+      if (typeof result.data === 'string') {
+        responseData = result.data;
+      } else {
+        responseData = JSON.stringify(result.data, null, 2);
       }
 
       return {
