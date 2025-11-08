@@ -90,27 +90,36 @@ const Index = () => {
     const nodeGap = 30;
     const startX = 100;
     let currentY = 100;
+    const nodeWidth = 250;
+    const nodeHeight = 150;
+    const stagePaddingLeft = 40;
+    const stagePaddingTop = 100;
+    const stagePaddingBottom = 24;
 
     setWorkflow((prev) => {
       const updatedStages = prev.stages.map((stage) => {
+        if (stage.nodes.length === 0) {
+          // Empty stage - set position directly
+          const emptyStagePosition = { x: startX, y: currentY };
+          currentY += 300 + stageGap; // Default empty stage height
+          return { ...stage, position: emptyStagePosition };
+        }
+
         // Arrange nodes in a grid within the stage
-        const nodesPerRow = Math.ceil(Math.sqrt(stage.nodes.length)) || 1;
+        const nodesPerRow = Math.ceil(Math.sqrt(stage.nodes.length));
         const updatedNodes = stage.nodes.map((node, index) => {
           const row = Math.floor(index / nodesPerRow);
           const col = index % nodesPerRow;
-          const nodeX = startX + 40 + col * (250 + nodeGap);
-          const nodeY = currentY + 100 + row * (150 + nodeGap);
+          const nodeX = startX + stagePaddingLeft + col * (nodeWidth + nodeGap);
+          const nodeY = currentY + stagePaddingTop + row * (nodeHeight + nodeGap);
           return { ...node, position: { x: nodeX, y: nodeY } };
         });
 
-        const stageHeight = stage.nodes.length > 0 
-          ? Math.ceil(stage.nodes.length / nodesPerRow) * (150 + nodeGap) + 124
-          : 300;
-        
-        const updatedStage = { ...stage, nodes: updatedNodes };
+        const numRows = Math.ceil(stage.nodes.length / nodesPerRow);
+        const stageHeight = numRows * (nodeHeight + nodeGap) + stagePaddingTop + stagePaddingBottom + nodeGap;
         currentY += stageHeight + stageGap;
         
-        return updatedStage;
+        return { ...stage, nodes: updatedNodes, position: undefined };
       });
 
       return { ...prev, stages: updatedStages };
@@ -122,27 +131,35 @@ const Index = () => {
     const nodeGap = 30;
     const startY = 100;
     let currentX = 100;
+    const nodeWidth = 250;
+    const nodeHeight = 150;
+    const stagePaddingLeft = 40;
+    const stagePaddingTop = 100;
+    const stagePaddingRight = 24;
 
     setWorkflow((prev) => {
       const updatedStages = prev.stages.map((stage) => {
+        if (stage.nodes.length === 0) {
+          // Empty stage - set position directly
+          const emptyStagePosition = { x: currentX, y: startY };
+          currentX += 400 + stageGap; // Default empty stage width
+          return { ...stage, position: emptyStagePosition };
+        }
+
         // Arrange nodes in a grid within the stage
-        const nodesPerRow = Math.ceil(Math.sqrt(stage.nodes.length)) || 1;
+        const nodesPerRow = Math.ceil(Math.sqrt(stage.nodes.length));
         const updatedNodes = stage.nodes.map((node, index) => {
           const row = Math.floor(index / nodesPerRow);
           const col = index % nodesPerRow;
-          const nodeX = currentX + 40 + col * (250 + nodeGap);
-          const nodeY = startY + 100 + row * (150 + nodeGap);
+          const nodeX = currentX + stagePaddingLeft + col * (nodeWidth + nodeGap);
+          const nodeY = startY + stagePaddingTop + row * (nodeHeight + nodeGap);
           return { ...node, position: { x: nodeX, y: nodeY } };
         });
 
-        const stageWidth = stage.nodes.length > 0
-          ? nodesPerRow * (250 + nodeGap) + 64
-          : 400;
-        
-        const updatedStage = { ...stage, nodes: updatedNodes };
+        const stageWidth = nodesPerRow * (nodeWidth + nodeGap) + stagePaddingLeft + stagePaddingRight + nodeGap;
         currentX += stageWidth + stageGap;
         
-        return updatedStage;
+        return { ...stage, nodes: updatedNodes, position: undefined };
       });
 
       return { ...prev, stages: updatedStages };
@@ -154,28 +171,42 @@ const Index = () => {
     const nodeGap = 30;
     const startX = 100;
     const startY = 100;
+    const nodeWidth = 250;
+    const nodeHeight = 150;
+    const stagePaddingLeft = 40;
+    const stagePaddingTop = 100;
+    const stagePaddingRight = 24;
+    const stagePaddingBottom = 24;
     
-    const stagesPerRow = Math.ceil(Math.sqrt(workflow.stages.length)) || 1;
+    const stagesPerRow = Math.ceil(Math.sqrt(workflow.stages.length));
+    const defaultStageWidth = 400;
+    const defaultStageHeight = 300;
 
     setWorkflow((prev) => {
       const updatedStages = prev.stages.map((stage, stageIndex) => {
         const stageRow = Math.floor(stageIndex / stagesPerRow);
         const stageCol = stageIndex % stagesPerRow;
         
-        // Arrange nodes in a grid within the stage
-        const nodesPerRow = Math.ceil(Math.sqrt(stage.nodes.length)) || 1;
-        const stageBaseX = startX + stageCol * (600 + stageGap);
-        const stageBaseY = startY + stageRow * (500 + stageGap);
+        // Calculate stage position in grid
+        const stageX = startX + stageCol * (600 + stageGap);
+        const stageY = startY + stageRow * (500 + stageGap);
         
+        if (stage.nodes.length === 0) {
+          // Empty stage - set position directly
+          return { ...stage, position: { x: stageX, y: stageY } };
+        }
+        
+        // Arrange nodes in a grid within the stage
+        const nodesPerRow = Math.ceil(Math.sqrt(stage.nodes.length));
         const updatedNodes = stage.nodes.map((node, index) => {
           const row = Math.floor(index / nodesPerRow);
           const col = index % nodesPerRow;
-          const nodeX = stageBaseX + 40 + col * (250 + nodeGap);
-          const nodeY = stageBaseY + 100 + row * (150 + nodeGap);
+          const nodeX = stageX + stagePaddingLeft + col * (nodeWidth + nodeGap);
+          const nodeY = stageY + stagePaddingTop + row * (nodeHeight + nodeGap);
           return { ...node, position: { x: nodeX, y: nodeY } };
         });
         
-        return { ...stage, nodes: updatedNodes };
+        return { ...stage, nodes: updatedNodes, position: undefined };
       });
 
       return { ...prev, stages: updatedStages };
