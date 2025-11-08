@@ -4,7 +4,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Download, Eye, FileText, Loader2, CheckCircle2, Clock, Pause, Folder, File, ChevronDown } from "lucide-react";
 import { Workflow, WorkflowNode } from "@/types/workflow";
 import JSZip from "jszip";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -38,6 +38,26 @@ export const SimpleView = ({ workflow, userInput, onUserInputChange }: SimpleVie
   const [viewingOutput, setViewingOutput] = useState<{ nodeName: string; output: string } | null>(null);
   const [outputTab, setOutputTab] = useState("view");
   const [expandedNodes, setExpandedNodes] = useState<string[]>([]);
+  const scrollRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+
+  // Auto-expand streaming nodes and scroll to bottom
+  useEffect(() => {
+    workflow.stages.forEach((stage) => {
+      stage.nodes.forEach((node) => {
+        if (node.status === "running" && node.output && !expandedNodes.includes(node.id)) {
+          setExpandedNodes(prev => [...prev, node.id]);
+        }
+        
+        // Auto-scroll to bottom when streaming
+        if (node.status === "running" && expandedNodes.includes(node.id)) {
+          const scrollElement = scrollRefs.current[node.id];
+          if (scrollElement) {
+            scrollElement.scrollTop = scrollElement.scrollHeight;
+          }
+        }
+      });
+    });
+  }, [workflow, expandedNodes]);
 
   // Helper to get all nodes with outputs
   const getNodesWithOutputs = () => {
@@ -275,11 +295,11 @@ export const SimpleView = ({ workflow, userInput, onUserInputChange }: SimpleVie
                     <Accordion type="multiple" value={expandedNodes} onValueChange={setExpandedNodes}>
                       {stageNodes.map((node) => (
                         <AccordionItem key={node.id} value={node.id} className="border-none">
-                          <div className="rounded-md hover:bg-muted/50 transition-colors">
-                            <div className="flex items-center justify-between p-3 group">
+                          <AccordionTrigger className="rounded-md hover:bg-muted/50 transition-colors p-3 hover:no-underline group">
+                            <div className="flex items-center justify-between w-full">
                               <div className="flex items-center gap-3 flex-1 min-w-0">
                                 <File className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                                <div className="flex-1 min-w-0">
+                                <div className="flex-1 min-w-0 text-left">
                                   <p className="font-medium text-sm text-foreground truncate">{node.name}</p>
                                   <p className="text-xs text-muted-foreground">
                                     {getCharCount(node.output!).toLocaleString()} characters
@@ -290,19 +310,17 @@ export const SimpleView = ({ workflow, userInput, onUserInputChange }: SimpleVie
                                 </div>
                               </div>
                               <div className="flex items-center gap-1">
-                                <AccordionTrigger className="p-0 hover:no-underline [&[data-state=open]>svg]:rotate-180">
-                                  <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200" />
-                                </AccordionTrigger>
                                 <Button
                                   variant="ghost"
                                   size="sm"
                                   className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  onClick={() =>
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     setViewingOutput({
                                       nodeName: node.name,
                                       output: formatOutput(node.output),
-                                    })
-                                  }
+                                    });
+                                  }}
                                 >
                                   <Eye className="h-4 w-4" />
                                 </Button>
@@ -310,22 +328,29 @@ export const SimpleView = ({ workflow, userInput, onUserInputChange }: SimpleVie
                                   variant="ghost"
                                   size="sm"
                                   className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                  onClick={() => downloadArtifact(node.name, node.output)}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    downloadArtifact(node.name, node.output);
+                                  }}
                                 >
                                   <Download className="h-4 w-4" />
                                 </Button>
+                                <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform duration-200 ml-2" />
                               </div>
                             </div>
-                            <AccordionContent className="px-3 pb-3 pt-0">
-                              <div className="p-3 bg-muted/30 rounded-md border border-border max-h-[400px] overflow-hidden">
-                                <ScrollArea className="h-full max-h-[380px]">
-                                  <pre className="text-xs text-foreground whitespace-pre-wrap font-mono pr-4">
-                                    {formatOutput(node.output)}
-                                  </pre>
-                                </ScrollArea>
+                          </AccordionTrigger>
+                          <AccordionContent className="px-3 pb-3 pt-0">
+                            <div className="p-3 bg-muted/30 rounded-md border border-border">
+                              <div 
+                                ref={(el) => scrollRefs.current[node.id] = el}
+                                className="overflow-y-auto max-h-[400px] pr-2"
+                              >
+                                <pre className="text-xs text-foreground whitespace-pre-wrap font-mono">
+                                  {formatOutput(node.output)}
+                                </pre>
                               </div>
-                            </AccordionContent>
-                          </div>
+                            </div>
+                          </AccordionContent>
                         </AccordionItem>
                       ))}
                     </Accordion>
