@@ -178,6 +178,9 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
           height: '16px',
           borderRadius: '2px',
           touchAction: 'none',
+          padding: '12px',
+          margin: '-12px',
+          boxSizing: 'content-box',
         }}
         handleClassName="nodrag nopan"
         onResizeStart={() => {
