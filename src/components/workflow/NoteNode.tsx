@@ -1,5 +1,5 @@
 import { memo, useState, useRef } from "react";
-import { NodeProps, NodeResizer } from "reactflow";
+import { NodeProps } from "reactflow";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Trash2, Palette } from "lucide-react";
@@ -83,115 +83,104 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteData>) => {
   };
 
   return (
-    <>
-      {/* Add NodeResizer for resizing functionality */}
-      {selected && !isEditing && (
-        <NodeResizer
-          minWidth={200}
-          minHeight={200}
-          isVisible={selected}
-          lineClassName="border-primary"
-          handleClassName="h-3 w-3 bg-primary border-2 border-background rounded-full"
-        />
+    <Card
+      ref={cardRef}
+      className={cn(
+        "relative p-4 min-w-[200px] min-h-[200px] shadow-lg cursor-move transition-shadow nodrag",
+        selected && "ring-2 ring-primary shadow-xl",
+        "hover:shadow-xl"
       )}
-      
-      <Card
-        ref={cardRef}
-        className={cn(
-          "relative p-4 min-w-[200px] min-h-[200px] shadow-lg cursor-move transition-shadow",
-          selected && "ring-2 ring-primary shadow-xl",
-          "hover:shadow-xl"
-        )}
-        style={{ 
-          backgroundColor: color,
-          width: "100%",
-          height: "100%",
-        }}
-        onClick={handleCardClick}
-        onDoubleClick={handleDoubleClick}
-      >
-        {/* Toolbar - only show when selected and not editing */}
-        {selected && !isEditing && (
-          <div className="absolute top-2 right-2 flex gap-1 z-10">
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  className="h-6 w-6 bg-background/80 hover:bg-background"
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <Palette className="h-3 w-3" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-auto p-2" onClick={(e) => e.stopPropagation()}>
-                <div className="grid grid-cols-4 gap-2">
-                  {NOTE_COLORS.map((noteColor) => (
-                    <button
-                      key={noteColor}
-                      className={cn(
-                        "w-8 h-8 rounded border-2 transition-all",
-                        color === noteColor ? "border-primary scale-110" : "border-transparent"
-                      )}
-                      style={{ backgroundColor: noteColor }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleColorChange(noteColor);
-                      }}
-                    />
-                  ))}
-                </div>
-              </PopoverContent>
-            </Popover>
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-6 w-6 bg-background/80 hover:bg-destructive hover:text-destructive-foreground"
-              onClick={handleDelete}
-            >
-              <Trash2 className="h-3 w-3" />
-            </Button>
-          </div>
-        )}
-
-        {/* Content area */}
-        <div className="h-full w-full flex items-center justify-center">
-          {isEditing ? (
-            <Textarea
-              ref={textareaRef}
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-              onBlur={handleBlur}
-              className={cn(
-                "w-full h-full resize-none text-center border-none shadow-none focus-visible:ring-0 p-0",
-                getFontSize(),
-                "font-medium bg-transparent"
-              )}
-              style={{ color: "#000" }}
-              placeholder="Type your note..."
-            />
-          ) : (
-            <div
-              className={cn(
-                "w-full h-full flex items-center justify-center text-center break-words whitespace-pre-wrap",
-                getFontSize(),
-                "font-medium cursor-pointer px-2"
-              )}
-              style={{ color: "#000" }}
-            >
-              {content || "Double-click to edit"}
-            </div>
-          )}
+      style={{ 
+        backgroundColor: color,
+        width: "100%",
+        height: "100%",
+      }}
+      onClick={handleCardClick}
+      onDoubleClick={handleDoubleClick}
+    >
+      {/* Toolbar - only show when selected and not editing */}
+      {selected && !isEditing && (
+        <div className="absolute top-2 right-2 flex gap-1 z-10">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="h-6 w-6 bg-background/80 hover:bg-background nodrag"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <Palette className="h-3 w-3" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-2" onClick={(e) => e.stopPropagation()}>
+              <div className="grid grid-cols-4 gap-2">
+                {NOTE_COLORS.map((noteColor) => (
+                  <button
+                    key={noteColor}
+                    className={cn(
+                      "w-8 h-8 rounded border-2 transition-all",
+                      color === noteColor ? "border-primary scale-110" : "border-transparent"
+                    )}
+                    style={{ backgroundColor: noteColor }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleColorChange(noteColor);
+                    }}
+                  />
+                ))}
+              </div>
+            </PopoverContent>
+          </Popover>
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-6 w-6 bg-background/80 hover:bg-destructive hover:text-destructive-foreground nodrag"
+            onClick={handleDelete}
+          >
+            <Trash2 className="h-3 w-3" />
+          </Button>
         </div>
+      )}
 
-        {/* Resize hint when selected */}
-        {selected && !isEditing && (
-          <div className="absolute bottom-1 right-1 text-xs text-muted-foreground opacity-50">
-            ⌟
+      {/* Content area */}
+      <div className="h-full w-full flex items-center justify-center">
+        {isEditing ? (
+          <Textarea
+            ref={textareaRef}
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            onBlur={handleBlur}
+            className={cn(
+              "w-full h-full resize-none text-center border-none shadow-none focus-visible:ring-0 p-0 nodrag",
+              getFontSize(),
+              "font-medium bg-transparent"
+            )}
+            style={{ color: "#000" }}
+            placeholder="Type your note..."
+          />
+        ) : (
+          <div
+            className={cn(
+              "w-full h-full flex items-center justify-center text-center break-words whitespace-pre-wrap",
+              getFontSize(),
+              "font-medium cursor-pointer px-2"
+            )}
+            style={{ color: "#000" }}
+          >
+            {content || "Double-click to edit"}
           </div>
         )}
-      </Card>
-    </>
+      </div>
+
+      {/* Resize handles - only show when selected */}
+      {selected && !isEditing && (
+        <>
+          <div className="absolute bottom-0 right-0 w-4 h-4 cursor-se-resize opacity-50 hover:opacity-100">
+            <div className="absolute bottom-1 right-1 text-xs text-muted-foreground">⌟</div>
+          </div>
+        </>
+      )}
+    </Card>
   );
 });
 

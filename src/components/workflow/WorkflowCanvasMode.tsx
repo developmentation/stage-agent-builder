@@ -31,7 +31,6 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
@@ -441,74 +440,72 @@ export function WorkflowCanvasMode({
           )}
           <Panel position="top-left">
             <Card className="p-2">
-              <TooltipProvider>
-                <div className="flex gap-2">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button 
-                        onClick={onAutoLayoutVertical} 
-                        size="sm"
-                        variant="outline"
-                      >
-                        <AlignVerticalJustifyCenter className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Arrange vertically</TooltipContent>
-                  </Tooltip>
+              <div className="flex gap-2">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      onClick={onAutoLayoutVertical} 
+                      size="sm"
+                      variant="outline"
+                    >
+                      <AlignVerticalJustifyCenter className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Arrange vertically</TooltipContent>
+                </Tooltip>
 
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button 
-                        onClick={onAutoLayoutHorizontal} 
-                        size="sm"
-                        variant="outline"
-                      >
-                        <AlignHorizontalJustifyCenter className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Arrange horizontally</TooltipContent>
-                  </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      onClick={onAutoLayoutHorizontal} 
+                      size="sm"
+                      variant="outline"
+                    >
+                      <AlignHorizontalJustifyCenter className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Arrange horizontally</TooltipContent>
+                </Tooltip>
 
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button 
-                        onClick={onAutoLayoutGrid} 
-                        size="sm"
-                        variant="outline"
-                      >
-                        <Grid3x3 className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Arrange in grid</TooltipContent>
-                  </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      onClick={onAutoLayoutGrid} 
+                      size="sm"
+                      variant="outline"
+                    >
+                      <Grid3x3 className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Arrange in grid</TooltipContent>
+                </Tooltip>
 
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button 
-                        onClick={() => setShowMiniMap(!showMiniMap)} 
-                        size="sm"
-                        variant={showMiniMap ? "default" : "outline"}
-                      >
-                        <Map className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Toggle mini map</TooltipContent>
-                  </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      onClick={() => setShowMiniMap(!showMiniMap)} 
+                      size="sm"
+                      variant={showMiniMap ? "default" : "outline"}
+                    >
+                      <Map className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Toggle mini map</TooltipContent>
+                </Tooltip>
 
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button 
-                        onClick={onAddNote} 
-                        size="sm"
-                        variant="outline"
-                      >
-                        <StickyNote className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Add note</TooltipContent>
-                  </Tooltip>
-                </div>
-              </TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button 
+                      onClick={onAddNote} 
+                      size="sm"
+                      variant="outline"
+                    >
+                      <StickyNote className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Add note</TooltipContent>
+                </Tooltip>
+              </div>
             </Card>
           </Panel>
         </ReactFlow>
