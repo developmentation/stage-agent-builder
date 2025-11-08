@@ -112,7 +112,6 @@ export const MobileNav = ({
           onClick={onRun}
         >
           <Play className="h-4 w-4" />
-          Run
         </Button>
       </div>
       <HelpModal open={helpOpen} onOpenChange={setHelpOpen} />
