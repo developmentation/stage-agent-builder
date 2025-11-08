@@ -78,6 +78,13 @@ const Index = () => {
     });
   };
 
+  const setViewMode = (mode: "stacked" | "canvas" | "simple") => {
+    setWorkflow((prev) => ({
+      ...prev,
+      viewMode: mode,
+    }));
+  };
+
   const updateStagePosition = (stageId: string, position: { x: number; y: number }) => {
     setWorkflow((prev) => ({
       ...prev,
@@ -1332,7 +1339,7 @@ const Index = () => {
         onClear={clearWorkflow}
         onRun={runWorkflow}
         viewMode={workflow.viewMode || "stacked"}
-        onToggleViewMode={toggleViewMode}
+        onSetViewMode={setViewMode}
       />
       
       <div className="flex-1 flex flex-col overflow-hidden">

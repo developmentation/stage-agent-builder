@@ -2,6 +2,12 @@ import { Button } from "@/components/ui/button";
 import { Play, Plus, Save, Upload, Trash2, HelpCircle, LayoutGrid, LayoutList, Eye } from "lucide-react";
 import { useRef, useState } from "react";
 import { HelpModal } from "@/components/help/HelpModal";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 interface ToolbarProps {
   onAddStage: () => void;
   onSave: () => void;
@@ -9,7 +15,7 @@ interface ToolbarProps {
   onClear: () => void;
   onRun: () => void;
   viewMode: "stacked" | "canvas" | "simple";
-  onToggleViewMode: () => void;
+  onSetViewMode: (mode: "stacked" | "canvas" | "simple") => void;
 }
 export const Toolbar = ({
   onAddStage,
@@ -18,7 +24,7 @@ export const Toolbar = ({
   onClear,
   onRun,
   viewMode,
-  onToggleViewMode
+  onSetViewMode
 }: ToolbarProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -50,29 +56,46 @@ export const Toolbar = ({
           <Plus className="h-4 w-4" />
           Add Stage
         </Button>
-        <Button 
-          onClick={onToggleViewMode} 
-          variant={viewMode === "canvas" ? "default" : "outline"}
-          size="sm"
-          className="gap-2"
-        >
-          {viewMode === "canvas" ? (
-            <>
-              <LayoutGrid className="h-4 w-4" />
-              Canvas
-            </>
-          ) : viewMode === "simple" ? (
-            <>
-              <Eye className="h-4 w-4" />
-              Simple
-            </>
-          ) : (
-            <>
-              <LayoutList className="h-4 w-4" />
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button 
+              variant="outline"
+              size="sm"
+              className="gap-2"
+            >
+              {viewMode === "canvas" ? (
+                <>
+                  <LayoutGrid className="h-4 w-4" />
+                  Canvas
+                </>
+              ) : viewMode === "simple" ? (
+                <>
+                  <Eye className="h-4 w-4" />
+                  Simple
+                </>
+              ) : (
+                <>
+                  <LayoutList className="h-4 w-4" />
+                  Stacked
+                </>
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => onSetViewMode("stacked")}>
+              <LayoutList className="h-4 w-4 mr-2" />
               Stacked
-            </>
-          )}
-        </Button>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onSetViewMode("canvas")}>
+              <LayoutGrid className="h-4 w-4 mr-2" />
+              Canvas
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => onSetViewMode("simple")}>
+              <Eye className="h-4 w-4 mr-2" />
+              Simple
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <div className="w-px h-6 bg-border mx-2" />
         <Button variant="outline" size="sm" className="gap-2" onClick={handleLoadClick}>
           <Upload className="h-4 w-4" />
