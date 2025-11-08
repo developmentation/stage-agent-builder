@@ -24,6 +24,8 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
   const [isEditing, setIsEditing] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [localContent, setLocalContent] = useState(data.note.content);
+  const [isResizing, setIsResizing] = useState(false);
+  const [localSize, setLocalSize] = useState(data.note.size);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const { note, onUpdate, onDelete } = data;
 
@@ -31,6 +33,13 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
   useEffect(() => {
     setLocalContent(note.content);
   }, [note.content]);
+
+  // Sync local size when note size changes externally (but not during resize)
+  useEffect(() => {
+    if (!isResizing) {
+      setLocalSize(note.size);
+    }
+  }, [note.size, isResizing]);
 
   // Calculate font size to fit all content within the card
   const calculateFontSize = (content: string, width: number, height: number) => {
@@ -83,10 +92,13 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
     return Math.max(6, Math.min(24, fontSize));
   };
 
+  // Use local size during resize for immediate visual feedback
+  const currentSize = isResizing ? localSize : note.size;
+  
   const fontSize = calculateFontSize(
     note.content,
-    note.size.width,
-    note.size.height
+    currentSize.width,
+    currentSize.height
   );
 
   // Focus textarea when entering edit mode
@@ -166,7 +178,16 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
           height: '12px',
           borderRadius: '2px',
         }}
+        onResizeStart={() => {
+          setIsResizing(true);
+        }}
         onResize={(e, params) => {
+          // Update local state only during resize for smooth performance
+          setLocalSize({ width: params.width, height: params.height });
+        }}
+        onResizeEnd={(e, params) => {
+          // Commit to parent state only when resize is complete
+          setIsResizing(false);
           onUpdate({
             size: { width: params.width, height: params.height },
             position: { x: params.x, y: params.y },
@@ -237,8 +258,8 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
         style={{
           backgroundColor: note.color,
           borderColor: selected ? "hsl(var(--primary))" : "transparent",
-          width: note.size.width,
-          height: note.size.height,
+          width: currentSize.width,
+          height: currentSize.height,
           overflow: "visible",
         }}
         onDoubleClick={handleDoubleClick}
