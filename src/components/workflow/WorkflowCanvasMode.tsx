@@ -34,7 +34,8 @@ import { TextBoxNode } from "./TextBoxNode";
 import { ShapeNode } from "./ShapeNode";
 import { DrawingNode } from "./DrawingNode";
 
-const nodeTypes: NodeTypes = {
+// Define nodeTypes outside component to prevent recreation on every render
+const NODE_TYPES: NodeTypes = {
   stage: StageNode,
   workflowNode: WorkflowNodeComponent,
   stickyNote: StickyNoteNode,
@@ -73,7 +74,7 @@ interface WorkflowCanvasModeProps {
   onAddShape?: (type: "rectangle" | "circle" | "triangle") => void;
   onUpdateShape?: (id: string, updates: Partial<ShapeType>) => void;
   onDeleteShape?: (id: string) => void;
-  onAddDrawing?: (path: string) => void;
+  onAddDrawing?: (path: string, position: { x: number; y: number }) => void;
   onDeleteDrawing?: (id: string) => void;
   drawingMode?: boolean;
   onSetDrawingMode?: (enabled: boolean) => void;
@@ -120,8 +121,20 @@ export function WorkflowCanvasMode({
   const [editingTextBoxId, setEditingTextBoxId] = useState<string | null>(null);
   const [isDrawingPath, setIsDrawingPath] = useState(false);
   const [drawingPath, setDrawingPath] = useState<Array<{x: number, y: number}>>([]);
-  const drawingRef = useRef<SVGSVGElement>(null);
+  const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
+  
+  // Track highest z-index for new elements
+  const getNextZIndex = useCallback(() => {
+    const allElements = [
+      ...(workflow.stickyNotes || []),
+      ...(workflow.textBoxes || []),
+      ...(workflow.shapes || []),
+      ...(workflow.drawings || []),
+    ];
+    const maxZ = Math.max(0, ...allElements.map(el => el.zIndex || 0));
+    return maxZ + 1;
+  }, [workflow]);
 
   // Calculate stage bounds and offset - memoized to prevent recalculation during dragging
   const stageBounds = useMemo(() => {
@@ -239,7 +252,7 @@ export function WorkflowCanvasMode({
         },
         draggable: true,
         style: {
-          zIndex: 5,
+          zIndex: note.zIndex || 5,
         },
       });
     });
@@ -247,6 +260,7 @@ export function WorkflowCanvasMode({
     // Add text boxes
     const textBoxes = workflow.textBoxes || [];
     textBoxes.forEach((textBox) => {
+      const isEditingThis = editingTextBoxId === textBox.id;
       flowNodes.push({
         id: `textbox-${textBox.id}`,
         type: 'textBox',
@@ -256,10 +270,12 @@ export function WorkflowCanvasMode({
           onUpdate: onUpdateTextBox,
           onDelete: onDeleteTextBox,
           onEditStart: (id: string) => setEditingTextBoxId(id),
+          onEditEnd: () => setEditingTextBoxId(null),
         },
-        draggable: !editingTextBoxId,
+        draggable: !isEditingThis,
+        selectable: !isEditingThis,
         style: {
-          zIndex: 5,
+          zIndex: textBox.zIndex || 5,
         },
       });
     });
@@ -278,7 +294,7 @@ export function WorkflowCanvasMode({
         },
         draggable: true,
         style: {
-          zIndex: 5,
+          zIndex: shape.zIndex || 5,
         },
       });
     });
@@ -289,14 +305,15 @@ export function WorkflowCanvasMode({
       flowNodes.push({
         id: `drawing-${drawing.id}`,
         type: 'drawing',
-        position: { x: 0, y: 0 },
+        position: drawing.position || { x: 0, y: 0 },
         data: {
           drawing,
           onDelete: onDeleteDrawing,
         },
-        draggable: false,
+        draggable: true,
         style: {
-          zIndex: 4,
+          zIndex: drawing.zIndex || 4,
+          pointerEvents: 'all',
         },
       });
     });
@@ -430,6 +447,9 @@ export function WorkflowCanvasMode({
   const handleMouseDown = useCallback((event: React.MouseEvent) => {
     if (!drawingMode || !onAddDrawing) return;
     
+    event.preventDefault();
+    event.stopPropagation();
+    
     const reactFlowBounds = event.currentTarget.getBoundingClientRect();
     const position = {
       x: event.clientX - reactFlowBounds.left,
@@ -459,21 +479,35 @@ export function WorkflowCanvasMode({
       return;
     }
 
-    // Convert points to SVG path
-    const pathData = drawingPath.reduce((path, point, index) => {
+    // Find bounding box of the path
+    const xs = drawingPath.map(p => p.x);
+    const ys = drawingPath.map(p => p.y);
+    const minX = Math.min(...xs);
+    const minY = Math.min(...ys);
+
+    // Normalize path to start from (0, 0)
+    const normalizedPath = drawingPath.map(p => ({
+      x: p.x - minX,
+      y: p.y - minY
+    }));
+
+    // Convert normalized points to SVG path
+    const pathData = normalizedPath.reduce((path, point, index) => {
       if (index === 0) {
         return `M ${point.x} ${point.y}`;
       }
       return `${path} L ${point.x} ${point.y}`;
     }, '');
 
-    onAddDrawing(pathData);
+    // Pass the path and position separately
+    onAddDrawing(pathData, { x: minX, y: minY });
     setIsDrawingPath(false);
     setDrawingPath([]);
   }, [isDrawingPath, onAddDrawing, drawingPath]);
 
   return (
     <div 
+      ref={reactFlowWrapper}
       className="h-full w-full relative"
       style={{ cursor: drawingMode ? 'crosshair' : 'default' }}
       onMouseDown={drawingMode ? handleMouseDown : undefined}
@@ -490,7 +524,7 @@ export function WorkflowCanvasMode({
           onEdgesDelete={onEdgesDelete}
           onNodeDragStop={onNodeDragStop}
           onConnect={onConnect}
-          nodeTypes={nodeTypes}
+          nodeTypes={NODE_TYPES}
           connectionLineType={ConnectionLineType.Bezier}
           fitView
           minZoom={0.2}

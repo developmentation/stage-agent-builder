@@ -10,10 +10,11 @@ interface TextBoxNodeData {
   onUpdate: (id: string, updates: Partial<TextBox>) => void;
   onDelete: (id: string) => void;
   onEditStart: (id: string) => void;
+  onEditEnd: () => void;
 }
 
 export const TextBoxNode = memo(({ data, selected }: NodeProps<TextBoxNodeData>) => {
-  const { textBox, onUpdate, onDelete, onEditStart } = data;
+  const { textBox, onUpdate, onDelete, onEditStart, onEditEnd } = data;
   const [isEditing, setIsEditing] = useState(false);
   const [content, setContent] = useState(textBox.content);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -35,6 +36,7 @@ export const TextBoxNode = memo(({ data, selected }: NodeProps<TextBoxNodeData>)
 
   const handleBlur = () => {
     setIsEditing(false);
+    onEditEnd();
     if (content !== textBox.content) {
       onUpdate(textBox.id, { content });
     }

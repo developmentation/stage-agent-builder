@@ -485,13 +485,26 @@ const Index = () => {
     }));
   };
 
+  const getNextZIndex = () => {
+    const allElements = [
+      ...(workflow.stickyNotes || []),
+      ...(workflow.textBoxes || []),
+      ...(workflow.shapes || []),
+      ...(workflow.drawings || []),
+    ];
+    const maxZ = Math.max(0, ...allElements.map(el => el.zIndex || 0));
+    return maxZ + 1;
+  };
+
   const addStickyNote = () => {
+    const nextZ = getNextZIndex();
     const newNote = {
       id: `note-${Date.now()}`,
       content: "New note",
       color: "yellow",
       position: { x: 100, y: 100 },
       size: { width: 200, height: 200 },
+      zIndex: nextZ,
     };
     setWorkflow((prev) => ({
       ...prev,
@@ -516,12 +529,14 @@ const Index = () => {
   };
 
   const addTextBox = () => {
+    const nextZ = getNextZIndex();
     const newTextBox = {
       id: `textbox-${Date.now()}`,
       content: "# New text box\nClick to edit",
       fontSize: 16,
       position: { x: 150, y: 150 },
       width: 300,
+      zIndex: nextZ,
     };
     setWorkflow((prev) => ({
       ...prev,
@@ -546,6 +561,7 @@ const Index = () => {
   };
 
   const addShape = (type: "rectangle" | "circle" | "triangle") => {
+    const nextZ = getNextZIndex();
     const newShape = {
       id: `shape-${Date.now()}`,
       type,
@@ -555,6 +571,7 @@ const Index = () => {
       fillOpacity: 0.3,
       strokeColor: "#3b82f6",
       strokeWidth: 2,
+      zIndex: nextZ,
     };
     setWorkflow((prev) => ({
       ...prev,
@@ -578,14 +595,17 @@ const Index = () => {
     }));
   };
 
-  const addDrawing = (path: string) => {
+  const addDrawing = (path: string, position: { x: number; y: number }) => {
     if (!path) return;
     
+    const nextZ = getNextZIndex();
     const newDrawing = {
       id: `drawing-${Date.now()}`,
       path,
       color: "#000000",
       strokeWidth: 2,
+      position,
+      zIndex: nextZ,
     };
     setWorkflow((prev) => ({
       ...prev,

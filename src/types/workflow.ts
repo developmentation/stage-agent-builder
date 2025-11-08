@@ -70,6 +70,7 @@ export interface StickyNote {
   color: string; // yellow, blue, green, pink, orange
   position: { x: number; y: number };
   size: { width: number; height: number };
+  zIndex?: number;
 }
 
 // Text box with markdown support
@@ -79,6 +80,7 @@ export interface TextBox {
   fontSize: number;
   position: { x: number; y: number };
   width: number;
+  zIndex?: number;
 }
 
 // Shape element
@@ -91,6 +93,7 @@ export interface Shape {
   fillOpacity: number;
   strokeColor: string;
   strokeWidth: number;
+  zIndex?: number;
 }
 
 // Drawing path (freeform pen)
@@ -99,6 +102,8 @@ export interface Drawing {
   path: string; // SVG path data
   color: string;
   strokeWidth: number;
+  position?: { x: number; y: number };
+  zIndex?: number;
 }
 
 // Complete workflow

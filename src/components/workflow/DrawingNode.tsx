@@ -14,29 +14,35 @@ export const DrawingNode = memo(({ data, selected }: NodeProps<DrawingNodeData>)
 
   // Calculate bounding box from path
   const getBBox = () => {
-    const tempSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    const tempPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
-    tempPath.setAttribute("d", drawing.path);
-    tempSvg.appendChild(tempPath);
-    document.body.appendChild(tempSvg);
-    const bbox = tempPath.getBBox();
-    document.body.removeChild(tempSvg);
-    return bbox;
+    try {
+      const tempSvg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      const tempPath = document.createElementNS("http://www.w3.org/2000/svg", "path");
+      tempPath.setAttribute("d", drawing.path);
+      tempSvg.appendChild(tempPath);
+      document.body.appendChild(tempSvg);
+      const bbox = tempPath.getBBox();
+      document.body.removeChild(tempSvg);
+      return bbox;
+    } catch (e) {
+      // Fallback if bbox calculation fails
+      return { x: 0, y: 0, width: 100, height: 100 };
+    }
   };
 
   const bbox = getBBox();
+  const padding = 10;
 
   return (
     <div
       className={`relative group ${selected ? "ring-2 ring-primary rounded" : ""}`}
       style={{
-        width: bbox.width + 20,
-        height: bbox.height + 20,
+        width: bbox.width + padding * 2,
+        height: bbox.height + padding * 2,
       }}
     >
       {/* Toolbar */}
       {selected && (
-        <div className="absolute -top-8 left-0 bg-background/90 backdrop-blur-sm rounded p-1 shadow-lg">
+        <div className="absolute -top-8 left-0 bg-background/90 backdrop-blur-sm rounded p-1 shadow-lg z-50">
           <Button
             variant="ghost"
             size="sm"
@@ -52,9 +58,10 @@ export const DrawingNode = memo(({ data, selected }: NodeProps<DrawingNodeData>)
       )}
 
       <svg
-        width={bbox.width + 20}
-        height={bbox.height + 20}
-        className="cursor-pointer"
+        width={bbox.width + padding * 2}
+        height={bbox.height + padding * 2}
+        className="pointer-events-auto"
+        style={{ cursor: 'move' }}
       >
         <path
           d={drawing.path}
@@ -63,7 +70,7 @@ export const DrawingNode = memo(({ data, selected }: NodeProps<DrawingNodeData>)
           fill="none"
           strokeLinecap="round"
           strokeLinejoin="round"
-          transform={`translate(${10 - bbox.x}, ${10 - bbox.y})`}
+          transform={`translate(${padding - bbox.x}, ${padding - bbox.y})`}
         />
       </svg>
     </div>
