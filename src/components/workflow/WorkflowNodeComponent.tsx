@@ -84,7 +84,7 @@ export const WorkflowNodeComponent = memo(({ data }: NodeProps<WorkflowNodeCompo
         type="target"
         position={Position.Top}
         className="w-3 h-3 !bg-primary"
-        isConnectable={!isConnecting}
+        isConnectable={true}
       />
 
       <CardHeader className="p-3 pb-2">
@@ -145,11 +145,7 @@ export const WorkflowNodeComponent = memo(({ data }: NodeProps<WorkflowNodeCompo
                 position={Position.Bottom}
                 id={port}
                 className="w-3 h-3 !bg-primary relative !top-0"
-                isConnectable={!isConnecting}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onPortClick(port);
-                }}
+                isConnectable={true}
               />
             </div>
           ))}
@@ -159,11 +155,7 @@ export const WorkflowNodeComponent = memo(({ data }: NodeProps<WorkflowNodeCompo
           type="source"
           position={Position.Bottom}
           className="w-3 h-3 !bg-primary"
-          isConnectable={!isConnecting}
-          onClick={(e) => {
-            e.stopPropagation();
-            onPortClick();
-          }}
+          isConnectable={true}
         />
       )}
     </Card>

@@ -29,7 +29,10 @@ export const StageNode = memo(({ data }: NodeProps<StageNodeData>) => {
   };
 
   return (
-    <Card className="border-2 border-primary/20 bg-card/95 backdrop-blur-sm shadow-lg">
+    <Card 
+      className="border-2 border-primary/20 bg-card/95 backdrop-blur-sm shadow-lg"
+      style={{ width: data.width, height: data.height }}
+    >
       <CardHeader className="pb-2 space-y-2">
         <div className="flex items-center justify-between gap-2">
           {isEditing ? (
@@ -87,8 +90,8 @@ export const StageNode = memo(({ data }: NodeProps<StageNodeData>) => {
         </div>
       </CardHeader>
       
-      {/* Stage container for child nodes */}
-      <div className="p-4 pt-0 min-h-[150px]">
+      {/* Stage container for child nodes - no fixed height constraint */}
+      <div className="p-4 pt-0" style={{ minHeight: data.height - 100 }}>
         {/* Child nodes will be rendered here by ReactFlow */}
       </div>
     </Card>
