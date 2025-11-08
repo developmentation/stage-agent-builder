@@ -1,29 +1,34 @@
 /* Custom edge styles for ReactFlow */
 .react-flow__edge-path {
-  stroke: hsl(var(--primary));
-  stroke-width: 2;
+  stroke: hsl(var(--primary)) !important;
+  stroke-width: 2 !important;
 }
 
 .react-flow__edge.selected .react-flow__edge-path {
-  stroke: hsl(43 96% 56%); /* Medium ochre yellow */
-  stroke-width: 4;
-  filter: drop-shadow(0 0 8px hsl(43 96% 56% / 0.6));
+  stroke: hsl(43 96% 56%) !important; /* Medium ochre yellow */
+  stroke-width: 4 !important;
+  filter: drop-shadow(0 0 8px hsl(43 96% 56% / 0.8)) !important;
 }
 
 .react-flow__edge:hover .react-flow__edge-path {
-  stroke-width: 3;
-  stroke: hsl(var(--primary));
+  stroke-width: 3 !important;
+  stroke: hsl(var(--primary)) !important;
 }
 
 .react-flow__edge.animated .react-flow__edge-path {
-  stroke-dasharray: 5;
-  animation: dashdraw 0.5s linear infinite;
+  stroke-dasharray: 5 !important;
+  animation: dashdraw 0.5s linear infinite !important;
 }
 
 .react-flow__edge.selected.animated .react-flow__edge-path {
-  stroke: hsl(43 96% 56%); /* Keep yellow when selected and animated */
-  stroke-dasharray: 5;
-  animation: dashdraw 0.5s linear infinite;
+  stroke: hsl(43 96% 56%) !important; /* Keep yellow when selected and animated */
+  stroke-dasharray: 5 !important;
+  animation: dashdraw 0.5s linear infinite !important;
+}
+
+/* Override marker (arrow) color when selected */
+.react-flow__edge.selected .react-flow__edge-path + marker {
+  fill: hsl(43 96% 56%) !important;
 }
 
 @keyframes dashdraw {
@@ -31,5 +36,6 @@
     stroke-dashoffset: 10;
   }
 }
+
 
 

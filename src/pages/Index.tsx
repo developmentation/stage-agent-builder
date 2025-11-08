@@ -398,43 +398,42 @@ const Index = () => {
   };
 
   const handleCompleteConnection = (fromNodeId: string, toNodeId: string, fromOutputPort?: string) => {
-    console.log("=== handleCompleteConnection called ===");
-    console.log("  fromNodeId:", fromNodeId);
-    console.log("  toNodeId:", toNodeId);
-    console.log("  fromOutputPort:", fromOutputPort);
+    console.log("=== handleCompleteConnection START ===");
+    console.log("fromNodeId:", fromNodeId);
+    console.log("toNodeId:", toNodeId);
+    console.log("fromOutputPort:", fromOutputPort);
+    console.log("Current connections:", workflow.connections.length);
+    
     addConnection(fromNodeId, toNodeId, fromOutputPort);
+    setConnectingFrom(null);
     setConnectingFromPort(undefined);
+    
     console.log("=== handleCompleteConnection END ===");
   };
 
   const addConnection = (fromNodeId: string, toNodeId: string, fromOutputPort?: string) => {
-    console.log("=== addConnection called ===");
-    console.log("  fromNodeId:", fromNodeId);
-    console.log("  toNodeId:", toNodeId);
-    console.log("  fromOutputPort:", fromOutputPort);
-    console.log("  Current connections count:", workflow.connections.length);
+    console.log("=== addConnection START ===");
+    console.log("Creating connection from", fromNodeId, "to", toNodeId, "port:", fromOutputPort);
     
     const newConnection: Connection = {
-      id: `conn-${Date.now()}`,
+      id: `conn-${Date.now()}-${Math.random()}`,
       fromNodeId,
       toNodeId,
       fromOutputPort,
     };
     
-    console.log("  New connection created:", newConnection);
+    console.log("New connection object:", JSON.stringify(newConnection));
     
     setWorkflow((prev) => {
-      console.log("  Previous connections:", prev.connections.length);
       const updated = {
         ...prev,
         connections: [...prev.connections, newConnection],
       };
-      console.log("  Updated connections:", updated.connections.length);
+      console.log("Workflow updated - connections count:", updated.connections.length);
+      console.log("All connections:", JSON.stringify(updated.connections, null, 2));
       return updated;
     });
     
-    setConnectingFrom(null);
-    setConnectingFromPort(undefined);
     console.log("=== addConnection END ===");
   };
 

@@ -195,11 +195,14 @@ export function WorkflowCanvasMode({
         type: MarkerType.ArrowClosed,
         width: 20,
         height: 20,
+        color: 'hsl(var(--primary))',
       },
       style: { 
         stroke: 'hsl(var(--primary))', 
         strokeWidth: 2,
       },
+      // Style when selected
+      className: 'workflow-edge',
       zIndex: 100,
     }));
 
@@ -308,7 +311,6 @@ export function WorkflowCanvasMode({
           deleteKeyCode="Delete"
           defaultEdgeOptions={{
             type: 'default',
-            style: { stroke: 'hsl(var(--primary))', strokeWidth: 2 },
             animated: true,
           }}
           edgesUpdatable={false}
