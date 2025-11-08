@@ -85,7 +85,7 @@ export function WorkflowCanvasMode({
 
   // Calculate stage bounds and offset - memoized to prevent recalculation during dragging
   const stageBounds = useMemo(() => {
-    const bounds: Record<string, { width: number; height: number; offsetX: number; offsetY: number }> = {};
+    const bounds: Record<string, { width: number; height: number; stageX: number; stageY: number }> = {};
     
     const stagePadding = 40;
     const stageHeaderHeight = 60;
@@ -94,7 +94,9 @@ export function WorkflowCanvasMode({
     
     workflow.stages.forEach((stage) => {
       if (stage.nodes.length === 0) {
-        bounds[stage.id] = { width: 400, height: 300, offsetX: 0, offsetY: 0 };
+        const stageX = stage.position?.x ?? 0;
+        const stageY = stage.position?.y ?? 0;
+        bounds[stage.id] = { width: 400, height: 300, stageX, stageY };
         return;
       }
 
@@ -111,15 +113,15 @@ export function WorkflowCanvasMode({
         maxY = Math.max(maxY, nodeY + nodeHeight);
       });
 
-      // Calculate offset needed if nodes go negative
-      const offsetX = Math.min(0, minX - stagePadding);
-      const offsetY = Math.min(0, minY - stageHeaderHeight);
-
-      // Calculate the actual span of nodes plus padding on both sides
+      // Stage position is based on the bounding box of nodes
+      const stageX = minX - stagePadding;
+      const stageY = minY - stageHeaderHeight;
+      
+      // Stage size is the span of the bounding box plus padding
       const stageWidth = Math.max(400, maxX - minX + stagePadding * 2);
       const stageHeight = Math.max(300, maxY - minY + stageHeaderHeight + stagePadding);
 
-      bounds[stage.id] = { width: stageWidth, height: stageHeight, offsetX, offsetY };
+      bounds[stage.id] = { width: stageWidth, height: stageHeight, stageX, stageY };
     });
     
     return bounds;
@@ -133,15 +135,13 @@ export function WorkflowCanvasMode({
 
     // Create all stage and node elements using pre-calculated bounds
     workflow.stages.forEach((stage, stageIndex) => {
-      const stageX = stage.position?.x ?? 100;
-      const stageY = stage.position?.y ?? stageIndex * 400;
-      const bounds = stageBounds[stage.id] || { width: 400, height: 300, offsetX: 0, offsetY: 0 };
+      const bounds = stageBounds[stage.id] || { width: 400, height: 300, stageX: 100, stageY: stageIndex * 400 };
 
       // Add stage node
       flowNodes.push({
         id: `stage-${stage.id}`,
         type: 'stage',
-        position: { x: stageX + bounds.offsetX, y: stageY + bounds.offsetY },
+        position: { x: bounds.stageX, y: bounds.stageY },
         data: {
           stage,
           onDelete: () => onDeleteStage(stage.id),
@@ -167,7 +167,7 @@ export function WorkflowCanvasMode({
         flowNodes.push({
           id: node.id,
           type: 'workflowNode',
-          position: { x: stagePadding + nodeX - bounds.offsetX, y: stageHeaderHeight + nodeY - bounds.offsetY },
+          position: { x: stagePadding + (nodeX - bounds.stageX - stagePadding), y: stageHeaderHeight + (nodeY - bounds.stageY - stageHeaderHeight) },
           data: {
             node,
             selected: selectedNode?.id === node.id,
@@ -277,39 +277,34 @@ export function WorkflowCanvasMode({
         const stage = workflow.stages.find(s => s.id === stageId);
         if (stage) {
           const bounds = stageBounds[stageId];
-          onUpdateStagePosition(stageId, { 
-            x: node.position.x - bounds.offsetX, 
-            y: node.position.y - bounds.offsetY 
+          const deltaX = node.position.x - bounds.stageX;
+          const deltaY = node.position.y - bounds.stageY;
+          
+          // Update all child node positions by the same delta
+          stage.nodes.forEach(childNode => {
+            const currentX = childNode.position?.x ?? 0;
+            const currentY = childNode.position?.y ?? 0;
+            onUpdateNodePosition(childNode.id, {
+              x: currentX + deltaX,
+              y: currentY + deltaY
+            });
           });
         }
       } else if (node.parentNode) {
         const stage = workflow.stages.find(s => `stage-${s.id}` === node.parentNode);
         if (stage) {
           const bounds = stageBounds[stage.id];
-          const workflowNode = stage.nodes.find(n => n.id === node.id);
           
-          // Calculate new relative position
+          // Calculate node position in absolute coordinates
+          const nodeAbsoluteX = bounds.stageX + node.position.x;
+          const nodeAbsoluteY = bounds.stageY + node.position.y;
+          
+          // Store the absolute position (accounting for stage padding and header)
           const nodeRelativePosition = { 
-            x: node.position.x - 40 + bounds.offsetX, 
-            y: node.position.y - 60 + bounds.offsetY 
+            x: nodeAbsoluteX - 40,
+            y: nodeAbsoluteY - 60
           };
           onUpdateNodePosition(node.id, nodeRelativePosition);
-          
-          // If this is the only node in the stage, move the stage with it
-          if (stage.nodes.length === 1 && workflowNode) {
-            const oldX = workflowNode.position?.x ?? 0;
-            const oldY = workflowNode.position?.y ?? 0;
-            const deltaX = nodeRelativePosition.x - oldX;
-            const deltaY = nodeRelativePosition.y - oldY;
-            
-            // Apply the same delta to the stage position
-            const currentStageX = stage.position?.x ?? 0;
-            const currentStageY = stage.position?.y ?? 0;
-            onUpdateStagePosition(stage.id, {
-              x: currentStageX + deltaX,
-              y: currentStageY + deltaY
-            });
-          }
         }
       }
     },
