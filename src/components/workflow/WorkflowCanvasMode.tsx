@@ -42,11 +42,22 @@ function AddNoteButton({ onAddNote }: { onAddNote?: (x?: number, y?: number) => 
     const viewport = reactFlowInstance.getViewport();
     const { x, y, zoom } = viewport;
     
-    // Get the canvas dimensions (roughly center of visible area)
-    const centerX = (window.innerWidth / 2 - x) / zoom;
-    const centerY = (window.innerHeight / 2 - y) / zoom;
+    // Get the canvas dimensions - account for UI elements
+    // The preview area is typically offset by toolbars/menus
+    const canvasElement = document.querySelector('.react-flow__viewport')?.parentElement;
+    const canvasRect = canvasElement?.getBoundingClientRect();
     
-    onAddNote(centerX, centerY);
+    if (canvasRect) {
+      // Use the actual canvas center
+      const centerX = ((canvasRect.width / 2) - x) / zoom;
+      const centerY = ((canvasRect.height / 2) - y) / zoom;
+      onAddNote(centerX, centerY);
+    } else {
+      // Fallback to approximate center
+      const centerX = (window.innerWidth / 2 - x) / zoom;
+      const centerY = (window.innerHeight / 2 - y) / zoom;
+      onAddNote(centerX, centerY);
+    }
   };
 
   return (
@@ -56,6 +67,7 @@ function AddNoteButton({ onAddNote }: { onAddNote?: (x?: number, y?: number) => 
           onClick={handleAddNote}
           size="sm"
           variant="outline"
+          className="bg-[#fef3c7] hover:bg-[#fde68a] border-[#fde047]"
         >
           <StickyNote className="h-4 w-4" />
         </Button>
@@ -460,6 +472,7 @@ export function WorkflowCanvasMode({
             <Card className="p-2">
               <TooltipProvider>
                 <div className="flex gap-2">
+                  <AddNoteButton onAddNote={onAddNote} />
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button 
@@ -508,7 +521,6 @@ export function WorkflowCanvasMode({
                     </TooltipTrigger>
                     <TooltipContent>Toggle mini map</TooltipContent>
                   </Tooltip>
-                  <AddNoteButton onAddNote={onAddNote} />
                 </div>
               </TooltipProvider>
             </Card>

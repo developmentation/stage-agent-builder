@@ -29,10 +29,8 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
 
   // Sync local content when note content changes externally
   useEffect(() => {
-    if (!isEditing) {
-      setLocalContent(note.content);
-    }
-  }, [note.content, isEditing]);
+    setLocalContent(note.content);
+  }, [note.content]);
 
   // Calculate font size based on longest line width
   const calculateFontSize = (content: string, width: number, height: number) => {
@@ -208,20 +206,22 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
           style={{ overflow: "hidden" }}
         >
           {isEditing ? (
-            <textarea
-              ref={textareaRef}
-              value={localContent}
-              onChange={handleContentChange}
-              onMouseDown={(e) => e.stopPropagation()}
-              className="w-full h-full bg-transparent border-none outline-none resize-none text-center nodrag"
-              style={{
-                fontSize: `${fontSize}px`,
-                lineHeight: "1.3",
-                overflow: "hidden",
-                whiteSpace: "pre-wrap",
-              }}
-              placeholder="Type your note..."
-            />
+            <div className="w-full h-full flex items-center justify-center">
+              <textarea
+                ref={textareaRef}
+                value={localContent}
+                onChange={handleContentChange}
+                onMouseDown={(e) => e.stopPropagation()}
+                className="w-full h-full bg-transparent border-none outline-none resize-none text-center nodrag"
+                style={{
+                  fontSize: `${fontSize}px`,
+                  lineHeight: "1.3",
+                  overflow: "hidden",
+                  whiteSpace: "pre-wrap",
+                }}
+                placeholder="Type your note..."
+              />
+            </div>
           ) : (
             <div
               className="w-full h-full flex items-center justify-center text-center"
