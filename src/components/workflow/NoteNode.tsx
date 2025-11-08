@@ -101,15 +101,21 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
           }
         }
       };
-      // Use capture phase to catch clicks before other handlers
-      document.addEventListener('mousedown', handleClickOutside, true);
-      return () => document.removeEventListener('mousedown', handleClickOutside, true);
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [isEditing, localContent, note.content, onUpdate]);
 
   const handleEditClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsEditing(true);
+  };
+
+  const handleDoubleClick = (e: React.MouseEvent) => {
+    if (!isEditing) {
+      e.stopPropagation();
+      setIsEditing(true);
+    }
   };
 
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
@@ -147,6 +153,7 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
           border: selected ? "2px solid hsl(var(--primary))" : "2px solid transparent",
           boxShadow: selected ? "0 0 0 1px hsl(var(--primary))" : undefined,
         }}
+        onDoubleClick={handleDoubleClick}
       >
         {/* Toolbar - show when selected and not editing */}
         {selected && !isEditing && (
