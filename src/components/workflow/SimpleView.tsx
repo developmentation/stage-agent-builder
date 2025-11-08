@@ -287,6 +287,17 @@ export const SimpleView = ({ workflow, userInput, onUserInputChange, onRunAgent,
                   </div>
                   <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
                     {getStatusIcon(stageStatus)}
+                    {stageNodes.length > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className={cn(isMobile && "px-2")}
+                        onClick={() => downloadStage(stage.name)}
+                      >
+                        <Download className="h-4 w-4" />
+                        {!isMobile && <span className="ml-2">Download</span>}
+                      </Button>
+                    )}
                     {stage.nodes.length > 0 && (
                       <Button
                         variant="default"
@@ -306,17 +317,6 @@ export const SimpleView = ({ workflow, userInput, onUserInputChange, onRunAgent,
                       >
                         <Play className="h-4 w-4" />
                         {!isMobile && <span className="ml-2">Run Stage</span>}
-                      </Button>
-                    )}
-                    {stageNodes.length > 0 && (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className={cn(isMobile && "px-2")}
-                        onClick={() => downloadStage(stage.name)}
-                      >
-                        <Download className="h-4 w-4" />
-                        {!isMobile && <span className="ml-2">Download</span>}
                       </Button>
                     )}
                   </div>
