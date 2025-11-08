@@ -32,12 +32,12 @@ export const TextBoxNode = memo(({ data, selected }: NodeProps<TextBoxNodeData>)
   }, [textBox.content]);
 
   const handleClick = (e: React.MouseEvent) => {
-    // Don't interfere with selection
+    // Allow selection
   };
 
   const handleDoubleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!isEditing) {
+    if (selected && !isEditing) {
       setIsEditing(true);
       onEditStart(textBox.id);
     }
@@ -72,13 +72,14 @@ export const TextBoxNode = memo(({ data, selected }: NodeProps<TextBoxNodeData>)
       <div
         ref={contentRef}
         className={`
-          bg-background border-2 border-border rounded-md p-4 cursor-pointer
-          ${selected ? "ring-2 ring-primary" : ""}
+          bg-background border-2 rounded-md p-4
+          ${selected ? "ring-2 ring-primary border-primary" : "border-border"}
           relative group
         `}
         style={{
           width: textBox.width,
           minHeight: 50,
+          cursor: selected && !isEditing ? 'default' : 'pointer',
         }}
         onClick={handleClick}
         onDoubleClick={handleDoubleClick}

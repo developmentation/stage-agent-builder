@@ -34,10 +34,11 @@ export const DrawingNode = memo(({ data, selected }: NodeProps<DrawingNodeData>)
 
   return (
     <div
-      className={`relative group ${selected ? "ring-2 ring-primary rounded" : ""}`}
+      className={`relative group ${selected ? "ring-2 ring-primary rounded shadow-xl" : ""}`}
       style={{
         width: bbox.width + padding * 2,
         height: bbox.height + padding * 2,
+        cursor: selected ? 'default' : 'pointer',
       }}
     >
       {/* Toolbar */}

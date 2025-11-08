@@ -83,10 +83,11 @@ export const ShapeNode = memo(({ data, selected }: NodeProps<ShapeNodeData>) => 
         keepAspectRatio={false}
       />
       <div
-        className={`relative group ${selected ? "ring-2 ring-primary rounded" : ""}`}
+        className={`relative group ${selected ? "ring-2 ring-primary rounded shadow-xl" : ""}`}
         style={{
           width: shape.size.width,
           height: shape.size.height,
+          cursor: selected ? 'default' : 'pointer',
         }}
       >
         {/* Toolbar */}

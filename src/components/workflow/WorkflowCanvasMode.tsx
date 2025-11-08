@@ -333,7 +333,8 @@ function WorkflowCanvasModeInner({
           onDelete: onDeleteStickyNote,
         },
         draggable: !drawingMode,
-        selectable: !drawingMode,
+        selectable: true,
+        focusable: true,
         style: {
           zIndex: note.zIndex || 5,
         },
@@ -356,7 +357,8 @@ function WorkflowCanvasModeInner({
           onEditEnd: () => setEditingTextBoxId(null),
         },
         draggable: !isEditingThis && !drawingMode,
-        selectable: !isEditingThis && !drawingMode,
+        selectable: !isEditingThis,
+        focusable: true,
         style: {
           zIndex: textBox.zIndex || 5,
         },
@@ -376,7 +378,8 @@ function WorkflowCanvasModeInner({
           onDelete: onDeleteShape,
         },
         draggable: !drawingMode,
-        selectable: !drawingMode,
+        selectable: true,
+        focusable: true,
         style: {
           zIndex: shape.zIndex || 5,
         },
@@ -395,7 +398,8 @@ function WorkflowCanvasModeInner({
           onDelete: onDeleteDrawing,
         },
         draggable: !drawingMode,
-        selectable: !drawingMode,
+        selectable: true,
+        focusable: true,
         style: {
           zIndex: drawing.zIndex || 4,
         },
@@ -627,8 +631,9 @@ function WorkflowCanvasModeInner({
           edgesFocusable={true}
           nodesDraggable={!drawingMode}
           nodesConnectable={!drawingMode}
-          elementsSelectable={!drawingMode}
-          panOnDrag={!drawingMode}
+          elementsSelectable={true}
+          panOnDrag={drawingMode ? false : [1, 2]}
+          selectNodesOnDrag={false}
         >
           <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
           <Controls />

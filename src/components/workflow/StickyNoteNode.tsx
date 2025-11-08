@@ -99,13 +99,14 @@ export const StickyNoteNode = memo(({ data, selected }: NodeProps<StickyNoteNode
         ref={containerRef}
         className={`
           ${colorMap[note.color as keyof typeof colorMap] || colorMap.yellow}
-          ${selected ? "ring-2 ring-primary" : ""}
-          rounded-sm shadow-lg p-4 cursor-pointer transition-all
+          ${selected ? "ring-2 ring-primary shadow-xl" : "shadow-lg"}
+          rounded-sm p-4
           relative group
         `}
         style={{
           width: note.size.width,
           height: note.size.height,
+          cursor: selected ? 'default' : 'pointer',
         }}
         onClick={() => !isEditing && setIsEditing(true)}
         onDoubleClick={handleColorChange}
