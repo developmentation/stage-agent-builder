@@ -169,20 +169,32 @@ const Index = () => {
     
     // Calculate position: leftmost x, below bottommost y
     let position = { x: 0, y: 0 };
-    if (stage && stage.nodes.length > 0) {
-      const nodeHeight = 150; // Standard node height
-      const verticalSpacing = 30; // Space between nodes
-      
-      // Find leftmost x position
-      const leftmostX = Math.min(...stage.nodes.map(n => n.position?.x ?? 0));
-      
-      // Find bottommost y position
-      const bottommostY = Math.max(...stage.nodes.map(n => (n.position?.y ?? 0) + nodeHeight));
-      
-      position = {
-        x: leftmostX,
-        y: bottommostY + verticalSpacing
-      };
+    if (stage) {
+      if (stage.nodes.length === 0) {
+        // First node in stage: position relative to stage's current position
+        const stageX = stage.position?.x ?? 0;
+        const stageY = stage.position?.y ?? 0;
+        // Add padding offsets to place node inside stage correctly
+        position = {
+          x: stageX + 40,  // stagePaddingLeft
+          y: stageY + 100  // stagePaddingTop
+        };
+      } else {
+        // Subsequent nodes: stack on left side below existing nodes
+        const nodeHeight = 150; // Standard node height
+        const verticalSpacing = 30; // Space between nodes
+        
+        // Find leftmost x position
+        const leftmostX = Math.min(...stage.nodes.map(n => n.position?.x ?? 0));
+        
+        // Find bottommost y position
+        const bottommostY = Math.max(...stage.nodes.map(n => (n.position?.y ?? 0) + nodeHeight));
+        
+        position = {
+          x: leftmostX,
+          y: bottommostY + verticalSpacing
+        };
+      }
     }
     
     let newNode: WorkflowNode;
