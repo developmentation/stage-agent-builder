@@ -20,20 +20,17 @@ import 'reactflow/dist/style.css';
 import './EdgeStyles.css';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, Grid3x3, Layers, StickyNote as StickyNoteIcon } from "lucide-react";
-import type { Workflow, WorkflowNode, Stage as StageType, StickyNote as StickyNoteType } from "@/types/workflow";
+import { Plus, Grid3x3, Layers } from "lucide-react";
+import type { Workflow, WorkflowNode, Stage as StageType } from "@/types/workflow";
 import { AgentSelector } from "@/components/AgentSelector";
 import { FunctionSelector } from "@/components/FunctionSelector";
 import { StageNode } from "./StageNode";
 import { WorkflowNodeComponent } from "./WorkflowNodeComponent";
 import { useIsMobile } from "@/hooks/use-mobile";
 
-import { StickyNoteNode } from "./StickyNoteNode";
-
 const nodeTypes: NodeTypes = {
   stage: StageNode,
   workflowNode: WorkflowNodeComponent,
-  stickyNote: StickyNoteNode,
 };
 
 interface WorkflowCanvasModeProps {
@@ -46,7 +43,7 @@ interface WorkflowCanvasModeProps {
   onRenameStage: (stageId: string, newName: string) => void;
   onReorderStages: (sourceIndex: number, targetIndex: number) => void;
   onAddAgent: (stageId: string, agent: any) => void;
-  onAddFunction: (stageId: string, functionTemplate: any, nodeType?: "function") => void;
+  onAddFunction: (stageId: string, functionType: string) => void;
   onDeleteNode: (stageId: string, nodeId: string) => void;
   onRunAgent: (nodeId: string) => void;
   onStartConnection: (nodeId: string, outputPort?: string) => void;
@@ -57,9 +54,6 @@ interface WorkflowCanvasModeProps {
   onDeleteConnection?: (connectionId: string) => void;
   onCompleteConnection?: (fromNodeId: string, toNodeId: string, fromOutputPort?: string) => void;
   onToggleViewMode?: () => void;
-  onAddStickyNote?: () => void;
-  onUpdateStickyNote?: (id: string, updates: Partial<StickyNoteType>) => void;
-  onDeleteStickyNote?: (id: string) => void;
 }
 
 export function WorkflowCanvasMode({
@@ -82,9 +76,6 @@ export function WorkflowCanvasMode({
   onDeleteConnection,
   onCompleteConnection,
   onToggleViewMode,
-  onAddStickyNote,
-  onUpdateStickyNote,
-  onDeleteStickyNote,
 }: WorkflowCanvasModeProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -92,94 +83,42 @@ export function WorkflowCanvasMode({
   const [showAddFunction, setShowAddFunction] = useState<string | null>(null);
   const isMobile = useIsMobile();
 
-  // Calculate stage bounds and position - recalculated when any node position changes
+  // Calculate stage bounds and offset - memoized to prevent recalculation during dragging
   const stageBounds = useMemo(() => {
-    const bounds: Record<string, { 
-      width: number; 
-      height: number; 
-      stageX: number;
-      stageY: number;
-      contentMinX: number;
-      contentMinY: number;
-    }> = {};
+    const bounds: Record<string, { width: number; height: number; offsetX: number; offsetY: number }> = {};
     
     const stagePadding = 40;
-    const stageHeaderHeight = 135; // Increased from 60 to 135 for button visibility
+    const stageHeaderHeight = 60;
     const nodeWidth = 250;
     const nodeHeight = 150;
-    const minStageWidth = 400;
-    const minStageHeight = 300;
-    const stageGap = 50; // Gap between stages when stacking vertically
     
-    let cumulativeY = 100; // Starting Y position for first stage
-    
-    workflow.stages.forEach((stage, stageIndex) => {
-      
+    workflow.stages.forEach((stage) => {
       if (stage.nodes.length === 0) {
-        const stageHeight = minStageHeight;
-        bounds[stage.id] = { 
-          width: minStageWidth, 
-          height: stageHeight, 
-          stageX: stage.position?.x ?? 100,
-          stageY: stage.position?.y ?? cumulativeY,
-          contentMinX: 0,
-          contentMinY: 0,
-        };
-        cumulativeY += stageHeight + stageGap;
+        bounds[stage.id] = { width: 400, height: 300, offsetX: 0, offsetY: 0 };
         return;
       }
 
-      // Calculate bounding box of all nodes
       let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
       
       stage.nodes.forEach((node, nodeIndex) => {
         const nodeX = node.position?.x ?? (nodeIndex % 2) * 280;
         const nodeY = node.position?.y ?? Math.floor(nodeIndex / 2) * 180;
         
+        // Account for full node dimensions
         minX = Math.min(minX, nodeX);
         minY = Math.min(minY, nodeY);
         maxX = Math.max(maxX, nodeX + nodeWidth);
         maxY = Math.max(maxY, nodeY + nodeHeight);
       });
 
-      // Calculate stage dimensions with padding
-      const contentWidth = maxX - minX;
-      const contentHeight = maxY - minY;
-      const stageWidth = Math.max(minStageWidth, contentWidth + stagePadding * 2);
-      const stageHeight = Math.max(minStageHeight, contentHeight + stageHeaderHeight + stagePadding);
+      // Calculate offset needed if nodes go negative
+      const offsetX = Math.min(0, minX - stagePadding);
+      const offsetY = Math.min(0, minY - stageHeaderHeight);
 
-      // For single node, center it in the stage
-      // For multiple nodes, position stage to contain all nodes with padding
-      let stageX, stageY;
-      if (stage.nodes.length === 1) {
-        // Center single node in stage
-        const node = stage.nodes[0];
-        const nodeX = node.position?.x ?? 0;
-        const nodeY = node.position?.y ?? 0;
-        stageX = nodeX - (stageWidth - nodeWidth) / 2;
-        stageY = nodeY - stageHeaderHeight - (stageHeight - stageHeaderHeight - nodeHeight) / 2;
-      } else {
-        // Position stage to contain all nodes
-        stageX = minX - stagePadding;
-        stageY = minY - stageHeaderHeight;
-      }
+      const stageWidth = Math.max(400, maxX - minX + stagePadding * 2);
+      const stageHeight = Math.max(300, maxY - minY + stageHeaderHeight + stagePadding);
 
-      // Use stage position if set, otherwise use cumulative Y for vertical stacking
-      const finalStageY = stage.position ? stageY : cumulativeY;
-      
-      bounds[stage.id] = { 
-        width: stageWidth, 
-        height: stageHeight,
-        stageX: stage.position?.x ?? stageX,
-        stageY: finalStageY,
-        contentMinX: minX,
-        contentMinY: minY,
-      };
-      
-      // Update cumulative Y for next stage (only if stage doesn't have manual position)
-      if (!stage.position) {
-        cumulativeY += stageHeight + stageGap;
-      }
+      bounds[stage.id] = { width: stageWidth, height: stageHeight, offsetX, offsetY };
     });
     
     return bounds;
@@ -189,24 +128,19 @@ export function WorkflowCanvasMode({
   useEffect(() => {
     const flowNodes: Node[] = [];
     const stagePadding = 40;
-    const stageHeaderHeight = 135; // Match the calculation in stageBounds
+    const stageHeaderHeight = 60;
 
-    // Create all stage and node elements using calculated bounds
+    // Create all stage and node elements using pre-calculated bounds
     workflow.stages.forEach((stage, stageIndex) => {
-      const bounds = stageBounds[stage.id] || { 
-        width: 400, 
-        height: 300, 
-        stageX: 100, 
-        stageY: stageIndex * 400,
-        contentMinX: 0,
-        contentMinY: 0,
-      };
+      const stageX = stage.position?.x ?? 100;
+      const stageY = stage.position?.y ?? stageIndex * 400;
+      const bounds = stageBounds[stage.id] || { width: 400, height: 300, offsetX: 0, offsetY: 0 };
 
-      // Add stage node at calculated position (manually draggable)
+      // Add stage node
       flowNodes.push({
         id: `stage-${stage.id}`,
         type: 'stage',
-        position: { x: bounds.stageX, y: bounds.stageY },
+        position: { x: stageX + bounds.offsetX, y: stageY + bounds.offsetY },
         data: {
           stage,
           onDelete: () => onDeleteStage(stage.id),
@@ -221,23 +155,18 @@ export function WorkflowCanvasMode({
           height: bounds.height,
           zIndex: 1,
         },
-        draggable: true, // Allow manual stage dragging
+        draggable: true,
       });
 
-      // Add workflow nodes within the stage - positioned relative to stage's top-left
+      // Add workflow nodes within the stage
       stage.nodes.forEach((node, nodeIndex) => {
         const nodeX = node.position?.x ?? (nodeIndex % 2) * 280;
         const nodeY = node.position?.y ?? Math.floor(nodeIndex / 2) * 180;
 
-        // Position node relative to stage's top-left corner in canvas coordinates
-        // Simply subtract the stage position from the node's workflow position
-        const relativeX = nodeX - bounds.stageX;
-        const relativeY = nodeY - bounds.stageY;
-
         flowNodes.push({
           id: node.id,
           type: 'workflowNode',
-          position: { x: relativeX, y: relativeY },
+          position: { x: stagePadding + nodeX - bounds.offsetX, y: stageHeaderHeight + nodeY - bounds.offsetY },
           data: {
             node,
             selected: selectedNode?.id === node.id,
@@ -253,25 +182,6 @@ export function WorkflowCanvasMode({
             zIndex: 10,
           },
         });
-      });
-    });
-
-    // Add sticky notes
-    const stickyNotes = workflow.stickyNotes || [];
-    stickyNotes.forEach((note) => {
-      flowNodes.push({
-        id: `sticky-${note.id}`,
-        type: 'stickyNote',
-        position: note.position,
-        data: {
-          note,
-          onUpdate: onUpdateStickyNote,
-          onDelete: onDeleteStickyNote,
-        },
-        draggable: true,
-        style: {
-          zIndex: 5,
-        },
       });
     });
 
@@ -301,7 +211,7 @@ export function WorkflowCanvasMode({
     }));
 
     setEdges(flowEdges);
-  }, [workflow, selectedNode, isConnecting, stageBounds, onUpdateStickyNote, onDeleteStickyNote]);
+  }, [workflow, selectedNode, isConnecting, stageBounds]);
 
   // Handle connection between nodes
   const onConnect = useCallback(
@@ -358,50 +268,31 @@ export function WorkflowCanvasMode({
     [workflow.connections, onDeleteConnection]
   );
 
-  // Handle node drag end to update positions
+  // Handle node drag end to update positions (only update on drag END to prevent flashing)
   const onNodeDragStop = useCallback(
     (event: React.MouseEvent, node: Node) => {
-      if (node.id.startsWith('sticky-')) {
-        const stickyId = node.id.replace('sticky-', '');
-        if (onUpdateStickyNote) {
-          onUpdateStickyNote(stickyId, { position: node.position });
-        }
-      } else if (node.id.startsWith('stage-')) {
-        // Update stage position when manually dragged
+      if (node.id.startsWith('stage-')) {
         const stageId = node.id.replace('stage-', '');
         const stage = workflow.stages.find(s => s.id === stageId);
         if (stage) {
           const bounds = stageBounds[stageId];
-          const oldStageX = bounds.stageX;
-          const oldStageY = bounds.stageY;
-          const deltaX = node.position.x - oldStageX;
-          const deltaY = node.position.y - oldStageY;
-          
-          // Update all nodes in the stage by the same delta
-          stage.nodes.forEach((stageNode) => {
-            const currentX = stageNode.position?.x ?? 0;
-            const currentY = stageNode.position?.y ?? 0;
-            onUpdateNodePosition(stageNode.id, { 
-              x: currentX + deltaX, 
-              y: currentY + deltaY 
-            });
+          onUpdateStagePosition(stageId, { 
+            x: node.position.x - bounds.offsetX, 
+            y: node.position.y - bounds.offsetY 
           });
         }
       } else if (node.parentNode) {
         const stage = workflow.stages.find(s => `stage-${s.id}` === node.parentNode);
         if (stage) {
           const bounds = stageBounds[stage.id];
-          
-          // Convert ReactFlow position back to workflow position
-          // Add the stage's position to the node's relative position
-          const workflowX = node.position.x + bounds.stageX;
-          const workflowY = node.position.y + bounds.stageY;
-          
-          onUpdateNodePosition(node.id, { x: workflowX, y: workflowY });
+          onUpdateNodePosition(node.id, { 
+            x: node.position.x - 40 + bounds.offsetX, 
+            y: node.position.y - 60 + bounds.offsetY 
+          });
         }
       }
     },
-    [workflow.stages, stageBounds, onUpdateNodePosition, onUpdateStickyNote]
+    [workflow.stages, stageBounds, onUpdateStagePosition, onUpdateNodePosition]
   );
 
   return (
@@ -444,10 +335,10 @@ export function WorkflowCanvasMode({
                   <Plus className="h-4 w-4 mr-2" />
                   Add Stage
                 </Button>
-                {onAddStickyNote && (
-                  <Button onClick={onAddStickyNote} size="sm" variant="outline">
-                    <StickyNoteIcon className="h-4 w-4 mr-2" />
-                    Note
+                {isMobile && onToggleViewMode && (
+                  <Button onClick={onToggleViewMode} size="sm" variant="outline">
+                    <Layers className="h-4 w-4 mr-2" />
+                    Stacked
                   </Button>
                 )}
               </div>
@@ -474,7 +365,7 @@ export function WorkflowCanvasMode({
           open={true}
           onOpenChange={(open) => !open && setShowAddFunction(null)}
           onSelectFunction={(functionDef) => {
-            onAddFunction(showAddFunction, functionDef, "function");
+            onAddFunction(showAddFunction, functionDef.id);
             setShowAddFunction(null);
           }}
         />

@@ -34,7 +34,7 @@ export const StageNode = memo(({ data }: NodeProps<StageNodeData>) => {
       style={{ width: data.width, height: data.height }}
     >
       <CardHeader className="pb-2 space-y-2">
-        <div className="flex items-center justify-between gap-2 nodrag">
+        <div className="flex items-center justify-between gap-2">
           {isEditing ? (
             <Input
               value={stageName}
@@ -68,7 +68,7 @@ export const StageNode = memo(({ data }: NodeProps<StageNodeData>) => {
           </Button>
         </div>
         
-        <div className="flex gap-1 nodrag">
+        <div className="flex gap-1">
           <Button
             variant="outline"
             size="sm"

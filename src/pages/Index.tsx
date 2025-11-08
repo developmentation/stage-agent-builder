@@ -15,8 +15,7 @@ import type {
   Stage,
   Connection,
   ToolInstance,
-  LogEntry,
-  StickyNote
+  LogEntry 
 } from "@/types/workflow";
 import { FunctionExecutor } from "@/lib/functionExecutor";
 
@@ -39,7 +38,6 @@ const Index = () => {
   const [workflow, setWorkflow] = useState<Workflow>({
     stages: [],
     connections: [],
-    stickyNotes: [],
     viewMode: "stacked",
   });
 
@@ -60,34 +58,10 @@ const Index = () => {
   };
 
   const toggleViewMode = () => {
-    setWorkflow((prev) => {
-      // Treat undefined/null/stacked as stacked, only canvas as canvas
-      const newViewMode = prev.viewMode === "canvas" ? "stacked" : "canvas";
-      
-      // Initialize stage positions when switching to canvas mode for the first time
-      if (newViewMode === "canvas") {
-        const updatedStages = prev.stages.map((stage, index) => {
-          if (!stage.position) {
-            return {
-              ...stage,
-              position: { x: 100, y: index * 400 }
-            };
-          }
-          return stage;
-        });
-        
-        return {
-          ...prev,
-          viewMode: newViewMode,
-          stages: updatedStages
-        };
-      }
-      
-      return {
-        ...prev,
-        viewMode: newViewMode
-      };
-    });
+    setWorkflow((prev) => ({
+      ...prev,
+      viewMode: prev.viewMode === "stacked" ? "canvas" : "stacked",
+    }));
   };
 
   const updateStagePosition = (stageId: string, position: { x: number; y: number }) => {
@@ -169,36 +143,6 @@ const Index = () => {
   };
 
   const addNode = (stageId: string, template: any, nodeType: "agent" | "function" | "tool" = "agent") => {
-    // Find the target stage and calculate position based on existing nodes
-    const targetStage = workflow.stages.find(s => s.id === stageId);
-    let position = { x: 0, y: 0 };
-    
-    if (targetStage && targetStage.nodes.length > 0) {
-      // Find leftmost X and lowest Y among existing nodes
-      let leftmostX = Infinity;
-      let lowestY = -Infinity;
-      const nodeHeight = 150; // Standard node height
-      const verticalGap = 30; // Gap between nodes
-      
-      targetStage.nodes.forEach(node => {
-        const nodeX = node.position?.x ?? 0;
-        const nodeY = node.position?.y ?? 0;
-        
-        if (nodeX < leftmostX) {
-          leftmostX = nodeX;
-        }
-        if (nodeY > lowestY) {
-          lowestY = nodeY;
-        }
-      });
-      
-      // Position new node at leftmost X and below lowest Y
-      position = {
-        x: leftmostX,
-        y: lowestY + nodeHeight + verticalGap
-      };
-    }
-    
     let newNode: WorkflowNode;
 
     if (nodeType === "agent") {
@@ -211,7 +155,6 @@ const Index = () => {
         userPrompt: template.defaultUserPrompt || "Process the following input: {input}",
         tools: [],
         status: "idle",
-        position,
       } as AgentNode;
     } else if (nodeType === "function") {
       newNode = {
@@ -222,7 +165,6 @@ const Index = () => {
         config: {},
         outputPorts: template.outputs || ["output"], // Use 'outputs' from function definition
         status: "idle",
-        position,
       } as FunctionNode;
     } else {
       newNode = {
@@ -232,7 +174,6 @@ const Index = () => {
         toolType: template.id,
         config: {},
         status: "idle",
-        position,
       } as ToolNode;
     }
 
@@ -425,7 +366,6 @@ const Index = () => {
           setWorkflow({
             stages: loaded.stages || [],
             connections: loaded.connections || [],
-            stickyNotes: loaded.stickyNotes || [],
           });
         }
         
@@ -440,7 +380,7 @@ const Index = () => {
 
   const clearWorkflow = () => {
     if (confirm("Are you sure you want to clear the entire workflow?")) {
-      setWorkflow({ stages: [], connections: [], stickyNotes: [] });
+      setWorkflow({ stages: [], connections: [] });
       setUserInput("");
       setWorkflowName("Untitled Workflow");
       setCustomAgents([]); // Reset to only default agents
@@ -501,36 +441,6 @@ const Index = () => {
     setWorkflow((prev) => ({
       ...prev,
       connections: prev.connections.filter((conn) => conn.id !== connectionId),
-    }));
-  };
-
-  const addStickyNote = () => {
-    const newNote = {
-      id: `note-${Date.now()}`,
-      content: "New note",
-      color: "yellow",
-      position: { x: 100, y: 100 },
-      size: { width: 200, height: 200 },
-    };
-    setWorkflow((prev) => ({
-      ...prev,
-      stickyNotes: [...(prev.stickyNotes || []), newNote],
-    }));
-  };
-
-  const updateStickyNote = (noteId: string, updates: any) => {
-    setWorkflow((prev) => ({
-      ...prev,
-      stickyNotes: (prev.stickyNotes || []).map((note) =>
-        note.id === noteId ? { ...note, ...updates } : note
-      ),
-    }));
-  };
-
-  const deleteStickyNote = (noteId: string) => {
-    setWorkflow((prev) => ({
-      ...prev,
-      stickyNotes: (prev.stickyNotes || []).filter((note) => note.id !== noteId),
     }));
   };
 
@@ -1150,9 +1060,6 @@ const Index = () => {
                 onUpdateStagePosition={updateStagePosition}
                 onUpdateNodePosition={updateNodePosition}
                 onToggleViewMode={toggleViewMode}
-                onAddStickyNote={addStickyNote}
-                onUpdateStickyNote={updateStickyNote}
-                onDeleteStickyNote={deleteStickyNote}
               />
             ) : (
               <WorkflowCanvas 
@@ -1205,9 +1112,6 @@ const Index = () => {
                 onUpdateStagePosition={updateStagePosition}
                 onUpdateNodePosition={updateNodePosition}
                 onToggleViewMode={toggleViewMode}
-                onAddStickyNote={addStickyNote}
-                onUpdateStickyNote={updateStickyNote}
-                onDeleteStickyNote={deleteStickyNote}
               />
             ) : (
               <WorkflowCanvas 
@@ -1251,8 +1155,6 @@ const Index = () => {
           onLoad={loadWorkflow}
           onClear={clearWorkflow}
           hasSelectedAgent={!!selectedNodeData}
-          viewMode={workflow.viewMode || "stacked"}
-          onToggleViewMode={toggleViewMode}
         />
         
         <OutputLog logs={logs} />

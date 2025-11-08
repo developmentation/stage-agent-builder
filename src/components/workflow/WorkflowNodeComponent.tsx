@@ -95,18 +95,9 @@ export const WorkflowNodeComponent = memo(({ data }: NodeProps<WorkflowNodeCompo
             </div>
             <div className="flex-1 min-w-0">
               <CardTitle className="text-sm truncate">{node.name}</CardTitle>
-              <div className="flex gap-2 mt-1">
-                {node.output && (
-                  <Badge variant="secondary" className="text-xs">
-                    {node.output.length} chars
-                  </Badge>
-                )}
-                {node.nodeType === "agent" && (node as AgentNode).tools.length > 0 && (
-                  <Badge variant="outline" className="text-xs">
-                    {(node as AgentNode).tools.length} tools
-                  </Badge>
-                )}
-              </div>
+              <Badge variant="outline" className="text-xs mt-1">
+                {node.nodeType === "agent" ? (node as AgentNode).type : node.nodeType}
+              </Badge>
             </div>
           </div>
           <div className="flex flex-col gap-1">

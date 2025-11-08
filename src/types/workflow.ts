@@ -63,20 +63,10 @@ export interface Connection {
   fromOutputPort?: string; // Which output port (for multi-output functions)
 }
 
-// Sticky note for annotations
-export interface StickyNote {
-  id: string;
-  content: string;
-  color: string; // yellow, blue, green, pink, orange
-  position: { x: number; y: number };
-  size: { width: number; height: number };
-}
-
 // Complete workflow
 export interface Workflow {
   stages: Stage[];
   connections: Connection[];
-  stickyNotes?: StickyNote[]; // Optional sticky notes for canvas annotations
   viewMode?: "stacked" | "canvas"; // Toggle between visualization modes
 }
 
