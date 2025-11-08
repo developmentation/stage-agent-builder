@@ -208,30 +208,39 @@ const Index = () => {
       const targetStage = prev.stages.find(s => s.id === stageId);
       if (!targetStage) return prev;
 
-      // Calculate position for the new node
-      const nodeIndex = targetStage.nodes.length;
-      const nodeX = (nodeIndex % 2) * 280;
-      const nodeY = Math.floor(nodeIndex / 2) * 180;
+      const nodeHeight = 150;
+      const nodeSpacing = 30;
 
-      // Determine positioning strategy based on stage
-      if (targetStage.position && nodeIndex === 0) {
-        // First node in an empty stage with a position - use absolute positioning
-        const stagePaddingLeft = 40;
-        const stagePaddingTop = 100;
-        newNode.position = {
-          x: targetStage.position.x + stagePaddingLeft,
-          y: targetStage.position.y + stagePaddingTop,
-        };
-      } else if (targetStage.position && nodeIndex > 0 && targetStage.nodes[0]?.position) {
-        // Subsequent nodes in a stage with positioned first node - maintain absolute positioning
-        const firstNodePos = targetStage.nodes[0].position;
-        newNode.position = {
-          x: firstNodePos.x + nodeX,
-          y: firstNodePos.y + nodeY,
-        };
+      // Calculate position for the new node - below lowest, left of leftmost
+      if (targetStage.nodes.length === 0) {
+        // First node in the stage
+        if (targetStage.position) {
+          const stagePaddingLeft = 40;
+          const stagePaddingTop = 100;
+          newNode.position = {
+            x: targetStage.position.x + stagePaddingLeft,
+            y: targetStage.position.y + stagePaddingTop,
+          };
+        } else {
+          newNode.position = { x: 0, y: 0 };
+        }
       } else {
-        // Stage without position or using relative positioning
-        newNode.position = { x: nodeX, y: nodeY };
+        // Find the leftmost X and lowest Y among existing nodes
+        let minX = Infinity;
+        let maxY = -Infinity;
+        
+        targetStage.nodes.forEach((node) => {
+          const nodeX = node.position?.x ?? 0;
+          const nodeY = node.position?.y ?? 0;
+          minX = Math.min(minX, nodeX);
+          maxY = Math.max(maxY, nodeY);
+        });
+
+        // Position new node: same X as leftmost, below the lowest
+        newNode.position = {
+          x: minX,
+          y: maxY + nodeHeight + nodeSpacing,
+        };
       }
 
       return {
