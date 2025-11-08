@@ -16,7 +16,8 @@ import type {
   Stage,
   Connection,
   ToolInstance,
-  LogEntry 
+  LogEntry,
+  Note 
 } from "@/types/workflow";
 import { FunctionExecutor } from "@/lib/functionExecutor";
 
@@ -39,6 +40,7 @@ const Index = () => {
   const [workflow, setWorkflow] = useState<Workflow>({
     stages: [],
     connections: [],
+    notes: [],
     viewMode: "stacked",
   });
 
@@ -696,6 +698,7 @@ const Index = () => {
           loadedWorkflow = {
             stages: loaded.stages || [],
             connections: loaded.connections || [],
+            notes: loaded.notes || [],
           };
         }
         
@@ -714,7 +717,7 @@ const Index = () => {
 
   const clearWorkflow = () => {
     if (confirm("Are you sure you want to clear the entire workflow?")) {
-      setWorkflow({ stages: [], connections: [] });
+      setWorkflow({ stages: [], connections: [], notes: [] });
       setUserInput("");
       setWorkflowName("Untitled Workflow");
       setCustomAgents([]); // Reset to only default agents
@@ -775,6 +778,36 @@ const Index = () => {
     setWorkflow((prev) => ({
       ...prev,
       connections: prev.connections.filter((conn) => conn.id !== connectionId),
+    }));
+  };
+
+  const addNote = () => {
+    const newNote: Note = {
+      id: `note-${Date.now()}`,
+      content: "",
+      position: { x: 200, y: 200 }, // Default position
+      size: { width: 200, height: 200 }, // Default size
+      color: "#fef3c7", // Default yellow
+    };
+    setWorkflow((prev) => ({
+      ...prev,
+      notes: [...(prev.notes || []), newNote],
+    }));
+  };
+
+  const updateNote = (noteId: string, updates: Partial<Note>) => {
+    setWorkflow((prev) => ({
+      ...prev,
+      notes: (prev.notes || []).map((note) =>
+        note.id === noteId ? { ...note, ...updates } : note
+      ),
+    }));
+  };
+
+  const deleteNote = (noteId: string) => {
+    setWorkflow((prev) => ({
+      ...prev,
+      notes: (prev.notes || []).filter((note) => note.id !== noteId),
     }));
   };
 
@@ -1405,6 +1438,9 @@ const Index = () => {
                 onAutoLayoutVertical={autoLayoutVertical}
                 onAutoLayoutHorizontal={autoLayoutHorizontal}
                 onAutoLayoutGrid={autoLayoutGrid}
+                onAddNote={addNote}
+                onUpdateNote={updateNote}
+                onDeleteNote={deleteNote}
               />
             ) : (
               <WorkflowCanvas 
@@ -1468,6 +1504,9 @@ const Index = () => {
                 onAutoLayoutVertical={autoLayoutVertical}
                 onAutoLayoutHorizontal={autoLayoutHorizontal}
                 onAutoLayoutGrid={autoLayoutGrid}
+                onAddNote={addNote}
+                onUpdateNote={updateNote}
+                onDeleteNote={deleteNote}
               />
             ) : (
               <WorkflowCanvas 

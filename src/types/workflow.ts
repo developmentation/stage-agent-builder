@@ -63,10 +63,20 @@ export interface Connection {
   fromOutputPort?: string; // Which output port (for multi-output functions)
 }
 
+// Note for canvas annotations
+export interface Note {
+  id: string;
+  content: string;
+  position: { x: number; y: number };
+  size: { width: number; height: number };
+  color: string;
+}
+
 // Complete workflow
 export interface Workflow {
   stages: Stage[];
   connections: Connection[];
+  notes?: Note[]; // Canvas-only notes
   viewMode?: "stacked" | "canvas" | "simple"; // Toggle between visualization modes
 }
 
