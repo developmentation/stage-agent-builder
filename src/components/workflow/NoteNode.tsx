@@ -161,6 +161,13 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
         minHeight={100}
         maxWidth={600}
         maxHeight={600}
+        handleStyle={{
+          width: '12px',
+          height: '12px',
+        }}
+        lineStyle={{
+          borderWidth: '2px',
+        }}
         onResize={(e, params) => {
           onUpdate({
             size: { width: params.width, height: params.height },
@@ -180,9 +187,9 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
             variant="ghost"
             size="sm"
             onClick={handleEditClick}
-            className="h-8 w-8 p-0 bg-background border border-border hover:bg-accent shadow-sm"
+            className="h-7 w-7 p-0 bg-background border border-border hover:bg-accent shadow-sm"
           >
-            <Pencil className="h-4 w-4" />
+            <Pencil className="h-3 w-3" />
           </Button>
           <div className="relative">
             <Button
@@ -192,9 +199,9 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
                 e.stopPropagation();
                 setShowColorPicker(!showColorPicker);
               }}
-              className="h-8 w-8 p-0 bg-background border border-border hover:bg-accent shadow-sm"
+              className="h-7 w-7 p-0 bg-background border border-border hover:bg-accent shadow-sm"
             >
-              <Palette className="h-4 w-4" />
+              <Palette className="h-3 w-3" />
             </Button>
             {showColorPicker && (
               <div className="absolute top-8 right-0 p-2 bg-background border rounded-md shadow-lg flex gap-1 nodrag z-50">
@@ -219,9 +226,9 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
               e.stopPropagation();
               onDelete();
             }}
-            className="h-8 w-8 p-0 bg-background border border-border hover:bg-accent shadow-sm"
+            className="h-7 w-7 p-0 bg-background border border-border hover:bg-accent shadow-sm"
           >
-            <Trash2 className="h-4 w-4" />
+            <Trash2 className="h-3 w-3" />
           </Button>
         </div>
       )}
