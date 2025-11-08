@@ -70,18 +70,8 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
     if (isEditing && textareaRef.current) {
       textareaRef.current.focus();
       textareaRef.current.select();
-      // Auto-resize textarea to fit content
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, note.size.height - 32)}px`;
     }
-  }, [isEditing, note.size.height]);
-
-  // Auto-resize textarea as user types
-  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setLocalContent(e.target.value);
-    e.target.style.height = 'auto';
-    e.target.style.height = `${Math.min(e.target.scrollHeight, note.size.height - 32)}px`;
-  };
+  }, [isEditing]);
 
   // Handle keyboard shortcuts when selected but not editing
   useEffect(() => {
@@ -103,7 +93,7 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
       const handleClickOutside = (e: MouseEvent) => {
         const target = e.target as HTMLElement;
         // Check if click is outside the note container
-        if (!target.closest('.note-container')) {
+        if (!target.closest('.note-container') && !target.closest('.nodrag')) {
           setIsEditing(false);
           setShowColorPicker(false);
           if (localContent !== note.content) {
@@ -111,14 +101,20 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
           }
         }
       };
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
+      // Use capture phase to catch clicks before other handlers
+      document.addEventListener('mousedown', handleClickOutside, true);
+      return () => document.removeEventListener('mousedown', handleClickOutside, true);
     }
   }, [isEditing, localContent, note.content, onUpdate]);
 
   const handleEditClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsEditing(true);
+  };
+
+  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    // Use local state for smooth typing
+    setLocalContent(e.target.value);
   };
 
   const handleColorChange = (color: string) => {
@@ -155,13 +151,12 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
           width: note.size.width,
           height: note.size.height,
           overflow: "visible",
-          pointerEvents: isEditing ? "auto" : "none",
         }}
         onDoubleClick={handleDoubleClick}
       >
         {/* Toolbar - only show when not editing */}
         {!isEditing && (
-          <div className="absolute top-2 right-2 flex gap-1 z-10" style={{ pointerEvents: "auto" }}>
+          <div className="absolute top-2 right-2 flex gap-1 z-10">
             <Button
               variant="ghost"
               size="sm"
@@ -216,7 +211,7 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
         {/* Content area */}
         <div
           className="w-full h-full flex items-center justify-center p-4"
-          style={{ overflow: "hidden", position: "relative", pointerEvents: isEditing ? "auto" : "none" }}
+          style={{ overflow: "hidden", position: "relative" }}
         >
           {isEditing ? (
             <div className="w-full h-full flex items-center justify-center">
@@ -224,13 +219,12 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
                 ref={textareaRef}
                 value={localContent}
                 onChange={handleContentChange}
-                className="w-full bg-transparent border-none outline-none resize-none text-center nodrag"
+                onMouseDown={(e) => e.stopPropagation()}
+                className="w-full h-full bg-transparent border-none outline-none resize-none text-center nodrag"
                 style={{
                   fontSize: `${fontSize}px`,
                   lineHeight: "1.3",
                   whiteSpace: "pre-wrap",
-                  minHeight: "1.3em",
-                  maxHeight: `${note.size.height - 32}px`,
                   overflowY: "auto",
                 }}
                 placeholder="Type your note..."
