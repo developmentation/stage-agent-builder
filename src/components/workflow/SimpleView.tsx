@@ -53,14 +53,10 @@ export const SimpleView = ({ workflow, userInput, onUserInputChange, onRunAgent,
   const [expandedNodes, setExpandedNodes] = useState<string[]>(getDefaultExpandedNode);
   const scrollRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
-  // Auto-expand streaming nodes and scroll to bottom
+  // Auto-scroll to bottom for already expanded streaming nodes
   useEffect(() => {
     workflow.stages.forEach((stage) => {
       stage.nodes.forEach((node) => {
-        if (node.status === "running" && node.output && !expandedNodes.includes(node.id)) {
-          setExpandedNodes(prev => [...prev, node.id]);
-        }
-        
         // Auto-scroll to bottom when streaming
         if (node.status === "running" && expandedNodes.includes(node.id)) {
           const scrollElement = scrollRefs.current[node.id];
