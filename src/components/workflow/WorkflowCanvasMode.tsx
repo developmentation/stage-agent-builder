@@ -14,6 +14,7 @@ import ReactFlow, {
   MarkerType,
   ReactFlowProvider,
   Panel,
+  addEdge,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import { Card } from "@/components/ui/card";
@@ -73,84 +74,90 @@ export function WorkflowCanvasMode({
   const [showAddAgent, setShowAddAgent] = useState<string | null>(null);
   const [showAddFunction, setShowAddFunction] = useState<string | null>(null);
 
-  // Calculate stage bounds and offset dynamically
-  const calculateStageBounds = useCallback((stage: StageType) => {
+  // Calculate stage bounds and offset - memoized to prevent recalculation during dragging
+  const stageBounds = useMemo(() => {
+    const bounds: Record<string, { width: number; height: number; offsetX: number; offsetY: number }> = {};
+    
     const stagePadding = 40;
     const stageHeaderHeight = 60;
     const nodeWidth = 250;
     const nodeHeight = 150;
     
-    if (stage.nodes.length === 0) {
-      return { width: 400, height: 300, offsetX: 0, offsetY: 0 };
-    }
+    workflow.stages.forEach((stage) => {
+      if (stage.nodes.length === 0) {
+        bounds[stage.id] = { width: 400, height: 300, offsetX: 0, offsetY: 0 };
+        return;
+      }
 
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    
-    stage.nodes.forEach((node, nodeIndex) => {
-      const nodeX = node.position?.x ?? (nodeIndex % 2) * 280;
-      const nodeY = node.position?.y ?? Math.floor(nodeIndex / 2) * 180;
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
       
-      minX = Math.min(minX, nodeX);
-      minY = Math.min(minY, nodeY);
-      maxX = Math.max(maxX, nodeX + nodeWidth);
-      maxY = Math.max(maxY, nodeY + nodeHeight);
+      stage.nodes.forEach((node, nodeIndex) => {
+        const nodeX = node.position?.x ?? (nodeIndex % 2) * 280;
+        const nodeY = node.position?.y ?? Math.floor(nodeIndex / 2) * 180;
+        
+        // Account for full node dimensions
+        minX = Math.min(minX, nodeX);
+        minY = Math.min(minY, nodeY);
+        maxX = Math.max(maxX, nodeX + nodeWidth);
+        maxY = Math.max(maxY, nodeY + nodeHeight);
+      });
+
+      // Calculate offset needed if nodes go negative
+      const offsetX = Math.min(0, minX - stagePadding);
+      const offsetY = Math.min(0, minY - stageHeaderHeight);
+
+      const stageWidth = Math.max(400, maxX - minX + stagePadding * 2);
+      const stageHeight = Math.max(300, maxY - minY + stageHeaderHeight + stagePadding);
+
+      bounds[stage.id] = { width: stageWidth, height: stageHeight, offsetX, offsetY };
     });
-
-    // Calculate offset needed if nodes go negative
-    const offsetX = Math.min(0, minX - stagePadding);
-    const offsetY = Math.min(0, minY - stageHeaderHeight);
-
-    const stageWidth = Math.max(400, maxX - minX + stagePadding * 2);
-    const stageHeight = Math.max(300, maxY - minY + stageHeaderHeight + stagePadding);
-
-    return { width: stageWidth, height: stageHeight, offsetX, offsetY };
-  }, []);
+    
+    return bounds;
+  }, [workflow.stages]);
 
   // Convert workflow to ReactFlow nodes and edges
   useEffect(() => {
     const flowNodes: Node[] = [];
-    const nodeSpacing = 280;
     const stagePadding = 40;
     const stageHeaderHeight = 60;
 
-    // Create stage nodes
+    // Create all stage and node elements using pre-calculated bounds
     workflow.stages.forEach((stage, stageIndex) => {
       const stageX = stage.position?.x ?? stageIndex * 400;
       const stageY = stage.position?.y ?? 100;
+      const bounds = stageBounds[stage.id] || { width: 400, height: 300, offsetX: 0, offsetY: 0 };
 
-      const { width: stageWidth, height: stageHeight, offsetX, offsetY } = calculateStageBounds(stage);
-
-      // Add stage node with lower z-index, adjusted by offset
+      // Add stage node
       flowNodes.push({
         id: `stage-${stage.id}`,
         type: 'stage',
-        position: { x: stageX + offsetX, y: stageY + offsetY },
+        position: { x: stageX + bounds.offsetX, y: stageY + bounds.offsetY },
         data: {
           stage,
           onDelete: () => onDeleteStage(stage.id),
           onRename: (name: string) => onRenameStage(stage.id, name),
           onAddAgent: () => setShowAddAgent(stage.id),
           onAddFunction: () => setShowAddFunction(stage.id),
-          width: stageWidth,
-          height: stageHeight,
+          width: bounds.width,
+          height: bounds.height,
         },
         style: {
-          width: stageWidth,
-          height: stageHeight,
+          width: bounds.width,
+          height: bounds.height,
           zIndex: 1,
         },
         draggable: true,
       });
 
-      // Add workflow nodes within the stage (using RELATIVE positions)
+      // Add workflow nodes within the stage
       stage.nodes.forEach((node, nodeIndex) => {
-        const nodeX = node.position?.x ?? (nodeIndex % 2) * nodeSpacing;
+        const nodeX = node.position?.x ?? (nodeIndex % 2) * 280;
         const nodeY = node.position?.y ?? Math.floor(nodeIndex / 2) * 180;
 
         flowNodes.push({
           id: node.id,
           type: 'workflowNode',
-          position: { x: stagePadding + nodeX - offsetX, y: stageHeaderHeight + nodeY - offsetY },
+          position: { x: stagePadding + nodeX - bounds.offsetX, y: stageHeaderHeight + nodeY - bounds.offsetY },
           data: {
             node,
             selected: selectedNode?.id === node.id,
@@ -185,96 +192,49 @@ export function WorkflowCanvasMode({
         height: 20,
       },
       style: { stroke: 'hsl(var(--primary))', strokeWidth: 2 },
+      zIndex: 100,
     }));
 
     setEdges(flowEdges);
-  }, [workflow, selectedNode, isConnecting]);
+  }, [workflow, selectedNode, isConnecting, stageBounds]);
 
-  // Handle node drag to dynamically resize and reposition stages
-  const handleNodesChange = useCallback(
-    (changes: any[]) => {
-      onNodesChange(changes);
-      
-      // Check if any child nodes moved, and recalculate stage bounds
-      const movedNodes = changes.filter(
-        (change) => change.type === 'position' && change.dragging === false && !change.id.startsWith('stage-')
-      );
-      
-      if (movedNodes.length > 0) {
-        setNodes((nds) => {
-          const updatedNodes = [...nds];
-          
-          // Update stage bounds for each affected stage
-          workflow.stages.forEach((stage) => {
-            const { width: stageWidth, height: stageHeight, offsetX, offsetY } = calculateStageBounds(stage);
-            const stageNodeIndex = updatedNodes.findIndex((n) => n.id === `stage-${stage.id}`);
-            
-            if (stageNodeIndex !== -1) {
-              const currentStageNode = updatedNodes[stageNodeIndex];
-              const baseX = stage.position?.x ?? 0;
-              const baseY = stage.position?.y ?? 100;
-              
-              updatedNodes[stageNodeIndex] = {
-                ...currentStageNode,
-                position: { x: baseX + offsetX, y: baseY + offsetY },
-                data: {
-                  ...currentStageNode.data,
-                  width: stageWidth,
-                  height: stageHeight,
-                },
-                style: {
-                  ...currentStageNode.style,
-                  width: stageWidth,
-                  height: stageHeight,
-                },
-              };
-              
-              // Update child node positions to compensate for stage offset
-              stage.nodes.forEach((node) => {
-                const nodeIndex = updatedNodes.findIndex((n) => n.id === node.id);
-                if (nodeIndex !== -1) {
-                  const nodeX = node.position?.x ?? 0;
-                  const nodeY = node.position?.y ?? 0;
-                  updatedNodes[nodeIndex] = {
-                    ...updatedNodes[nodeIndex],
-                    position: { x: 40 + nodeX - offsetX, y: 60 + nodeY - offsetY },
-                  };
-                }
-              });
-            }
-          });
-          
-          return updatedNodes;
-        });
+  // Handle connection between nodes
+  const onConnect = useCallback(
+    (connection: Connection) => {
+      if (connection.source && connection.target) {
+        setEdges((eds) => addEdge(connection, eds));
+        // Trigger the workflow connection logic
+        onPortClick(connection.target);
       }
     },
-    [onNodesChange, workflow.stages, calculateStageBounds]
+    [setEdges, onPortClick]
   );
 
-  // Handle node drag end to update positions
+  // Handle node drag end to update positions (only update on drag END to prevent flashing)
   const onNodeDragStop = useCallback(
     (event: React.MouseEvent, node: Node) => {
       if (node.id.startsWith('stage-')) {
         const stageId = node.id.replace('stage-', '');
-        // Remove offset from position when saving
         const stage = workflow.stages.find(s => s.id === stageId);
         if (stage) {
-          const { offsetX, offsetY } = calculateStageBounds(stage);
-          onUpdateStagePosition(stageId, { x: node.position.x - offsetX, y: node.position.y - offsetY });
+          const bounds = stageBounds[stageId];
+          onUpdateStagePosition(stageId, { 
+            x: node.position.x - bounds.offsetX, 
+            y: node.position.y - bounds.offsetY 
+          });
         }
       } else if (node.parentNode) {
-        // Convert ReactFlow position back to workflow position
         const stage = workflow.stages.find(s => `stage-${s.id}` === node.parentNode);
         if (stage) {
-          const { offsetX, offsetY } = calculateStageBounds(stage);
+          const bounds = stageBounds[stage.id];
           onUpdateNodePosition(node.id, { 
-            x: node.position.x - 40 + offsetX, 
-            y: node.position.y - 60 + offsetY 
+            x: node.position.x - 40 + bounds.offsetX, 
+            y: node.position.y - 60 + bounds.offsetY 
           });
         }
       }
     },
-    [workflow.stages, onUpdateStagePosition, onUpdateNodePosition, calculateStageBounds]
+    [workflow.stages, stageBounds, onUpdateStagePosition, onUpdateNodePosition]
   );
 
   return (
@@ -283,15 +243,10 @@ export function WorkflowCanvasMode({
         <ReactFlow
           nodes={nodes}
           edges={edges}
-          onNodesChange={handleNodesChange}
+          onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onNodeDragStop={onNodeDragStop}
-          onConnect={(connection: Connection) => {
-            // Handle connection creation
-            if (connection.source && connection.target) {
-              onPortClick(connection.target);
-            }
-          }}
+          onConnect={onConnect}
           nodeTypes={nodeTypes}
           connectionLineType={ConnectionLineType.SmoothStep}
           fitView
