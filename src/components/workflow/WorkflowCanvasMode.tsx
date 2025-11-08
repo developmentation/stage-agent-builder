@@ -37,7 +37,6 @@ import {
 const nodeTypes: NodeTypes = {
   stage: StageNode,
   workflowNode: WorkflowNodeComponent,
-  note: NoteNode,
 };
 
 interface WorkflowCanvasModeProps {
@@ -167,36 +166,6 @@ export function WorkflowCanvasMode({
     const flowNodes: Node[] = [];
     const stagePaddingLeft = 40;
     const stagePaddingTop = 100;
-
-    // Add note nodes (independent of stages)
-    const notes = workflow.notes || [];
-    notes.forEach((note) => {
-      flowNodes.push({
-        id: `note-${note.id}`,
-        type: 'note',
-        position: note.position,
-        data: {
-          content: note.content,
-          color: note.color,
-          onUpdate: (content: string, color: string) => {
-            if (onUpdateNote) {
-              onUpdateNote(note.id, { content, color });
-            }
-          },
-          onDelete: () => {
-            if (onDeleteNote) {
-              onDeleteNote(note.id);
-            }
-          },
-        },
-        style: {
-          width: note.size.width,
-          height: note.size.height,
-          zIndex: 5,
-        },
-        draggable: true,
-      });
-    });
 
     // Create all stage and node elements using pre-calculated bounds
     workflow.stages.forEach((stage, stageIndex) => {
@@ -348,13 +317,7 @@ export function WorkflowCanvasMode({
   // Handle node drag end to update positions
   const onNodeDragStop = useCallback(
     (event: React.MouseEvent, node: Node, nodes: Node[]) => {
-      if (node.id.startsWith('note-')) {
-        // Note was dragged
-        const noteId = node.id.replace('note-', '');
-        if (onUpdateNote) {
-          onUpdateNote(noteId, { position: node.position });
-        }
-      } else if (node.id.startsWith('stage-')) {
+      if (node.id.startsWith('stage-')) {
         // Stage was dragged
         const stageId = node.id.replace('stage-', '');
         const stage = workflow.stages.find(s => s.id === stageId);
@@ -397,11 +360,21 @@ export function WorkflowCanvasMode({
         onUpdateNodePosition(node.id, { x: absoluteX, y: absoluteY });
       }
     },
-    [workflow.stages, stageBounds, onUpdateNodePosition, onUpdateStagePosition, onUpdateNote]
+    [workflow.stages, stageBounds, onUpdateNodePosition, onUpdateStagePosition]
   );
 
   return (
     <div className="h-full w-full relative">
+      {/* Render notes as overlay */}
+      {(workflow.notes || []).map((note) => (
+        <NoteNode
+          key={note.id}
+          note={note}
+          onUpdate={(updates) => onUpdateNote?.(note.id, updates)}
+          onDelete={() => onDeleteNote?.(note.id)}
+        />
+      ))}
+      
       <ReactFlowProvider>
         <ReactFlow
           nodes={nodes}
