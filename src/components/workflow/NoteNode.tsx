@@ -32,31 +32,55 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
     setLocalContent(note.content);
   }, [note.content]);
 
-  // Calculate font size based on longest line width
+  // Calculate font size to fit all content within the card
   const calculateFontSize = (content: string, width: number, height: number) => {
     if (!content || content.length === 0) return 20;
-    
-    const lines = content.split('\n');
-    const longestLine = lines.reduce((max, line) => 
-      line.length > max.length ? line : max, ''
-    );
     
     const availableWidth = width - 32; // padding
     const availableHeight = height - 32;
     
+    // Split content into lines and handle word wrapping at 25 chars
+    const processedLines: string[] = [];
+    const contentLines = content.split('\n');
+    
+    contentLines.forEach(line => {
+      if (line.length === 0) {
+        processedLines.push('');
+      } else {
+        // Break long lines at 25 characters
+        const words = line.split(' ');
+        let currentLine = '';
+        
+        words.forEach(word => {
+          if ((currentLine + ' ' + word).trim().length <= 25) {
+            currentLine = currentLine ? currentLine + ' ' + word : word;
+          } else {
+            if (currentLine) processedLines.push(currentLine);
+            currentLine = word;
+          }
+        });
+        
+        if (currentLine) processedLines.push(currentLine);
+      }
+    });
+    
+    const lineCount = Math.max(1, processedLines.length);
+    const longestLine = processedLines.reduce((max, line) => 
+      line.length > max.length ? line : max, ''
+    );
+    
     // Estimate character width (roughly 0.6 of font size for most fonts)
-    const charsPerLine = longestLine.length || 1;
+    const charsPerLine = Math.max(1, longestLine.length);
     const fontSizeByWidth = (availableWidth / charsPerLine) / 0.6;
     
-    // Also consider height constraints
-    const lineCount = Math.max(1, lines.length);
+    // Consider height constraints with line height
     const fontSizeByHeight = (availableHeight / lineCount) / 1.3; // 1.3 is line-height
     
-    // Use the smaller of the two to ensure fit
+    // Use the smaller of the two to ensure all content fits
     const fontSize = Math.min(fontSizeByWidth, fontSizeByHeight);
     
-    // Clamp between 8px and 24px
-    return Math.max(8, Math.min(24, fontSize));
+    // Clamp between 6px and 24px (lowered minimum to accommodate more text)
+    return Math.max(6, Math.min(24, fontSize));
   };
 
   const fontSize = calculateFontSize(
@@ -143,6 +167,65 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
           });
         }}
       />
+      {/* Toolbar - positioned above the card */}
+      {!isEditing && (
+        <div 
+          className="absolute flex gap-1 z-10 nodrag"
+          style={{
+            top: "-40px",
+            right: "0px",
+          }}
+        >
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleEditClick}
+            className="h-8 w-8 p-0 bg-background/80 hover:bg-background"
+          >
+            <Pencil className="h-4 w-4" />
+          </Button>
+          <div className="relative">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowColorPicker(!showColorPicker);
+              }}
+              className="h-8 w-8 p-0 bg-background/80 hover:bg-background"
+            >
+              <Palette className="h-4 w-4" />
+            </Button>
+            {showColorPicker && (
+              <div className="absolute top-8 right-0 p-2 bg-background border rounded-md shadow-lg flex gap-1 nodrag z-50">
+                {NOTE_COLORS.map((color) => (
+                  <button
+                    key={color}
+                    className="w-6 h-6 rounded border-2 border-border hover:scale-110 transition-transform"
+                    style={{ backgroundColor: color }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleColorChange(color);
+                    }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete();
+            }}
+            className="h-8 w-8 p-0 bg-background/80 hover:bg-background"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+      
       <Card
         className="note-container relative shadow-lg border-2 transition-all duration-200"
         style={{
@@ -154,60 +237,6 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
         }}
         onDoubleClick={handleDoubleClick}
       >
-        {/* Toolbar - only show when not editing */}
-        {!isEditing && (
-          <div className="absolute top-2 right-2 flex gap-1 z-10">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleEditClick}
-              className="h-8 w-8 p-0 nodrag"
-              style={{ backgroundColor: note.color }}
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
-            <div className="relative">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setShowColorPicker(!showColorPicker);
-                }}
-                className="h-8 w-8 p-0 nodrag"
-              >
-                <Palette className="h-4 w-4" />
-              </Button>
-              {showColorPicker && (
-                <div className="absolute top-8 right-0 p-2 bg-background border rounded-md shadow-lg flex gap-1 nodrag z-50">
-                  {NOTE_COLORS.map((color) => (
-                    <button
-                      key={color}
-                      className="w-6 h-6 rounded border-2 border-border hover:scale-110 transition-transform"
-                      style={{ backgroundColor: color }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleColorChange(color);
-                      }}
-                    />
-                  ))}
-                </div>
-              )}
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete();
-              }}
-              className="h-8 w-8 p-0 nodrag"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
-
         {/* Content area */}
         <div
           className="w-full h-full flex items-center justify-center p-4"
