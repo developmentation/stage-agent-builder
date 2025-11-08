@@ -58,28 +58,34 @@ const Index = () => {
   };
 
   const toggleViewMode = () => {
-    setWorkflow((prev) => ({
-      ...prev,
-      viewMode: prev.viewMode === "stacked" ? "canvas" : "stacked",
-    }));
+    setWorkflow((prev) => {
+      const newViewMode = prev.viewMode === "stacked" ? "canvas" : "stacked";
+      
+      // If switching to canvas, ensure all stages have positions NOW
+      if (newViewMode === "canvas") {
+        const hasUnpositionedStages = prev.stages.some(stage => !stage.position);
+        
+        if (hasUnpositionedStages) {
+          console.log("Initializing stage positions for canvas mode");
+          return {
+            ...prev,
+            viewMode: newViewMode,
+            stages: prev.stages.map((stage, index) => ({
+              ...stage,
+              position: stage.position || { x: 100, y: index * 400 }
+            }))
+          };
+        }
+      }
+      
+      return {
+        ...prev,
+        viewMode: newViewMode
+      };
+    });
   };
 
-  // Initialize stage positions when switching to canvas mode
-  useEffect(() => {
-    if (workflow.viewMode === "canvas") {
-      const hasUnpositionedStages = workflow.stages.some(stage => !stage.position);
-      
-      if (hasUnpositionedStages) {
-        setWorkflow((prev) => ({
-          ...prev,
-          stages: prev.stages.map((stage, index) => ({
-            ...stage,
-            position: stage.position || { x: 100, y: index * 400 }
-          }))
-        }));
-      }
-    }
-  }, [workflow.viewMode, workflow.stages.length]);
+  // Remove the useEffect - positions are now initialized synchronously above
 
   const updateStagePosition = (stageId: string, position: { x: number; y: number }) => {
     setWorkflow((prev) => ({
