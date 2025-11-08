@@ -1029,11 +1029,13 @@ const Index = () => {
                 onStartConnection={handleStartConnection}
                 onPortClick={(nodeId, outputPort) => {
                   if (connectingFrom) {
-                    handleCompleteConnection(nodeId, outputPort);
+                    handleCompleteConnection(connectingFrom, nodeId, connectingFromPort);
                   } else {
                     handleStartConnection(nodeId, outputPort);
                   }
                 }}
+                onCompleteConnection={handleCompleteConnection}
+                onDeleteConnection={deleteConnection}
                 onUpdateNode={updateNode}
                 onUpdateStagePosition={updateStagePosition}
                 onUpdateNodePosition={updateNodePosition}
@@ -1078,11 +1080,13 @@ const Index = () => {
                 onStartConnection={handleStartConnection}
                 onPortClick={(nodeId, outputPort) => {
                   if (connectingFrom) {
-                    handleCompleteConnection(nodeId, outputPort);
+                    handleCompleteConnection(connectingFrom, nodeId, connectingFromPort);
                   } else {
                     handleStartConnection(nodeId, outputPort);
                   }
                 }}
+                onCompleteConnection={handleCompleteConnection}
+                onDeleteConnection={deleteConnection}
                 onUpdateNode={updateNode}
                 onUpdateStagePosition={updateStagePosition}
                 onUpdateNodePosition={updateNodePosition}

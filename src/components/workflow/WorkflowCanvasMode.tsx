@@ -49,6 +49,8 @@ interface WorkflowCanvasModeProps {
   onUpdateNode: (nodeId: string, updates: Partial<WorkflowNode>) => void;
   onUpdateStagePosition: (stageId: string, position: { x: number; y: number }) => void;
   onUpdateNodePosition: (nodeId: string, position: { x: number; y: number }) => void;
+  onDeleteConnection?: (connectionId: string) => void;
+  onCompleteConnection?: (fromNodeId: string, toNodeId: string, fromOutputPort?: string) => void;
 }
 
 export function WorkflowCanvasMode({
@@ -68,6 +70,8 @@ export function WorkflowCanvasMode({
   onUpdateNode,
   onUpdateStagePosition,
   onUpdateNodePosition,
+  onDeleteConnection,
+  onCompleteConnection,
 }: WorkflowCanvasModeProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -201,13 +205,36 @@ export function WorkflowCanvasMode({
   // Handle connection between nodes
   const onConnect = useCallback(
     (connection: Connection) => {
-      if (connection.source && connection.target) {
-        setEdges((eds) => addEdge(connection, eds));
-        // Trigger the workflow connection logic
-        onPortClick(connection.target);
+      if (connection.source && connection.target && onCompleteConnection) {
+        // Create the connection in the workflow data model
+        const fromNodeId = connection.source;
+        const toNodeId = connection.target;
+        const fromOutputPort = connection.sourceHandle || undefined;
+        
+        // Call the parent's connection completion handler
+        onCompleteConnection(fromNodeId, toNodeId, fromOutputPort);
       }
     },
-    [setEdges, onPortClick]
+    [onCompleteConnection]
+  );
+
+  // Handle edge deletion
+  const onEdgesDelete = useCallback(
+    (edgesToDelete: Edge[]) => {
+      if (!onDeleteConnection) return;
+      
+      edgesToDelete.forEach((edge) => {
+        // Find the corresponding workflow connection and delete it
+        const connection = workflow.connections.find(
+          (c) => c.fromNodeId === edge.source && c.toNodeId === edge.target && 
+                 (edge.sourceHandle ? c.fromOutputPort === edge.sourceHandle : true)
+        );
+        if (connection) {
+          onDeleteConnection(connection.id);
+        }
+      });
+    },
+    [workflow.connections, onDeleteConnection]
   );
 
   // Handle node drag end to update positions (only update on drag END to prevent flashing)
@@ -245,6 +272,7 @@ export function WorkflowCanvasMode({
           edges={edges}
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
+          onEdgesDelete={onEdgesDelete}
           onNodeDragStop={onNodeDragStop}
           onConnect={onConnect}
           nodeTypes={nodeTypes}
@@ -254,6 +282,8 @@ export function WorkflowCanvasMode({
           maxZoom={2}
           defaultViewport={{ x: 0, y: 0, zoom: 0.8 }}
           elevateEdgesOnSelect
+          edgesUpdatable={false}
+          edgesFocusable={true}
         >
           <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
           <Controls />
