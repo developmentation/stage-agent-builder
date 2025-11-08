@@ -47,12 +47,12 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
       if (line.length === 0) {
         processedLines.push('');
       } else {
-        // Break long lines at 25 characters
+        // Break long lines at 35 characters
         const words = line.split(' ');
         let currentLine = '';
         
         words.forEach(word => {
-          if ((currentLine + ' ' + word).trim().length <= 25) {
+          if ((currentLine + ' ' + word).trim().length <= 35) {
             currentLine = currentLine ? currentLine + ' ' + word : word;
           } else {
             if (currentLine) processedLines.push(currentLine);
@@ -161,9 +161,15 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
         minHeight={100}
         maxWidth={600}
         maxHeight={600}
+        handleStyle={{
+          width: '12px',
+          height: '12px',
+          borderRadius: '2px',
+        }}
         onResize={(e, params) => {
           onUpdate({
             size: { width: params.width, height: params.height },
+            position: { x: params.x, y: params.y },
           });
         }}
       />
@@ -257,6 +263,8 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
                   wordBreak: "break-word",
                   overflowY: "auto",
                   overflowWrap: "break-word",
+                  maxWidth: "100%",
+                  wordWrap: "break-word",
                 }}
                 placeholder="Type your note..."
               />
