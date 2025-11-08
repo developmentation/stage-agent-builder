@@ -58,10 +58,33 @@ const Index = () => {
   };
 
   const toggleViewMode = () => {
-    setWorkflow((prev) => ({
-      ...prev,
-      viewMode: prev.viewMode === "stacked" ? "canvas" : "stacked",
-    }));
+    setWorkflow((prev) => {
+      const newViewMode = prev.viewMode === "stacked" ? "canvas" : "stacked";
+      
+      // Initialize stage positions when switching to canvas mode for the first time
+      if (newViewMode === "canvas") {
+        const updatedStages = prev.stages.map((stage, index) => {
+          if (!stage.position) {
+            return {
+              ...stage,
+              position: { x: 100, y: index * 400 }
+            };
+          }
+          return stage;
+        });
+        
+        return {
+          ...prev,
+          viewMode: newViewMode,
+          stages: updatedStages
+        };
+      }
+      
+      return {
+        ...prev,
+        viewMode: newViewMode
+      };
+    });
   };
 
   const updateStagePosition = (stageId: string, position: { x: number; y: number }) => {
