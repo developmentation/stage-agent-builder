@@ -87,10 +87,22 @@ export const ResponsiveLayout = ({
       {/* Desktop Layout */}
       <div className="hidden lg:flex flex-1 overflow-hidden">
         {viewMode === "simple" ? (
-          // Simple view - full width, no sidebars
-          <div className="flex-1 flex flex-col overflow-hidden h-full">
-            {desktopCanvas}
-          </div>
+          // Simple view - with left sidebar, no properties
+          <ResizablePanelGroup direction="horizontal">
+            <ResizablePanel defaultSize={20} minSize={15} maxSize={30} collapsible collapsedSize={0}>
+              <div className="h-full border-r border-border overflow-y-auto relative">
+                {sidebar}
+              </div>
+            </ResizablePanel>
+            
+            <ResizableHandle withHandle />
+            
+            <ResizablePanel defaultSize={80} minSize={40}>
+              <div className="flex-1 flex flex-col overflow-hidden h-full">
+                {desktopCanvas}
+              </div>
+            </ResizablePanel>
+          </ResizablePanelGroup>
         ) : (
           // Stacked/Canvas view - with sidebars
           <ResizablePanelGroup direction="horizontal">

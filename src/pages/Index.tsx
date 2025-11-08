@@ -1417,7 +1417,11 @@ const Index = () => {
           }
           desktopCanvas={
             workflow.viewMode === "simple" ? (
-              <SimpleView workflow={workflow} />
+              <SimpleView 
+                workflow={workflow}
+                userInput={userInput}
+                onUserInputChange={setUserInput}
+              />
             ) : workflow.viewMode === "canvas" ? (
               <WorkflowCanvasMode
                 workflow={workflow}

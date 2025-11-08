@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Download, Eye, FileText, Loader2 } from "lucide-react";
+import { Download, Eye, FileText, Loader2, CheckCircle2, Clock, Pause, Folder, File } from "lucide-react";
 import { Workflow, WorkflowNode } from "@/types/workflow";
 import JSZip from "jszip";
 import { useState } from "react";
@@ -10,14 +10,27 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+import { cn } from "@/lib/utils";
 
 interface SimpleViewProps {
   workflow: Workflow;
+  userInput?: string;
+  onUserInputChange?: (input: string) => void;
 }
 
-export const SimpleView = ({ workflow }: SimpleViewProps) => {
+export const SimpleView = ({ workflow, userInput, onUserInputChange }: SimpleViewProps) => {
   const [viewingOutput, setViewingOutput] = useState<{ nodeName: string; output: string } | null>(null);
+  const [outputTab, setOutputTab] = useState("view");
 
   // Helper to get all nodes with outputs
   const getNodesWithOutputs = () => {
@@ -148,132 +161,198 @@ export const SimpleView = ({ workflow }: SimpleViewProps) => {
     return content.substring(0, 200) + "...";
   };
 
+  // Get stage status based on nodes
+  const getStageStatus = (stage: any): "idle" | "running" | "complete" | "error" => {
+    if (stage.nodes.length === 0) return "idle";
+    const hasError = stage.nodes.some((n: WorkflowNode) => n.status === "error");
+    if (hasError) return "error";
+    const hasRunning = stage.nodes.some((n: WorkflowNode) => n.status === "running");
+    if (hasRunning) return "running";
+    const allCompleted = stage.nodes.every((n: WorkflowNode) => n.status === "complete");
+    if (allCompleted) return "complete";
+    return "idle";
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "running":
+        return <Loader2 className="h-4 w-4 animate-spin text-warning" />;
+      case "complete":
+        return <CheckCircle2 className="h-4 w-4 text-success" />;
+      case "error":
+        return <FileText className="h-4 w-4 text-destructive" />;
+      case "paused":
+        return <Pause className="h-4 w-4 text-muted-foreground" />;
+      default:
+        return <Clock className="h-4 w-4 text-muted-foreground" />;
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "running":
+        return "border-l-warning bg-warning/5";
+      case "complete":
+        return "border-l-success bg-success/5";
+      case "error":
+        return "border-l-destructive bg-destructive/5";
+      case "paused":
+        return "border-l-muted-foreground bg-muted/30";
+      default:
+        return "border-l-border bg-muted/10";
+    }
+  };
+
   const nodesWithOutputs = getNodesWithOutputs();
   const hasOutputs = nodesWithOutputs.length > 0;
 
   return (
-    <>
-      <div className="h-full flex flex-col bg-background">
-        {/* Header with actions */}
-        <div className="flex items-center justify-between p-4 border-b border-border bg-muted/30">
-          <div>
-            <h2 className="text-lg font-semibold text-foreground">Workflow Outputs</h2>
-            <p className="text-sm text-muted-foreground">
-              {hasOutputs
-                ? `${nodesWithOutputs.length} output${nodesWithOutputs.length === 1 ? "" : "s"} generated`
-                : "Run your workflow to see outputs"}
-            </p>
-          </div>
-          {hasOutputs && (
-            <Button onClick={downloadAll} size="sm">
-              <Download className="h-4 w-4 mr-2" />
-              Download All
-            </Button>
+    <div className="h-full flex flex-col bg-background">
+      {/* Outputs list */}
+      <ScrollArea className="flex-1">
+        <div className="p-4 space-y-4 max-w-5xl mx-auto">
+          {/* Empty state */}
+          {!hasOutputs && (
+            <div className="text-center py-16">
+              <FileText className="h-16 w-16 text-muted-foreground/50 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-foreground mb-2">No Outputs Yet</h3>
+              <p className="text-sm text-muted-foreground">
+                Run your workflow to see results here
+              </p>
+            </div>
           )}
-        </div>
 
-        {/* Outputs list */}
-        <ScrollArea className="flex-1">
-          <div className="p-6 space-y-6">
-            {!hasOutputs && (
-              <div className="text-center py-12">
-                <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <p className="text-muted-foreground">
-                  No outputs yet. Run your workflow to see results here.
-                </p>
-              </div>
-            )}
-
-            {workflow.stages.map((stage) => {
-              const stageNodes = stage.nodes.filter((n) => n.output);
-              if (stageNodes.length === 0) return null;
-
-              return (
-                <div key={stage.id} className="space-y-3">
-                  {/* Stage header */}
-                  <div className="flex items-center justify-between border-b border-border pb-2">
-                    <h3 className="text-base font-semibold text-foreground">{stage.name}</h3>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => downloadStage(stage.name)}
-                    >
-                      <Download className="h-3.5 w-3.5 mr-2" />
-                      Download Stage
-                    </Button>
+          {/* Stages as folders */}
+          {workflow.stages.map((stage) => {
+            const stageNodes = stage.nodes.filter((n) => n.output);
+            const stageStatus = getStageStatus(stage);
+            
+            return (
+              <Card key={stage.id} className={cn("border-l-4 transition-colors", getStatusColor(stageStatus))}>
+                {/* Stage folder header */}
+                <div className="flex items-center justify-between p-4 border-b border-border bg-muted/20">
+                  <div className="flex items-center gap-3">
+                    <Folder className="h-5 w-5 text-muted-foreground" />
+                    <div>
+                      <h3 className="font-semibold text-foreground">{stage.name}</h3>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {stageNodes.length > 0 ? `${stageNodes.length} output${stageNodes.length === 1 ? "" : "s"}` : "No outputs"}
+                      </p>
+                    </div>
                   </div>
-
-                  {/* Stage outputs */}
-                  <div className="space-y-3">
-                    {stageNodes.map((node) => (
-                      <Card key={node.id} className="p-4 space-y-3">
-                        {/* Node header */}
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <h4 className="font-medium text-foreground">{node.name}</h4>
-                              {node.status === "running" && (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin text-warning" />
-                              )}
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                              {getCharCount(node.output!)} characters
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() =>
-                                setViewingOutput({
-                                  nodeName: node.name,
-                                  output: formatOutput(node.output),
-                                })
-                              }
-                            >
-                              <Eye className="h-3.5 w-3.5 mr-1" />
-                              View
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => downloadArtifact(node.name, node.output)}
-                            >
-                              <Download className="h-3.5 w-3.5 mr-1" />
-                              Download
-                            </Button>
-                          </div>
-                        </div>
-
-                        {/* Output preview */}
-                        <div className="bg-muted/50 rounded-md p-3">
-                          <pre className="text-xs text-foreground whitespace-pre-wrap font-mono">
-                            {getPreview(node.output!)}
-                          </pre>
-                        </div>
-                      </Card>
-                    ))}
+                  <div className="flex items-center gap-2">
+                    {getStatusIcon(stageStatus)}
+                    {stageNodes.length > 0 && (
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => downloadStage(stage.name)}
+                        >
+                          <Download className="h-4 w-4 mr-2" />
+                          Download
+                        </Button>
+                      </>
+                    )}
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        </ScrollArea>
-      </div>
 
-      {/* View output dialog */}
+                {/* Files/Outputs */}
+                {stageNodes.length > 0 && (
+                  <div className="p-2">
+                    {stageNodes.map((node) => (
+                      <div
+                        key={node.id}
+                        className="flex items-center justify-between p-3 rounded-md hover:bg-muted/50 transition-colors group"
+                      >
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <File className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium text-sm text-foreground truncate">{node.name}</p>
+                            <p className="text-xs text-muted-foreground">
+                              {getCharCount(node.output!).toLocaleString()} characters
+                              {node.status === "running" && (
+                                <span className="ml-2 text-warning">• Streaming...</span>
+                              )}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() =>
+                              setViewingOutput({
+                                nodeName: node.name,
+                                output: formatOutput(node.output),
+                              })
+                            }
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0"
+                            onClick={() => downloadArtifact(node.name, node.output)}
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Card>
+            );
+          })}
+
+          {/* Download all button at bottom */}
+          {hasOutputs && (
+            <div className="flex justify-center pt-4">
+              <Button onClick={downloadAll} size="lg" className="gap-2">
+                <Download className="h-4 w-4" />
+                Download All Outputs
+              </Button>
+            </div>
+          )}
+        </div>
+      </ScrollArea>
+
+      {/* View output dialog - reusing Properties panel style */}
       <Dialog open={!!viewingOutput} onOpenChange={() => setViewingOutput(null)}>
-        <DialogContent className="max-w-4xl max-h-[80vh]">
-          <DialogHeader>
+        <DialogContent className="w-[90vw] max-w-[90vw] h-[90vh] max-h-[90vh] flex flex-col p-6">
+          <DialogHeader className="pb-4">
             <DialogTitle>{viewingOutput?.nodeName}</DialogTitle>
+            <DialogDescription>View the output content</DialogDescription>
           </DialogHeader>
-          <ScrollArea className="h-[60vh]">
-            <pre className="text-sm text-foreground whitespace-pre-wrap font-mono p-4">
-              {viewingOutput?.output}
-            </pre>
-          </ScrollArea>
+          <Tabs value={outputTab} onValueChange={setOutputTab} className="flex-1 flex flex-col overflow-hidden">
+            <TabsList className="w-full justify-start mb-4">
+              <TabsTrigger value="view">View</TabsTrigger>
+              <TabsTrigger value="raw">Raw</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="view" className="flex-1 overflow-hidden mt-0">
+              <ScrollArea className="h-full">
+                <div className="prose prose-sm dark:prose-invert max-w-none p-4">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {viewingOutput?.output || ""}
+                  </ReactMarkdown>
+                </div>
+              </ScrollArea>
+            </TabsContent>
+            
+            <TabsContent value="raw" className="flex-1 overflow-hidden mt-0">
+              <ScrollArea className="h-full">
+                <pre className="text-xs text-foreground whitespace-pre-wrap font-mono p-4 bg-muted/30 rounded-lg">
+                  {viewingOutput?.output}
+                </pre>
+              </ScrollArea>
+            </TabsContent>
+          </Tabs>
         </DialogContent>
       </Dialog>
-    </>
+    </div>
   );
 };
