@@ -296,10 +296,9 @@ export function WorkflowCanvasMode({
   );
 
   return (
-    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+    <div className="h-full w-full relative">
       <ReactFlowProvider>
-        <div style={{ width: '100%', height: '100%' }}>
-          <ReactFlow
+        <ReactFlow
           nodes={nodes}
           edges={edges}
           onNodesChange={onNodesChange}
@@ -331,14 +330,21 @@ export function WorkflowCanvasMode({
           />
           <Panel position="top-left">
             <Card className="p-2">
-              <Button onClick={onAddStage} size="sm">
-                <Plus className="h-4 w-4 mr-2" />
-                Add Stage
-              </Button>
+              <div className="flex gap-2">
+                <Button onClick={onAddStage} size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Stage
+                </Button>
+                {isMobile && onToggleViewMode && (
+                  <Button onClick={onToggleViewMode} size="sm" variant="outline">
+                    <Layers className="h-4 w-4 mr-2" />
+                    Stacked
+                  </Button>
+                )}
+              </div>
             </Card>
           </Panel>
         </ReactFlow>
-        </div>
       </ReactFlowProvider>
 
       {/* Agent Selector Dialog */}
