@@ -161,10 +161,10 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
               variant="ghost"
               size="sm"
               onClick={handleEditClick}
-              className="h-6 w-6 p-0 nodrag"
+              className="h-8 w-8 p-0 nodrag"
               style={{ backgroundColor: note.color }}
             >
-              <Pencil className="h-3 w-3" />
+              <Pencil className="h-4 w-4" />
             </Button>
             <div className="relative">
               <Button
@@ -174,9 +174,9 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
                   e.stopPropagation();
                   setShowColorPicker(!showColorPicker);
                 }}
-                className="h-6 w-6 p-0 nodrag"
+                className="h-8 w-8 p-0 nodrag"
               >
-                <Palette className="h-3 w-3" />
+                <Palette className="h-4 w-4" />
               </Button>
               {showColorPicker && (
                 <div className="absolute top-8 right-0 p-2 bg-background border rounded-md shadow-lg flex gap-1 nodrag z-50">
@@ -201,9 +201,9 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
                 e.stopPropagation();
                 onDelete();
               }}
-              className="h-6 w-6 p-0 nodrag"
+              className="h-8 w-8 p-0 nodrag"
             >
-              <Trash2 className="h-3 w-3" />
+              <Trash2 className="h-4 w-4" />
             </Button>
           </div>
         )}
@@ -219,15 +219,13 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
               value={localContent}
               onChange={handleContentChange}
               onMouseDown={(e) => e.stopPropagation()}
-              className="w-full bg-transparent border-none outline-none resize-none text-center nodrag absolute top-1/2 left-1/2"
+              className="w-full bg-transparent border-none outline-none resize-none text-center nodrag"
               style={{
                 fontSize: `${fontSize}px`,
                 lineHeight: "1.3",
-                overflow: "hidden",
                 whiteSpace: "pre-wrap",
-                transform: "translate(-50%, -50%)",
-                maxHeight: "100%",
-                maxWidth: "100%",
+                height: "100%",
+                overflowY: "auto",
               }}
               placeholder="Type your note..."
             />
