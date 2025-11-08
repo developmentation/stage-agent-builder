@@ -1,4 +1,5 @@
 import { WorkflowCanvas } from "@/components/workflow/WorkflowCanvas";
+import { WorkflowCanvasMode } from "@/components/workflow/WorkflowCanvasMode";
 import { Sidebar } from "@/components/sidebar/Sidebar";
 import { PropertiesPanel } from "@/components/properties/PropertiesPanel";
 import { Toolbar } from "@/components/toolbar/Toolbar";
@@ -37,6 +38,7 @@ const Index = () => {
   const [workflow, setWorkflow] = useState<Workflow>({
     stages: [],
     connections: [],
+    viewMode: "stacked",
   });
 
   const addLog = (type: LogEntry["type"], message: string) => {
@@ -53,6 +55,34 @@ const Index = () => {
       // When disabling, reset to 0
       setThinkingBudget(0);
     }
+  };
+
+  const toggleViewMode = () => {
+    setWorkflow((prev) => ({
+      ...prev,
+      viewMode: prev.viewMode === "stacked" ? "canvas" : "stacked",
+    }));
+  };
+
+  const updateStagePosition = (stageId: string, position: { x: number; y: number }) => {
+    setWorkflow((prev) => ({
+      ...prev,
+      stages: prev.stages.map((stage) =>
+        stage.id === stageId ? { ...stage, position } : stage
+      ),
+    }));
+  };
+
+  const updateNodePosition = (nodeId: string, position: { x: number; y: number }) => {
+    setWorkflow((prev) => ({
+      ...prev,
+      stages: prev.stages.map((stage) => ({
+        ...stage,
+        nodes: stage.nodes.map((node) =>
+          node.id === nodeId ? { ...node, position } : node
+        ),
+      })),
+    }));
   };
 
   const addStage = () => {
@@ -954,6 +984,8 @@ const Index = () => {
         onLoad={loadWorkflow}
         onClear={clearWorkflow}
         onRun={runWorkflow}
+        viewMode={workflow.viewMode || "stacked"}
+        onToggleViewMode={toggleViewMode}
       />
       
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -980,46 +1012,102 @@ const Index = () => {
             />
           }
           mobileCanvas={
-            <WorkflowCanvas 
-              workflow={workflow}
-              selectedNode={selectedNode}
-              connectingFrom={connectingFrom}
-              layoutId="mobile"
-              onSelectNode={setSelectedNode}
-              onAddAgent={addAgent}
-              onAddNode={addNode}
-              onDeleteAgent={deleteAgent}
-              onDeleteStage={deleteStage}
-              onRenameStage={renameStage}
-              onReorderStages={reorderStages}
-              onToggleMinimize={toggleMinimize}
-              onStartConnection={handleStartConnection}
-              onCompleteConnection={handleCompleteConnection}
-              onDeleteConnection={deleteConnection}
-              onRunAgent={runSingleAgent}
-              onRunFunction={runSingleFunction}
-            />
+            workflow.viewMode === "canvas" ? (
+              <WorkflowCanvasMode
+                workflow={workflow}
+                selectedNode={selectedNodeData || null}
+                isConnecting={!!connectingFrom}
+                onSelectNode={(nodeId) => setSelectedNode(nodeId)}
+                onAddStage={addStage}
+                onDeleteStage={deleteStage}
+                onRenameStage={renameStage}
+                onReorderStages={reorderStages}
+                onAddAgent={addAgent}
+                onAddFunction={addNode}
+                onDeleteNode={deleteAgent}
+                onRunAgent={runSingleAgent}
+                onStartConnection={handleStartConnection}
+                onPortClick={(nodeId, outputPort) => {
+                  if (connectingFrom) {
+                    handleCompleteConnection(nodeId, outputPort);
+                  } else {
+                    handleStartConnection(nodeId, outputPort);
+                  }
+                }}
+                onUpdateNode={updateNode}
+                onUpdateStagePosition={updateStagePosition}
+                onUpdateNodePosition={updateNodePosition}
+              />
+            ) : (
+              <WorkflowCanvas 
+                workflow={workflow}
+                selectedNode={selectedNode}
+                connectingFrom={connectingFrom}
+                layoutId="mobile"
+                onSelectNode={setSelectedNode}
+                onAddAgent={addAgent}
+                onAddNode={addNode}
+                onDeleteAgent={deleteAgent}
+                onDeleteStage={deleteStage}
+                onRenameStage={renameStage}
+                onReorderStages={reorderStages}
+                onToggleMinimize={toggleMinimize}
+                onStartConnection={handleStartConnection}
+                onCompleteConnection={handleCompleteConnection}
+                onDeleteConnection={deleteConnection}
+                onRunAgent={runSingleAgent}
+                onRunFunction={runSingleFunction}
+              />
+            )
           }
           desktopCanvas={
-            <WorkflowCanvas 
-              workflow={workflow}
-              selectedNode={selectedNode}
-              connectingFrom={connectingFrom}
-              layoutId="desktop"
-              onSelectNode={setSelectedNode}
-              onAddAgent={addAgent}
-              onAddNode={addNode}
-              onDeleteAgent={deleteAgent}
-              onDeleteStage={deleteStage}
-              onRenameStage={renameStage}
-              onReorderStages={reorderStages}
-              onToggleMinimize={toggleMinimize}
-              onStartConnection={handleStartConnection}
-              onCompleteConnection={handleCompleteConnection}
-              onDeleteConnection={deleteConnection}
-              onRunAgent={runSingleAgent}
-              onRunFunction={runSingleFunction}
-            />
+            workflow.viewMode === "canvas" ? (
+              <WorkflowCanvasMode
+                workflow={workflow}
+                selectedNode={selectedNodeData || null}
+                isConnecting={!!connectingFrom}
+                onSelectNode={(nodeId) => setSelectedNode(nodeId)}
+                onAddStage={addStage}
+                onDeleteStage={deleteStage}
+                onRenameStage={renameStage}
+                onReorderStages={reorderStages}
+                onAddAgent={addAgent}
+                onAddFunction={addNode}
+                onDeleteNode={deleteAgent}
+                onRunAgent={runSingleAgent}
+                onStartConnection={handleStartConnection}
+                onPortClick={(nodeId, outputPort) => {
+                  if (connectingFrom) {
+                    handleCompleteConnection(nodeId, outputPort);
+                  } else {
+                    handleStartConnection(nodeId, outputPort);
+                  }
+                }}
+                onUpdateNode={updateNode}
+                onUpdateStagePosition={updateStagePosition}
+                onUpdateNodePosition={updateNodePosition}
+              />
+            ) : (
+              <WorkflowCanvas 
+                workflow={workflow}
+                selectedNode={selectedNode}
+                connectingFrom={connectingFrom}
+                layoutId="desktop"
+                onSelectNode={setSelectedNode}
+                onAddAgent={addAgent}
+                onAddNode={addNode}
+                onDeleteAgent={deleteAgent}
+                onDeleteStage={deleteStage}
+                onRenameStage={renameStage}
+                onReorderStages={reorderStages}
+                onToggleMinimize={toggleMinimize}
+                onStartConnection={handleStartConnection}
+                onCompleteConnection={handleCompleteConnection}
+                onDeleteConnection={deleteConnection}
+                onRunAgent={runSingleAgent}
+                onRunFunction={runSingleFunction}
+              />
+            )
           }
           properties={
             <PropertiesPanel

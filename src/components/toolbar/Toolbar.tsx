@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Play, Plus, Save, Upload, Trash2, HelpCircle } from "lucide-react";
+import { Play, Plus, Save, Upload, Trash2, HelpCircle, LayoutGrid, LayoutList } from "lucide-react";
 import { useRef, useState } from "react";
 import { HelpModal } from "@/components/help/HelpModal";
 interface ToolbarProps {
@@ -8,13 +8,17 @@ interface ToolbarProps {
   onLoad: (file: File) => void;
   onClear: () => void;
   onRun: () => void;
+  viewMode: "stacked" | "canvas";
+  onToggleViewMode: () => void;
 }
 export const Toolbar = ({
   onAddStage,
   onSave,
   onLoad,
   onClear,
-  onRun
+  onRun,
+  viewMode,
+  onToggleViewMode
 }: ToolbarProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -45,6 +49,25 @@ export const Toolbar = ({
         <Button variant="ghost" size="sm" className="gap-2" onClick={onAddStage}>
           <Plus className="h-4 w-4" />
           Add Stage
+        </Button>
+        <div className="w-px h-6 bg-border mx-2" />
+        <Button 
+          onClick={onToggleViewMode} 
+          variant={viewMode === "canvas" ? "default" : "outline"}
+          size="sm"
+          className="gap-2"
+        >
+          {viewMode === "canvas" ? (
+            <>
+              <LayoutGrid className="h-4 w-4" />
+              Canvas
+            </>
+          ) : (
+            <>
+              <LayoutList className="h-4 w-4" />
+              Stacked
+            </>
+          )}
         </Button>
         <div className="w-px h-6 bg-border mx-2" />
         <Button variant="outline" size="sm" className="gap-2" onClick={handleLoadClick}>

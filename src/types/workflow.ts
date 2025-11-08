@@ -9,6 +9,7 @@ export interface BaseNode {
   status: "idle" | "running" | "complete" | "error";
   output?: string;
   minimized?: boolean;
+  position?: { x: number; y: number }; // For canvas mode positioning within stage
 }
 
 // Agent-specific properties
@@ -50,6 +51,8 @@ export interface Stage {
   id: string;
   name: string;
   nodes: WorkflowNode[];
+  position?: { x: number; y: number }; // For canvas mode
+  size?: { width: number; height: number }; // For canvas mode
 }
 
 // Connection between nodes with output port support
@@ -64,6 +67,7 @@ export interface Connection {
 export interface Workflow {
   stages: Stage[];
   connections: Connection[];
+  viewMode?: "stacked" | "canvas"; // Toggle between visualization modes
 }
 
 // Log entry for output
