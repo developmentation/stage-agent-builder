@@ -150,7 +150,7 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
           borderColor: selected ? "hsl(var(--primary))" : "transparent",
           width: note.size.width,
           height: note.size.height,
-          overflow: "hidden",
+          overflow: "visible",
         }}
         onDoubleClick={handleDoubleClick}
       >
@@ -179,7 +179,7 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
                 <Palette className="h-3 w-3" />
               </Button>
               {showColorPicker && (
-                <div className="absolute top-8 right-0 p-2 bg-background border rounded-md shadow-lg flex gap-1 nodrag">
+                <div className="absolute top-8 right-0 p-2 bg-background border rounded-md shadow-lg flex gap-1 nodrag z-50">
                   {NOTE_COLORS.map((color) => (
                     <button
                       key={color}
@@ -211,25 +211,26 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
         {/* Content area */}
         <div
           className="w-full h-full flex items-center justify-center p-4"
-          style={{ overflow: "hidden" }}
+          style={{ overflow: "hidden", position: "relative" }}
         >
           {isEditing ? (
-            <div className="w-full h-full flex items-center justify-center">
-              <textarea
-                ref={textareaRef}
-                value={localContent}
-                onChange={handleContentChange}
-                onMouseDown={(e) => e.stopPropagation()}
-                className="w-full h-full bg-transparent border-none outline-none resize-none text-center nodrag"
-                style={{
-                  fontSize: `${fontSize}px`,
-                  lineHeight: "1.3",
-                  overflow: "hidden",
-                  whiteSpace: "pre-wrap",
-                }}
-                placeholder="Type your note..."
-              />
-            </div>
+            <textarea
+              ref={textareaRef}
+              value={localContent}
+              onChange={handleContentChange}
+              onMouseDown={(e) => e.stopPropagation()}
+              className="w-full bg-transparent border-none outline-none resize-none text-center nodrag absolute top-1/2 left-1/2"
+              style={{
+                fontSize: `${fontSize}px`,
+                lineHeight: "1.3",
+                overflow: "hidden",
+                whiteSpace: "pre-wrap",
+                transform: "translate(-50%, -50%)",
+                maxHeight: "100%",
+                maxWidth: "100%",
+              }}
+              placeholder="Type your note..."
+            />
           ) : (
             <div
               className="w-full h-full flex items-center justify-center text-center"
