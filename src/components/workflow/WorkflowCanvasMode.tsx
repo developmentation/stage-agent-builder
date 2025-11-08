@@ -20,7 +20,7 @@ import 'reactflow/dist/style.css';
 import './EdgeStyles.css';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AlignVerticalJustifyCenter, AlignHorizontalJustifyCenter, Grid3x3 } from "lucide-react";
+import { AlignVerticalJustifyCenter, AlignHorizontalJustifyCenter, Grid3x3, Map } from "lucide-react";
 import type { Workflow, WorkflowNode, Stage as StageType } from "@/types/workflow";
 import { AgentSelector } from "@/components/AgentSelector";
 import { FunctionSelector } from "@/components/FunctionSelector";
@@ -87,6 +87,7 @@ export function WorkflowCanvasMode({
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [showAddAgent, setShowAddAgent] = useState<string | null>(null);
   const [showAddFunction, setShowAddFunction] = useState<string | null>(null);
+  const [showMiniMap, setShowMiniMap] = useState(true);
   const isMobile = useIsMobile();
 
   // Calculate stage bounds - positioned directly from node bounding boxes
@@ -377,12 +378,14 @@ export function WorkflowCanvasMode({
         >
           <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
           <Controls />
-          <MiniMap
-            nodeStrokeWidth={3}
-            zoomable
-            pannable
-            className="bg-background/80 backdrop-blur-sm"
-          />
+          {showMiniMap && (
+            <MiniMap
+              nodeStrokeWidth={3}
+              zoomable
+              pannable
+              className="bg-background/80 backdrop-blur-sm"
+            />
+          )}
           <Panel position="top-left">
             <Card className="p-2">
               <div className="flex gap-2">
@@ -409,6 +412,14 @@ export function WorkflowCanvasMode({
                   title="Arrange in grid"
                 >
                   <Grid3x3 className="h-4 w-4" />
+                </Button>
+                <Button 
+                  onClick={() => setShowMiniMap(!showMiniMap)} 
+                  size="sm"
+                  variant={showMiniMap ? "default" : "outline"}
+                  title="Toggle mini map"
+                >
+                  <Map className="h-4 w-4" />
                 </Button>
               </div>
             </Card>
