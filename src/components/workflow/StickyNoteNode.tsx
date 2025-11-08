@@ -24,32 +24,40 @@ export const StickyNoteNode = memo(({ data, selected }: NodeProps<StickyNoteNode
   const [content, setContent] = useState(note.content);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [fontSize, setFontSize] = useState(16);
 
   // Calculate dynamic font size to fit all content without scrolling
-  const calculateFontSize = () => {
-    if (!containerRef.current) return 16;
-    
-    const availableWidth = note.size.width - 32; // accounting for padding
-    const availableHeight = note.size.height - 32;
-    const contentLength = content.length;
-    
-    if (contentLength === 0) return 16;
-    
-    // Estimate characters per line based on width
-    const avgCharWidth = 0.6; // rough estimate
-    const charsPerLine = Math.floor(availableWidth / avgCharWidth);
-    const estimatedLines = Math.ceil(contentLength / charsPerLine);
-    
-    // Calculate font size that fits height
-    let fontSize = Math.floor(availableHeight / (estimatedLines * 1.3)); // 1.3 is line height
-    
-    // Clamp between 8px and 24px
-    fontSize = Math.max(8, Math.min(24, fontSize));
-    
-    return fontSize;
-  };
+  useEffect(() => {
+    const calculateFontSize = () => {
+      if (!containerRef.current) return 16;
+      
+      const availableWidth = note.size.width - 32; // accounting for padding
+      const availableHeight = note.size.height - 32;
+      const contentLength = content.length;
+      
+      if (contentLength === 0) return 16;
+      
+      // Start with a reasonable font size and decrease until it fits
+      let testSize = 24;
+      const minSize = 8;
+      
+      while (testSize > minSize) {
+        const avgCharWidth = testSize * 0.6;
+        const charsPerLine = Math.floor(availableWidth / avgCharWidth);
+        const estimatedLines = Math.ceil(contentLength / charsPerLine);
+        const requiredHeight = estimatedLines * testSize * 1.3; // 1.3 is line height
+        
+        if (requiredHeight <= availableHeight) {
+          return testSize;
+        }
+        testSize -= 1;
+      }
+      
+      return minSize;
+    };
 
-  const fontSize = calculateFontSize();
+    setFontSize(calculateFontSize());
+  }, [content, note.size.width, note.size.height]);
 
   useEffect(() => {
     if (isEditing && textareaRef.current) {
@@ -78,6 +86,8 @@ export const StickyNoteNode = memo(({ data, selected }: NodeProps<StickyNoteNode
         isVisible={selected}
         minWidth={150}
         minHeight={150}
+        handleStyle={{ width: 16, height: 16 }}
+        lineStyle={{ borderWidth: 2 }}
         onResize={(_, params) => {
           onUpdate(note.id, {
             size: { width: params.width, height: params.height },

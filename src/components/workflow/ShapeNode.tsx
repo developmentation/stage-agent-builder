@@ -73,6 +73,8 @@ export const ShapeNode = memo(({ data, selected }: NodeProps<ShapeNodeData>) => 
         isVisible={selected}
         minWidth={50}
         minHeight={50}
+        handleStyle={{ width: 16, height: 16 }}
+        lineStyle={{ borderWidth: 2 }}
         onResize={(_, params) => {
           onUpdate(shape.id, {
             size: { width: params.width, height: params.height },

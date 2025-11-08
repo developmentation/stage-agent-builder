@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, useRef } from "react";
 import ReactFlow, {
   Node,
   Edge,
@@ -118,9 +118,9 @@ export function WorkflowCanvasMode({
   const [showAddAgent, setShowAddAgent] = useState<string | null>(null);
   const [showAddFunction, setShowAddFunction] = useState<string | null>(null);
   const [editingTextBoxId, setEditingTextBoxId] = useState<string | null>(null);
-  const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [currentPath, setCurrentPath] = useState<string>("");
+  const [isDrawingPath, setIsDrawingPath] = useState(false);
+  const [drawingPath, setDrawingPath] = useState<Array<{x: number, y: number}>>([]);
+  const drawingRef = useRef<SVGSVGElement>(null);
   const isMobile = useIsMobile();
 
   // Calculate stage bounds and offset - memoized to prevent recalculation during dragging
@@ -238,7 +238,6 @@ export function WorkflowCanvasMode({
           onDelete: onDeleteStickyNote,
         },
         draggable: true,
-        selected: selectedElementId === `sticky-${note.id}`,
         style: {
           zIndex: 5,
         },
@@ -254,13 +253,11 @@ export function WorkflowCanvasMode({
         position: textBox.position,
         data: {
           textBox,
-          selected: selectedElementId === `textbox-${textBox.id}`,
           onUpdate: onUpdateTextBox,
           onDelete: onDeleteTextBox,
           onEditStart: (id: string) => setEditingTextBoxId(id),
         },
         draggable: !editingTextBoxId,
-        selected: selectedElementId === `textbox-${textBox.id}`,
         style: {
           zIndex: 5,
         },
@@ -280,7 +277,6 @@ export function WorkflowCanvasMode({
           onDelete: onDeleteShape,
         },
         draggable: true,
-        selected: selectedElementId === `shape-${shape.id}`,
         style: {
           zIndex: 5,
         },
@@ -299,7 +295,6 @@ export function WorkflowCanvasMode({
           onDelete: onDeleteDrawing,
         },
         draggable: false,
-        selected: selectedElementId === `drawing-${drawing.id}`,
         style: {
           zIndex: 4,
         },
@@ -332,7 +327,7 @@ export function WorkflowCanvasMode({
     }));
 
     setEdges(flowEdges);
-  }, [workflow, selectedNode, isConnecting, stageBounds, onUpdateStickyNote, onDeleteStickyNote, onUpdateTextBox, onDeleteTextBox, onUpdateShape, onDeleteShape, onDeleteDrawing, selectedElementId, editingTextBoxId]);
+  }, [workflow, selectedNode, isConnecting, stageBounds, onUpdateStickyNote, onDeleteStickyNote, onUpdateTextBox, onDeleteTextBox, onUpdateShape, onDeleteShape, onDeleteDrawing, editingTextBoxId]);
 
   // Handle connection between nodes
   const onConnect = useCallback(
@@ -431,38 +426,61 @@ export function WorkflowCanvasMode({
     [workflow.stages, stageBounds, onUpdateStagePosition, onUpdateNodePosition, onUpdateStickyNote, onUpdateTextBox, onUpdateShape]
   );
 
-  // Handle selection
-  const handleNodeClick = useCallback((event: React.MouseEvent, node: Node) => {
-    setSelectedElementId(node.id);
-  }, []);
-
-  // Handle keydown for delete
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Delete' && selectedElementId) {
-        if (selectedElementId.startsWith('sticky-')) {
-          const id = selectedElementId.replace('sticky-', '');
-          onDeleteStickyNote?.(id);
-        } else if (selectedElementId.startsWith('textbox-')) {
-          const id = selectedElementId.replace('textbox-', '');
-          onDeleteTextBox?.(id);
-        } else if (selectedElementId.startsWith('shape-')) {
-          const id = selectedElementId.replace('shape-', '');
-          onDeleteShape?.(id);
-        } else if (selectedElementId.startsWith('drawing-')) {
-          const id = selectedElementId.replace('drawing-', '');
-          onDeleteDrawing?.(id);
-        }
-        setSelectedElementId(null);
-      }
+  // Handle drawing
+  const handleMouseDown = useCallback((event: React.MouseEvent) => {
+    if (!drawingMode || !onAddDrawing) return;
+    
+    const reactFlowBounds = event.currentTarget.getBoundingClientRect();
+    const position = {
+      x: event.clientX - reactFlowBounds.left,
+      y: event.clientY - reactFlowBounds.top,
     };
+    
+    setIsDrawingPath(true);
+    setDrawingPath([position]);
+  }, [drawingMode, onAddDrawing]);
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [selectedElementId, onDeleteStickyNote, onDeleteTextBox, onDeleteShape, onDeleteDrawing]);
+  const handleMouseMove = useCallback((event: React.MouseEvent) => {
+    if (!isDrawingPath || !drawingMode) return;
+    
+    const reactFlowBounds = event.currentTarget.getBoundingClientRect();
+    const position = {
+      x: event.clientX - reactFlowBounds.left,
+      y: event.clientY - reactFlowBounds.top,
+    };
+    
+    setDrawingPath(prev => [...prev, position]);
+  }, [isDrawingPath, drawingMode]);
+
+  const handleMouseUp = useCallback(() => {
+    if (!isDrawingPath || !onAddDrawing || drawingPath.length < 2) {
+      setIsDrawingPath(false);
+      setDrawingPath([]);
+      return;
+    }
+
+    // Convert points to SVG path
+    const pathData = drawingPath.reduce((path, point, index) => {
+      if (index === 0) {
+        return `M ${point.x} ${point.y}`;
+      }
+      return `${path} L ${point.x} ${point.y}`;
+    }, '');
+
+    onAddDrawing(pathData);
+    setIsDrawingPath(false);
+    setDrawingPath([]);
+  }, [isDrawingPath, onAddDrawing, drawingPath]);
 
   return (
-    <div className="h-full w-full relative">
+    <div 
+      className="h-full w-full relative"
+      style={{ cursor: drawingMode ? 'crosshair' : 'default' }}
+      onMouseDown={drawingMode ? handleMouseDown : undefined}
+      onMouseMove={drawingMode ? handleMouseMove : undefined}
+      onMouseUp={drawingMode ? handleMouseUp : undefined}
+      onMouseLeave={drawingMode ? handleMouseUp : undefined}
+    >
       <ReactFlowProvider>
         <ReactFlow
           nodes={nodes}
@@ -471,7 +489,6 @@ export function WorkflowCanvasMode({
           onEdgesChange={onEdgesChange}
           onEdgesDelete={onEdgesDelete}
           onNodeDragStop={onNodeDragStop}
-          onNodeClick={handleNodeClick}
           onConnect={onConnect}
           nodeTypes={nodeTypes}
           connectionLineType={ConnectionLineType.Bezier}
@@ -486,6 +503,10 @@ export function WorkflowCanvasMode({
           }}
           edgesUpdatable={false}
           edgesFocusable={true}
+          nodesDraggable={!drawingMode}
+          nodesConnectable={!drawingMode}
+          elementsSelectable={!drawingMode}
+          panOnDrag={!drawingMode}
         >
           <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
           <Controls />
@@ -580,6 +601,26 @@ export function WorkflowCanvasMode({
             setShowAddFunction(null);
           }}
         />
+      )}
+
+      {/* Drawing overlay */}
+      {isDrawingPath && drawingPath.length > 0 && (
+        <svg
+          className="absolute inset-0 pointer-events-none z-50"
+          style={{ width: '100%', height: '100%' }}
+        >
+          <path
+            d={drawingPath.reduce((path, point, index) => {
+              if (index === 0) return `M ${point.x} ${point.y}`;
+              return `${path} L ${point.x} ${point.y}`;
+            }, '')}
+            stroke="#000000"
+            strokeWidth={2}
+            fill="none"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
       )}
     </div>
   );

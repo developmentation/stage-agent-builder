@@ -7,14 +7,13 @@ import type { TextBox } from "@/types/workflow";
 
 interface TextBoxNodeData {
   textBox: TextBox;
-  selected: boolean;
   onUpdate: (id: string, updates: Partial<TextBox>) => void;
   onDelete: (id: string) => void;
   onEditStart: (id: string) => void;
 }
 
 export const TextBoxNode = memo(({ data, selected }: NodeProps<TextBoxNodeData>) => {
-  const { textBox, onUpdate, onDelete, onEditStart, selected: isSelected } = data;
+  const { textBox, onUpdate, onDelete, onEditStart } = data;
   const [isEditing, setIsEditing] = useState(false);
   const [content, setContent] = useState(textBox.content);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -28,7 +27,7 @@ export const TextBoxNode = memo(({ data, selected }: NodeProps<TextBoxNodeData>)
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (isSelected && !isEditing) {
+    if (selected && !isEditing) {
       setIsEditing(true);
       onEditStart(textBox.id);
     }
@@ -52,8 +51,8 @@ export const TextBoxNode = memo(({ data, selected }: NodeProps<TextBoxNodeData>)
         isVisible={selected && !isEditing}
         minWidth={150}
         minHeight={50}
-        handleStyle={{ width: 8, height: 8 }}
-        lineStyle={{ borderWidth: 1 }}
+        handleStyle={{ width: 16, height: 16 }}
+        lineStyle={{ borderWidth: 2 }}
         onResize={(_, params) => {
           onUpdate(textBox.id, { width: params.width });
         }}

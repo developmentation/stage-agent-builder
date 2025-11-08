@@ -579,6 +579,8 @@ const Index = () => {
   };
 
   const addDrawing = (path: string) => {
+    if (!path) return;
+    
     const newDrawing = {
       id: `drawing-${Date.now()}`,
       path,
