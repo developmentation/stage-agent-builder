@@ -259,6 +259,10 @@ const Index = () => {
     addNode(stageId, agentTemplate, "agent");
   };
 
+  const addFunction = (stageId: string, functionTemplate: any) => {
+    addNode(stageId, functionTemplate, "function");
+  };
+
   const updateNode = (nodeId: string, updates: Partial<WorkflowNode>) => {
     setWorkflow((prev) => ({
       ...prev,
@@ -1188,7 +1192,7 @@ const Index = () => {
                 onRenameStage={renameStage}
                 onReorderStages={reorderStages}
                 onAddAgent={addAgent}
-                onAddFunction={addNode}
+                onAddFunction={addFunction}
                 onDeleteNode={deleteAgent}
                 onRunAgent={runSingleAgent}
                 onStartConnection={handleStartConnection}
@@ -1240,7 +1244,7 @@ const Index = () => {
                 onRenameStage={renameStage}
                 onReorderStages={reorderStages}
                 onAddAgent={addAgent}
-                onAddFunction={addNode}
+                onAddFunction={addFunction}
                 onDeleteNode={deleteAgent}
                 onRunAgent={runSingleAgent}
                 onStartConnection={handleStartConnection}
