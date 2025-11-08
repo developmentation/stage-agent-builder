@@ -5,7 +5,7 @@ import { PropertiesPanel } from "@/components/properties/PropertiesPanel";
 import { Toolbar } from "@/components/toolbar/Toolbar";
 import { OutputLog } from "@/components/output/OutputLog";
 import { ResponsiveLayout } from "@/components/layout/ResponsiveLayout";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import type { 
   Workflow, 
   WorkflowNode, 
@@ -58,29 +58,28 @@ const Index = () => {
   };
 
   const toggleViewMode = () => {
-    setWorkflow((prev) => {
-      const newViewMode = prev.viewMode === "stacked" ? "canvas" : "stacked";
-      
-      // Initialize stage positions when switching to canvas mode
-      if (newViewMode === "canvas") {
-        const updatedStages = prev.stages.map((stage, index) => ({
-          ...stage,
-          position: stage.position || { x: 100, y: index * 400 }
-        }));
-        
-        return {
-          ...prev,
-          viewMode: newViewMode,
-          stages: updatedStages
-        };
-      }
-      
-      return {
-        ...prev,
-        viewMode: newViewMode
-      };
-    });
+    setWorkflow((prev) => ({
+      ...prev,
+      viewMode: prev.viewMode === "stacked" ? "canvas" : "stacked",
+    }));
   };
+
+  // Initialize stage positions when switching to canvas mode
+  useEffect(() => {
+    if (workflow.viewMode === "canvas") {
+      const hasUnpositionedStages = workflow.stages.some(stage => !stage.position);
+      
+      if (hasUnpositionedStages) {
+        setWorkflow((prev) => ({
+          ...prev,
+          stages: prev.stages.map((stage, index) => ({
+            ...stage,
+            position: stage.position || { x: 100, y: index * 400 }
+          }))
+        }));
+      }
+    }
+  }, [workflow.viewMode, workflow.stages.length]);
 
   const updateStagePosition = (stageId: string, position: { x: number; y: number }) => {
     setWorkflow((prev) => ({
