@@ -144,7 +144,7 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
   };
 
   return (
-    <>
+    <div style={{ position: 'relative', width: note.size.width, height: note.size.height }}>
       <NodeResizer
         isVisible={!isEditing}
         minWidth={150}
@@ -158,6 +158,8 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
         lineStyle={{
           borderWidth: '2px',
         }}
+        keepAspectRatio={false}
+        shouldResize={() => true}
         onResize={(e, params) => {
           onUpdate({
             size: { width: params.width, height: params.height },
@@ -274,7 +276,7 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
           )}
         </div>
       </Card>
-    </>
+    </div>
   );
 });
 
