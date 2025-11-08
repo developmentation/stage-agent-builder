@@ -70,51 +70,14 @@ export interface StickyNote {
   color: string; // yellow, blue, green, pink, orange
   position: { x: number; y: number };
   size: { width: number; height: number };
-  zIndex?: number;
-}
-
-// Text box with markdown support
-export interface TextBox {
-  id: string;
-  content: string;
-  fontSize: number;
-  position: { x: number; y: number };
-  width: number;
-  zIndex?: number;
-}
-
-// Shape element
-export interface Shape {
-  id: string;
-  type: "rectangle" | "circle" | "triangle";
-  position: { x: number; y: number };
-  size: { width: number; height: number };
-  color: string;
-  fillOpacity: number;
-  strokeColor: string;
-  strokeWidth: number;
-  zIndex?: number;
-}
-
-// Drawing path (freeform pen)
-export interface Drawing {
-  id: string;
-  path: string; // SVG path data
-  color: string;
-  strokeWidth: number;
-  position?: { x: number; y: number };
-  zIndex?: number;
 }
 
 // Complete workflow
 export interface Workflow {
   stages: Stage[];
   connections: Connection[];
-  stickyNotes?: StickyNote[];
-  textBoxes?: TextBox[];
-  shapes?: Shape[];
-  drawings?: Drawing[];
-  viewMode?: "stacked" | "canvas";
+  stickyNotes?: StickyNote[]; // Optional sticky notes for canvas annotations
+  viewMode?: "stacked" | "canvas"; // Toggle between visualization modes
 }
 
 // Log entry for output

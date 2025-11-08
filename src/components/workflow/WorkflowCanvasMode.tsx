@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState, useRef } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import ReactFlow, {
   Node,
   Edge,
@@ -15,34 +15,25 @@ import ReactFlow, {
   ReactFlowProvider,
   Panel,
   addEdge,
-  useReactFlow,
 } from 'reactflow';
 import 'reactflow/dist/style.css';
 import './EdgeStyles.css';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { StickyNote as StickyNoteIcon, Type, Square, Circle, Triangle, Pencil, Plus } from "lucide-react";
-import type { Workflow, WorkflowNode, Stage as StageType, StickyNote as StickyNoteType, TextBox as TextBoxType, Shape as ShapeType, Drawing as DrawingType } from "@/types/workflow";
+import { Plus, Grid3x3, Layers, StickyNote as StickyNoteIcon } from "lucide-react";
+import type { Workflow, WorkflowNode, Stage as StageType, StickyNote as StickyNoteType } from "@/types/workflow";
 import { AgentSelector } from "@/components/AgentSelector";
 import { FunctionSelector } from "@/components/FunctionSelector";
 import { StageNode } from "./StageNode";
 import { WorkflowNodeComponent } from "./WorkflowNodeComponent";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 import { StickyNoteNode } from "./StickyNoteNode";
-import { TextBoxNode } from "./TextBoxNode";
-import { ShapeNode } from "./ShapeNode";
-import { DrawingNode } from "./DrawingNode";
 
-// Define nodeTypes outside component to prevent recreation on every render
-const NODE_TYPES: NodeTypes = {
+const nodeTypes: NodeTypes = {
   stage: StageNode,
   workflowNode: WorkflowNodeComponent,
   stickyNote: StickyNoteNode,
-  textBox: TextBoxNode,
-  shape: ShapeNode,
-  drawing: DrawingNode,
 };
 
 interface WorkflowCanvasModeProps {
@@ -66,19 +57,9 @@ interface WorkflowCanvasModeProps {
   onDeleteConnection?: (connectionId: string) => void;
   onCompleteConnection?: (fromNodeId: string, toNodeId: string, fromOutputPort?: string) => void;
   onToggleViewMode?: () => void;
-  onAddStickyNote?: (position?: { x: number; y: number }) => void;
+  onAddStickyNote?: () => void;
   onUpdateStickyNote?: (id: string, updates: Partial<StickyNoteType>) => void;
   onDeleteStickyNote?: (id: string) => void;
-  onAddTextBox?: (position?: { x: number; y: number }) => void;
-  onUpdateTextBox?: (id: string, updates: Partial<TextBoxType>) => void;
-  onDeleteTextBox?: (id: string) => void;
-  onAddShape?: (type: "rectangle" | "circle" | "triangle", position?: { x: number; y: number }) => void;
-  onUpdateShape?: (id: string, updates: Partial<ShapeType>) => void;
-  onDeleteShape?: (id: string) => void;
-  onAddDrawing?: (path: string, position: { x: number; y: number }) => void;
-  onDeleteDrawing?: (id: string) => void;
-  drawingMode?: boolean;
-  onSetDrawingMode?: (enabled: boolean) => void;
 }
 
 export function WorkflowCanvasMode({
@@ -89,7 +70,6 @@ export function WorkflowCanvasMode({
   onAddStage,
   onDeleteStage,
   onRenameStage,
-  onReorderStages,
   onAddAgent,
   onAddFunction,
   onDeleteNode,
@@ -105,118 +85,12 @@ export function WorkflowCanvasMode({
   onAddStickyNote,
   onUpdateStickyNote,
   onDeleteStickyNote,
-  onAddTextBox,
-  onUpdateTextBox,
-  onDeleteTextBox,
-  onAddShape,
-  onUpdateShape,
-  onDeleteShape,
-  onAddDrawing,
-  onDeleteDrawing,
-  drawingMode,
-  onSetDrawingMode,
 }: WorkflowCanvasModeProps) {
-  return (
-    <ReactFlowProvider>
-      <WorkflowCanvasModeInner
-        workflow={workflow}
-        selectedNode={selectedNode}
-        isConnecting={isConnecting}
-        onSelectNode={onSelectNode}
-        onAddStage={onAddStage}
-        onDeleteStage={onDeleteStage}
-        onRenameStage={onRenameStage}
-        onReorderStages={onReorderStages}
-        onAddAgent={onAddAgent}
-        onAddFunction={onAddFunction}
-        onDeleteNode={onDeleteNode}
-        onRunAgent={onRunAgent}
-        onStartConnection={onStartConnection}
-        onPortClick={onPortClick}
-        onUpdateNode={onUpdateNode}
-        onUpdateStagePosition={onUpdateStagePosition}
-        onUpdateNodePosition={onUpdateNodePosition}
-        onDeleteConnection={onDeleteConnection}
-        onCompleteConnection={onCompleteConnection}
-        onToggleViewMode={onToggleViewMode}
-        onAddStickyNote={onAddStickyNote}
-        onUpdateStickyNote={onUpdateStickyNote}
-        onDeleteStickyNote={onDeleteStickyNote}
-        onAddTextBox={onAddTextBox}
-        onUpdateTextBox={onUpdateTextBox}
-        onDeleteTextBox={onDeleteTextBox}
-        onAddShape={onAddShape}
-        onUpdateShape={onUpdateShape}
-        onDeleteShape={onDeleteShape}
-        onAddDrawing={onAddDrawing}
-        onDeleteDrawing={onDeleteDrawing}
-        drawingMode={drawingMode}
-        onSetDrawingMode={onSetDrawingMode}
-      />
-    </ReactFlowProvider>
-  );
-}
-
-function WorkflowCanvasModeInner({
-  workflow,
-  selectedNode,
-  isConnecting,
-  onSelectNode,
-  onAddStage,
-  onDeleteStage,
-  onRenameStage,
-  onReorderStages,
-  onAddAgent,
-  onAddFunction,
-  onDeleteNode,
-  onRunAgent,
-  onStartConnection,
-  onPortClick,
-  onUpdateNode,
-  onUpdateStagePosition,
-  onUpdateNodePosition,
-  onDeleteConnection,
-  onCompleteConnection,
-  onToggleViewMode,
-  onAddStickyNote,
-  onUpdateStickyNote,
-  onDeleteStickyNote,
-  onAddTextBox,
-  onUpdateTextBox,
-  onDeleteTextBox,
-  onAddShape,
-  onUpdateShape,
-  onDeleteShape,
-  onAddDrawing,
-  onDeleteDrawing,
-  drawingMode,
-  onSetDrawingMode,
-}: WorkflowCanvasModeProps) {
-  const { project, getViewport } = useReactFlow();
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [showAddAgent, setShowAddAgent] = useState<string | null>(null);
   const [showAddFunction, setShowAddFunction] = useState<string | null>(null);
-  const [editingTextBoxId, setEditingTextBoxId] = useState<string | null>(null);
-  const [isDrawingPath, setIsDrawingPath] = useState(false);
-  const [drawingPath, setDrawingPath] = useState<Array<{x: number, y: number}>>([]);
-  const reactFlowWrapper = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
-  
-  // Get viewport center for placing new elements
-  const getViewportCenter = useCallback(() => {
-    const viewport = getViewport();
-    const canvasCenter = {
-      x: window.innerWidth / 2,
-      y: window.innerHeight / 2,
-    };
-    
-    // Convert screen coordinates to flow coordinates
-    return project({
-      x: canvasCenter.x,
-      y: canvasCenter.y,
-    });
-  }, [getViewport, project]);
 
   // Calculate stage bounds and offset - memoized to prevent recalculation during dragging
   const stageBounds = useMemo(() => {
@@ -332,76 +206,9 @@ function WorkflowCanvasModeInner({
           onUpdate: onUpdateStickyNote,
           onDelete: onDeleteStickyNote,
         },
-        draggable: !drawingMode,
-        selectable: true,
-        focusable: true,
+        draggable: true,
         style: {
-          zIndex: note.zIndex || 5,
-        },
-      });
-    });
-
-    // Add text boxes
-    const textBoxes = workflow.textBoxes || [];
-    textBoxes.forEach((textBox) => {
-      const isEditingThis = editingTextBoxId === textBox.id;
-      flowNodes.push({
-        id: `textbox-${textBox.id}`,
-        type: 'textBox',
-        position: textBox.position,
-        data: {
-          textBox,
-          onUpdate: onUpdateTextBox,
-          onDelete: onDeleteTextBox,
-          onEditStart: (id: string) => setEditingTextBoxId(id),
-          onEditEnd: () => setEditingTextBoxId(null),
-        },
-        draggable: !isEditingThis && !drawingMode,
-        selectable: !isEditingThis,
-        focusable: true,
-        style: {
-          zIndex: textBox.zIndex || 5,
-        },
-      });
-    });
-
-    // Add shapes
-    const shapes = workflow.shapes || [];
-    shapes.forEach((shape) => {
-      flowNodes.push({
-        id: `shape-${shape.id}`,
-        type: 'shape',
-        position: shape.position,
-        data: {
-          shape,
-          onUpdate: onUpdateShape,
-          onDelete: onDeleteShape,
-        },
-        draggable: !drawingMode,
-        selectable: true,
-        focusable: true,
-        style: {
-          zIndex: shape.zIndex || 5,
-        },
-      });
-    });
-
-    // Add drawings
-    const drawings = workflow.drawings || [];
-    drawings.forEach((drawing) => {
-      flowNodes.push({
-        id: `drawing-${drawing.id}`,
-        type: 'drawing',
-        position: drawing.position || { x: 0, y: 0 },
-        data: {
-          drawing,
-          onDelete: onDeleteDrawing,
-        },
-        draggable: !drawingMode,
-        selectable: true,
-        focusable: true,
-        style: {
-          zIndex: drawing.zIndex || 4,
+          zIndex: 5,
         },
       });
     });
@@ -432,7 +239,7 @@ function WorkflowCanvasModeInner({
     }));
 
     setEdges(flowEdges);
-  }, [workflow, selectedNode, isConnecting, stageBounds, onUpdateStickyNote, onDeleteStickyNote, onUpdateTextBox, onDeleteTextBox, onUpdateShape, onDeleteShape, onDeleteDrawing, editingTextBoxId, drawingMode]);
+  }, [workflow, selectedNode, isConnecting, stageBounds, onUpdateStickyNote, onDeleteStickyNote]);
 
   // Handle connection between nodes
   const onConnect = useCallback(
@@ -497,16 +304,6 @@ function WorkflowCanvasModeInner({
         if (onUpdateStickyNote) {
           onUpdateStickyNote(stickyId, { position: node.position });
         }
-      } else if (node.id.startsWith('textbox-')) {
-        const textBoxId = node.id.replace('textbox-', '');
-        if (onUpdateTextBox) {
-          onUpdateTextBox(textBoxId, { position: node.position });
-        }
-      } else if (node.id.startsWith('shape-')) {
-        const shapeId = node.id.replace('shape-', '');
-        if (onUpdateShape) {
-          onUpdateShape(shapeId, { position: node.position });
-        }
       } else if (node.id.startsWith('stage-')) {
         const stageId = node.id.replace('stage-', '');
         const stage = workflow.stages.find(s => s.id === stageId);
@@ -528,85 +325,11 @@ function WorkflowCanvasModeInner({
         }
       }
     },
-    [workflow.stages, stageBounds, onUpdateStagePosition, onUpdateNodePosition, onUpdateStickyNote, onUpdateTextBox, onUpdateShape]
+    [workflow.stages, stageBounds, onUpdateStagePosition, onUpdateNodePosition, onUpdateStickyNote]
   );
 
-  // Handle drawing
-  const handleMouseDown = useCallback((event: React.MouseEvent) => {
-    if (!drawingMode || !onAddDrawing) return;
-    
-    event.preventDefault();
-    event.stopPropagation();
-    
-    const viewport = getViewport();
-    const canvasBounds = event.currentTarget.getBoundingClientRect();
-    
-    // Get mouse position in screen coordinates
-    const screenX = event.clientX - canvasBounds.left;
-    const screenY = event.clientY - canvasBounds.top;
-    
-    // Convert to flow coordinates
-    const flowPos = project({ x: screenX, y: screenY });
-    
-    setIsDrawingPath(true);
-    setDrawingPath([flowPos]);
-  }, [drawingMode, onAddDrawing, getViewport, project]);
-
-  const handleMouseMove = useCallback((event: React.MouseEvent) => {
-    if (!isDrawingPath || !drawingMode) return;
-    
-    const canvasBounds = event.currentTarget.getBoundingClientRect();
-    const screenX = event.clientX - canvasBounds.left;
-    const screenY = event.clientY - canvasBounds.top;
-    
-    const flowPos = project({ x: screenX, y: screenY });
-    
-    setDrawingPath(prev => [...prev, flowPos]);
-  }, [isDrawingPath, drawingMode, project]);
-
-  const handleMouseUp = useCallback(() => {
-    if (!isDrawingPath || !onAddDrawing || drawingPath.length < 2) {
-      setIsDrawingPath(false);
-      setDrawingPath([]);
-      return;
-    }
-
-    // Find bounding box of the path
-    const xs = drawingPath.map(p => p.x);
-    const ys = drawingPath.map(p => p.y);
-    const minX = Math.min(...xs);
-    const minY = Math.min(...ys);
-
-    // Normalize path to start from (0, 0)
-    const normalizedPath = drawingPath.map(p => ({
-      x: p.x - minX,
-      y: p.y - minY
-    }));
-
-    // Convert normalized points to SVG path
-    const pathData = normalizedPath.reduce((path, point, index) => {
-      if (index === 0) {
-        return `M ${point.x} ${point.y}`;
-      }
-      return `${path} L ${point.x} ${point.y}`;
-    }, '');
-
-    // Pass the path and position (in flow coordinates)
-    onAddDrawing(pathData, { x: minX, y: minY });
-    setIsDrawingPath(false);
-    setDrawingPath([]);
-  }, [isDrawingPath, onAddDrawing, drawingPath]);
-
   return (
-    <div 
-      ref={reactFlowWrapper}
-      className="h-full w-full relative"
-      style={{ cursor: drawingMode ? 'crosshair' : 'default' }}
-      onMouseDown={drawingMode ? handleMouseDown : undefined}
-      onMouseMove={drawingMode ? handleMouseMove : undefined}
-      onMouseUp={drawingMode ? handleMouseUp : undefined}
-      onMouseLeave={drawingMode ? handleMouseUp : undefined}
-    >
+    <div className="h-full w-full relative">
       <ReactFlowProvider>
         <ReactFlow
           nodes={nodes}
@@ -616,7 +339,7 @@ function WorkflowCanvasModeInner({
           onEdgesDelete={onEdgesDelete}
           onNodeDragStop={onNodeDragStop}
           onConnect={onConnect}
-          nodeTypes={NODE_TYPES}
+          nodeTypes={nodeTypes}
           connectionLineType={ConnectionLineType.Bezier}
           fitView
           minZoom={0.2}
@@ -629,11 +352,6 @@ function WorkflowCanvasModeInner({
           }}
           edgesUpdatable={false}
           edgesFocusable={true}
-          nodesDraggable={!drawingMode}
-          nodesConnectable={!drawingMode}
-          elementsSelectable={true}
-          panOnDrag={drawingMode ? false : [1, 2]}
-          selectNodesOnDrag={false}
         >
           <Background variant={BackgroundVariant.Dots} gap={16} size={1} />
           <Controls />
@@ -645,67 +363,17 @@ function WorkflowCanvasModeInner({
           />
           <Panel position="top-left">
             <Card className="p-2">
-               <div className="flex flex-wrap gap-1">
-                <Button 
-                  onClick={() => onAddStickyNote?.(getViewportCenter())} 
-                  size="sm" 
-                  variant="outline"
-                  title="Add sticky note"
-                  className="h-8 w-8 p-0"
-                >
-                  <StickyNoteIcon className="h-4 w-4" />
+              <div className="flex gap-2">
+                <Button onClick={onAddStage} size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Stage
                 </Button>
-                <Button 
-                  onClick={() => onAddTextBox?.(getViewportCenter())} 
-                  size="sm" 
-                  variant="outline"
-                  title="Add text box"
-                  className="h-8 w-8 p-0"
-                >
-                  <Type className="h-4 w-4" />
-                </Button>
-                <Button 
-                  onClick={() => onAddShape?.('rectangle', getViewportCenter())} 
-                  size="sm" 
-                  variant="outline"
-                  title="Add rectangle"
-                  className="h-8 w-8 p-0"
-                >
-                  <Square className="h-4 w-4" />
-                </Button>
-                <Button 
-                  onClick={() => onAddShape?.('circle', getViewportCenter())} 
-                  size="sm" 
-                  variant="outline"
-                  title="Add circle"
-                  className="h-8 w-8 p-0"
-                >
-                  <Circle className="h-4 w-4" />
-                </Button>
-                <Button 
-                  onClick={() => onAddShape?.('triangle', getViewportCenter())} 
-                  size="sm" 
-                  variant="outline"
-                  title="Add triangle"
-                  className="h-8 w-8 p-0"
-                >
-                  <Triangle className="h-4 w-4" />
-                </Button>
-                <Button 
-                  onClick={() => {
-                    onSetDrawingMode?.(!drawingMode);
-                    if (drawingMode) {
-                      setIsDrawingPath(false);
-                      setDrawingPath([]);
-                    }
-                  }}
-                  size="sm" 
-                  variant={drawingMode ? "default" : "outline"}
-                  title="Draw freeform"
-                  className="h-8 w-8 p-0"
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
+                {onAddStickyNote && (
+                  <Button onClick={onAddStickyNote} size="sm" variant="outline">
+                    <StickyNoteIcon className="h-4 w-4 mr-2" />
+                    Note
+                  </Button>
+                )}
               </div>
             </Card>
           </Panel>
@@ -734,26 +402,6 @@ function WorkflowCanvasModeInner({
             setShowAddFunction(null);
           }}
         />
-      )}
-
-      {/* Drawing overlay */}
-      {isDrawingPath && drawingPath.length > 0 && (
-        <svg
-          className="absolute inset-0 pointer-events-none z-50"
-          style={{ width: '100%', height: '100%' }}
-        >
-          <path
-            d={drawingPath.reduce((path, point, index) => {
-              if (index === 0) return `M ${point.x} ${point.y}`;
-              return `${path} L ${point.x} ${point.y}`;
-            }, '')}
-            stroke="#000000"
-            strokeWidth={2}
-            fill="none"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        </svg>
       )}
     </div>
   );

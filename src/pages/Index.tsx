@@ -40,12 +40,8 @@ const Index = () => {
     stages: [],
     connections: [],
     stickyNotes: [],
-    textBoxes: [],
-    shapes: [],
-    drawings: [],
     viewMode: "stacked",
   });
-  const [drawingMode, setDrawingMode] = useState(false);
 
   const addLog = (type: LogEntry["type"], message: string) => {
     const time = new Date().toLocaleTimeString('en-US', { hour12: false });
@@ -397,9 +393,6 @@ const Index = () => {
             stages: loaded.stages || [],
             connections: loaded.connections || [],
             stickyNotes: loaded.stickyNotes || [],
-            textBoxes: loaded.textBoxes || [],
-            shapes: loaded.shapes || [],
-            drawings: loaded.drawings || [],
           });
         }
         
@@ -414,14 +407,7 @@ const Index = () => {
 
   const clearWorkflow = () => {
     if (confirm("Are you sure you want to clear the entire workflow?")) {
-      setWorkflow({ 
-        stages: [], 
-        connections: [], 
-        stickyNotes: [], 
-        textBoxes: [], 
-        shapes: [], 
-        drawings: [] 
-      });
+      setWorkflow({ stages: [], connections: [], stickyNotes: [] });
       setUserInput("");
       setWorkflowName("Untitled Workflow");
       setCustomAgents([]); // Reset to only default agents
@@ -485,27 +471,13 @@ const Index = () => {
     }));
   };
 
-  const getNextZIndex = () => {
-    const allElements = [
-      ...(workflow.stickyNotes || []),
-      ...(workflow.textBoxes || []),
-      ...(workflow.shapes || []),
-      ...(workflow.drawings || []),
-    ];
-    const maxZ = Math.max(0, ...allElements.map(el => el.zIndex || 0));
-    return maxZ + 1;
-  };
-
-  const addStickyNote = (position?: { x: number; y: number }) => {
-    const nextZ = getNextZIndex();
-    const pos = position || { x: 100, y: 100 };
+  const addStickyNote = () => {
     const newNote = {
       id: `note-${Date.now()}`,
       content: "New note",
       color: "yellow",
-      position: pos,
+      position: { x: 100, y: 100 },
       size: { width: 200, height: 200 },
-      zIndex: nextZ,
     };
     setWorkflow((prev) => ({
       ...prev,
@@ -526,100 +498,6 @@ const Index = () => {
     setWorkflow((prev) => ({
       ...prev,
       stickyNotes: (prev.stickyNotes || []).filter((note) => note.id !== noteId),
-    }));
-  };
-
-  const addTextBox = (position?: { x: number; y: number }) => {
-    const nextZ = getNextZIndex();
-    const pos = position || { x: 150, y: 150 };
-    const newTextBox = {
-      id: `textbox-${Date.now()}`,
-      content: "# New text box\nDouble-click to edit",
-      fontSize: 16,
-      position: pos,
-      width: 300,
-      zIndex: nextZ,
-    };
-    setWorkflow((prev) => ({
-      ...prev,
-      textBoxes: [...(prev.textBoxes || []), newTextBox],
-    }));
-  };
-
-  const updateTextBox = (textBoxId: string, updates: any) => {
-    setWorkflow((prev) => ({
-      ...prev,
-      textBoxes: (prev.textBoxes || []).map((tb) =>
-        tb.id === textBoxId ? { ...tb, ...updates } : tb
-      ),
-    }));
-  };
-
-  const deleteTextBox = (textBoxId: string) => {
-    setWorkflow((prev) => ({
-      ...prev,
-      textBoxes: (prev.textBoxes || []).filter((tb) => tb.id !== textBoxId),
-    }));
-  };
-
-  const addShape = (type: "rectangle" | "circle" | "triangle", position?: { x: number; y: number }) => {
-    const nextZ = getNextZIndex();
-    const pos = position || { x: 200, y: 200 };
-    const newShape = {
-      id: `shape-${Date.now()}`,
-      type,
-      position: pos,
-      size: { width: 150, height: 150 },
-      color: "#3b82f6",
-      fillOpacity: 0.3,
-      strokeColor: "#3b82f6",
-      strokeWidth: 2,
-      zIndex: nextZ,
-    };
-    setWorkflow((prev) => ({
-      ...prev,
-      shapes: [...(prev.shapes || []), newShape],
-    }));
-  };
-
-  const updateShape = (shapeId: string, updates: any) => {
-    setWorkflow((prev) => ({
-      ...prev,
-      shapes: (prev.shapes || []).map((shape) =>
-        shape.id === shapeId ? { ...shape, ...updates } : shape
-      ),
-    }));
-  };
-
-  const deleteShape = (shapeId: string) => {
-    setWorkflow((prev) => ({
-      ...prev,
-      shapes: (prev.shapes || []).filter((shape) => shape.id !== shapeId),
-    }));
-  };
-
-  const addDrawing = (path: string, position: { x: number; y: number }) => {
-    if (!path) return;
-    
-    const nextZ = getNextZIndex();
-    const newDrawing = {
-      id: `drawing-${Date.now()}`,
-      path,
-      color: "#000000",
-      strokeWidth: 2,
-      position,
-      zIndex: nextZ,
-    };
-    setWorkflow((prev) => ({
-      ...prev,
-      drawings: [...(prev.drawings || []), newDrawing],
-    }));
-  };
-
-  const deleteDrawing = (drawingId: string) => {
-    setWorkflow((prev) => ({
-      ...prev,
-      drawings: (prev.drawings || []).filter((drawing) => drawing.id !== drawingId),
     }));
   };
 
@@ -1242,16 +1120,6 @@ const Index = () => {
                 onAddStickyNote={addStickyNote}
                 onUpdateStickyNote={updateStickyNote}
                 onDeleteStickyNote={deleteStickyNote}
-                onAddTextBox={addTextBox}
-                onUpdateTextBox={updateTextBox}
-                onDeleteTextBox={deleteTextBox}
-                onAddShape={addShape}
-                onUpdateShape={updateShape}
-                onDeleteShape={deleteShape}
-                onAddDrawing={addDrawing}
-                onDeleteDrawing={deleteDrawing}
-                drawingMode={drawingMode}
-                onSetDrawingMode={setDrawingMode}
               />
             ) : (
               <WorkflowCanvas 
@@ -1307,16 +1175,6 @@ const Index = () => {
                 onAddStickyNote={addStickyNote}
                 onUpdateStickyNote={updateStickyNote}
                 onDeleteStickyNote={deleteStickyNote}
-                onAddTextBox={addTextBox}
-                onUpdateTextBox={updateTextBox}
-                onDeleteTextBox={deleteTextBox}
-                onAddShape={addShape}
-                onUpdateShape={updateShape}
-                onDeleteShape={deleteShape}
-                onAddDrawing={addDrawing}
-                onDeleteDrawing={deleteDrawing}
-                drawingMode={drawingMode}
-                onSetDrawingMode={setDrawingMode}
               />
             ) : (
               <WorkflowCanvas 

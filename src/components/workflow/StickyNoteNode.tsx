@@ -24,40 +24,26 @@ export const StickyNoteNode = memo(({ data, selected }: NodeProps<StickyNoteNode
   const [content, setContent] = useState(note.content);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const [fontSize, setFontSize] = useState(16);
 
-  // Calculate dynamic font size to fit all content without scrolling
-  useEffect(() => {
-    const calculateFontSize = () => {
-      if (!containerRef.current) return 16;
-      
-      const availableWidth = note.size.width - 32; // accounting for padding
-      const availableHeight = note.size.height - 32;
-      const contentLength = content.length;
-      
-      if (contentLength === 0) return 16;
-      
-      // Start with a reasonable font size and decrease until it fits
-      let testSize = 24;
-      const minSize = 8;
-      
-      while (testSize > minSize) {
-        const avgCharWidth = testSize * 0.6;
-        const charsPerLine = Math.floor(availableWidth / avgCharWidth);
-        const estimatedLines = Math.ceil(contentLength / charsPerLine);
-        const requiredHeight = estimatedLines * testSize * 1.3; // 1.3 is line height
-        
-        if (requiredHeight <= availableHeight) {
-          return testSize;
-        }
-        testSize -= 1;
-      }
-      
-      return minSize;
-    };
+  // Calculate dynamic font size based on content length and container size
+  const calculateFontSize = () => {
+    if (!containerRef.current) return 16;
+    
+    const containerArea = note.size.width * note.size.height;
+    const contentLength = content.length;
+    
+    if (contentLength === 0) return 16;
+    
+    // Base calculation: more content = smaller font
+    let fontSize = Math.sqrt(containerArea / contentLength) * 2;
+    
+    // Clamp between 10px and 24px
+    fontSize = Math.max(10, Math.min(24, fontSize));
+    
+    return Math.floor(fontSize);
+  };
 
-    setFontSize(calculateFontSize());
-  }, [content, note.size.width, note.size.height]);
+  const fontSize = calculateFontSize();
 
   useEffect(() => {
     if (isEditing && textareaRef.current) {
@@ -86,27 +72,23 @@ export const StickyNoteNode = memo(({ data, selected }: NodeProps<StickyNoteNode
         isVisible={selected}
         minWidth={150}
         minHeight={150}
-        handleStyle={{ width: 16, height: 16 }}
-        lineStyle={{ borderWidth: 2 }}
         onResize={(_, params) => {
           onUpdate(note.id, {
             size: { width: params.width, height: params.height },
           });
         }}
-        keepAspectRatio={false}
       />
       <div
         ref={containerRef}
         className={`
           ${colorMap[note.color as keyof typeof colorMap] || colorMap.yellow}
-          ${selected ? "ring-2 ring-primary shadow-xl" : "shadow-lg"}
-          rounded-sm p-4
+          ${selected ? "ring-2 ring-primary" : ""}
+          rounded-sm shadow-lg p-4 cursor-pointer transition-all
           relative group
         `}
         style={{
           width: note.size.width,
           height: note.size.height,
-          cursor: selected ? 'default' : 'pointer',
         }}
         onClick={() => !isEditing && setIsEditing(true)}
         onDoubleClick={handleColorChange}
@@ -133,8 +115,8 @@ export const StickyNoteNode = memo(({ data, selected }: NodeProps<StickyNoteNode
             value={content}
             onChange={(e) => setContent(e.target.value)}
             onBlur={handleBlur}
-            className="w-full h-full bg-transparent border-none outline-none resize-none text-foreground font-handwriting overflow-hidden"
-            style={{ fontSize: `${fontSize}px`, lineHeight: "1.3" }}
+            className="w-full h-full bg-transparent border-none outline-none resize-none text-foreground font-handwriting"
+            style={{ fontSize: `${fontSize}px` }}
             onClick={(e) => e.stopPropagation()}
           />
         ) : (
