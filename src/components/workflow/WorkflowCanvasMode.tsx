@@ -20,19 +20,13 @@ import 'reactflow/dist/style.css';
 import './EdgeStyles.css';
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { AlignVerticalJustifyCenter, AlignHorizontalJustifyCenter, Grid3x3, Map, StickyNote } from "lucide-react";
-import type { Workflow, WorkflowNode, Stage as StageType, Note } from "@/types/workflow";
+import { AlignVerticalJustifyCenter, AlignHorizontalJustifyCenter, Grid3x3, Map } from "lucide-react";
+import type { Workflow, WorkflowNode, Stage as StageType } from "@/types/workflow";
 import { AgentSelector } from "@/components/AgentSelector";
 import { FunctionSelector } from "@/components/FunctionSelector";
 import { StageNode } from "./StageNode";
 import { WorkflowNodeComponent } from "./WorkflowNodeComponent";
-import { NoteNode } from "./NoteNode";
 import { useIsMobile } from "@/hooks/use-mobile";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 
 const nodeTypes: NodeTypes = {
   stage: StageNode,
@@ -63,9 +57,6 @@ interface WorkflowCanvasModeProps {
   onAutoLayoutVertical?: () => void;
   onAutoLayoutHorizontal?: () => void;
   onAutoLayoutGrid?: () => void;
-  onAddNote?: () => void;
-  onUpdateNote?: (noteId: string, updates: Partial<Note>) => void;
-  onDeleteNote?: (noteId: string) => void;
 }
 
 export function WorkflowCanvasMode({
@@ -91,9 +82,6 @@ export function WorkflowCanvasMode({
   onAutoLayoutVertical,
   onAutoLayoutHorizontal,
   onAutoLayoutGrid,
-  onAddNote,
-  onUpdateNote,
-  onDeleteNote,
 }: WorkflowCanvasModeProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -365,16 +353,6 @@ export function WorkflowCanvasMode({
 
   return (
     <div className="h-full w-full relative">
-      {/* Render notes as overlay */}
-      {(workflow.notes || []).map((note) => (
-        <NoteNode
-          key={note.id}
-          note={note}
-          onUpdate={(updates) => onUpdateNote?.(note.id, updates)}
-          onDelete={() => onDeleteNote?.(note.id)}
-        />
-      ))}
-      
       <ReactFlowProvider>
         <ReactFlow
           nodes={nodes}
@@ -384,9 +362,6 @@ export function WorkflowCanvasMode({
           onEdgesDelete={onEdgesDelete}
           onNodeDragStop={onNodeDragStop}
           onConnect={onConnect}
-          nodesDraggable={true}
-          nodesConnectable={true}
-          elementsSelectable={true}
           nodeTypes={nodeTypes}
           connectionLineType={ConnectionLineType.Bezier}
           fitView
@@ -414,70 +389,38 @@ export function WorkflowCanvasMode({
           <Panel position="top-left">
             <Card className="p-2">
               <div className="flex gap-2">
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button 
-                      onClick={onAutoLayoutVertical} 
-                      size="sm"
-                      variant="outline"
-                    >
-                      <AlignVerticalJustifyCenter className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Arrange vertically</TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button 
-                      onClick={onAutoLayoutHorizontal} 
-                      size="sm"
-                      variant="outline"
-                    >
-                      <AlignHorizontalJustifyCenter className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Arrange horizontally</TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button 
-                      onClick={onAutoLayoutGrid} 
-                      size="sm"
-                      variant="outline"
-                    >
-                      <Grid3x3 className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Arrange in grid</TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button 
-                      onClick={() => setShowMiniMap(!showMiniMap)} 
-                      size="sm"
-                      variant={showMiniMap ? "default" : "outline"}
-                    >
-                      <Map className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Toggle mini map</TooltipContent>
-                </Tooltip>
-
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button 
-                      onClick={onAddNote} 
-                      size="sm"
-                      variant="outline"
-                    >
-                      <StickyNote className="h-4 w-4" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Add note</TooltipContent>
-                </Tooltip>
+                <Button 
+                  onClick={onAutoLayoutVertical} 
+                  size="sm"
+                  variant="outline"
+                  title="Arrange vertically"
+                >
+                  <AlignVerticalJustifyCenter className="h-4 w-4" />
+                </Button>
+                <Button 
+                  onClick={onAutoLayoutHorizontal} 
+                  size="sm"
+                  variant="outline"
+                  title="Arrange horizontally"
+                >
+                  <AlignHorizontalJustifyCenter className="h-4 w-4" />
+                </Button>
+                <Button 
+                  onClick={onAutoLayoutGrid} 
+                  size="sm"
+                  variant="outline"
+                  title="Arrange in grid"
+                >
+                  <Grid3x3 className="h-4 w-4" />
+                </Button>
+                <Button 
+                  onClick={() => setShowMiniMap(!showMiniMap)} 
+                  size="sm"
+                  variant={showMiniMap ? "default" : "outline"}
+                  title="Toggle mini map"
+                >
+                  <Map className="h-4 w-4" />
+                </Button>
               </div>
             </Card>
           </Panel>

@@ -16,8 +16,7 @@ import type {
   Stage,
   Connection,
   ToolInstance,
-  LogEntry,
-  Note
+  LogEntry 
 } from "@/types/workflow";
 import { FunctionExecutor } from "@/lib/functionExecutor";
 
@@ -40,7 +39,6 @@ const Index = () => {
   const [workflow, setWorkflow] = useState<Workflow>({
     stages: [],
     connections: [],
-    notes: [],
     viewMode: "stacked",
   });
 
@@ -517,37 +515,6 @@ const Index = () => {
         ),
       };
     });
-  };
-
-  // Note handlers
-  const addNote = () => {
-    const newNote: Note = {
-      id: `note-${Date.now()}`,
-      content: "",
-      position: { x: 100, y: 100 },
-      size: { width: 250, height: 250 },
-      color: "#fef08a", // Default yellow
-    };
-    setWorkflow((prev) => ({
-      ...prev,
-      notes: [...(prev.notes || []), newNote],
-    }));
-  };
-
-  const updateNote = (noteId: string, updates: Partial<Note>) => {
-    setWorkflow((prev) => ({
-      ...prev,
-      notes: (prev.notes || []).map((note) =>
-        note.id === noteId ? { ...note, ...updates } : note
-      ),
-    }));
-  };
-
-  const deleteNote = (noteId: string) => {
-    setWorkflow((prev) => ({
-      ...prev,
-      notes: (prev.notes || []).filter((note) => note.id !== noteId),
-    }));
   };
 
   const addToolInstance = (nodeId: string, toolId: string) => {
@@ -1438,9 +1405,6 @@ const Index = () => {
                 onAutoLayoutVertical={autoLayoutVertical}
                 onAutoLayoutHorizontal={autoLayoutHorizontal}
                 onAutoLayoutGrid={autoLayoutGrid}
-                onAddNote={addNote}
-                onUpdateNote={updateNote}
-                onDeleteNote={deleteNote}
               />
             ) : (
               <WorkflowCanvas 
@@ -1504,9 +1468,6 @@ const Index = () => {
                 onAutoLayoutVertical={autoLayoutVertical}
                 onAutoLayoutHorizontal={autoLayoutHorizontal}
                 onAutoLayoutGrid={autoLayoutGrid}
-                onAddNote={addNote}
-                onUpdateNote={updateNote}
-                onDeleteNote={deleteNote}
               />
             ) : (
               <WorkflowCanvas 
