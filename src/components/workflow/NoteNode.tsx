@@ -268,16 +268,16 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
                 value={localContent}
                 onChange={handleContentChange}
                 onMouseDown={(e) => e.stopPropagation()}
-                className="w-full h-full bg-transparent border-none outline-none resize-none text-center nodrag note-textarea"
+                className="w-full bg-transparent border-none outline-none resize-none text-center nodrag note-textarea"
                 style={{
-                  fontSize: "16px",
-                  lineHeight: "1.3",
+                  fontSize: `${fontSize}px`,
+                  lineHeight: "1.4",
                   whiteSpace: "pre-wrap",
                   wordBreak: "break-word",
                   overflowY: "auto",
                   overflowWrap: "break-word",
-                  maxWidth: "100%",
-                  wordWrap: "break-word",
+                  padding: "0",
+                  maxHeight: "100%",
                 }}
                 placeholder="Type your note..."
               />
