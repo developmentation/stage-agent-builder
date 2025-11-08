@@ -168,11 +168,8 @@ const Index = () => {
     });
   };
 
-  const addNode = (stageId: string, template: any, nodeType: "agent" | "function" | "tool" = "agent", position?: { x: number; y: number }) => {
+  const addNode = (stageId: string, template: any, nodeType: "agent" | "function" | "tool" = "agent") => {
     let newNode: WorkflowNode;
-
-    // Use provided position or default to a simple offset
-    const nodePosition = position || { x: 0, y: 0 };
 
     if (nodeType === "agent") {
       newNode = {
@@ -184,7 +181,6 @@ const Index = () => {
         userPrompt: template.defaultUserPrompt || "Process the following input: {input}",
         tools: [],
         status: "idle",
-        position: nodePosition,
       } as AgentNode;
     } else if (nodeType === "function") {
       newNode = {
@@ -195,7 +191,6 @@ const Index = () => {
         config: {},
         outputPorts: template.outputs || ["output"], // Use 'outputs' from function definition
         status: "idle",
-        position: nodePosition,
       } as FunctionNode;
     } else {
       newNode = {
@@ -205,7 +200,6 @@ const Index = () => {
         toolType: template.id,
         config: {},
         status: "idle",
-        position: nodePosition,
       } as ToolNode;
     }
 
@@ -220,8 +214,8 @@ const Index = () => {
   };
 
   // Legacy method for backward compatibility
-  const addAgent = (stageId: string, agentTemplate: any, position?: { x: number; y: number }) => {
-    addNode(stageId, agentTemplate, "agent", position);
+  const addAgent = (stageId: string, agentTemplate: any) => {
+    addNode(stageId, agentTemplate, "agent");
   };
 
   const updateNode = (nodeId: string, updates: Partial<WorkflowNode>) => {
@@ -1106,10 +1100,7 @@ const Index = () => {
                 onRenameStage={renameStage}
                 onReorderStages={reorderStages}
                 onAddAgent={addAgent}
-                onAddFunction={(stageId: string, functionType: string, position?: { x: number; y: number }) => {
-                  const functionDef = { id: functionType, name: functionType };
-                  addNode(stageId, functionDef, "function", position);
-                }}
+                onAddFunction={addNode}
                 onDeleteNode={deleteAgent}
                 onRunAgent={runSingleAgent}
                 onStartConnection={handleStartConnection}
@@ -1164,10 +1155,7 @@ const Index = () => {
                 onRenameStage={renameStage}
                 onReorderStages={reorderStages}
                 onAddAgent={addAgent}
-                onAddFunction={(stageId: string, functionType: string, position?: { x: number; y: number }) => {
-                  const functionDef = { id: functionType, name: functionType };
-                  addNode(stageId, functionDef, "function", position);
-                }}
+                onAddFunction={addNode}
                 onDeleteNode={deleteAgent}
                 onRunAgent={runSingleAgent}
                 onStartConnection={handleStartConnection}
