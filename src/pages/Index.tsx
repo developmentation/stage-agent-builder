@@ -86,10 +86,37 @@ const Index = () => {
   };
 
   const addStage = () => {
+    // Calculate position for new stage - below all existing stages
+    let newStageY = 100; // Start position
+    const startX = 100;
+    const stageGap = 50;
+    const stagePaddingTop = 100;
+    const stagePaddingBottom = 24;
+    const nodeWidth = 250;
+    const nodeHeight = 150;
+
+    workflow.stages.forEach((stage) => {
+      if (stage.nodes.length === 0) {
+        // Empty stage has default height
+        newStageY += 300 + stageGap;
+      } else {
+        // Calculate stage height from nodes
+        let minY = Infinity, maxY = -Infinity;
+        stage.nodes.forEach((node, nodeIndex) => {
+          const nodeY = node.position?.y ?? Math.floor(nodeIndex / 2) * 180;
+          minY = Math.min(minY, nodeY);
+          maxY = Math.max(maxY, nodeY + nodeHeight);
+        });
+        const stageHeight = (maxY - minY) + stagePaddingTop + stagePaddingBottom;
+        newStageY += stageHeight + stageGap;
+      }
+    });
+
     const newStage: Stage = {
       id: `stage-${Date.now()}`,
       name: `Stage ${workflow.stages.length + 1}`,
       nodes: [],
+      position: { x: startX, y: newStageY },
     };
     setWorkflow((prev) => ({
       ...prev,
@@ -177,14 +204,45 @@ const Index = () => {
       } as ToolNode;
     }
 
-    setWorkflow((prev) => ({
-      ...prev,
-      stages: prev.stages.map((stage) =>
-        stage.id === stageId
-          ? { ...stage, nodes: [...stage.nodes, newNode] }
-          : stage
-      ),
-    }));
+    setWorkflow((prev) => {
+      const targetStage = prev.stages.find(s => s.id === stageId);
+      if (!targetStage) return prev;
+
+      // Calculate position for the new node
+      const nodeIndex = targetStage.nodes.length;
+      const nodeX = (nodeIndex % 2) * 280;
+      const nodeY = Math.floor(nodeIndex / 2) * 180;
+
+      // Determine positioning strategy based on stage
+      if (targetStage.position && nodeIndex === 0) {
+        // First node in an empty stage with a position - use absolute positioning
+        const stagePaddingLeft = 40;
+        const stagePaddingTop = 100;
+        newNode.position = {
+          x: targetStage.position.x + stagePaddingLeft,
+          y: targetStage.position.y + stagePaddingTop,
+        };
+      } else if (targetStage.position && nodeIndex > 0 && targetStage.nodes[0]?.position) {
+        // Subsequent nodes in a stage with positioned first node - maintain absolute positioning
+        const firstNodePos = targetStage.nodes[0].position;
+        newNode.position = {
+          x: firstNodePos.x + nodeX,
+          y: firstNodePos.y + nodeY,
+        };
+      } else {
+        // Stage without position or using relative positioning
+        newNode.position = { x: nodeX, y: nodeY };
+      }
+
+      return {
+        ...prev,
+        stages: prev.stages.map((stage) =>
+          stage.id === stageId
+            ? { ...stage, nodes: [...stage.nodes, newNode] }
+            : stage
+        ),
+      };
+    });
   };
 
   // Legacy method for backward compatibility
@@ -346,16 +404,88 @@ const Index = () => {
     URL.revokeObjectURL(url);
   };
 
+  // Helper function to reposition stages vertically with proper spacing
+  const repositionStagesVertically = (loadedWorkflow: Workflow) => {
+    const stagePaddingLeft = 40;
+    const stagePaddingTop = 100;
+    const stagePaddingBottom = 24;
+    const stageGap = 50;
+    const nodeWidth = 250;
+    const nodeHeight = 150;
+    const startX = 100;
+    let currentY = 100;
+
+    const repositionedStages = loadedWorkflow.stages.map((stage) => {
+      if (stage.nodes.length === 0) {
+        // Empty stage
+        currentY += 300 + stageGap;
+        return stage;
+      }
+
+      // Calculate current bounds of nodes
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      stage.nodes.forEach((node, nodeIndex) => {
+        const nodeX = node.position?.x ?? (nodeIndex % 2) * 280;
+        const nodeY = node.position?.y ?? Math.floor(nodeIndex / 2) * 180;
+        minX = Math.min(minX, nodeX);
+        minY = Math.min(minY, nodeY);
+        maxX = Math.max(maxX, nodeX + nodeWidth);
+        maxY = Math.max(maxY, nodeY + nodeHeight);
+      });
+
+      // Calculate where the stage should be positioned
+      const targetStageX = startX;
+      const targetStageY = currentY;
+      
+      // Calculate where nodes should be to achieve this stage position
+      const targetMinX = targetStageX + stagePaddingLeft;
+      const targetMinY = targetStageY + stagePaddingTop;
+
+      // Calculate offset to move all nodes
+      const deltaX = targetMinX - minX;
+      const deltaY = targetMinY - minY;
+
+      // Move all nodes by the delta
+      const repositionedNodes = stage.nodes.map((node, nodeIndex) => {
+        const currentX = node.position?.x ?? (nodeIndex % 2) * 280;
+        const currentY = node.position?.y ?? Math.floor(nodeIndex / 2) * 180;
+        return {
+          ...node,
+          position: {
+            x: currentX + deltaX,
+            y: currentY + deltaY,
+          },
+        };
+      });
+
+      // Calculate the stage height for positioning the next stage
+      const stageHeight = (maxY - minY) + stagePaddingTop + stagePaddingBottom;
+      currentY += stageHeight + stageGap;
+
+      return {
+        ...stage,
+        nodes: repositionedNodes,
+      };
+    });
+
+    return {
+      ...loadedWorkflow,
+      stages: repositionedStages,
+    };
+  };
+
   const loadWorkflow = (file: File) => {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
         const loaded = JSON.parse(e.target?.result as string);
         
+        let loadedWorkflow: Workflow;
+        
         // Handle both old format (just workflow) and new format (with metadata)
         if (loaded.workflow) {
           // New format with metadata
-          setWorkflow(loaded.workflow);
+          loadedWorkflow = loaded.workflow;
           setUserInput(loaded.userInput || "");
           setWorkflowName(loaded.workflowName || "Untitled Workflow");
           setCustomAgents(loaded.customAgents || []);
@@ -365,11 +495,15 @@ const Index = () => {
           setThinkingBudget(loaded.thinkingBudget ?? 0);
         } else {
           // Old format (just the workflow object) - ensure stages array exists
-          setWorkflow({
+          loadedWorkflow = {
             stages: loaded.stages || [],
             connections: loaded.connections || [],
-          });
+          };
         }
+        
+        // Reposition stages vertically to prevent overlap
+        const repositionedWorkflow = repositionStagesVertically(loadedWorkflow);
+        setWorkflow(repositionedWorkflow);
         
         setSelectedNode(null);
       } catch (error) {
