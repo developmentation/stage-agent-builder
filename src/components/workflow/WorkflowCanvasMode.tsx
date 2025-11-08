@@ -209,24 +209,33 @@ export function WorkflowCanvasMode({
   // Handle connection between nodes
   const onConnect = useCallback(
     (connection: Connection) => {
-      console.log("Canvas onConnect triggered:", connection);
+      console.log("=== Canvas onConnect START ===");
+      console.log("Connection object:", JSON.stringify(connection, null, 2));
+      console.log("Current workflow connections before:", workflow.connections.length);
+      
       if (connection.source && connection.target && onCompleteConnection) {
         const fromNodeId = connection.source;
         const toNodeId = connection.target;
         const fromOutputPort = connection.sourceHandle || undefined;
         
-        console.log("Calling onCompleteConnection:", fromNodeId, "->", toNodeId, "port:", fromOutputPort);
+        console.log("Preparing to call onCompleteConnection with:");
+        console.log("  fromNodeId:", fromNodeId);
+        console.log("  toNodeId:", toNodeId);
+        console.log("  fromOutputPort:", fromOutputPort);
         
         // Call the parent's connection completion handler
         onCompleteConnection(fromNodeId, toNodeId, fromOutputPort);
         
-        // Reset connecting state
-        if (onStartConnection) {
-          onStartConnection(null);
-        }
+        console.log("onCompleteConnection called");
+        console.log("=== Canvas onConnect END ===");
+      } else {
+        console.log("Connection not created - missing source, target, or handler");
+        console.log("  has source:", !!connection.source);
+        console.log("  has target:", !!connection.target);
+        console.log("  has onCompleteConnection:", !!onCompleteConnection);
       }
     },
-    [onCompleteConnection, onStartConnection]
+    [onCompleteConnection, workflow.connections.length]
   );
 
   // Handle edge deletion

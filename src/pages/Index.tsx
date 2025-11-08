@@ -398,23 +398,44 @@ const Index = () => {
   };
 
   const handleCompleteConnection = (fromNodeId: string, toNodeId: string, fromOutputPort?: string) => {
+    console.log("=== handleCompleteConnection called ===");
+    console.log("  fromNodeId:", fromNodeId);
+    console.log("  toNodeId:", toNodeId);
+    console.log("  fromOutputPort:", fromOutputPort);
     addConnection(fromNodeId, toNodeId, fromOutputPort);
     setConnectingFromPort(undefined);
+    console.log("=== handleCompleteConnection END ===");
   };
 
   const addConnection = (fromNodeId: string, toNodeId: string, fromOutputPort?: string) => {
+    console.log("=== addConnection called ===");
+    console.log("  fromNodeId:", fromNodeId);
+    console.log("  toNodeId:", toNodeId);
+    console.log("  fromOutputPort:", fromOutputPort);
+    console.log("  Current connections count:", workflow.connections.length);
+    
     const newConnection: Connection = {
       id: `conn-${Date.now()}`,
       fromNodeId,
       toNodeId,
       fromOutputPort,
     };
-    setWorkflow((prev) => ({
-      ...prev,
-      connections: [...prev.connections, newConnection],
-    }));
+    
+    console.log("  New connection created:", newConnection);
+    
+    setWorkflow((prev) => {
+      console.log("  Previous connections:", prev.connections.length);
+      const updated = {
+        ...prev,
+        connections: [...prev.connections, newConnection],
+      };
+      console.log("  Updated connections:", updated.connections.length);
+      return updated;
+    });
+    
     setConnectingFrom(null);
     setConnectingFromPort(undefined);
+    console.log("=== addConnection END ===");
   };
 
   const deleteConnection = (connectionId: string) => {

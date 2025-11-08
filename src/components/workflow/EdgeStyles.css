@@ -4,11 +4,10 @@
   stroke-width: 2;
 }
 
-.react-flow__edge.selected .react-flow__edge-path,
 .react-flow__edge.selected .react-flow__edge-path {
-  stroke: hsl(48 96% 53%); /* Yellow color */
+  stroke: hsl(43 96% 56%); /* Medium ochre yellow */
   stroke-width: 4;
-  filter: drop-shadow(0 0 6px hsl(48 96% 53% / 0.5));
+  filter: drop-shadow(0 0 8px hsl(43 96% 56% / 0.6));
 }
 
 .react-flow__edge:hover .react-flow__edge-path {
@@ -21,9 +20,16 @@
   animation: dashdraw 0.5s linear infinite;
 }
 
+.react-flow__edge.selected.animated .react-flow__edge-path {
+  stroke: hsl(43 96% 56%); /* Keep yellow when selected and animated */
+  stroke-dasharray: 5;
+  animation: dashdraw 0.5s linear infinite;
+}
+
 @keyframes dashdraw {
   from {
     stroke-dashoffset: 10;
   }
 }
+
 
