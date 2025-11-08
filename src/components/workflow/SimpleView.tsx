@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Download, Eye, FileText, Loader2, CheckCircle2, Clock, Pause, Folder, File } from "lucide-react";
+import { Download, Eye, FileText, Loader2, CheckCircle2, Clock, Pause, Folder, File, ChevronDown } from "lucide-react";
 import { Workflow, WorkflowNode } from "@/types/workflow";
 import JSZip from "jszip";
 import { useState } from "react";
@@ -18,6 +18,12 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { cn } from "@/lib/utils";
@@ -31,6 +37,7 @@ interface SimpleViewProps {
 export const SimpleView = ({ workflow, userInput, onUserInputChange }: SimpleViewProps) => {
   const [viewingOutput, setViewingOutput] = useState<{ nodeName: string; output: string } | null>(null);
   const [outputTab, setOutputTab] = useState("view");
+  const [expandedNodes, setExpandedNodes] = useState<string[]>([]);
 
   // Helper to get all nodes with outputs
   const getNodesWithOutputs = () => {
@@ -164,12 +171,19 @@ export const SimpleView = ({ workflow, userInput, onUserInputChange }: SimpleVie
   // Get stage status based on nodes
   const getStageStatus = (stage: any): "idle" | "running" | "complete" | "error" => {
     if (stage.nodes.length === 0) return "idle";
+    
     const hasError = stage.nodes.some((n: WorkflowNode) => n.status === "error");
     if (hasError) return "error";
+    
     const hasRunning = stage.nodes.some((n: WorkflowNode) => n.status === "running");
     if (hasRunning) return "running";
-    const allCompleted = stage.nodes.every((n: WorkflowNode) => n.status === "complete");
-    if (allCompleted) return "complete";
+    
+    // Check if all nodes have completed
+    const hasAnyComplete = stage.nodes.some((n: WorkflowNode) => n.status === "complete");
+    const allCompleted = stage.nodes.every((n: WorkflowNode) => n.status === "complete" || n.status === "idle");
+    
+    if (hasAnyComplete && allCompleted) return "complete";
+    
     return "idle";
   };
 
@@ -227,8 +241,9 @@ export const SimpleView = ({ workflow, userInput, onUserInputChange }: SimpleVie
             const stageNodes = stage.nodes.filter((n) => n.output);
             const stageStatus = getStageStatus(stage);
             
+            // Show stage even if no outputs yet
             return (
-              <Card key={stage.id} className={cn("border-l-4 transition-colors", getStatusColor(stageStatus))}>
+              <Card key={stage.id} className={cn("border-l-4 transition-all duration-300", getStatusColor(stageStatus))}>
                 {/* Stage folder header */}
                 <div className="flex items-center justify-between p-4 border-b border-border bg-muted/20">
                   <div className="flex items-center gap-3">
@@ -236,72 +251,101 @@ export const SimpleView = ({ workflow, userInput, onUserInputChange }: SimpleVie
                     <div>
                       <h3 className="font-semibold text-foreground">{stage.name}</h3>
                       <p className="text-xs text-muted-foreground mt-0.5">
-                        {stageNodes.length > 0 ? `${stageNodes.length} output${stageNodes.length === 1 ? "" : "s"}` : "No outputs"}
+                        {stage.nodes.length} node{stage.nodes.length === 1 ? "" : "s"}
+                        {stageNodes.length > 0 && ` • ${stageNodes.length} output${stageNodes.length === 1 ? "" : "s"}`}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     {getStatusIcon(stageStatus)}
                     {stageNodes.length > 0 && (
-                      <>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => downloadStage(stage.name)}
-                        >
-                          <Download className="h-4 w-4 mr-2" />
-                          Download
-                        </Button>
-                      </>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => downloadStage(stage.name)}
+                      >
+                        <Download className="h-4 w-4 mr-2" />
+                        Download
+                      </Button>
                     )}
                   </div>
                 </div>
 
-                {/* Files/Outputs */}
+                {/* Files/Outputs with Accordion for streaming content */}
                 {stageNodes.length > 0 && (
                   <div className="p-2">
-                    {stageNodes.map((node) => (
-                      <div
-                        key={node.id}
-                        className="flex items-center justify-between p-3 rounded-md hover:bg-muted/50 transition-colors group"
-                      >
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <File className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm text-foreground truncate">{node.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {getCharCount(node.output!).toLocaleString()} characters
-                              {node.status === "running" && (
-                                <span className="ml-2 text-warning">• Streaming...</span>
-                              )}
-                            </p>
+                    <Accordion type="multiple" value={expandedNodes} onValueChange={setExpandedNodes}>
+                      {stageNodes.map((node) => (
+                        <AccordionItem key={node.id} value={node.id} className="border-none">
+                          <div className="rounded-md hover:bg-muted/50 transition-colors">
+                            <div className="flex items-center justify-between p-3 group">
+                              <div className="flex items-center gap-3 flex-1 min-w-0">
+                                <File className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium text-sm text-foreground truncate">{node.name}</p>
+                                  <p className="text-xs text-muted-foreground">
+                                    {getCharCount(node.output!).toLocaleString()} characters
+                                    {node.status === "running" && (
+                                      <span className="ml-2 text-warning animate-pulse">• Streaming...</span>
+                                    )}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <AccordionTrigger className="p-0 hover:no-underline">
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 w-8 p-0"
+                                  >
+                                    <ChevronDown className="h-4 w-4 transition-transform duration-200" />
+                                  </Button>
+                                </AccordionTrigger>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={() =>
+                                    setViewingOutput({
+                                      nodeName: node.name,
+                                      output: formatOutput(node.output),
+                                    })
+                                  }
+                                >
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  onClick={() => downloadArtifact(node.name, node.output)}
+                                >
+                                  <Download className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </div>
+                            <AccordionContent className="px-3 pb-3">
+                              <div className="mt-2 p-3 bg-muted/30 rounded-md border border-border">
+                                <ScrollArea className="max-h-[300px]">
+                                  <pre className="text-xs text-foreground whitespace-pre-wrap font-mono">
+                                    {formatOutput(node.output)}
+                                  </pre>
+                                </ScrollArea>
+                              </div>
+                            </AccordionContent>
                           </div>
-                        </div>
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0"
-                            onClick={() =>
-                              setViewingOutput({
-                                nodeName: node.name,
-                                output: formatOutput(node.output),
-                              })
-                            }
-                          >
-                            <Eye className="h-4 w-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-8 w-8 p-0"
-                            onClick={() => downloadArtifact(node.name, node.output)}
-                          >
-                            <Download className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
+                        </AccordionItem>
+                      ))}
+                    </Accordion>
+                  </div>
+                )}
+
+                {/* Empty stage indicator */}
+                {stageNodes.length === 0 && stage.nodes.length > 0 && (
+                  <div className="p-4 text-center">
+                    <p className="text-sm text-muted-foreground">
+                      {stageStatus === "running" ? "Processing..." : "Waiting for outputs..."}
+                    </p>
                   </div>
                 )}
               </Card>
