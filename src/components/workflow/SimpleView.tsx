@@ -285,6 +285,26 @@ export const SimpleView = ({ workflow, userInput, onUserInputChange, onRunAgent,
                   </div>
                   <div className="flex items-center gap-2">
                     {getStatusIcon(stageStatus)}
+                    {stage.nodes.length > 0 && (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => {
+                          // Run all agents and functions in this stage
+                          stage.nodes.forEach((node) => {
+                            if (node.nodeType === "agent" && onRunAgent) {
+                              onRunAgent(node.id);
+                            } else if (node.nodeType === "function" && onRunFunction) {
+                              onRunFunction(node.id);
+                            }
+                          });
+                        }}
+                        disabled={stageStatus === "running"}
+                      >
+                        <Play className="h-4 w-4 mr-2" />
+                        Run Stage
+                      </Button>
+                    )}
                     {stageNodes.length > 0 && (
                       <Button
                         variant="ghost"
