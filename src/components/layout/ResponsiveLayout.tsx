@@ -89,7 +89,7 @@ export const ResponsiveLayout = ({
         {viewMode === "simple" ? (
           // Simple view - with left sidebar, no properties
           <ResizablePanelGroup direction="horizontal">
-            <ResizablePanel defaultSize={20} minSize={15} maxSize={30} collapsible collapsedSize={0}>
+            <ResizablePanel defaultSize={22} minSize={15} maxSize={40} collapsible collapsedSize={0}>
               <div className="h-full border-r border-border overflow-y-auto relative">
                 {sidebar}
               </div>
@@ -97,7 +97,7 @@ export const ResponsiveLayout = ({
             
             <ResizableHandle withHandle />
             
-            <ResizablePanel defaultSize={80} minSize={40}>
+            <ResizablePanel defaultSize={78} minSize={40}>
               <div className="flex-1 flex flex-col overflow-hidden h-full">
                 {desktopCanvas}
               </div>
@@ -106,7 +106,7 @@ export const ResponsiveLayout = ({
         ) : (
           // Stacked/Canvas view - with sidebars
           <ResizablePanelGroup direction="horizontal">
-            <ResizablePanel defaultSize={20} minSize={15} maxSize={30} collapsible collapsedSize={0}>
+            <ResizablePanel defaultSize={22} minSize={15} maxSize={40} collapsible collapsedSize={0}>
               <div className="h-full border-r border-border overflow-y-auto relative">
                 {sidebar}
               </div>
@@ -114,7 +114,7 @@ export const ResponsiveLayout = ({
             
             <ResizableHandle withHandle />
             
-            <ResizablePanel defaultSize={60} minSize={40}>
+            <ResizablePanel defaultSize={56} minSize={40}>
               <div className="flex-1 flex flex-col overflow-hidden h-full">
                 {desktopCanvas}
               </div>
@@ -122,7 +122,7 @@ export const ResponsiveLayout = ({
             
             <ResizableHandle withHandle />
             
-            <ResizablePanel defaultSize={20} minSize={15} maxSize={30} collapsible collapsedSize={0}>
+            <ResizablePanel defaultSize={22} minSize={15} maxSize={40} collapsible collapsedSize={0}>
               <div className="h-full border-l border-border overflow-y-auto relative">
                 {properties}
               </div>
