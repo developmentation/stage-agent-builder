@@ -39,7 +39,18 @@ interface SimpleViewProps {
 export const SimpleView = ({ workflow, userInput, onUserInputChange, onRunAgent, onRunFunction }: SimpleViewProps) => {
   const [viewingOutput, setViewingOutput] = useState<{ nodeName: string; output: string } | null>(null);
   const [outputTab, setOutputTab] = useState("view");
-  const [expandedNodes, setExpandedNodes] = useState<string[]>([]);
+  
+  // Get the first node from stage one with output as the default expanded node
+  const getDefaultExpandedNode = () => {
+    const stageOne = workflow.stages.find(s => s.id === '1');
+    if (stageOne && stageOne.nodes.length > 0) {
+      const firstNodeWithOutput = stageOne.nodes.find(node => node.output);
+      return firstNodeWithOutput ? [firstNodeWithOutput.id] : [];
+    }
+    return [];
+  };
+  
+  const [expandedNodes, setExpandedNodes] = useState<string[]>(getDefaultExpandedNode);
   const scrollRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
   // Auto-expand streaming nodes and scroll to bottom
