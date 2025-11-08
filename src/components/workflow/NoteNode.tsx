@@ -70,8 +70,18 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
     if (isEditing && textareaRef.current) {
       textareaRef.current.focus();
       textareaRef.current.select();
+      // Auto-resize textarea to fit content
+      textareaRef.current.style.height = 'auto';
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, note.size.height - 32)}px`;
     }
-  }, [isEditing]);
+  }, [isEditing, note.size.height]);
+
+  // Auto-resize textarea as user types
+  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setLocalContent(e.target.value);
+    e.target.style.height = 'auto';
+    e.target.style.height = `${Math.min(e.target.scrollHeight, note.size.height - 32)}px`;
+  };
 
   // Handle keyboard shortcuts when selected but not editing
   useEffect(() => {
@@ -101,20 +111,14 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
           }
         }
       };
-      // Use capture phase to catch clicks before other handlers
-      document.addEventListener('mousedown', handleClickOutside, true);
-      return () => document.removeEventListener('mousedown', handleClickOutside, true);
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [isEditing, localContent, note.content, onUpdate]);
 
   const handleEditClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     setIsEditing(true);
-  };
-
-  const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    // Use local state for smooth typing
-    setLocalContent(e.target.value);
   };
 
   const handleColorChange = (color: string) => {
@@ -214,18 +218,19 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
           style={{ overflow: "hidden", position: "relative" }}
         >
           {isEditing ? (
-            <div className="w-full h-full flex items-center justify-center">
+            <div className="w-full h-full flex items-center justify-center overflow-auto">
               <textarea
                 ref={textareaRef}
                 value={localContent}
                 onChange={handleContentChange}
                 onMouseDown={(e) => e.stopPropagation()}
-                className="w-full h-full bg-transparent border-none outline-none resize-none text-center nodrag"
+                className="w-full bg-transparent border-none outline-none resize-none text-center nodrag"
                 style={{
                   fontSize: `${fontSize}px`,
                   lineHeight: "1.3",
                   whiteSpace: "pre-wrap",
-                  overflowY: "auto",
+                  minHeight: "1.3em",
+                  maxHeight: `${note.size.height - 32}px`,
                 }}
                 placeholder="Type your note..."
               />
