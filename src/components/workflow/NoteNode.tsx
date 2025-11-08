@@ -101,24 +101,17 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
   }, [selected, isEditing, localContent, note.content, onUpdate]);
 
   const handleContentClick = (e: React.MouseEvent) => {
-    // If already selected and not editing, enter edit mode
+    // Only handle when selected - enter edit mode
     if (selected && !isEditing) {
       e.stopPropagation();
-      e.preventDefault();
       setIsEditing(true);
     }
   };
 
-  const handleTextareaBlur = (e: React.FocusEvent) => {
-    // Only exit edit mode if clicking completely outside the note
-    const relatedTarget = e.relatedTarget as HTMLElement;
-    if (relatedTarget && relatedTarget.closest('.react-flow__node')) {
-      return;
-    }
-    
+  const handleTextareaBlur = () => {
+    // Just exit edit mode and save
     setIsEditing(false);
     setShowColorPicker(false);
-    // Save content when leaving edit mode
     if (localContent !== note.content) {
       onUpdate({ content: localContent });
     }
@@ -207,7 +200,7 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
         <div
           className="w-full h-full flex items-center justify-center p-4"
           style={{ overflow: "hidden" }}
-          onClick={handleContentClick}
+          onClick={selected && !isEditing ? handleContentClick : undefined}
         >
           {isEditing ? (
             <textarea
@@ -215,12 +208,7 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
               value={localContent}
               onChange={handleContentChange}
               onBlur={handleTextareaBlur}
-              onMouseDown={(e) => {
-                e.stopPropagation();
-              }}
-              onFocus={(e) => {
-                e.stopPropagation();
-              }}
+              onMouseDown={(e) => e.stopPropagation()}
               className="w-full h-full bg-transparent border-none outline-none resize-none text-center nodrag"
               style={{
                 fontSize: `${fontSize}px`,
