@@ -46,7 +46,7 @@ interface WorkflowCanvasModeProps {
   onRenameStage: (stageId: string, newName: string) => void;
   onReorderStages: (sourceIndex: number, targetIndex: number) => void;
   onAddAgent: (stageId: string, agent: any) => void;
-  onAddFunction: (stageId: string, functionType: string) => void;
+  onAddFunction: (stageId: string, functionTemplate: any, nodeType?: "function") => void;
   onDeleteNode: (stageId: string, nodeId: string) => void;
   onRunAgent: (nodeId: string) => void;
   onStartConnection: (nodeId: string, outputPort?: string) => void;
@@ -109,19 +109,23 @@ export function WorkflowCanvasMode({
     const nodeHeight = 150;
     const minStageWidth = 400;
     const minStageHeight = 300;
+    const stageGap = 50; // Gap between stages when stacking vertically
+    
+    let cumulativeY = 100; // Starting Y position for first stage
     
     workflow.stages.forEach((stage, stageIndex) => {
-      const defaultStageY = stageIndex * 400;
       
       if (stage.nodes.length === 0) {
+        const stageHeight = minStageHeight;
         bounds[stage.id] = { 
           width: minStageWidth, 
-          height: minStageHeight, 
+          height: stageHeight, 
           stageX: stage.position?.x ?? 100,
-          stageY: stage.position?.y ?? defaultStageY,
+          stageY: stage.position?.y ?? cumulativeY,
           contentMinX: 0,
           contentMinY: 0,
         };
+        cumulativeY += stageHeight + stageGap;
         return;
       }
 
@@ -160,14 +164,22 @@ export function WorkflowCanvasMode({
         stageY = minY - stageHeaderHeight;
       }
 
+      // Use stage position if set, otherwise use cumulative Y for vertical stacking
+      const finalStageY = stage.position ? stageY : cumulativeY;
+      
       bounds[stage.id] = { 
         width: stageWidth, 
         height: stageHeight,
-        stageX,
-        stageY,
+        stageX: stage.position?.x ?? stageX,
+        stageY: finalStageY,
         contentMinX: minX,
         contentMinY: minY,
       };
+      
+      // Update cumulative Y for next stage (only if stage doesn't have manual position)
+      if (!stage.position) {
+        cumulativeY += stageHeight + stageGap;
+      }
     });
     
     return bounds;
@@ -462,7 +474,7 @@ export function WorkflowCanvasMode({
           open={true}
           onOpenChange={(open) => !open && setShowAddFunction(null)}
           onSelectFunction={(functionDef) => {
-            onAddFunction(showAddFunction, functionDef.id);
+            onAddFunction(showAddFunction, functionDef, "function");
             setShowAddFunction(null);
           }}
         />
