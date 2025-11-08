@@ -125,7 +125,7 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
   return (
     <>
       <NodeResizer
-        isVisible={!isEditing}
+        isVisible={selected && !isEditing}
         minWidth={150}
         minHeight={100}
         maxWidth={600}
@@ -140,14 +140,13 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
         className="note-container relative shadow-lg border-2 transition-all duration-200"
         style={{
           backgroundColor: note.color,
-          borderColor: selected ? "hsl(var(--primary))" : "transparent",
           width: note.size.width,
           height: note.size.height,
           overflow: "hidden",
         }}
       >
-        {/* Toolbar - only show when not editing */}
-        {!isEditing && (
+        {/* Toolbar - show when selected and not editing */}
+        {selected && !isEditing && (
           <div className="absolute top-2 right-2 flex gap-1 z-10">
             <Button
               variant="ghost"
