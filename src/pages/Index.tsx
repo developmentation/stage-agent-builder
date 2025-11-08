@@ -143,6 +143,26 @@ const Index = () => {
   };
 
   const addNode = (stageId: string, template: any, nodeType: "agent" | "function" | "tool" = "agent") => {
+    const stage = workflow.stages.find(s => s.id === stageId);
+    
+    // Calculate position: leftmost x, below bottommost y
+    let position = { x: 0, y: 0 };
+    if (stage && stage.nodes.length > 0) {
+      const nodeHeight = 150; // Standard node height
+      const verticalSpacing = 30; // Space between nodes
+      
+      // Find leftmost x position
+      const leftmostX = Math.min(...stage.nodes.map(n => n.position?.x ?? 0));
+      
+      // Find bottommost y position
+      const bottommostY = Math.max(...stage.nodes.map(n => (n.position?.y ?? 0) + nodeHeight));
+      
+      position = {
+        x: leftmostX,
+        y: bottommostY + verticalSpacing
+      };
+    }
+    
     let newNode: WorkflowNode;
 
     if (nodeType === "agent") {
@@ -155,6 +175,7 @@ const Index = () => {
         userPrompt: template.defaultUserPrompt || "Process the following input: {input}",
         tools: [],
         status: "idle",
+        position,
       } as AgentNode;
     } else if (nodeType === "function") {
       newNode = {
@@ -165,6 +186,7 @@ const Index = () => {
         config: {},
         outputPorts: template.outputs || ["output"], // Use 'outputs' from function definition
         status: "idle",
+        position,
       } as FunctionNode;
     } else {
       newNode = {
@@ -174,6 +196,7 @@ const Index = () => {
         toolType: template.id,
         config: {},
         status: "idle",
+        position,
       } as ToolNode;
     }
 
