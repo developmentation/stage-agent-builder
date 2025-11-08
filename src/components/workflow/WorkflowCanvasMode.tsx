@@ -296,9 +296,10 @@ export function WorkflowCanvasMode({
   );
 
   return (
-    <div className="h-full w-full relative" key={`canvas-${workflow.viewMode}`}>
+    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
       <ReactFlowProvider>
-        <ReactFlow
+        <div style={{ width: '100%', height: '100%' }}>
+          <ReactFlow
           nodes={nodes}
           edges={edges}
           onNodesChange={onNodesChange}
@@ -337,6 +338,7 @@ export function WorkflowCanvasMode({
             </Card>
           </Panel>
         </ReactFlow>
+        </div>
       </ReactFlowProvider>
 
       {/* Agent Selector Dialog */}
