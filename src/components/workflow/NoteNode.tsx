@@ -254,7 +254,7 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
       )}
       
       <Card
-        className="note-container relative shadow-lg border-2 transition-all duration-200"
+        className="note-container relative shadow-lg border-2 rounded-none"
         style={{
           backgroundColor: note.color,
           borderColor: selected ? "hsl(var(--primary))" : "transparent",
