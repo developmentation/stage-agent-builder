@@ -87,16 +87,15 @@ const Index = () => {
 
   const addStage = () => {
     // Calculate position: leftmost x, 50px below bottommost stage
-    let position = { x: 100, y: 100 }; // Default for first stage
+    let position = { x: 0, y: 0 }; // Default for first stage (matches WorkflowCanvasMode default)
     
     if (workflow.stages.length > 0) {
-      // Find leftmost x position
-      const leftmostX = Math.min(...workflow.stages.map(s => s.position?.x ?? 100));
+      // Find leftmost x position (default to 0 to match WorkflowCanvasMode's empty stage default)
+      const leftmostX = Math.min(...workflow.stages.map(s => s.position?.x ?? 0));
       
       // Find bottommost y position (need to account for stage height)
-      // We'll estimate stage height as 300px minimum or calculate from bounds
       const bottommostY = Math.max(...workflow.stages.map(s => {
-        const y = s.position?.y ?? 100;
+        const y = s.position?.y ?? 0;
         // Estimate stage height based on nodes or use minimum 300px
         const estimatedHeight = s.nodes.length > 0 ? 400 : 300;
         return y + estimatedHeight;
