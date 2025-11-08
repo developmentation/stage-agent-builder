@@ -330,18 +330,10 @@ export function WorkflowCanvasMode({
           />
           <Panel position="top-left">
             <Card className="p-2">
-              <div className="flex gap-2">
-                <Button onClick={onAddStage} size="sm">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Stage
-                </Button>
-                {isMobile && onToggleViewMode && (
-                  <Button onClick={onToggleViewMode} size="sm" variant="outline">
-                    <Layers className="h-4 w-4 mr-2" />
-                    Stacked
-                  </Button>
-                )}
-              </div>
+              <Button onClick={onAddStage} size="sm">
+                <Plus className="h-4 w-4 mr-2" />
+                Add Stage
+              </Button>
             </Card>
           </Panel>
         </ReactFlow>

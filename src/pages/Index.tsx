@@ -40,7 +40,6 @@ const Index = () => {
     connections: [],
     viewMode: "stacked",
   });
-  const [isCanvasReady, setIsCanvasReady] = useState<boolean>(false);
 
   const addLog = (type: LogEntry["type"], message: string) => {
     const time = new Date().toLocaleTimeString('en-US', { hour12: false });
@@ -62,36 +61,20 @@ const Index = () => {
     setWorkflow((prev) => {
       const newViewMode = prev.viewMode === "stacked" ? "canvas" : "stacked";
       
-      // When switching to canvas mode, initialize positions first
+      // Initialize stage positions when switching to canvas mode
       if (newViewMode === "canvas") {
-        const needsInitialization = prev.stages.some(stage => !stage.position);
+        const updatedStages = prev.stages.map((stage, index) => ({
+          ...stage,
+          position: stage.position || { x: 100, y: index * 400 }
+        }));
         
-        if (needsInitialization) {
-          // First pass: just initialize positions without changing view mode
-          setIsCanvasReady(false);
-          const updatedStages = prev.stages.map((stage, index) => ({
-            ...stage,
-            position: stage.position || { x: 100, y: index * 400 }
-          }));
-          
-          // Schedule view mode change for next tick after positions are set
-          setTimeout(() => {
-            setWorkflow(current => ({
-              ...current,
-              viewMode: "canvas"
-            }));
-            setIsCanvasReady(true);
-          }, 0);
-          
-          return {
-            ...prev,
-            stages: updatedStages
-          };
-        }
+        return {
+          ...prev,
+          viewMode: newViewMode,
+          stages: updatedStages
+        };
       }
       
-      // Normal toggle if positions already exist or switching to stacked
-      setIsCanvasReady(newViewMode === "canvas");
       return {
         ...prev,
         viewMode: newViewMode
