@@ -67,7 +67,7 @@ export interface Connection {
 export interface Workflow {
   stages: Stage[];
   connections: Connection[];
-  viewMode?: "stacked" | "canvas"; // Toggle between visualization modes
+  viewMode?: "stacked" | "canvas" | "simple"; // Toggle between visualization modes
 }
 
 // Log entry for output

@@ -1,5 +1,6 @@
 import { WorkflowCanvas } from "@/components/workflow/WorkflowCanvas";
 import { WorkflowCanvasMode } from "@/components/workflow/WorkflowCanvasMode";
+import { SimpleView } from "@/components/workflow/SimpleView";
 import { Sidebar } from "@/components/sidebar/Sidebar";
 import { PropertiesPanel } from "@/components/properties/PropertiesPanel";
 import { Toolbar } from "@/components/toolbar/Toolbar";
@@ -58,10 +59,23 @@ const Index = () => {
   };
 
   const toggleViewMode = () => {
-    setWorkflow((prev) => ({
-      ...prev,
-      viewMode: (prev.viewMode || "stacked") === "stacked" ? "canvas" : "stacked",
-    }));
+    setWorkflow((prev) => {
+      const currentMode = prev.viewMode || "stacked";
+      let nextMode: "stacked" | "canvas" | "simple";
+      
+      if (currentMode === "stacked") {
+        nextMode = "canvas";
+      } else if (currentMode === "canvas") {
+        nextMode = "simple";
+      } else {
+        nextMode = "stacked";
+      }
+      
+      return {
+        ...prev,
+        viewMode: nextMode,
+      };
+    });
   };
 
   const updateStagePosition = (stageId: string, position: { x: number; y: number }) => {
@@ -1345,7 +1359,9 @@ const Index = () => {
             />
           }
           mobileCanvas={
-            workflow.viewMode === "canvas" ? (
+            workflow.viewMode === "simple" ? (
+              <SimpleView workflow={workflow} />
+            ) : workflow.viewMode === "canvas" ? (
               <WorkflowCanvasMode
                 workflow={workflow}
                 selectedNode={selectedNodeData || null}
@@ -1400,7 +1416,9 @@ const Index = () => {
             )
           }
           desktopCanvas={
-            workflow.viewMode === "canvas" ? (
+            workflow.viewMode === "simple" ? (
+              <SimpleView workflow={workflow} />
+            ) : workflow.viewMode === "canvas" ? (
               <WorkflowCanvasMode
                 workflow={workflow}
                 selectedNode={selectedNodeData || null}
@@ -1476,6 +1494,7 @@ const Index = () => {
           hasSelectedAgent={!!selectedNodeData}
           viewMode={workflow.viewMode}
           onToggleViewMode={toggleViewMode}
+          workflow={workflow}
         />
         
         <OutputLog logs={logs} />

@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Play, Plus, Save, Upload, Trash2, HelpCircle, LayoutGrid, LayoutList } from "lucide-react";
+import { Play, Plus, Save, Upload, Trash2, HelpCircle, LayoutGrid, LayoutList, Eye } from "lucide-react";
 import { useRef, useState } from "react";
 import { HelpModal } from "@/components/help/HelpModal";
 interface ToolbarProps {
@@ -8,7 +8,7 @@ interface ToolbarProps {
   onLoad: (file: File) => void;
   onClear: () => void;
   onRun: () => void;
-  viewMode: "stacked" | "canvas";
+  viewMode: "stacked" | "canvas" | "simple";
   onToggleViewMode: () => void;
 }
 export const Toolbar = ({
@@ -52,14 +52,19 @@ export const Toolbar = ({
         </Button>
         <Button 
           onClick={onToggleViewMode} 
-          variant={(viewMode || "stacked") === "canvas" ? "default" : "outline"}
+          variant={viewMode === "canvas" ? "default" : "outline"}
           size="sm"
           className="gap-2"
         >
-          {(viewMode || "stacked") === "canvas" ? (
+          {viewMode === "canvas" ? (
             <>
               <LayoutGrid className="h-4 w-4" />
               Canvas
+            </>
+          ) : viewMode === "simple" ? (
+            <>
+              <Eye className="h-4 w-4" />
+              Simple
             </>
           ) : (
             <>

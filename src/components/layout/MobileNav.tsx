@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Library, Workflow, Settings, Plus, Play, Save, Upload, Trash2, HelpCircle, LayoutGrid, LayoutList } from "lucide-react";
+import { Library, Workflow, Settings, Plus, Play, Save, Upload, Trash2, HelpCircle, LayoutGrid, LayoutList, Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRef, useState } from "react";
 import { HelpModal } from "@/components/help/HelpModal";
@@ -13,7 +13,7 @@ interface MobileNavProps {
   onLoad: (file: File) => void;
   onClear: () => void;
   hasSelectedAgent: boolean;
-  viewMode?: "stacked" | "canvas";
+  viewMode?: "stacked" | "canvas" | "simple";
   onToggleViewMode?: () => void;
 }
 
@@ -60,12 +60,14 @@ export const MobileNav = ({
         {onToggleViewMode && (
           <Button
             size="sm"
-            variant={(viewMode || "stacked") === "canvas" ? "default" : "outline"}
+            variant={viewMode === "canvas" ? "default" : "outline"}
             className="gap-2"
             onClick={onToggleViewMode}
           >
-            {(viewMode || "stacked") === "canvas" ? (
+            {viewMode === "canvas" ? (
               <LayoutGrid className="h-4 w-4" />
+            ) : viewMode === "simple" ? (
+              <Eye className="h-4 w-4" />
             ) : (
               <LayoutList className="h-4 w-4" />
             )}

@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Workflow } from "@/types/workflow";
 
 interface ResponsiveLayoutProps {
   sidebar: ReactNode;
@@ -16,8 +17,9 @@ interface ResponsiveLayoutProps {
   onLoad: (file: File) => void;
   onClear: () => void;
   hasSelectedAgent: boolean;
-  viewMode?: "stacked" | "canvas";
+  viewMode?: "stacked" | "canvas" | "simple";
   onToggleViewMode?: () => void;
+  workflow?: Workflow;
 }
 
 export const ResponsiveLayout = ({
@@ -33,6 +35,7 @@ export const ResponsiveLayout = ({
   hasSelectedAgent,
   viewMode,
   onToggleViewMode,
+  workflow,
 }: ResponsiveLayoutProps) => {
   const [mobileTab, setMobileTab] = useState<"library" | "workflow" | "properties">("workflow");
 
@@ -83,29 +86,37 @@ export const ResponsiveLayout = ({
 
       {/* Desktop Layout */}
       <div className="hidden lg:flex flex-1 overflow-hidden">
-        <ResizablePanelGroup direction="horizontal">
-          <ResizablePanel defaultSize={20} minSize={15} maxSize={30} collapsible collapsedSize={0}>
-            <div className="h-full border-r border-border overflow-y-auto relative">
-              {sidebar}
-            </div>
-          </ResizablePanel>
-          
-          <ResizableHandle withHandle />
-          
-          <ResizablePanel defaultSize={60} minSize={40}>
-            <div className="flex-1 flex flex-col overflow-hidden h-full">
-              {desktopCanvas}
-            </div>
-          </ResizablePanel>
-          
-          <ResizableHandle withHandle />
-          
-          <ResizablePanel defaultSize={20} minSize={15} maxSize={30} collapsible collapsedSize={0}>
-            <div className="h-full border-l border-border overflow-y-auto relative">
-              {properties}
-            </div>
-          </ResizablePanel>
-        </ResizablePanelGroup>
+        {viewMode === "simple" ? (
+          // Simple view - full width, no sidebars
+          <div className="flex-1 flex flex-col overflow-hidden h-full">
+            {desktopCanvas}
+          </div>
+        ) : (
+          // Stacked/Canvas view - with sidebars
+          <ResizablePanelGroup direction="horizontal">
+            <ResizablePanel defaultSize={20} minSize={15} maxSize={30} collapsible collapsedSize={0}>
+              <div className="h-full border-r border-border overflow-y-auto relative">
+                {sidebar}
+              </div>
+            </ResizablePanel>
+            
+            <ResizableHandle withHandle />
+            
+            <ResizablePanel defaultSize={60} minSize={40}>
+              <div className="flex-1 flex flex-col overflow-hidden h-full">
+                {desktopCanvas}
+              </div>
+            </ResizablePanel>
+            
+            <ResizableHandle withHandle />
+            
+            <ResizablePanel defaultSize={20} minSize={15} maxSize={30} collapsible collapsedSize={0}>
+              <div className="h-full border-l border-border overflow-y-auto relative">
+                {properties}
+              </div>
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        )}
       </div>
     </>
   );
