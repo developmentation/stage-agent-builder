@@ -155,13 +155,6 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
     e.stopPropagation();
     if (!isEditing) {
       setIsEditing(true);
-      // Wait for next tick to ensure textarea is rendered
-      setTimeout(() => {
-        if (textareaRef.current) {
-          textareaRef.current.focus();
-          textareaRef.current.select();
-        }
-      }, 0);
     }
   };
 
