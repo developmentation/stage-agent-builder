@@ -263,23 +263,32 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
           style={{ overflow: "hidden", position: "relative" }}
         >
           {isEditing ? (
-            <textarea
-              ref={textareaRef}
-              value={localContent}
-              onChange={handleContentChange}
-              onMouseDown={(e) => e.stopPropagation()}
-              className="w-full h-full bg-transparent border-none outline-none resize-none text-center nodrag note-textarea flex items-center"
-              style={{
-                fontSize: `${fontSize}px`,
-                lineHeight: "1.4",
-                whiteSpace: "pre-wrap",
-                wordBreak: "break-word",
-                overflowY: "auto",
-                overflowWrap: "break-word",
-                padding: "0",
-              }}
-              placeholder="Type your note..."
-            />
+            <div className="w-full h-full flex items-center justify-center overflow-auto p-4">
+              <textarea
+                ref={textareaRef}
+                value={localContent}
+                onChange={handleContentChange}
+                onMouseDown={(e) => e.stopPropagation()}
+                className="w-full bg-transparent border-none outline-none resize-none text-center nodrag note-textarea"
+                style={{
+                  fontSize: `${fontSize}px`,
+                  lineHeight: "1.4",
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
+                  overflowWrap: "break-word",
+                  padding: "0",
+                  minHeight: "fit-content",
+                  height: "auto",
+                }}
+                rows={1}
+                onInput={(e) => {
+                  const target = e.target as HTMLTextAreaElement;
+                  target.style.height = "auto";
+                  target.style.height = target.scrollHeight + "px";
+                }}
+                placeholder="Type your note..."
+              />
+            </div>
           ) : (
             <div
               className="w-full h-full flex items-center justify-center text-center"
