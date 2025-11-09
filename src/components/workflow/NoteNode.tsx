@@ -284,13 +284,10 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
                   whiteSpace: "pre-wrap",
                   wordBreak: "break-word",
                   overflowWrap: "break-word",
-                  wordWrap: "break-word",
                   padding: "0",
                   overflow: "hidden",
                   height: "auto",
                   maxHeight: "100%",
-                  width: "100%",
-                  maxWidth: "100%",
                 }}
                 placeholder="Type your note..."
               />
