@@ -269,7 +269,7 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
                 value={localContent}
                 onChange={handleContentChange}
                 onMouseDown={(e) => e.stopPropagation()}
-                className="w-full h-full bg-transparent border-none outline-none resize-none text-center nodrag note-textarea scrollbar-hide"
+                className="w-full bg-transparent border-none outline-none resize-none text-center nodrag note-textarea scrollbar-hide"
                 style={{
                   fontSize: `${fontSize}px`,
                   lineHeight: "1.4",
@@ -278,6 +278,8 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
                   overflowWrap: "break-word",
                   padding: "0",
                   overflow: "hidden",
+                  height: "fit-content",
+                  maxHeight: "100%",
                 }}
                 placeholder="Type your note..."
               />
