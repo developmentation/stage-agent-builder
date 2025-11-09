@@ -45,8 +45,8 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
   const calculateFontSize = (content: string, width: number, height: number) => {
     if (!content || content.length === 0) return 32;
     
-    const availableWidth = width - 40; // padding
-    const availableHeight = height - 40;
+    const availableWidth = width - 48; // increased padding buffer
+    const availableHeight = height - 48;
     const totalArea = availableWidth * availableHeight;
     
     // Use a binary search approach to find the optimal font size
@@ -56,8 +56,8 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
     
     for (let i = 0; i < 10; i++) { // 10 iterations is enough for convergence
       const testSize = (minSize + maxSize) / 2;
-      const charWidth = testSize * 0.6; // approximate character width
-      const lineHeight = testSize * 1.4;
+      const charWidth = testSize * 0.65; // more conservative character width
+      const lineHeight = testSize * 1.5; // increased line height
       
       // Calculate how many characters fit per line
       const charsPerLine = Math.floor(availableWidth / charWidth);
@@ -72,7 +72,7 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
       
       const requiredHeight = totalLines * lineHeight;
       
-      if (requiredHeight <= availableHeight) {
+      if (requiredHeight <= availableHeight * 0.95) { // use only 95% of available height
         optimalSize = testSize;
         minSize = testSize; // Try larger
       } else {
