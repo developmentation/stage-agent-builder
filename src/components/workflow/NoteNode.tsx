@@ -43,60 +43,53 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
 
   // Calculate font size to fit all content within the card
   const calculateFontSize = (content: string, width: number, height: number) => {
-    if (!content || content.length === 0) return 20;
+    if (!content || content.length === 0) return 32;
     
-    const availableWidth = width - 32; // padding
-    const availableHeight = height - 32;
+    const availableWidth = width - 48; // increased padding buffer
+    const availableHeight = height - 48;
+    const totalArea = availableWidth * availableHeight;
     
-    // Split content into lines and handle word wrapping at 25 chars
-    const processedLines: string[] = [];
-    const contentLines = content.split('\n');
+    // Use a binary search approach to find the optimal font size
+    let minSize = 12;
+    let maxSize = 72;
+    let optimalSize = minSize;
     
-    contentLines.forEach(line => {
-      if (line.length === 0) {
-        processedLines.push('');
+    for (let i = 0; i < 10; i++) { // 10 iterations is enough for convergence
+      const testSize = (minSize + maxSize) / 2;
+      const charWidth = testSize * 0.65; // more conservative character width
+      const lineHeight = testSize * 1.5; // increased line height
+      
+      // Calculate how many characters fit per line
+      const charsPerLine = Math.floor(availableWidth / charWidth);
+      
+      // Estimate total lines needed (accounting for manual line breaks)
+      const contentLines = content.split('\n');
+      let totalLines = 0;
+      contentLines.forEach(line => {
+        const wrappedLines = Math.ceil(Math.max(1, line.length) / charsPerLine) || 1;
+        totalLines += wrappedLines;
+      });
+      
+      const requiredHeight = totalLines * lineHeight;
+      
+      if (requiredHeight <= availableHeight * 0.95) { // use only 95% of available height
+        optimalSize = testSize;
+        minSize = testSize; // Try larger
       } else {
-        // Break long lines at 35 characters
-        const words = line.split(' ');
-        let currentLine = '';
-        
-        words.forEach(word => {
-          if ((currentLine + ' ' + word).trim().length <= 35) {
-            currentLine = currentLine ? currentLine + ' ' + word : word;
-          } else {
-            if (currentLine) processedLines.push(currentLine);
-            currentLine = word;
-          }
-        });
-        
-        if (currentLine) processedLines.push(currentLine);
+        maxSize = testSize; // Try smaller
       }
-    });
+    }
     
-    const lineCount = Math.max(1, processedLines.length);
-    const longestLine = processedLines.reduce((max, line) => 
-      line.length > max.length ? line : max, ''
-    );
-    
-    // Estimate character width (roughly 0.6 of font size for most fonts)
-    const charsPerLine = Math.max(1, longestLine.length);
-    const fontSizeByWidth = (availableWidth / charsPerLine) / 0.6;
-    
-    // Consider height constraints with line height
-    const fontSizeByHeight = (availableHeight / lineCount) / 1.3; // 1.3 is line-height
-    
-    // Use the smaller of the two to ensure all content fits
-    const fontSize = Math.min(fontSizeByWidth, fontSizeByHeight);
-    
-    // Clamp between 6px and 24px (lowered minimum to accommodate more text)
-    return Math.max(6, Math.min(24, fontSize));
+    // Clamp between 12px and 72px
+    return Math.max(12, Math.min(72, optimalSize));
   };
 
   // Use local size during resize for immediate visual feedback
   const currentSize = isResizing ? localSize : note.size;
   
+  // Use localContent when editing so font size updates as user types
   const fontSize = calculateFontSize(
-    note.content,
+    isEditing ? localContent : note.content,
     currentSize.width,
     currentSize.height
   );
@@ -174,15 +167,10 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
         maxWidth={600}
         maxHeight={600}
         handleStyle={{
-          width: '16px',
-          height: '16px',
+          width: '12px',
+          height: '12px',
           borderRadius: '2px',
-          touchAction: 'none',
-          padding: '12px',
-          margin: '-12px',
-          boxSizing: 'content-box',
         }}
-        handleClassName="nodrag nopan"
         onResizeStart={() => {
           setIsResizing(true);
         }}
@@ -275,22 +263,21 @@ export const NoteNode = memo(({ data, selected }: NodeProps<NoteNodeData>) => {
           style={{ overflow: "hidden", position: "relative" }}
         >
           {isEditing ? (
-            <div className="w-full h-full flex items-center justify-center">
+            <div className="w-full h-full flex items-center justify-center p-4">
               <textarea
                 ref={textareaRef}
                 value={localContent}
                 onChange={handleContentChange}
                 onMouseDown={(e) => e.stopPropagation()}
-                className="w-full h-full bg-transparent border-none outline-none resize-none text-center nodrag note-textarea"
+                className="w-full h-full bg-transparent border-none outline-none resize-none text-center nodrag note-textarea scrollbar-hide"
                 style={{
-                  fontSize: "16px",
-                  lineHeight: "1.3",
+                  fontSize: `${fontSize}px`,
+                  lineHeight: "1.4",
                   whiteSpace: "pre-wrap",
                   wordBreak: "break-word",
-                  overflowY: "auto",
                   overflowWrap: "break-word",
-                  maxWidth: "100%",
-                  wordWrap: "break-word",
+                  padding: "0",
+                  overflow: "hidden",
                 }}
                 placeholder="Type your note..."
               />
