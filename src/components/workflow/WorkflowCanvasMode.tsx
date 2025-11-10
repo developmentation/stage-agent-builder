@@ -57,12 +57,13 @@ function AddNoteButton({ onAddNote }: { onAddNote?: (x?: number, y?: number) => 
       const leftSidebar = document.querySelector('[data-sidebar="sidebar"]');
       const sidebarWidth = leftSidebar ? leftSidebar.getBoundingClientRect().width : 0;
       
-      // Calculate center of visible area
-      const visualCenterX = containerRect.width / 2;
+      // Calculate available width and center after subtracting sidebar
+      const availableWidth = containerRect.width - sidebarWidth;
+      const visualCenterX = availableWidth / 2 + sidebarWidth; // Center of available area in screen coords
       const visualCenterY = containerRect.height / 2;
       
-      // Convert to flow coordinates, subtracting sidebar width to account for offset
-      const centerFlowX = (visualCenterX - sidebarWidth) / viewport.zoom - viewport.x / viewport.zoom;
+      // Convert to flow coordinates
+      const centerFlowX = visualCenterX / viewport.zoom - viewport.x / viewport.zoom;
       const centerFlowY = visualCenterY / viewport.zoom - viewport.y / viewport.zoom;
       
       // Offset by half the note size to center the note on that point
