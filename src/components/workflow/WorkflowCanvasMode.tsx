@@ -41,40 +41,34 @@ function AddNoteButton({ onAddNote }: { onAddNote?: (x?: number, y?: number) => 
     const noteWidth = 200;
     const noteHeight = 200;
     
-    // Find the actual container with dimensions by traversing up the DOM
-    let container = document.querySelector('.react-flow__viewport')?.parentElement;
-    
-    // Keep going up until we find an element with actual dimensions
-    while (container && (container.clientWidth === 0 || container.clientHeight === 0)) {
-      container = container.parentElement;
-    }
-    
-    if (container) {
-      const containerRect = container.getBoundingClientRect();
-      const viewport = reactFlowInstance.getViewport();
-      
-      // The container is the middle ResizablePanel, which doesn't include sidebars in its rect
-      // So we just need to find the center of this visible canvas area
-      console.log("Container rect:", containerRect);
-      console.log("Viewport:", viewport);
-      
-      const visualCenterX = containerRect.width / 2;
-      const visualCenterY = containerRect.height / 2;
-      
-      console.log("Visual center (relative to container):", visualCenterX, visualCenterY);
-      
-      // Convert to flow coordinates
-      const centerFlowX = visualCenterX / viewport.zoom - viewport.x / viewport.zoom;
-      const centerFlowY = visualCenterY / viewport.zoom - viewport.y / viewport.zoom;
-      
-      console.log("Flow center:", centerFlowX, centerFlowY);
-      
-      // Offset by half the note size to center the note on that point
-      onAddNote(centerFlowX - noteWidth / 2, centerFlowY - noteHeight / 2);
-    } else {
-      // Fallback to default position
+    // Get the ReactFlow wrapper element directly
+    const rfWrapper = document.querySelector('.react-flow__renderer');
+    if (!rfWrapper) {
+      console.log("ReactFlow renderer not found, using fallback");
       onAddNote(100, 100);
+      return;
     }
+    
+    const containerRect = rfWrapper.getBoundingClientRect();
+    const viewport = reactFlowInstance.getViewport();
+    
+    console.log("Container rect:", containerRect);
+    console.log("Viewport:", viewport);
+    
+    // Calculate center in screen coordinates
+    const visualCenterX = containerRect.width / 2;
+    const visualCenterY = containerRect.height / 2;
+    
+    console.log("Visual center (screen coords):", visualCenterX, visualCenterY);
+    
+    // Convert to flow coordinates
+    const centerFlowX = visualCenterX / viewport.zoom - viewport.x / viewport.zoom;
+    const centerFlowY = visualCenterY / viewport.zoom - viewport.y / viewport.zoom;
+    
+    console.log("Flow center:", centerFlowX, centerFlowY);
+    
+    // Offset by half the note size to center the note on that point
+    onAddNote(centerFlowX - noteWidth / 2, centerFlowY - noteHeight / 2);
   };
 
   return (
