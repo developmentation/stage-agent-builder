@@ -53,16 +53,28 @@ function AddNoteButton({ onAddNote }: { onAddNote?: (x?: number, y?: number) => 
       const containerRect = container.getBoundingClientRect();
       const viewport = reactFlowInstance.getViewport();
       
-      // Get the left sidebar width to account for it in centering
+      // Get both sidebar widths to account for them in centering
       const leftSidebar = document.querySelector('[data-sidebar="sidebar"]');
-      const sidebarWidth = leftSidebar ? leftSidebar.getBoundingClientRect().width : 0;
+      const leftSidebarWidth = leftSidebar ? leftSidebar.getBoundingClientRect().width : 0;
       
-      // Calculate center of visible area
-      const visualCenterX = containerRect.width / 2;
+      // Find right sidebar (properties panel) - it's in a ResizablePanel on the right
+      const resizablePanels = document.querySelectorAll('[data-panel]');
+      let rightSidebarWidth = 0;
+      if (resizablePanels.length >= 3) {
+        // The third panel is the right sidebar (properties)
+        const rightPanel = resizablePanels[resizablePanels.length - 1];
+        rightSidebarWidth = rightPanel.getBoundingClientRect().width;
+      }
+      
+      // Calculate the available canvas width after accounting for both sidebars
+      const availableWidth = containerRect.width - leftSidebarWidth - rightSidebarWidth;
+      
+      // Find the center of the available canvas space
+      const visualCenterX = (availableWidth / 2) + leftSidebarWidth;
       const visualCenterY = containerRect.height / 2;
       
-      // Convert to flow coordinates, subtracting sidebar width to account for offset
-      const centerFlowX = (visualCenterX - sidebarWidth) / viewport.zoom - viewport.x / viewport.zoom;
+      // Convert to flow coordinates
+      const centerFlowX = visualCenterX / viewport.zoom - viewport.x / viewport.zoom;
       const centerFlowY = visualCenterY / viewport.zoom - viewport.y / viewport.zoom;
       
       // Offset by half the note size to center the note on that point
