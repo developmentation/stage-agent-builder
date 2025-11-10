@@ -41,25 +41,31 @@ function AddNoteButton({ onAddNote }: { onAddNote?: (x?: number, y?: number) => 
     const noteWidth = 200;
     const noteHeight = 200;
     
-    // Get the actual ReactFlow container (not including sidebars)
-    const reactFlowWrapper = document.querySelector('.react-flow');
+    // Find the actual container with dimensions by traversing up the DOM
+    let container = document.querySelector('.react-flow__viewport')?.parentElement;
     
-    if (reactFlowWrapper) {
-      const flowRect = reactFlowWrapper.getBoundingClientRect();
+    // Keep going up until we find an element with actual dimensions
+    while (container && (container.clientWidth === 0 || container.clientHeight === 0)) {
+      container = container.parentElement;
+    }
+    
+    if (container) {
+      const containerRect = container.getBoundingClientRect();
       const viewport = reactFlowInstance.getViewport();
       
-      // Calculate the center of the visible ReactFlow area in screen coordinates
-      const screenCenterX = flowRect.left + flowRect.width / 2;
-      const screenCenterY = flowRect.top + flowRect.height / 2;
+      // Get the left sidebar width to account for it in centering
+      const leftSidebar = document.querySelector('[data-sidebar="sidebar"]');
+      const sidebarWidth = leftSidebar ? leftSidebar.getBoundingClientRect().width : 0;
       
-      // Convert screen coordinates to flow coordinates
-      const flowPosition = reactFlowInstance.screenToFlowPosition({
-        x: screenCenterX,
-        y: screenCenterY,
-      });
+      // Calculate center of visible area, accounting for sidebar offset
+      const visualCenterX = (containerRect.width - sidebarWidth) / 2 + sidebarWidth;
+      const visualCenterY = containerRect.height / 2;
       
-      // Offset by half the note size to center the note
-      onAddNote(flowPosition.x - noteWidth / 2, flowPosition.y - noteHeight / 2);
+      const centerFlowX = visualCenterX / viewport.zoom - viewport.x / viewport.zoom;
+      const centerFlowY = visualCenterY / viewport.zoom - viewport.y / viewport.zoom;
+      
+      // Offset by half the note size to center the note on that point
+      onAddNote(centerFlowX - noteWidth / 2, centerFlowY - noteHeight / 2);
     } else {
       // Fallback to default position
       onAddNote(100, 100);
