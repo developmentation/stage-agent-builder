@@ -48,10 +48,23 @@ function AddNoteButton({ onAddNote }: { onAddNote?: (x?: number, y?: number) => 
       const wrapperRect = rfWrapper.getBoundingClientRect();
       const viewport = reactFlowInstance.getViewport();
       
+      console.log('Add Note Debug:', {
+        wrapperRect: { 
+          width: wrapperRect.width, 
+          height: wrapperRect.height,
+          left: wrapperRect.left,
+          top: wrapperRect.top
+        },
+        viewport,
+        isMobile: window.innerWidth < 1024
+      });
+      
       // Calculate center of visible area in flow coordinates using viewport transform
       // Formula: flowX = (screenX / zoom) - (viewport.x / zoom)
       const centerFlowX = (wrapperRect.width / 2) / viewport.zoom - viewport.x / viewport.zoom;
       const centerFlowY = (wrapperRect.height / 2) / viewport.zoom - viewport.y / viewport.zoom;
+      
+      console.log('Calculated center:', { centerFlowX, centerFlowY });
       
       // Offset by half the note size to center the note on that point
       onAddNote(centerFlowX - noteWidth / 2, centerFlowY - noteHeight / 2);
