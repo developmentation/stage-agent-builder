@@ -42,24 +42,35 @@ function AddNoteButton({ onAddNote }: { onAddNote?: (x?: number, y?: number) => 
     const noteWidth = 200;
     const noteHeight = 200;
     
-    // Get the canvas dimensions
-    const canvasElement = document.querySelector('.react-flow__viewport')?.parentElement;
-    const canvasRect = canvasElement?.getBoundingClientRect();
+    // Get the canvas wrapper element and flow pane
+    const flowPane = document.querySelector('.react-flow__pane');
+    const canvasWrapper = document.querySelector('.react-flow__viewport')?.parentElement;
     
-    if (canvasRect) {
-      // Use ReactFlow's project method to convert screen center to flow coordinates
-      // This properly handles viewport transformations in both mobile and desktop modes
-      const screenCenter = {
-        x: canvasRect.width / 2,
-        y: canvasRect.height / 2
-      };
-      const flowCenter = reactFlowInstance.project(screenCenter);
+    if (flowPane && canvasWrapper) {
+      const wrapperRect = canvasWrapper.getBoundingClientRect();
+      const paneRect = flowPane.getBoundingClientRect();
+      
+      // Calculate center of the visible canvas in screen coordinates
+      const screenCenterX = wrapperRect.left + wrapperRect.width / 2;
+      const screenCenterY = wrapperRect.top + wrapperRect.height / 2;
+      
+      // Convert to coordinates relative to the flow pane
+      const relativeCenterX = screenCenterX - paneRect.left;
+      const relativeCenterY = screenCenterY - paneRect.top;
+      
+      // Project to flow coordinates
+      const flowCenter = reactFlowInstance.project({ 
+        x: relativeCenterX, 
+        y: relativeCenterY 
+      });
       
       // Offset by half the note size to center it
       onAddNote(flowCenter.x - (noteWidth / 2), flowCenter.y - (noteHeight / 2));
     } else {
-      // Fallback to a default position
-      onAddNote(100, 100);
+      // Fallback: use viewport to calculate center
+      const viewport = reactFlowInstance.getViewport();
+      const bounds = reactFlowInstance.getViewport();
+      onAddNote(-bounds.x / bounds.zoom, -bounds.y / bounds.zoom);
     }
   };
 
