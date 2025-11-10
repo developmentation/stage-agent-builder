@@ -41,37 +41,28 @@ function AddNoteButton({ onAddNote }: { onAddNote?: (x?: number, y?: number) => 
     const noteWidth = 200;
     const noteHeight = 200;
     
-    // Find the actual container with dimensions by traversing up the DOM
-    let container = document.querySelector('.react-flow__viewport')?.parentElement;
+    // Get window dimensions
+    const screenWidth = window.innerWidth;
+    const screenHeight = window.innerHeight;
     
-    // Keep going up until we find an element with actual dimensions
-    while (container && (container.clientWidth === 0 || container.clientHeight === 0)) {
-      container = container.parentElement;
-    }
+    // Get the left sidebar width to subtract from available canvas
+    const leftSidebar = document.querySelector('[data-sidebar="sidebar"]');
+    const sidebarWidth = leftSidebar ? leftSidebar.getBoundingClientRect().width : 0;
     
-    if (container) {
-      const containerRect = container.getBoundingClientRect();
-      const viewport = reactFlowInstance.getViewport();
-      
-      // Get the left sidebar width to account for it in centering
-      const leftSidebar = document.querySelector('[data-sidebar="sidebar"]');
-      const sidebarWidth = leftSidebar ? leftSidebar.getBoundingClientRect().width : 0;
-      
-      // Calculate available width and center after subtracting sidebar
-      const availableWidth = containerRect.width - sidebarWidth;
-      const visualCenterX = availableWidth / 2 + sidebarWidth; // Center of available area in screen coords
-      const visualCenterY = containerRect.height / 2;
-      
-      // Convert to flow coordinates
-      const centerFlowX = visualCenterX / viewport.zoom - viewport.x / viewport.zoom;
-      const centerFlowY = visualCenterY / viewport.zoom - viewport.y / viewport.zoom;
-      
-      // Offset by half the note size to center the note on that point
-      onAddNote(centerFlowX - noteWidth / 2, centerFlowY - noteHeight / 2);
-    } else {
-      // Fallback to default position
-      onAddNote(100, 100);
-    }
+    // Calculate available canvas width after subtracting sidebar
+    const availableWidth = screenWidth - sidebarWidth;
+    
+    // Center of the available canvas area (in screen coordinates)
+    const visualCenterX = sidebarWidth + (availableWidth / 2);
+    const visualCenterY = screenHeight / 2;
+    
+    // Convert to flow coordinates
+    const viewport = reactFlowInstance.getViewport();
+    const centerFlowX = (visualCenterX - viewport.x) / viewport.zoom;
+    const centerFlowY = (visualCenterY - viewport.y) / viewport.zoom;
+    
+    // Offset by half the note size to center the note on that point
+    onAddNote(centerFlowX - noteWidth / 2, centerFlowY - noteHeight / 2);
   };
 
   return (
