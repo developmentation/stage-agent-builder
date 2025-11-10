@@ -38,28 +38,28 @@ function AddNoteButton({ onAddNote }: { onAddNote?: (x?: number, y?: number) => 
   const handleAddNote = () => {
     if (!onAddNote) return;
     
-    // Get the current viewport
-    const viewport = reactFlowInstance.getViewport();
-    const { x, y, zoom } = viewport;
-    
     // Default note size
     const noteWidth = 200;
     const noteHeight = 200;
     
-    // Get the canvas dimensions - account for UI elements
+    // Get the canvas dimensions
     const canvasElement = document.querySelector('.react-flow__viewport')?.parentElement;
     const canvasRect = canvasElement?.getBoundingClientRect();
     
     if (canvasRect) {
-      // Calculate center and offset by half the note size
-      const centerX = ((canvasRect.width / 2) - x) / zoom - (noteWidth / 2);
-      const centerY = ((canvasRect.height / 2) - y) / zoom - (noteHeight / 2);
-      onAddNote(centerX, centerY);
+      // Use ReactFlow's project method to convert screen center to flow coordinates
+      // This properly handles viewport transformations in both mobile and desktop modes
+      const screenCenter = {
+        x: canvasRect.width / 2,
+        y: canvasRect.height / 2
+      };
+      const flowCenter = reactFlowInstance.project(screenCenter);
+      
+      // Offset by half the note size to center it
+      onAddNote(flowCenter.x - (noteWidth / 2), flowCenter.y - (noteHeight / 2));
     } else {
-      // Fallback to approximate center
-      const centerX = (window.innerWidth / 2 - x) / zoom - (noteWidth / 2);
-      const centerY = (window.innerHeight / 2 - y) / zoom - (noteHeight / 2);
-      onAddNote(centerX, centerY);
+      // Fallback to a default position
+      onAddNote(100, 100);
     }
   };
 
