@@ -41,24 +41,25 @@ function AddNoteButton({ onAddNote }: { onAddNote?: (x?: number, y?: number) => 
     const noteWidth = 200;
     const noteHeight = 200;
     
-    // Find the actual container with dimensions by traversing up the DOM
-    let container = document.querySelector('.react-flow__viewport')?.parentElement;
+    // Get the actual ReactFlow container (not including sidebars)
+    const reactFlowWrapper = document.querySelector('.react-flow');
     
-    // Keep going up until we find an element with actual dimensions
-    while (container && (container.clientWidth === 0 || container.clientHeight === 0)) {
-      container = container.parentElement;
-    }
-    
-    if (container) {
-      const containerRect = container.getBoundingClientRect();
+    if (reactFlowWrapper) {
+      const flowRect = reactFlowWrapper.getBoundingClientRect();
       const viewport = reactFlowInstance.getViewport();
       
-      // Calculate center of visible area in flow coordinates using viewport transform
-      const centerFlowX = (containerRect.width / 2) / viewport.zoom - viewport.x / viewport.zoom;
-      const centerFlowY = (containerRect.height / 2) / viewport.zoom - viewport.y / viewport.zoom;
+      // Calculate the center of the visible ReactFlow area in screen coordinates
+      const screenCenterX = flowRect.left + flowRect.width / 2;
+      const screenCenterY = flowRect.top + flowRect.height / 2;
       
-      // Offset by half the note size to center the note on that point
-      onAddNote(centerFlowX - noteWidth / 2, centerFlowY - noteHeight / 2);
+      // Convert screen coordinates to flow coordinates
+      const flowPosition = reactFlowInstance.screenToFlowPosition({
+        x: screenCenterX,
+        y: screenCenterY,
+      });
+      
+      // Offset by half the note size to center the note
+      onAddNote(flowPosition.x - noteWidth / 2, flowPosition.y - noteHeight / 2);
     } else {
       // Fallback to default position
       onAddNote(100, 100);
