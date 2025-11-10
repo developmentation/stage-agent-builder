@@ -41,30 +41,21 @@ function AddNoteButton({ onAddNote }: { onAddNote?: (x?: number, y?: number) => 
     const noteWidth = 200;
     const noteHeight = 200;
     
-    // Get the ReactFlow wrapper to determine visible canvas dimensions
-    const rfWrapper = document.querySelector('.react-flow__viewport')?.parentElement;
+    // Find the actual container with dimensions by traversing up the DOM
+    let container = document.querySelector('.react-flow__viewport')?.parentElement;
     
-    if (rfWrapper) {
-      const wrapperRect = rfWrapper.getBoundingClientRect();
+    // Keep going up until we find an element with actual dimensions
+    while (container && (container.clientWidth === 0 || container.clientHeight === 0)) {
+      container = container.parentElement;
+    }
+    
+    if (container) {
+      const containerRect = container.getBoundingClientRect();
       const viewport = reactFlowInstance.getViewport();
       
-      console.log('Add Note Debug:', {
-        wrapperRect: { 
-          width: wrapperRect.width, 
-          height: wrapperRect.height,
-          left: wrapperRect.left,
-          top: wrapperRect.top
-        },
-        viewport,
-        isMobile: window.innerWidth < 1024
-      });
-      
       // Calculate center of visible area in flow coordinates using viewport transform
-      // Formula: flowX = (screenX / zoom) - (viewport.x / zoom)
-      const centerFlowX = (wrapperRect.width / 2) / viewport.zoom - viewport.x / viewport.zoom;
-      const centerFlowY = (wrapperRect.height / 2) / viewport.zoom - viewport.y / viewport.zoom;
-      
-      console.log('Calculated center:', { centerFlowX, centerFlowY });
+      const centerFlowX = (containerRect.width / 2) / viewport.zoom - viewport.x / viewport.zoom;
+      const centerFlowY = (containerRect.height / 2) / viewport.zoom - viewport.y / viewport.zoom;
       
       // Offset by half the note size to center the note on that point
       onAddNote(centerFlowX - noteWidth / 2, centerFlowY - noteHeight / 2);
