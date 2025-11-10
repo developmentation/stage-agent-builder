@@ -38,39 +38,30 @@ function AddNoteButton({ onAddNote }: { onAddNote?: (x?: number, y?: number) => 
   const handleAddNote = () => {
     if (!onAddNote) return;
     
-    // Default note size
     const noteWidth = 200;
     const noteHeight = 200;
     
-    // Get the canvas wrapper element and flow pane
-    const flowPane = document.querySelector('.react-flow__pane');
-    const canvasWrapper = document.querySelector('.react-flow__viewport')?.parentElement;
+    // Get the ReactFlow wrapper element (the visible container)
+    const rfWrapper = document.querySelector('.react-flow__viewport')?.parentElement;
     
-    if (flowPane && canvasWrapper) {
-      const wrapperRect = canvasWrapper.getBoundingClientRect();
-      const paneRect = flowPane.getBoundingClientRect();
+    if (rfWrapper) {
+      const wrapperRect = rfWrapper.getBoundingClientRect();
       
-      // Calculate center of the visible canvas in screen coordinates
+      // Calculate the center of the visible viewport in screen coordinates
       const screenCenterX = wrapperRect.left + wrapperRect.width / 2;
       const screenCenterY = wrapperRect.top + wrapperRect.height / 2;
       
-      // Convert to coordinates relative to the flow pane
-      const relativeCenterX = screenCenterX - paneRect.left;
-      const relativeCenterY = screenCenterY - paneRect.top;
-      
-      // Project to flow coordinates
-      const flowCenter = reactFlowInstance.project({ 
-        x: relativeCenterX, 
-        y: relativeCenterY 
+      // Convert screen coordinates directly to flow coordinates
+      const flowPosition = reactFlowInstance.screenToFlowPosition({
+        x: screenCenterX,
+        y: screenCenterY,
       });
       
-      // Offset by half the note size to center it
-      onAddNote(flowCenter.x - (noteWidth / 2), flowCenter.y - (noteHeight / 2));
+      // Offset by half the note size to center the note on that point
+      onAddNote(flowPosition.x - noteWidth / 2, flowPosition.y - noteHeight / 2);
     } else {
-      // Fallback: use viewport to calculate center
-      const viewport = reactFlowInstance.getViewport();
-      const bounds = reactFlowInstance.getViewport();
-      onAddNote(-bounds.x / bounds.zoom, -bounds.y / bounds.zoom);
+      // Fallback to default position
+      onAddNote(100, 100);
     }
   };
 
