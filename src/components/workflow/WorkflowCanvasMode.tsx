@@ -53,18 +53,21 @@ function AddNoteButton({ onAddNote }: { onAddNote?: (x?: number, y?: number) => 
       const containerRect = container.getBoundingClientRect();
       const viewport = reactFlowInstance.getViewport();
       
-      // Get the left sidebar width to account for it in centering
-      const leftSidebar = document.querySelector('[data-sidebar="sidebar"]');
-      const sidebarWidth = leftSidebar ? leftSidebar.getBoundingClientRect().width : 0;
+      // The container is the middle ResizablePanel, which doesn't include sidebars in its rect
+      // So we just need to find the center of this visible canvas area
+      console.log("Container rect:", containerRect);
+      console.log("Viewport:", viewport);
       
-      // Calculate available width and center after subtracting sidebar
-      const availableWidth = containerRect.width - sidebarWidth;
-      const visualCenterX = availableWidth / 2 + sidebarWidth; // Center of available area in screen coords
+      const visualCenterX = containerRect.width / 2;
       const visualCenterY = containerRect.height / 2;
+      
+      console.log("Visual center (relative to container):", visualCenterX, visualCenterY);
       
       // Convert to flow coordinates
       const centerFlowX = visualCenterX / viewport.zoom - viewport.x / viewport.zoom;
       const centerFlowY = visualCenterY / viewport.zoom - viewport.y / viewport.zoom;
+      
+      console.log("Flow center:", centerFlowX, centerFlowY);
       
       // Offset by half the note size to center the note on that point
       onAddNote(centerFlowX - noteWidth / 2, centerFlowY - noteHeight / 2);
