@@ -33,7 +33,7 @@ const Index = () => {
   const [workflowName, setWorkflowName] = useState<string>("Untitled Workflow");
   const [customAgents, setCustomAgents] = useState<any[]>([]);
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [selectedModel, setSelectedModel] = useState<"gemini-2.5-flash" | "gemini-2.5-pro" | "gemini-2.5-flash-lite" | "claude-sonnet-4-5" | "claude-haiku-4-5" | "claude-opus-4-1">("gemini-2.5-flash");
+  const [selectedModel, setSelectedModel] = useState<"gemini-2.5-flash" | "gemini-2.5-pro" | "gemini-2.5-flash-lite" | "claude-sonnet-4-5" | "claude-haiku-4-5" | "claude-opus-4-1" | "grok-4-fast-reasoning" | "grok-4-fast-non-reasoning">("gemini-2.5-flash");
   const [responseLength, setResponseLength] = useState<number>(16384);
   const [thinkingEnabled, setThinkingEnabled] = useState<boolean>(false);
   const [thinkingBudget, setThinkingBudget] = useState<number>(0);
@@ -870,7 +870,11 @@ const Index = () => {
       addLog("running", `Agent ${agent.name} processing with AI...`);
       
       // Determine which edge function to use based on model
-      const edgeFunction = selectedModel.startsWith("claude-") ? "run-agent-anthropic" : "run-agent";
+      const edgeFunction = selectedModel.startsWith("claude-") 
+        ? "run-agent-anthropic" 
+        : selectedModel.startsWith("grok-")
+        ? "run-agent-xai"
+        : "run-agent";
       
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${edgeFunction}`, {
         method: "POST",
@@ -1091,7 +1095,11 @@ const Index = () => {
         addLog("running", `Agent ${agent.name} processing with AI...`);
         
         // Determine which edge function to use based on model
-        const edgeFunction = selectedModel.startsWith("claude-") ? "run-agent-anthropic" : "run-agent";
+        const edgeFunction = selectedModel.startsWith("claude-") 
+          ? "run-agent-anthropic" 
+          : selectedModel.startsWith("grok-")
+          ? "run-agent-xai"
+          : "run-agent";
         
         const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${edgeFunction}`, {
           method: "POST",
