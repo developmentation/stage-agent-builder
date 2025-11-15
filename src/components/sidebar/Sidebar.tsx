@@ -97,8 +97,8 @@ interface SidebarProps {
   onWorkflowNameChange: (value: string) => void;
   customAgents: any[];
   onCustomAgentsChange: (agents: any[]) => void;
-  selectedModel: "gemini-2.5-flash" | "gemini-2.5-pro" | "gemini-2.5-flash-lite" | "claude-sonnet-4-5" | "claude-haiku-4-5" | "claude-opus-4-1";
-  onSelectedModelChange: (model: "gemini-2.5-flash" | "gemini-2.5-pro" | "gemini-2.5-flash-lite" | "claude-sonnet-4-5" | "claude-haiku-4-5" | "claude-opus-4-1") => void;
+  selectedModel: "gemini-2.5-flash" | "gemini-2.5-pro" | "gemini-2.5-flash-lite" | "claude-sonnet-4-5" | "claude-haiku-4-5" | "claude-opus-4-1" | "grok-4-fast-reasoning" | "grok-4-fast-non-reasoning";
+  onSelectedModelChange: (model: "gemini-2.5-flash" | "gemini-2.5-pro" | "gemini-2.5-flash-lite" | "claude-sonnet-4-5" | "claude-haiku-4-5" | "claude-opus-4-1" | "grok-4-fast-reasoning" | "grok-4-fast-non-reasoning") => void;
   responseLength: number;
   onResponseLengthChange: (length: number) => void;
   thinkingEnabled: boolean;
@@ -498,6 +498,12 @@ export const Sidebar = ({
                 <SelectItem value="claude-opus-4-1">
                   Claude Opus 4.1
                 </SelectItem>
+                <SelectItem value="grok-4-fast-reasoning">
+                  Grok 4 Fast Reasoning
+                </SelectItem>
+                <SelectItem value="grok-4-fast-non-reasoning">
+                  Grok 4 Fast Non-Reasoning
+                </SelectItem>
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
@@ -534,7 +540,7 @@ export const Sidebar = ({
           </div>
 
           {/* Thinking Budget Section */}
-          {selectedModel !== "gemini-2.5-pro" && !selectedModel.startsWith("claude-") && (
+          {selectedModel !== "gemini-2.5-pro" && !selectedModel.startsWith("claude-") && !selectedModel.startsWith("grok-") && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="thinking-enabled" className="text-sm font-semibold text-foreground">

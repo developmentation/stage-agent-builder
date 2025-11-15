@@ -23,3 +23,6 @@ verify_jwt = false
 
 [functions.run-agent-anthropic]
 verify_jwt = false
+
+[functions.run-agent-xai]
+verify_jwt = false
