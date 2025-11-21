@@ -858,8 +858,8 @@ const Index = () => {
       }
       
         const userPrompt = agent.userPrompt
-          .replace(/{input}/g, input)
-          .replace(/{prompt}/g, userInput || "No input provided");
+          .replace(/{input}/gi, input)
+          .replace(/{prompt}/gi, userInput || "No input provided");
       
       // Convert tool instances to the format expected by the edge function
       const toolsPayload = agent.tools.map(t => ({
@@ -1083,8 +1083,8 @@ const Index = () => {
         }
         
         const userPrompt = agent.userPrompt
-          .replace(/{input}/g, input)
-          .replace(/{prompt}/g, userInput || "No input provided");
+          .replace(/{input}/gi, input)
+          .replace(/{prompt}/gi, userInput || "No input provided");
         
         // Convert tool instances to the format expected by the edge function
         const toolsPayload = agent.tools.map(t => ({
