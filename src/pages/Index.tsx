@@ -341,9 +341,14 @@ const Index = () => {
         name: template.name,
         functionType: template.id,
         config: {},
-        outputPorts: template.outputs || ["output"], // Use 'outputs' from function definition
+        outputPorts: template.supportsMultipleOutputs 
+          ? ["output_1"] 
+          : (template.outputs || ["output"]),
+        outputCount: template.supportsMultipleOutputs ? 1 : undefined,
+        outputs: {},
         status: "idle",
       } as FunctionNode;
+
     } else {
       newNode = {
         id: `tool-${Date.now()}`,
@@ -419,9 +424,20 @@ const Index = () => {
       ...prev,
       stages: prev.stages.map((stage) => ({
         ...stage,
-        nodes: stage.nodes.map((node) =>
-          node.id === nodeId ? { ...node, ...updates } as WorkflowNode : node
-        ),
+        nodes: stage.nodes.map((node) => {
+          if (node.id !== nodeId) return node;
+          
+          const updatedNode = { ...node, ...updates } as WorkflowNode;
+          
+          // If outputCount changed for a function node, update outputPorts
+          if (updatedNode.nodeType === "function" && "outputCount" in updates) {
+            const functionNode = updatedNode as FunctionNode;
+            const count = functionNode.outputCount || 1;
+            functionNode.outputPorts = Array.from({ length: count }, (_, i) => `output_${i + 1}`);
+          }
+          
+          return updatedNode;
+        }),
       })),
     }));
   };
@@ -1301,9 +1317,13 @@ const Index = () => {
         const outputValue = Object.keys(result.outputs).length > 1 
           ? result.outputs 
           : primaryOutput;
-        updateNode(nodeId, { status: "complete", output: outputValue as any });
+        updateNode(nodeId, { 
+          status: "complete", 
+          output: outputValue as any,
+          outputs: result.outputs // Store outputs for visual indicators
+        });
         addLog("success", `✓ Function ${functionNode.name} completed (output length: ${primaryOutput.length} chars)`);
-        
+
         return { outputs: functionOutputs, primaryOutput };
       } catch (error) {
         console.error("Function execution failed:", error);

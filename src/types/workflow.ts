@@ -28,6 +28,8 @@ export interface FunctionNode extends BaseNode {
   functionType: string; // string_contains, concat, is_json, memory, etc.
   config: Record<string, any>; // Function-specific configuration
   outputPorts: string[]; // Array of output port names (e.g., ["true", "false"] for if/else)
+  outputCount?: number; // Number of output ports for multi-output functions (1-10)
+  outputs?: Record<string, string>; // Map of output port to value for visual indicators
 }
 
 // Tool-specific properties (standalone tools)
@@ -61,7 +63,7 @@ export interface Connection {
   id: string;
   fromNodeId: string;
   toNodeId: string;
-  fromOutputPort?: string; // Which output port (for multi-output functions)
+  fromOutputPort?: string; // Which output port (e.g., "output_1", "output_2")
 }
 
 // Note for canvas annotations

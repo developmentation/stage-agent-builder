@@ -286,20 +286,20 @@ export const FunctionNode = ({
         
         {/* Show output port labels for multi-output functions */}
         {node.outputPorts.length > 1 && (
-          <div className="flex gap-1 text-[10px] text-muted-foreground">
+          <div className="flex gap-1 text-[10px] text-muted-foreground flex-wrap">
             <span>Outputs:</span>
-            {node.outputPorts.map((port, idx) => {
-              // Check if this specific output port has content (non-empty string)
-              const output = node.output as any;
-              const hasContent = output && typeof output === 'object' && typeof output[port] === 'string' && output[port].length > 0;
+            {node.outputPorts.map((port) => {
+              // Check if this specific output port has content
+              const hasContent = node.outputs && node.outputs[port] && node.outputs[port].length > 0;
               
               return (
                 <Badge 
                   key={port} 
                   variant="outline" 
                   className={`text-[9px] px-1 py-0 h-4 ${
-                    hasContent ? 'bg-green-500/20 border-green-500 text-green-700 dark:text-green-400' : ''
+                    hasContent ? 'bg-green-500/20 border-green-500 text-green-700 dark:text-green-400' : 'opacity-50'
                   }`}
+                  title={hasContent ? `${port}: ${node.outputs![port].substring(0, 50)}...` : `${port}: empty`}
                 >
                   {port}
                 </Badge>
