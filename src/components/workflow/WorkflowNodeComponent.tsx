@@ -75,7 +75,7 @@ export const WorkflowNodeComponent = memo(({ data }: NodeProps<WorkflowNodeCompo
   
   // Calculate dynamic width based on number of ports
   const minWidth = 200;
-  const portSpacing = 60; // Space needed per port
+  const portSpacing = 30; // Space needed per port (reduced for tighter spacing)
   const dynamicWidth = hasMultiplePorts 
     ? Math.max(minWidth, outputPorts.length * portSpacing)
     : minWidth;
