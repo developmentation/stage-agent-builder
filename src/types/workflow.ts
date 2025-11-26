@@ -10,6 +10,7 @@ export interface BaseNode {
   output?: string;
   minimized?: boolean;
   locked?: boolean; // Prevents re-execution when true
+  executeOnNullInput?: boolean; // If false (default), skip execution when input is null/empty/falsey
   position?: { x: number; y: number }; // For canvas mode positioning within stage
 }
 
