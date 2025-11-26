@@ -168,8 +168,23 @@ export function WorkflowCanvasMode({
     const stagePaddingRight = 24; // 24 + 16 (p-4) = 40px effective
     const stagePaddingTop = 100; // Accounts for header + gap
     const stagePaddingBottom = 24; // 24 + 16 (p-4) = 40px effective
-    const nodeWidth = 250;
-    const nodeHeight = 150;
+    const defaultNodeHeight = 150;
+    
+    // Function to calculate actual node width based on output ports
+    const getNodeWidth = (node: WorkflowNode): number => {
+      if (node.nodeType === "function") {
+        const functionNode = node as import("@/types/workflow").FunctionNode;
+        const outputPorts = functionNode.outputPorts || ["default"];
+        const hasMultiplePorts = outputPorts.length > 1;
+        
+        if (hasMultiplePorts) {
+          const minWidth = 200;
+          const portSpacing = 60;
+          return Math.max(minWidth, outputPorts.length * portSpacing);
+        }
+      }
+      return 250; // Default width
+    };
     
     workflow.stages.forEach((stage) => {
       if (stage.nodes.length === 0) {
@@ -192,8 +207,10 @@ export function WorkflowCanvasMode({
       stage.nodes.forEach((node, nodeIndex) => {
         const nodeX = node.position?.x ?? (nodeIndex % 2) * 280;
         const nodeY = node.position?.y ?? Math.floor(nodeIndex / 2) * 180;
+        const nodeWidth = getNodeWidth(node);
+        const nodeHeight = defaultNodeHeight;
         
-        // Calculate bounding box from node positions
+        // Calculate bounding box from node positions and actual sizes
         minX = Math.min(minX, nodeX);
         minY = Math.min(minY, nodeY);
         maxX = Math.max(maxX, nodeX + nodeWidth);
