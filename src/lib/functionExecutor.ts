@@ -107,8 +107,8 @@ export class FunctionExecutor {
     return {
       success: true,
       outputs: contains 
-        ? { true: input, false: "" }
-        : { true: "", false: input },
+        ? { "true": input, "false": "" }
+        : { "true": "", "false": input },
     };
   }
 
@@ -157,12 +157,12 @@ export class FunctionExecutor {
       JSON.parse(input);
       return {
         success: true,
-        outputs: { true: input, false: "" },
+        outputs: { "true": input, "false": "" },
       };
     } catch {
       return {
         success: true,
-        outputs: { true: "", false: input },
+        outputs: { "true": "", "false": input },
       };
     }
   }
@@ -172,8 +172,8 @@ export class FunctionExecutor {
     return {
       success: true,
       outputs: isEmpty 
-        ? { true: input, false: "" }
-        : { true: "", false: input },
+        ? { "true": input, "false": "" }
+        : { "true": "", "false": input },
     };
   }
 
@@ -182,12 +182,12 @@ export class FunctionExecutor {
       new URL(input.trim());
       return {
         success: true,
-        outputs: { true: input, false: "" },
+        outputs: { "true": input, "false": "" },
       };
     } catch {
       return {
         success: true,
-        outputs: { true: "", false: input },
+        outputs: { "true": "", "false": input },
       };
     }
   }
@@ -202,8 +202,8 @@ export class FunctionExecutor {
     return {
       success: true,
       outputs: conditionMet
-        ? { true: input, false: "" }
-        : { true: "", false: input },
+        ? { "true": input, "false": "" }
+        : { "true": "", "false": input },
     };
   }
 
