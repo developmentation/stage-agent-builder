@@ -101,7 +101,7 @@ export const functionDefinitions: FunctionDefinition[] = [
   {
     id: "string_split",
     name: "Split",
-    description: "Split text into multiple parts",
+    description: "Split text into multiple parts with configurable output ports",
     category: "string",
     icon: Split,
     color: "bg-blue-500/10 text-blue-500",
@@ -109,7 +109,8 @@ export const functionDefinitions: FunctionDefinition[] = [
       label: "Text input",
       description: "Text to split",
     },
-    outputs: ["output"],
+    outputs: ["output_1"], // Dynamic outputs based on outputCount
+    supportsMultipleOutputs: true,
     configSchema: {
       delimiter: {
         type: "string",

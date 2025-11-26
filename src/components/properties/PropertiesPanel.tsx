@@ -989,6 +989,50 @@ export const PropertiesPanel = ({
 
               {renderFunctionConfig(activeNode as FunctionNode)}
               {renderMemoryViewer(activeNode as FunctionNode)}
+              
+              {/* Output Count Control for multi-output functions */}
+              {functionDef?.supportsMultipleOutputs && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Number of Outputs</Label>
+                  <div className="flex items-center gap-3 p-3 border rounded-lg bg-muted/30">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={() => {
+                        const current = (activeNode as FunctionNode).outputCount || 1;
+                        if (current > 1 && onUpdateNode) {
+                          onUpdateNode(activeNode.id, { outputCount: current - 1 });
+                        }
+                      }}
+                      disabled={((activeNode as FunctionNode).outputCount || 1) <= 1}
+                    >
+                      -
+                    </Button>
+                    <div className="flex-1 text-center">
+                      <div className="text-lg font-semibold">{(activeNode as FunctionNode).outputCount || 1}</div>
+                      <p className="text-xs text-muted-foreground">Output ports</p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={() => {
+                        const current = (activeNode as FunctionNode).outputCount || 1;
+                        if (current < 10 && onUpdateNode) {
+                          onUpdateNode(activeNode.id, { outputCount: current + 1 });
+                        }
+                      }}
+                      disabled={((activeNode as FunctionNode).outputCount || 1) >= 10}
+                    >
+                      +
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Add up to 10 output ports. Each split result will be assigned to a numbered output.
+                  </p>
+                </div>
+              )}
             </>
           )}
 

@@ -136,11 +136,18 @@ export class FunctionExecutor {
   private static executeStringSplit(node: FunctionNode, input: string): FunctionExecutionResult {
     const delimiter = node.config.delimiter || ",";
     const parts = input.split(delimiter);
-    const result = parts.join("\n");
+    const outputCount = node.outputCount || 1;
+    
+    // Create outputs for each port
+    const outputs: Record<string, string> = {};
+    for (let i = 1; i <= outputCount; i++) {
+      const portName = `output_${i}`;
+      outputs[portName] = parts[i - 1]?.trim() || "";
+    }
     
     return {
       success: true,
-      outputs: { output: result },
+      outputs,
     };
   }
 
