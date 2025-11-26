@@ -1515,16 +1515,6 @@ const Index = () => {
                 onRunAgent={runSingleAgent}
                 onRunFunction={runSingleFunction}
               />
-                onDeleteStage={deleteStage}
-                onRenameStage={renameStage}
-                onReorderStages={reorderStages}
-                onToggleMinimize={toggleMinimize}
-                onStartConnection={handleStartConnection}
-                onCompleteConnection={handleCompleteConnection}
-                onDeleteConnection={deleteConnection}
-                onRunAgent={runSingleAgent}
-                onRunFunction={runSingleFunction}
-              />
             )
           }
           desktopCanvas={
@@ -1590,8 +1580,6 @@ const Index = () => {
                 onCompleteConnection={handleCompleteConnection}
                 onDeleteConnection={deleteConnection}
                 onRunAgent={runSingleAgent}
-                onRunFunction={runSingleFunction}
-              />
                 onRunFunction={runSingleFunction}
               />
             )
