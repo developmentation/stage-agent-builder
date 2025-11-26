@@ -179,7 +179,7 @@ export function WorkflowCanvasMode({
         
         if (hasMultiplePorts) {
           const minWidth = 200;
-          const portSpacing = 60;
+          const portSpacing = 30; // Match the spacing in WorkflowNodeComponent
           return Math.max(minWidth, outputPorts.length * portSpacing);
         }
       }
