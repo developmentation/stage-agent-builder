@@ -839,6 +839,26 @@ const Index = () => {
     }));
   };
 
+  // Helper to check if a value is null-like (null, empty string, empty array, empty object, or their string equivalents)
+  const isNullLikeValue = (value: string): boolean => {
+    if (!value || value.trim() === "") return true;
+    
+    const trimmed = value.trim();
+    // Check for empty array or object representations
+    if (trimmed === "[]" || trimmed === "{}") return true;
+    
+    // Try parsing as JSON to check for actual empty arrays/objects
+    try {
+      const parsed = JSON.parse(trimmed);
+      if (Array.isArray(parsed) && parsed.length === 0) return true;
+      if (typeof parsed === "object" && parsed !== null && Object.keys(parsed).length === 0) return true;
+    } catch {
+      // Not valid JSON, continue with other checks
+    }
+    
+    return false;
+  };
+
   const runSingleAgent = async (nodeId: string, customInput?: string) => {
     const allNodes = workflow.stages.flatMap((s) => s.nodes);
     const node = allNodes.find((n) => n.id === nodeId);
@@ -850,6 +870,30 @@ const Index = () => {
     if (agent.locked) {
       addLog("info", `Agent "${agent.name}" is locked, skipping execution`);
       return;
+    }
+
+    // Check if input is null-like and executeOnNullInput is false
+    if (!agent.executeOnNullInput) {
+      const incomingConnections = workflow.connections.filter((c) => c.toNodeId === nodeId);
+      let input = customInput !== undefined ? customInput : (userInput || "");
+      if (incomingConnections.length > 0) {
+        const allNodes = workflow.stages.flatMap((s) => s.nodes);
+        const outputs = incomingConnections
+          .map((c) => {
+            const fromNode = allNodes.find((n) => n.id === c.fromNodeId);
+            return fromNode?.output || "";
+          })
+          .filter(Boolean);
+        if (outputs.length > 0) {
+          input = outputs.join("\n\n");
+        }
+      }
+      
+      if (isNullLikeValue(input)) {
+        addLog("warning", `Agent "${agent.name}" skipped - input is null/empty and "Execute on NULL Input" is disabled`);
+        updateNode(nodeId, { status: "idle", output: "" });
+        return;
+      }
     }
 
     addLog("info", `Starting agent: ${agent.name}`);
@@ -1039,6 +1083,42 @@ const Index = () => {
       return;
     }
 
+    // Check if input is null-like and executeOnNullInput is false
+    if (!functionNode.executeOnNullInput) {
+      const incomingConnections = workflow.connections.filter((c) => c.toNodeId === nodeId);
+      let input = customInput !== undefined ? customInput : (userInput || "");
+      if (incomingConnections.length > 0) {
+        const allNodes = workflow.stages.flatMap((s) => s.nodes);
+        const outputs = incomingConnections
+          .map((c) => {
+            const fromNode = allNodes.find((n) => n.id === c.fromNodeId);
+            if (!fromNode) return "";
+            
+            if (fromNode.nodeType === "function" && (fromNode as FunctionNode).functionType === "content") {
+              const contentNode = fromNode as FunctionNode;
+              return contentNode.config.content || contentNode.output || "";
+            }
+            
+            if (c.fromOutputPort && fromNode.nodeType === "function") {
+              const funcNode = fromNode as FunctionNode;
+              return funcNode.outputs?.[c.fromOutputPort] || funcNode.output || "";
+            }
+            
+            return fromNode.output || "";
+          })
+          .filter(Boolean);
+        if (outputs.length > 0) {
+          input = outputs.join("\n\n");
+        }
+      }
+      
+      if (isNullLikeValue(input)) {
+        addLog("warning", `Function "${functionNode.name}" skipped - input is null/empty and "Execute on NULL Input" is disabled`);
+        updateNode(nodeId, { status: "idle", output: "" });
+        return;
+      }
+    }
+
     addLog("info", `Executing function: ${functionNode.name}`);
     updateNode(nodeId, { status: "running" });
     
@@ -1114,6 +1194,13 @@ const Index = () => {
       if (agent.locked) {
         addLog("info", `Agent "${agent.name}" is locked, using existing output`);
         return agent.output || "";
+      }
+
+      // Check if input is null-like and executeOnNullInput is false
+      if (!agent.executeOnNullInput && isNullLikeValue(input)) {
+        addLog("warning", `Agent "${agent.name}" skipped - input is null/empty and "Execute on NULL Input" is disabled`);
+        updateNode(nodeId, { status: "idle", output: "" });
+        return "";
       }
 
       addLog("info", `Starting agent: ${agent.name} (input length: ${input.length} chars)`);
@@ -1284,6 +1371,13 @@ const Index = () => {
           existingOutputs.set("output", String(functionNode.output));
         }
         return { outputs: existingOutputs, primaryOutput: String(functionNode.output || "") };
+      }
+
+      // Check if input is null-like and executeOnNullInput is false
+      if (!functionNode.executeOnNullInput && isNullLikeValue(input)) {
+        addLog("warning", `Function "${functionNode.name}" skipped - input is null/empty and "Execute on NULL Input" is disabled`);
+        updateNode(nodeId, { status: "idle", output: "" });
+        return { outputs: new Map(), primaryOutput: "" };
       }
 
       addLog("info", `Executing function: ${functionNode.name} (input length: ${input.length} chars)`);
