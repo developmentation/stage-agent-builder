@@ -279,6 +279,7 @@ export function WorkflowCanvasMode({
             onDelete: () => onDeleteNode(stage.id, node.id),
             onRun: () => onRunAgent(node.id),
             onPortClick: (outputPort?: string) => onPortClick(node.id, outputPort),
+            onToggleLock: () => onUpdateNode(node.id, { locked: !node.locked }),
           },
           parentNode: `stage-${stage.id}`,
           draggable: true,
