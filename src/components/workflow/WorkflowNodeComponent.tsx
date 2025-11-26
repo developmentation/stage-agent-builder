@@ -183,14 +183,26 @@ export const WorkflowNodeComponent = memo(({ data }: NodeProps<WorkflowNodeCompo
           {outputPorts.map((port, index) => {
             // Extract number from port name (e.g., "output_1" -> "1")
             const portNumber = port.replace(/^output_/i, '');
+            // Check if this port has data
+            const hasData = node.nodeType === "function" && 
+              (node as FunctionNode).outputs?.[port] && 
+              (node as FunctionNode).outputs![port].trim().length > 0;
+            
             return (
               <div key={port} className="flex flex-col items-center gap-1">
-                <span className="text-xs text-muted-foreground">{portNumber}</span>
+                <div className="relative">
+                  <span className={`text-xs ${hasData ? 'text-green-600 font-semibold' : 'text-muted-foreground'}`}>
+                    {portNumber}
+                  </span>
+                  {hasData && (
+                    <div className="absolute -inset-1 bg-green-500/20 rounded-full -z-10" />
+                  )}
+                </div>
                 <Handle
                   type="source"
                   position={Position.Bottom}
                   id={port}
-                  className="w-3 h-3 !bg-primary relative !top-0"
+                  className={`w-3 h-3 ${hasData ? '!bg-green-500 ring-2 ring-green-300' : '!bg-primary'} relative !top-0`}
                   isConnectable={true}
                 />
               </div>

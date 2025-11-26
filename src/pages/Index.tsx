@@ -1099,9 +1099,19 @@ const Index = () => {
               return contentNode.config.content || contentNode.output || "";
             }
             
+            // Handle output port selection for multi-output functions
             if (c.fromOutputPort && fromNode.nodeType === "function") {
               const funcNode = fromNode as FunctionNode;
-              return funcNode.outputs?.[c.fromOutputPort] || funcNode.output || "";
+              // Try to get from outputs map first, then fallback to output
+              const portValue = funcNode.outputs?.[c.fromOutputPort];
+              if (portValue !== undefined) {
+                return portValue;
+              }
+              // Fallback to output if it's an object
+              if (typeof funcNode.output === 'object' && funcNode.output !== null) {
+                return (funcNode.output as any)[c.fromOutputPort] || "";
+              }
+              return funcNode.output || "";
             }
             
             return fromNode.output || "";
@@ -1158,10 +1168,28 @@ const Index = () => {
       }
 
       // Store the full outputs object for multi-output functions, or primary output for single-output
-      const outputValue = Object.keys(result.outputs).length > 1 
-        ? result.outputs 
-        : (result.outputs.output || Object.values(result.outputs)[0] || "");
-      updateNode(nodeId, { status: "complete", output: outputValue as any });
+      const hasMultipleOutputs = Object.keys(result.outputs).length > 1;
+      
+      if (hasMultipleOutputs) {
+        // For multi-output functions, store outputs in the outputs map and a summary in output
+        const outputSummary = Object.entries(result.outputs)
+          .filter(([_, value]) => value)
+          .map(([key, value]) => `${key}: ${String(value).substring(0, 50)}...`)
+          .join(', ') || "No outputs";
+        updateNode(nodeId, { 
+          status: "complete", 
+          output: outputSummary,
+          outputs: result.outputs 
+        });
+      } else {
+        // For single-output functions, store in output
+        const outputValue = result.outputs.output || Object.values(result.outputs)[0] || "";
+        updateNode(nodeId, { 
+          status: "complete", 
+          output: outputValue as any,
+          outputs: undefined
+        });
+      }
       addLog("success", `✓ Function ${functionNode.name} completed`);
     } catch (error) {
       console.error("Function execution failed:", error);
@@ -1363,14 +1391,25 @@ const Index = () => {
       if (functionNode.locked) {
         addLog("info", `Function "${functionNode.name}" is locked, using existing output`);
         const existingOutputs = new Map<string, string>();
-        if (typeof functionNode.output === 'object' && functionNode.output !== null) {
-          Object.entries(functionNode.output).forEach(([key, value]) => {
-            existingOutputs.set(key, String(value));
+        
+        // For multi-output functions, use the outputs map
+        if (functionNode.outputs) {
+          Object.entries(functionNode.outputs).forEach(([key, value]) => {
+            const outputKey = `${nodeId}:${key}`;
+            existingOutputs.set(outputKey, String(value));
           });
-        } else if (functionNode.output) {
+          // Use first non-empty output as primary, or concatenate all
+          const primaryOutput = Object.values(functionNode.outputs).find(v => v) || 
+            Object.values(functionNode.outputs).filter(v => v).join("\n\n---\n\n");
+          return { outputs: existingOutputs, primaryOutput: String(primaryOutput) };
+        } 
+        // For single-output functions, use the output property
+        else if (functionNode.output) {
           existingOutputs.set("output", String(functionNode.output));
+          return { outputs: existingOutputs, primaryOutput: String(functionNode.output) };
         }
-        return { outputs: existingOutputs, primaryOutput: String(functionNode.output || "") };
+        
+        return { outputs: existingOutputs, primaryOutput: "" };
       }
 
       // Check if input is null-like and executeOnNullInput is false
@@ -1407,15 +1446,28 @@ const Index = () => {
           primaryOutput = result.outputs.output || Object.values(result.outputs)[0] || "";
         }
 
-        // Store the full outputs object for display purposes, or primary output for single-output
-        const outputValue = Object.keys(result.outputs).length > 1 
-          ? result.outputs 
-          : primaryOutput;
-        updateNode(nodeId, { 
-          status: "complete", 
-          output: outputValue as any,
-          outputs: result.outputs // Store outputs for visual indicators
-        });
+        // Store the outputs properly
+        const hasMultipleOutputs = Object.keys(result.outputs).length > 1;
+        
+        if (hasMultipleOutputs) {
+          // For multi-output functions, store outputs in the outputs map and a summary in output
+          const outputSummary = Object.entries(result.outputs)
+            .filter(([_, value]) => value)
+            .map(([key, value]) => `${key}: ${String(value).substring(0, 50)}...`)
+            .join(', ') || "No outputs";
+          updateNode(nodeId, { 
+            status: "complete", 
+            output: outputSummary,
+            outputs: result.outputs 
+          });
+        } else {
+          // For single-output functions, store in output
+          updateNode(nodeId, { 
+            status: "complete", 
+            output: primaryOutput,
+            outputs: undefined
+          });
+        }
         addLog("success", `✓ Function ${functionNode.name} completed (output length: ${primaryOutput.length} chars)`);
 
         return { outputs: functionOutputs, primaryOutput };
