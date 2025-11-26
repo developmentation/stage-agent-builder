@@ -72,14 +72,22 @@ export const WorkflowNodeComponent = memo(({ data }: NodeProps<WorkflowNodeCompo
 
   const outputPorts = getOutputPorts();
   const hasMultiplePorts = outputPorts.length > 1;
+  
+  // Calculate dynamic width based on number of ports
+  const minWidth = 200;
+  const portSpacing = 60; // Space needed per port
+  const dynamicWidth = hasMultiplePorts 
+    ? Math.max(minWidth, outputPorts.length * portSpacing)
+    : minWidth;
 
   return (
     <Card
       className={`
-        min-w-[200px] max-w-[250px] cursor-pointer transition-all
+        cursor-pointer transition-all
         ${selected ? "ring-2 ring-primary shadow-lg" : "hover:shadow-md"}
         ${node.status === "running" ? "animate-pulse" : ""}
       `}
+      style={{ minWidth: `${dynamicWidth}px`, maxWidth: `${dynamicWidth}px` }}
       onClick={onSelect}
     >
       {/* Input Handle */}
@@ -172,18 +180,22 @@ export const WorkflowNodeComponent = memo(({ data }: NodeProps<WorkflowNodeCompo
       {/* Output Handles */}
       {hasMultiplePorts ? (
         <div className="flex justify-around pb-2">
-          {outputPorts.map((port, index) => (
-            <div key={port} className="flex flex-col items-center gap-1">
-              <span className="text-xs text-muted-foreground">{port}</span>
-              <Handle
-                type="source"
-                position={Position.Bottom}
-                id={port}
-                className="w-3 h-3 !bg-primary relative !top-0"
-                isConnectable={true}
-              />
-            </div>
-          ))}
+          {outputPorts.map((port, index) => {
+            // Extract number from port name (e.g., "output_1" -> "1")
+            const portNumber = port.replace(/^output_/i, '');
+            return (
+              <div key={port} className="flex flex-col items-center gap-1">
+                <span className="text-xs text-muted-foreground">{portNumber}</span>
+                <Handle
+                  type="source"
+                  position={Position.Bottom}
+                  id={port}
+                  className="w-3 h-3 !bg-primary relative !top-0"
+                  isConnectable={true}
+                />
+              </div>
+            );
+          })}
         </div>
       ) : (
         <Handle
