@@ -16,6 +16,8 @@ import {
   Search,
   BarChart,
   FunctionSquare,
+  Lock,
+  LockOpen,
 } from "lucide-react";
 import type { WorkflowNode, AgentNode, FunctionNode } from "@/types/workflow";
 
@@ -27,6 +29,7 @@ interface WorkflowNodeComponentData {
   onDelete: () => void;
   onRun: () => void;
   onPortClick: (outputPort?: string) => void;
+  onToggleLock: () => void;
 }
 
 const agentIcons: Record<string, any> = {
@@ -44,7 +47,7 @@ const statusConfig = {
 };
 
 export const WorkflowNodeComponent = memo(({ data }: NodeProps<WorkflowNodeComponentData>) => {
-  const { node, selected, isConnecting, onSelect, onDelete, onRun, onPortClick } = data;
+  const { node, selected, isConnecting, onSelect, onDelete, onRun, onPortClick, onToggleLock } = data;
   const status = statusConfig[node.status];
   const StatusIcon = status.icon;
 
@@ -121,6 +124,21 @@ export const WorkflowNodeComponent = memo(({ data }: NodeProps<WorkflowNodeCompo
               size="sm"
               onClick={(e) => {
                 e.stopPropagation();
+                onToggleLock();
+              }}
+              className="h-6 w-6 p-0"
+            >
+              {node.locked ? (
+                <Lock className="h-3 w-3 text-red-500" />
+              ) : (
+                <LockOpen className="h-3 w-3 text-muted-foreground" />
+              )}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
                 onDelete();
               }}
               className="h-6 w-6 p-0"
@@ -139,7 +157,8 @@ export const WorkflowNodeComponent = memo(({ data }: NodeProps<WorkflowNodeCompo
               e.stopPropagation();
               onRun();
             }}
-            disabled={node.status === "running"}
+            disabled={node.status === "running" || node.locked}
+            variant={node.locked ? "secondary" : "default"}
             className="w-full h-7 text-xs"
           >
             <Play className="h-3 w-3 mr-1" />
