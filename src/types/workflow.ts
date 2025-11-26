@@ -9,6 +9,7 @@ export interface BaseNode {
   status: "idle" | "running" | "complete" | "error";
   output?: string;
   minimized?: boolean;
+  locked?: boolean; // Prevents re-execution when true
   position?: { x: number; y: number }; // For canvas mode positioning within stage
 }
 

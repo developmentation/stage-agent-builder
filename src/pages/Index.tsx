@@ -443,6 +443,18 @@ const Index = () => {
     }));
   };
 
+  const toggleNodeLock = (nodeId: string) => {
+    setWorkflow((prev) => ({
+      ...prev,
+      stages: prev.stages.map((stage) => ({
+        ...stage,
+        nodes: stage.nodes.map((node) =>
+          node.id === nodeId ? { ...node, locked: !node.locked } : node
+        ),
+      })),
+    }));
+  };
+
   const deleteNode = (stageId: string, nodeId: string) => {
     setWorkflow((prev) => {
       const targetStage = prev.stages.find(s => s.id === stageId);
@@ -818,6 +830,12 @@ const Index = () => {
     
     const agent = node as AgentNode;
 
+    // Skip execution if node is locked
+    if (agent.locked) {
+      addLog("info", `Agent "${agent.name}" is locked, skipping execution`);
+      return;
+    }
+
     addLog("info", `Starting agent: ${agent.name}`);
     updateNode(nodeId, { status: "running" });
     
@@ -999,6 +1017,12 @@ const Index = () => {
     
     const functionNode = node as FunctionNode;
 
+    // Skip execution if node is locked
+    if (functionNode.locked) {
+      addLog("info", `Function "${functionNode.name}" is locked, skipping execution`);
+      return;
+    }
+
     addLog("info", `Executing function: ${functionNode.name}`);
     updateNode(nodeId, { status: "running" });
     
@@ -1069,6 +1093,12 @@ const Index = () => {
       if (!node || node.nodeType !== "agent") return "";
       
       const agent = node as AgentNode;
+
+      // Skip execution if node is locked
+      if (agent.locked) {
+        addLog("info", `Agent "${agent.name}" is locked, using existing output`);
+        return agent.output || "";
+      }
 
       addLog("info", `Starting agent: ${agent.name} (input length: ${input.length} chars)`);
       updateNode(nodeId, { status: "running" });
@@ -1225,6 +1255,20 @@ const Index = () => {
       if (!node || node.nodeType !== "function") return { outputs: new Map(), primaryOutput: "" };
       
       const functionNode = node as FunctionNode;
+
+      // Skip execution if node is locked
+      if (functionNode.locked) {
+        addLog("info", `Function "${functionNode.name}" is locked, using existing output`);
+        const existingOutputs = new Map<string, string>();
+        if (typeof functionNode.output === 'object' && functionNode.output !== null) {
+          Object.entries(functionNode.output).forEach(([key, value]) => {
+            existingOutputs.set(key, String(value));
+          });
+        } else if (functionNode.output) {
+          existingOutputs.set("output", String(functionNode.output));
+        }
+        return { outputs: existingOutputs, primaryOutput: String(functionNode.output || "") };
+      }
 
       addLog("info", `Executing function: ${functionNode.name} (input length: ${input.length} chars)`);
       updateNode(nodeId, { status: "running" });
@@ -1464,6 +1508,17 @@ const Index = () => {
                 onRenameStage={renameStage}
                 onReorderStages={reorderStages}
                 onToggleMinimize={toggleMinimize}
+                onToggleLock={toggleNodeLock}
+                onStartConnection={handleStartConnection}
+                onCompleteConnection={handleCompleteConnection}
+                onDeleteConnection={deleteConnection}
+                onRunAgent={runSingleAgent}
+                onRunFunction={runSingleFunction}
+              />
+                onDeleteStage={deleteStage}
+                onRenameStage={renameStage}
+                onReorderStages={reorderStages}
+                onToggleMinimize={toggleMinimize}
                 onStartConnection={handleStartConnection}
                 onCompleteConnection={handleCompleteConnection}
                 onDeleteConnection={deleteConnection}
@@ -1530,10 +1585,13 @@ const Index = () => {
                 onRenameStage={renameStage}
                 onReorderStages={reorderStages}
                 onToggleMinimize={toggleMinimize}
+                onToggleLock={toggleNodeLock}
                 onStartConnection={handleStartConnection}
                 onCompleteConnection={handleCompleteConnection}
                 onDeleteConnection={deleteConnection}
                 onRunAgent={runSingleAgent}
+                onRunFunction={runSingleFunction}
+              />
                 onRunFunction={runSingleFunction}
               />
             )

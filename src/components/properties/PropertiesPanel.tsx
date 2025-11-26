@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { X, Plus, Settings, Play, Database, Download, Eye, EyeOff, Save, Upload } from "lucide-react";
+import { X, Plus, Settings, Play, Database, Download, Eye, EyeOff, Save, Upload, Lock, Unlock } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { useState, useRef } from "react";
@@ -692,6 +692,38 @@ export const PropertiesPanel = ({
               }}
             />
           </div>
+
+          {/* Common: Lock Toggle */}
+          {(activeNode.nodeType === "agent" || activeNode.nodeType === "function") && (
+            <div className="flex items-center justify-between space-x-2 p-3 border rounded-lg bg-muted/30">
+              <div className="flex items-center gap-2">
+                {activeNode.locked ? (
+                  <Lock className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <Unlock className="h-4 w-4 text-muted-foreground" />
+                )}
+                <div>
+                  <Label htmlFor="lock-toggle" className="text-sm font-medium cursor-pointer">
+                    Lock Node
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Prevent re-execution when running workflow
+                  </p>
+                </div>
+              </div>
+              <Switch
+                id="lock-toggle"
+                checked={activeNode.locked || false}
+                onCheckedChange={(checked) => {
+                  if (activeNode.nodeType === "agent") {
+                    onUpdateAgent(activeNode.id, { locked: checked });
+                  } else if (onUpdateNode) {
+                    onUpdateNode(activeNode.id, { locked: checked });
+                  }
+                }}
+              />
+            </div>
+          )}
 
           {/* Agent-specific fields */}
           {activeNode.nodeType === "agent" && (

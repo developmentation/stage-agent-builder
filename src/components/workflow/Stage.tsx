@@ -24,6 +24,7 @@ interface StageProps {
   onRenameStage: (stageId: string, name: string) => void;
   onReorderStages: (fromIndex: number, toIndex: number) => void;
   onToggleMinimize: (agentId: string) => void;
+  onToggleLock: (nodeId: string) => void;
   onPortClick: (agentId: string, isOutput: boolean, outputPort?: string) => void;
   onRunAgent?: (agentId: string, customInput?: string) => void;
   onRunFunction?: (functionId: string, customInput?: string) => void;
@@ -44,6 +45,7 @@ export const Stage = ({
   onRenameStage,
   onReorderStages,
   onToggleMinimize,
+  onToggleLock,
   onPortClick,
   onRunAgent,
   onRunFunction,
@@ -225,6 +227,7 @@ export const Stage = ({
                     onSelect={() => onSelectNode(node.id)}
                     onDelete={() => onDeleteAgent(node.id)}
                     onToggleMinimize={() => onToggleMinimize(node.id)}
+                    onToggleLock={() => onToggleLock(node.id)}
                     onPortClick={onPortClick}
                     onRun={onRunAgent ? () => onRunAgent(node.id) : undefined}
                   />
@@ -239,6 +242,7 @@ export const Stage = ({
                     onSelect={() => onSelectNode(node.id)}
                     onDelete={() => onDeleteAgent(node.id)}
                     onToggleMinimize={() => onToggleMinimize(node.id)}
+                    onToggleLock={() => onToggleLock(node.id)}
                     onPortClick={onPortClick}
                     onRun={onRunFunction ? () => onRunFunction(node.id) : undefined}
                   />
