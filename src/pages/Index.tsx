@@ -905,7 +905,7 @@ const Index = () => {
         (c) => c.toNodeId === nodeId
       );
       
-      let input = userInput || "No input provided";
+      let input = userInput || "";
       if (incomingConnections.length > 0) {
         const outputs = incomingConnections
           .map((c) => {
@@ -937,7 +937,7 @@ const Index = () => {
       
         const userPrompt = agent.userPrompt
           .replace(/{input}/gi, input)
-          .replace(/{prompt}/gi, userInput || "No input provided");
+          .replace(/{prompt}/gi, userInput || "");
       
       // Convert tool instances to the format expected by the edge function
       const toolsPayload = agent.tools.map(t => ({
@@ -1128,7 +1128,7 @@ const Index = () => {
         (c) => c.toNodeId === nodeId
       );
       
-      let input = userInput || "No input provided";
+      let input = userInput || "";
       if (incomingConnections.length > 0) {
         const outputs = incomingConnections
           .map((c) => {
@@ -1217,7 +1217,7 @@ const Index = () => {
         
         const userPrompt = agent.userPrompt
           .replace(/{input}/gi, input)
-          .replace(/{prompt}/gi, userInput || "No input provided");
+          .replace(/{prompt}/gi, userInput || "");
         
         // Convert tool instances to the format expected by the edge function
         const toolsPayload = agent.tools.map(t => ({
