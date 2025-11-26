@@ -128,25 +128,30 @@ export const FunctionNode = ({
         />
         
         {/* Output Port(s) */}
-        {node.outputPorts.map((portName, idx) => (
-          <div 
-            key={portName}
-            id={`port-output-${node.id}-${portName}-${layoutId}`}
-            className={`absolute -bottom-2 w-3 h-3 rounded-full bg-primary border-2 border-card cursor-pointer hover:scale-125 transition-transform z-20 ${
-              isConnecting ? "ring-2 ring-primary animate-pulse" : ""
-            }`}
-            style={{ 
-              left: node.outputPorts.length > 1 
-                ? `${((idx + 1) / (node.outputPorts.length + 1)) * 100}%` 
-                : '50%',
-              transform: 'translateX(-50%)'
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              onPortClick(node.id, true, portName);
-            }}
-          />
-        ))}
+        {node.outputPorts.map((portName, idx) => {
+          // Check if this port has data
+          const hasData = node.outputs?.[portName] && node.outputs[portName].trim().length > 0;
+          
+          return (
+            <div 
+              key={portName}
+              id={`port-output-${node.id}-${portName}-${layoutId}`}
+              className={`absolute -bottom-2 w-3 h-3 rounded-full border-2 border-card cursor-pointer hover:scale-125 transition-transform z-20 ${
+                hasData ? 'bg-green-500 ring-2 ring-green-300' : 'bg-primary'
+              } ${isConnecting ? "ring-2 ring-primary animate-pulse" : ""}`}
+              style={{ 
+                left: node.outputPorts.length > 1 
+                  ? `${((idx + 1) / (node.outputPorts.length + 1)) * 100}%` 
+                  : '50%',
+                transform: 'translateX(-50%)'
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onPortClick(node.id, true, portName);
+              }}
+            />
+          );
+        })}
         
         {/* Node number and locked icon */}
         <div className="text-center">
@@ -181,26 +186,31 @@ export const FunctionNode = ({
       />
       
       {/* Output Port(s) - Multiple ports for functions with conditional outputs */}
-      {node.outputPorts.map((portName, idx) => (
-        <div 
-          key={portName}
-          id={`port-output-${node.id}-${portName}-${layoutId}`}
-          className={`absolute -bottom-2 w-3 h-3 rounded-full bg-primary border-2 border-card cursor-pointer hover:scale-125 transition-transform z-20 ${
-            isConnecting ? "ring-2 ring-primary animate-pulse" : ""
-          }`}
-          style={{ 
-            left: node.outputPorts.length > 1 
-              ? `${((idx + 1) / (node.outputPorts.length + 1)) * 100}%` 
-              : '50%',
-            transform: 'translateX(-50%)'
-          }}
-          onClick={(e) => {
-            e.stopPropagation();
-            onPortClick(node.id, true, portName);
-          }}
-          title={portName}
-        />
-      ))}
+      {node.outputPorts.map((portName, idx) => {
+        // Check if this port has data
+        const hasData = node.outputs?.[portName] && node.outputs[portName].trim().length > 0;
+        
+        return (
+          <div 
+            key={portName}
+            id={`port-output-${node.id}-${portName}-${layoutId}`}
+            className={`absolute -bottom-2 w-3 h-3 rounded-full border-2 border-card cursor-pointer hover:scale-125 transition-transform z-20 ${
+              hasData ? 'bg-green-500 ring-2 ring-green-300' : 'bg-primary'
+            } ${isConnecting ? "ring-2 ring-primary animate-pulse" : ""}`}
+            style={{ 
+              left: node.outputPorts.length > 1 
+                ? `${((idx + 1) / (node.outputPorts.length + 1)) * 100}%` 
+                : '50%',
+              transform: 'translateX(-50%)'
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onPortClick(node.id, true, portName);
+            }}
+            title={portName}
+          />
+        );
+      })}
 
       <div className="space-y-3">
         <div className="flex items-start gap-2">
