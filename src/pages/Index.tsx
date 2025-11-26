@@ -1472,7 +1472,7 @@ const Index = () => {
           (c) => c.toNodeId === node.id
         );
 
-        let input = userInput || "No input provided";
+        let input = userInput || "";
         
         // If there are incoming connections, use the output from the specific port
         if (incomingConnections.length > 0) {
