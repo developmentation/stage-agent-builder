@@ -118,22 +118,24 @@ export const WorkflowNodeComponent = memo(({ data }: NodeProps<WorkflowNodeCompo
             </div>
           </div>
           <div className="flex flex-col gap-1">
-            <StatusIcon className={`h-4 w-4 ${status.color} ${node.status === "running" ? "animate-spin" : ""}`} />
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={(e) => {
-                e.stopPropagation();
-                onToggleLock();
-              }}
-              className="h-6 w-6 p-0"
-            >
-              {node.locked ? (
-                <Lock className="h-3 w-3 text-red-500" />
-              ) : (
-                <LockOpen className="h-3 w-3 text-muted-foreground" />
-              )}
-            </Button>
+            <div className="flex gap-1 items-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleLock();
+                }}
+                className="h-6 w-6 p-0"
+              >
+                {node.locked ? (
+                  <Lock className="h-3 w-3 text-red-500" />
+                ) : (
+                  <LockOpen className="h-3 w-3 text-muted-foreground" />
+                )}
+              </Button>
+              <StatusIcon className={`h-4 w-4 ${status.color} ${node.status === "running" ? "animate-spin" : ""}`} />
+            </div>
             <Button
               variant="ghost"
               size="sm"
