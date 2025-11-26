@@ -16,6 +16,7 @@ interface WorkflowCanvasProps {
   onRenameStage: (stageId: string, name: string) => void;
   onReorderStages: (fromIndex: number, toIndex: number) => void;
   onToggleMinimize: (agentId: string) => void;
+  onToggleLock: (nodeId: string) => void;
   onStartConnection: (agentId: string, outputPort?: string) => void;
   onCompleteConnection: (fromAgentId: string, toAgentId: string, fromOutputPort?: string) => void;
   onDeleteConnection: (connectionId: string) => void;
@@ -36,6 +37,7 @@ export const WorkflowCanvas = ({
   onRenameStage,
   onReorderStages,
   onToggleMinimize,
+  onToggleLock,
   onStartConnection,
   onCompleteConnection,
   onDeleteConnection,
@@ -284,6 +286,7 @@ export const WorkflowCanvas = ({
                     onRenameStage={onRenameStage}
                     onReorderStages={onReorderStages}
                     onToggleMinimize={onToggleMinimize}
+                    onToggleLock={onToggleLock}
                     onPortClick={handlePortClick}
                     onRunAgent={onRunAgent}
                     onRunFunction={onRunFunction}
