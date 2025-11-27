@@ -1152,12 +1152,12 @@ export const PropertiesPanel = ({
           )}
 
           {/* Common: Input Value (from connections) */}
-          {computedInput && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between gap-2">
-                <Label className="text-sm font-medium">
-                  Input Value
-                </Label>
+          <div className="space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <Label className="text-sm font-medium">
+                Input Value
+              </Label>
+              {computedInput && (
                 <Button
                   variant="ghost"
                   size="sm"
@@ -1173,15 +1173,19 @@ export const PropertiesPanel = ({
                   <Copy className="h-3 w-3 mr-1" />
                   Copy
                 </Button>
-              </div>
-              
-              <Card className="p-3 bg-muted/30 max-h-[200px] overflow-y-auto">
-                <p className="text-xs whitespace-pre-wrap break-all overflow-wrap-anywhere">
-                  {computedInput}
-                </p>
-              </Card>
+              )}
             </div>
-          )}
+            
+            <Card className="p-3 bg-muted/30 max-h-[200px] overflow-y-auto">
+              <p className="text-xs whitespace-pre-wrap break-all overflow-wrap-anywhere">
+                {computedInput || (
+                  <span className="text-muted-foreground italic">
+                    No input from connections (node will receive workflow input)
+                  </span>
+                )}
+              </p>
+            </Card>
+          </div>
 
           {/* Common: Output */}
           {activeNode.output && (
