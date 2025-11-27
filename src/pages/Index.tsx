@@ -1970,6 +1970,7 @@ const Index = () => {
                 setCustomAgents([...customAgents, agentTemplate]);
                 addLog("success", `Agent "${agent.name}" added to library`);
               }}
+              workflow={workflow}
             />
           }
           onAddStage={addStage}

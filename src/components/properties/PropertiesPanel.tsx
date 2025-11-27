@@ -53,6 +53,10 @@ interface PropertiesPanelProps {
   onRunFunction?: (functionId: string, customInput?: string) => void;
   onCloneNode?: (nodeId: string) => void;
   onAddAgentToLibrary?: (agent: AgentNode) => void;
+  workflow?: {
+    stages: any[];
+    connections: any[];
+  };
 }
 
 const availableTools = [
@@ -76,6 +80,7 @@ export const PropertiesPanel = ({
   onRunFunction,
   onCloneNode,
   onAddAgentToLibrary,
+  workflow,
 }: PropertiesPanelProps) => {
   const [toolDialogOpen, setToolDialogOpen] = useState(false);
   const [configDialogInstance, setConfigDialogInstance] = useState<string | null>(null);
@@ -99,6 +104,59 @@ export const PropertiesPanel = ({
 
   // Use selectedNode if provided, otherwise fall back to selectedAgent
   const activeNode = selectedNode || selectedAgent;
+
+  // Calculate input value from connections
+  const getNodeInput = (): string => {
+    if (!activeNode || !workflow) return "";
+    
+    // Find all connections that target this node
+    const incomingConnections = workflow.connections.filter(
+      (conn: any) => conn.to === activeNode.id
+    );
+    
+    if (incomingConnections.length === 0) return "";
+    
+    // Collect outputs from source nodes
+    const inputs: string[] = [];
+    
+    for (const conn of incomingConnections) {
+      // Find the source node
+      let sourceNode: any = null;
+      for (const stage of workflow.stages) {
+        sourceNode = stage.nodes.find((n: any) => n.id === conn.from);
+        if (sourceNode) break;
+      }
+      
+      if (!sourceNode) continue;
+      
+      // Get the output from the specific port or default output
+      let outputValue = "";
+      if (conn.fromOutputPort && typeof sourceNode.output === 'object' && sourceNode.output !== null) {
+        // Multi-output node - get specific port output
+        outputValue = sourceNode.output[conn.fromOutputPort] || "";
+      } else if (typeof sourceNode.output === 'string') {
+        // Single output
+        outputValue = sourceNode.output;
+      } else if (typeof sourceNode.output === 'object' && sourceNode.output !== null) {
+        // Object output - check for conditional outputs
+        const obj = sourceNode.output as any;
+        if ('true' in obj || 'false' in obj) {
+          outputValue = obj.true || obj.false || "";
+        } else {
+          outputValue = JSON.stringify(sourceNode.output);
+        }
+      }
+      
+      if (outputValue) {
+        inputs.push(outputValue);
+      }
+    }
+    
+    // Concatenate all inputs
+    return inputs.join("");
+  };
+
+  const computedInput = getNodeInput();
 
   if (!activeNode) {
     return (
@@ -1091,6 +1149,38 @@ export const PropertiesPanel = ({
                 </div>
               )}
             </>
+          )}
+
+          {/* Common: Input Value (from connections) */}
+          {computedInput && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <Label className="text-sm font-medium">
+                  Input Value
+                </Label>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 flex-shrink-0"
+                  onClick={() => {
+                    navigator.clipboard.writeText(computedInput);
+                    toast({
+                      title: "Copied to clipboard",
+                      description: "Input value copied successfully",
+                    });
+                  }}
+                >
+                  <Copy className="h-3 w-3 mr-1" />
+                  Copy
+                </Button>
+              </div>
+              
+              <Card className="p-3 bg-muted/30 max-h-[200px] overflow-y-auto">
+                <p className="text-xs whitespace-pre-wrap break-all overflow-wrap-anywhere">
+                  {computedInput}
+                </p>
+              </Card>
+            </div>
           )}
 
           {/* Common: Output */}
