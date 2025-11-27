@@ -218,59 +218,60 @@ export const FunctionNode = ({
             <Icon className="h-4 w-4" />
           </div>
           
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1">
-                <h4 className="text-sm font-semibold text-foreground truncate">{node.name}</h4>
-                {node.locked && <Lock className="h-3 w-3 text-muted-foreground" />}
-              </div>
-              <div className="flex items-center gap-0.5 flex-shrink-0">
-                {onRun && node.status !== "running" && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 w-6 p-0"
-                    onClick={handleRun}
-                    title="Run function"
-                  >
-                    <Play className="h-3 w-3 text-primary" />
-                  </Button>
-                )}
+          <div className="flex-1 min-w-0 space-y-1">
+            {/* Title row - truncates with ellipsis */}
+            <div className="flex items-center gap-1.5">
+              <h4 className="text-sm font-semibold text-foreground truncate">{node.name}</h4>
+              {node.locked && <Lock className="h-3 w-3 text-muted-foreground flex-shrink-0" />}
+            </div>
+            
+            {/* Buttons row - wraps if needed */}
+            <div className="flex items-center gap-0.5 flex-wrap">
+              {onRun && node.status !== "running" && (
                 <Button
                   variant="ghost"
                   size="sm"
                   className="h-6 w-6 p-0"
-                  onClick={handleCopy}
-                  title="Copy output"
+                  onClick={handleRun}
+                  title="Run function"
                 >
-                  <Copy className="h-3 w-3" />
+                  <Play className="h-3 w-3 text-primary" />
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 w-6 p-0"
-                  onClick={handleToggleLock}
-                  title={node.locked ? "Unlock function" : "Lock function"}
-                >
-                  {node.locked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 w-6 p-0"
-                  onClick={handleToggleMinimize}
-                >
-                  <Minimize2 className="h-3 w-3" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-6 w-6 p-0"
-                  onClick={handleDelete}
-                >
-                  <Trash2 className="h-3 w-3 text-destructive" />
-                </Button>
-              </div>
+              )}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0"
+                onClick={handleCopy}
+                title="Copy output"
+              >
+                <Copy className="h-3 w-3" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0"
+                onClick={handleToggleLock}
+                title={node.locked ? "Unlock function" : "Lock function"}
+              >
+                {node.locked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0"
+                onClick={handleToggleMinimize}
+              >
+                <Minimize2 className="h-3 w-3" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0"
+                onClick={handleDelete}
+              >
+                <Trash2 className="h-3 w-3 text-destructive" />
+              </Button>
             </div>
           </div>
         </div>
