@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { AgentNode } from "./AgentNode";
 import { FunctionNode } from "./FunctionNode";
-import { GripVertical, Plus, Trash2, Copy } from "lucide-react";
+import { GripVertical, Plus, Trash2, Copy, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FunctionSelector } from "@/components/FunctionSelector";
@@ -29,6 +29,7 @@ interface StageProps {
   onRunAgent?: (agentId: string, customInput?: string) => void;
   onRunFunction?: (functionId: string, customInput?: string) => void;
   onCloneStage?: (stageId: string) => void;
+  onRunStage?: (stageId: string) => void;
 }
 
 export const Stage = ({
@@ -51,6 +52,7 @@ export const Stage = ({
   onRunAgent,
   onRunFunction,
   onCloneStage,
+  onRunStage,
 }: StageProps) => {
   const [isAddAgentOpen, setIsAddAgentOpen] = useState(false);
   const [isAddFunctionOpen, setIsAddFunctionOpen] = useState(false);
@@ -198,6 +200,12 @@ export const Stage = ({
           onOpenChange={setIsAddFunctionOpen}
           onSelectFunction={handleAddFunction}
         />
+        
+        {onRunStage && (
+          <Button variant="ghost" size="sm" onClick={() => onRunStage(stage.id)} title="Run Stage">
+            <Play className="h-4 w-4 text-primary" />
+          </Button>
+        )}
         
         {onCloneStage && (
           <Button variant="ghost" size="sm" onClick={() => onCloneStage(stage.id)} title="Clone Stage">
