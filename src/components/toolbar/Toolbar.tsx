@@ -1,7 +1,17 @@
 import { Button } from "@/components/ui/button";
-import { Play, Plus, Save, Upload, Trash2, HelpCircle, LayoutGrid, LayoutList, Eye } from "lucide-react";
+import { Play, Plus, Save, Upload, Trash2, HelpCircle, LayoutGrid, LayoutList, Eye, Eraser } from "lucide-react";
 import { useRef, useState } from "react";
 import { HelpModal } from "@/components/help/HelpModal";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,6 +24,7 @@ interface ToolbarProps {
   onLoad: (file: File) => void;
   onClear: () => void;
   onRun: () => void;
+  onClearOutputs: () => void;
   viewMode: "stacked" | "canvas" | "simple";
   onSetViewMode: (mode: "stacked" | "canvas" | "simple") => void;
 }
@@ -23,11 +34,13 @@ export const Toolbar = ({
   onLoad,
   onClear,
   onRun,
+  onClearOutputs,
   viewMode,
   onSetViewMode
 }: ToolbarProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [clearDialogOpen, setClearDialogOpen] = useState(false);
   const handleLoadClick = () => {
     fileInputRef.current?.click();
   };
@@ -119,7 +132,38 @@ export const Toolbar = ({
           <Play className="h-4 w-4" />
           Run Workflow
         </Button>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          className="gap-2 border-orange-500 text-orange-500 hover:bg-orange-500/10" 
+          onClick={() => setClearDialogOpen(true)}
+        >
+          <Eraser className="h-4 w-4" />
+          Clear
+        </Button>
       </div>
       <HelpModal open={helpOpen} onOpenChange={setHelpOpen} />
+      <AlertDialog open={clearDialogOpen} onOpenChange={setClearDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will clear all outputs and inputs from agents and functions. Your configurations and prompts will be preserved.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                onClearOutputs();
+                setClearDialogOpen(false);
+              }}
+              className="bg-orange-500 hover:bg-orange-600"
+            >
+              Clear Outputs
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </header>;
 };
