@@ -115,7 +115,7 @@ export const PropertiesPanel = ({
     console.log('[Input Debug] Active node:', activeNode.id, activeNode.name);
     console.log('[Input Debug] Workflow connections:', workflow.connections);
     
-    // Find all connections that target this node (support both new and legacy shapes)
+    // Find all connections that target this node
     const incomingConnections = workflow.connections.filter(
       (conn: any) => {
         const toId = conn.toNodeId ?? conn.to;
@@ -127,11 +127,11 @@ export const PropertiesPanel = ({
     
     if (incomingConnections.length === 0) return "";
     
-    // Collect outputs from source nodes
+    // Collect outputs from source nodes using universal port syntax
     const inputs: string[] = [];
     
     for (const conn of incomingConnections) {
-      // Find the source node (support both new and legacy shapes)
+      // Find the source node
       const fromId = conn.fromNodeId ?? conn.from;
       let sourceNode: any = null;
       for (const stage of workflow.stages) {
@@ -145,50 +145,36 @@ export const PropertiesPanel = ({
       
       console.log('[Input Debug] Source node output:', sourceNode.output, typeof sourceNode.output);
       
-      // Get the output from the specific port or default output
-      let outputValue = "";
-
-      // Prefer port-specific outputs for multi-output functions
-      if (conn.fromOutputPort) {
-        const port = conn.fromOutputPort;
-        
-        // New shape: function nodes store per-port values in `outputs`
-        if (sourceNode.nodeType === "function" && sourceNode.outputs && typeof sourceNode.outputs === "object") {
-          outputValue = sourceNode.outputs[port] || "";
-          console.log('[Input Debug] Multi-output extraction from outputs map:', port, outputValue);
-        }
-
-        // Legacy shape: outputs may be stored directly on `output` as an object
-        if (!outputValue && typeof sourceNode.output === "object" && sourceNode.output !== null) {
-          const obj = sourceNode.output as any;
-          if (port in obj) {
-            outputValue = obj[port] || "";
-            console.log('[Input Debug] Multi-output extraction from output object:', port, outputValue);
-          } else if ('true' in obj || 'false' in obj) {
-            // Conditional-style outputs - pick the active branch
-            outputValue = obj.true || obj.false || "";
-            console.log('[Input Debug] Conditional output extraction:', outputValue.length, 'chars');
-          } else {
-            outputValue = JSON.stringify(obj);
-            console.log('[Input Debug] JSON output extraction (legacy):', outputValue.length, 'chars');
-          }
+      // Determine which port to read from (universal port syntax)
+      let portToRead = conn.fromOutputPort;
+      
+      // Legacy support: if no port specified, default to first port for functions
+      if (!portToRead && sourceNode.nodeType === "function") {
+        if (sourceNode.outputs && typeof sourceNode.outputs === "object") {
+          portToRead = Object.keys(sourceNode.outputs)[0] || "output";
+        } else {
+          portToRead = "output";
         }
       }
-
-      // Fallback: use primary string output when no port is specified or nothing found above
-      if (!outputValue) {
+      
+      // Get the output value
+      let outputValue = "";
+      
+      // For functions, read from the specific port
+      if (sourceNode.nodeType === "function" && portToRead) {
+        if (sourceNode.outputs && typeof sourceNode.outputs === "object") {
+          outputValue = sourceNode.outputs[portToRead] || "";
+          console.log('[Input Debug] Port extraction from outputs:', portToRead, outputValue);
+        } else if (typeof sourceNode.output === "object" && sourceNode.output !== null && portToRead in sourceNode.output) {
+          // Legacy: outputs stored in output object
+          outputValue = (sourceNode.output as any)[portToRead] || "";
+          console.log('[Input Debug] Port extraction from output object (legacy):', portToRead, outputValue);
+        }
+      } else {
+        // For agents or when no port specified, use the primary output
         if (typeof sourceNode.output === 'string') {
           outputValue = sourceNode.output;
-          console.log('[Input Debug] String output extraction (fallback):', outputValue.length, 'chars');
-        } else if (typeof sourceNode.output === 'object' && sourceNode.output !== null) {
-          const obj = sourceNode.output as any;
-          if ('true' in obj || 'false' in obj) {
-            outputValue = obj.true || obj.false || "";
-            console.log('[Input Debug] Conditional output extraction (fallback):', outputValue.length, 'chars');
-          } else {
-            outputValue = JSON.stringify(obj);
-            console.log('[Input Debug] JSON output extraction (fallback):', outputValue.length, 'chars');
-          }
+          console.log('[Input Debug] String output extraction:', outputValue.length, 'chars');
         }
       }
       
@@ -200,7 +186,7 @@ export const PropertiesPanel = ({
     console.log('[Input Debug] Final concatenated input:', inputs.length, 'parts, total length:', inputs.join("").length);
     
     // Concatenate all inputs
-    return inputs.join("");
+    return inputs.join("\n\n---\n\n");
   };
 
   const computedInput = getNodeInput();

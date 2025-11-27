@@ -1087,36 +1087,42 @@ const Index = () => {
         (c) => c.toNodeId === nodeId
       );
       
-      let input = userInput || "";
+      let input = "";
+      const isStage1 = workflow.stages[0]?.nodes.some(n => n.id === agent.id);
+      
       if (incomingConnections.length > 0) {
         const outputsFromConnections = incomingConnections
           .map((c) => {
             const fromNode = allNodes.find((n) => n.id === c.fromNodeId);
             if (!fromNode) return "";
             
-            // Special handling for Content function - get from config if not yet executed
+            // Special handling for Content function
             if (fromNode.nodeType === "function" && (fromNode as FunctionNode).functionType === "content") {
               const contentNode = fromNode as FunctionNode;
               return contentNode.output || contentNode.config.content || "";
             }
             
-            // Handle output port selection for multi-output functions
-            if (c.fromOutputPort && fromNode.nodeType === "function") {
+            // Determine which port to read from (universal port syntax)
+            let portToRead = c.fromOutputPort;
+            
+            // Legacy support: if no port specified, default to first port
+            if (!portToRead && fromNode.nodeType === "function") {
               const funcNode = fromNode as FunctionNode;
-              const portValue = funcNode.outputs?.[c.fromOutputPort];
-
-              if (portValue !== undefined && portValue !== null) {
-                return String(portValue);
+              if (funcNode.outputs) {
+                portToRead = Object.keys(funcNode.outputs)[0] || "output";
+              } else {
+                portToRead = "output";
               }
-
-              if (typeof funcNode.output === "object" && funcNode.output !== null && c.fromOutputPort in (funcNode.output as any)) {
-                const legacyPortValue = (funcNode.output as any)[c.fromOutputPort];
-                return legacyPortValue !== undefined && legacyPortValue !== null ? String(legacyPortValue) : "";
-              }
-
-              return "";
             }
             
+            // For functions, read from the specific port
+            if (fromNode.nodeType === "function" && portToRead) {
+              const funcNode = fromNode as FunctionNode;
+              const portValue = funcNode.outputs?.[portToRead];
+              return portValue !== undefined && portValue !== null ? String(portValue) : "";
+            }
+            
+            // For agents, use the primary output
             return fromNode?.output || "";
           });
         
@@ -1128,6 +1134,9 @@ const Index = () => {
         } else {
           input = "";
         }
+      } else if (isStage1) {
+        // Only use userInput if in stage 1 and no connections
+        input = userInput || "";
       }
 
       // Log tool execution
@@ -1137,9 +1146,12 @@ const Index = () => {
         });
       }
       
-        const userPrompt = agent.userPrompt
-          .replace(/{input}/gi, input)
-          .replace(/{prompt}/gi, userInput || "");
+      // {input} uses the resolved input, {prompt} uses global userInput only in stage 1
+      const promptValue = isStage1 ? (userInput || "") : input;
+      
+      const userPrompt = agent.userPrompt
+        .replace(/{input}/gi, input)
+        .replace(/{prompt}/gi, promptValue);
       
       // Convert tool instances to the format expected by the edge function
       const toolsPayload = agent.tools.map(t => ({
@@ -1447,9 +1459,17 @@ const Index = () => {
           });
         }
         
+        // Determine if we're in stage 1
+        const agentStageIndex = workflow.stages.findIndex(s => s.nodes.some(n => n.id === nodeId));
+        const isStage1 = agentStageIndex === 0;
+        
+        // {input} always uses the actual input from connections or stage 1 user input
+        // {prompt} only uses global userInput in stage 1 OR if explicitly in template
+        const promptValue = isStage1 ? (userInput || "") : input;
+        
         const userPrompt = agent.userPrompt
           .replace(/{input}/gi, input)
-          .replace(/{prompt}/gi, userInput || "");
+          .replace(/{prompt}/gi, promptValue);
         
         // Convert tool instances to the format expected by the edge function
         const toolsPayload = agent.tools.map(t => ({
@@ -1650,28 +1670,25 @@ const Index = () => {
           primaryOutput = result.outputs.output || Object.values(result.outputs)[0] || "";
         }
 
-        // Store the outputs properly
-        const hasMultipleOutputs = Object.keys(result.outputs).length > 1;
+        // Store outputs using universal port-based structure
+        // For multi-output functions, store each port value in the outputs object
+        // For single-output functions, normalize to "output" port
+        let normalizedOutputs: Record<string, string> = {};
         
-        if (hasMultipleOutputs) {
-          // For multi-output functions, store outputs in the outputs map and a summary in output
-          const outputSummary = Object.entries(result.outputs)
-            .filter(([_, value]) => value)
-            .map(([key, value]) => `${key}: ${String(value).substring(0, 50)}...`)
-            .join(', ') || "No outputs";
-          updateNode(nodeId, { 
-            status: "complete", 
-            output: outputSummary,
-            outputs: result.outputs 
-          });
+        if (Object.keys(result.outputs).length > 1) {
+          // Multi-output: use as-is (output_1, output_2, true, false, etc.)
+          normalizedOutputs = { ...result.outputs };
         } else {
-          // For single-output functions, store in output
-          updateNode(nodeId, { 
-            status: "complete", 
-            output: primaryOutput,
-            outputs: undefined
-          });
+          // Single-output: normalize to "output" port for consistency
+          const singleValue = result.outputs.output || Object.values(result.outputs)[0] || "";
+          normalizedOutputs.output = singleValue;
         }
+        
+        updateNode(nodeId, { 
+          status: "complete", 
+          output: primaryOutput,  // Keep primary output for display
+          outputs: normalizedOutputs  // Store port-specific values
+        });
         addLog("success", `✓ Function ${functionNode.name} completed (output length: ${primaryOutput.length} chars)`);
 
         return { outputs: functionOutputs, primaryOutput };
@@ -1734,19 +1751,32 @@ const Index = () => {
         if (incomingConnections.length > 0) {
           const rawOutputs = incomingConnections
             .map((c) => {
-              // Check if there's a specific output port
-              if (c.fromOutputPort) {
-                const portOutput = outputs.get(`${c.fromNodeId}:${c.fromOutputPort}`);
-                return portOutput ?? "";
+              const fromNode = allNodes.find(n => n.id === c.fromNodeId);
+              if (!fromNode) return "";
+              
+              // Determine which port to read from
+              let portToRead = c.fromOutputPort;
+              
+              // Legacy support: if no port specified, default to first port
+              if (!portToRead) {
+                if (fromNode.nodeType === "function") {
+                  const funcNode = fromNode as FunctionNode;
+                  // For functions, check if outputs exist and use the first port
+                  if (funcNode.outputs) {
+                    const firstPort = Object.keys(funcNode.outputs)[0];
+                    portToRead = firstPort || "output";
+                  } else {
+                    portToRead = "output";
+                  }
+                } else {
+                  // For agents, no port syntax needed - use the primary output
+                  return outputs.get(c.fromNodeId) ?? "";
+                }
               }
-              // Get the primary output for the node
-              const nodeOutput = outputs.get(c.fromNodeId);
-              // Handle case where output might be an object (shouldn't happen with fixed code, but defensive)
-              if (typeof nodeOutput === "object") {
-                console.warn(`Warning: Node ${c.fromNodeId} output is an object, concatenating values`);
-                return Object.values(nodeOutput as any).filter(v => v).join("\n\n---\n\n");
-              }
-              return nodeOutput ?? "";
+              
+              // Read from the specific port
+              const portOutput = outputs.get(`${c.fromNodeId}:${portToRead}`);
+              return portOutput ?? "";
             });
           
           const nonEmptyOutputs = rawOutputs.filter((v) => v !== undefined && v !== null && String(v).trim().length > 0);
