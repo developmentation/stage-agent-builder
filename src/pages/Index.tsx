@@ -1372,7 +1372,11 @@ const Index = () => {
         input = userInput || "";
       }
       
-      if (isNullLikeValue(input)) {
+      // Special case for Content function: check both input AND user-defined content
+      const hasContentValue = functionNode.functionType === 'content' && functionNode.config?.outputValue;
+      const shouldSkip = isNullLikeValue(input) && !hasContentValue;
+      
+      if (shouldSkip) {
         addLog("warning", `Function "${functionNode.name}" skipped - input is null/empty and "Execute on NULL Input" is disabled`);
         updateNode(nodeId, { status: "idle", output: "" });
         return;
