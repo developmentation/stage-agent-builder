@@ -1,8 +1,14 @@
 import { Button } from "@/components/ui/button";
-import { Library, Workflow, Settings, Plus, Play, Save, Upload, Trash2, HelpCircle, LayoutGrid, LayoutList, Eye, Eraser } from "lucide-react";
+import { Library, Workflow, Settings, Plus, Play, Save, Upload, Trash2, HelpCircle, LayoutGrid, LayoutList, Eye, Eraser, Wrench } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRef, useState } from "react";
 import { HelpModal } from "@/components/help/HelpModal";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -70,69 +76,47 @@ export const MobileNav = ({
           <Plus className="h-4 w-4" />
           Stage
         </Button>
-        {onToggleViewMode && (
-          <Button
-            size="sm"
-            variant={viewMode === "canvas" ? "default" : "outline"}
-            className="gap-2"
-            onClick={onToggleViewMode}
-          >
-            {viewMode === "canvas" ? (
-              <LayoutGrid className="h-4 w-4" />
-            ) : viewMode === "simple" ? (
-              <Eye className="h-4 w-4" />
-            ) : (
-              <LayoutList className="h-4 w-4" />
-            )}
-          </Button>
-        )}
-        <Button
-          size="sm"
-          variant="outline"
-          className="gap-2"
-          onClick={handleLoadClick}
-        >
-          <Upload className="h-4 w-4" />
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-2"
+            >
+              <Wrench className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem onClick={handleLoadClick}>
+              <Upload className="h-4 w-4 mr-2" />
+              Upload
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onSave}>
+              <Save className="h-4 w-4 mr-2" />
+              Save
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={onClear}>
+              <Trash2 className="h-4 w-4 mr-2" />
+              Clear All
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setClearDialogOpen(true)}>
+              <Eraser className="h-4 w-4 mr-2 text-orange-500" />
+              Clear Outputs
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setHelpOpen(true)}>
+              <HelpCircle className="h-4 w-4 mr-2" />
+              Help
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleFileChange} />
-        <Button
-          size="sm"
-          variant="outline"
-          className="gap-2"
-          onClick={onSave}
-        >
-          <Save className="h-4 w-4" />
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          className="gap-2"
-          onClick={onClear}
-        >
-          <Trash2 className="h-4 w-4" />
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          className="gap-2"
-          onClick={() => setHelpOpen(true)}
-        >
-          <HelpCircle className="h-4 w-4" />
-        </Button>
-        <Button
-          size="sm"
-          variant="outline"
-          className="gap-2 border-orange-500 text-orange-500 hover:bg-orange-500/10"
-          onClick={() => setClearDialogOpen(true)}
-        >
-          <Eraser className="h-4 w-4" />
-        </Button>
         <Button
           size="sm"
           className="gap-2 bg-gradient-to-r from-primary to-primary-hover ml-auto"
           onClick={onRun}
         >
           <Play className="h-4 w-4" />
+          Run
         </Button>
       </div>
       <HelpModal open={helpOpen} onOpenChange={setHelpOpen} />

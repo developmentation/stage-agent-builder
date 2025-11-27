@@ -133,9 +133,8 @@ export const Toolbar = ({
           Run Workflow
         </Button>
         <Button 
-          variant="outline" 
           size="sm" 
-          className="gap-2 border-orange-500 text-orange-500 hover:bg-orange-500/10" 
+          className="gap-2 bg-orange-500 text-white hover:bg-orange-600" 
           onClick={() => setClearDialogOpen(true)}
         >
           <Eraser className="h-4 w-4" />
