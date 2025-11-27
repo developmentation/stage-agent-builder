@@ -115,9 +115,12 @@ export const PropertiesPanel = ({
     console.log('[Input Debug] Active node:', activeNode.id, activeNode.name);
     console.log('[Input Debug] Workflow connections:', workflow.connections);
     
-    // Find all connections that target this node
+    // Find all connections that target this node (support both new and legacy shapes)
     const incomingConnections = workflow.connections.filter(
-      (conn: any) => conn.to === activeNode.id
+      (conn: any) => {
+        const toId = conn.toNodeId ?? conn.to;
+        return toId === activeNode.id;
+      }
     );
     
     console.log('[Input Debug] Incoming connections found:', incomingConnections);
@@ -128,14 +131,15 @@ export const PropertiesPanel = ({
     const inputs: string[] = [];
     
     for (const conn of incomingConnections) {
-      // Find the source node
+      // Find the source node (support both new and legacy shapes)
+      const fromId = conn.fromNodeId ?? conn.from;
       let sourceNode: any = null;
       for (const stage of workflow.stages) {
-        sourceNode = stage.nodes.find((n: any) => n.id === conn.from);
+        sourceNode = stage.nodes.find((n: any) => n.id === fromId);
         if (sourceNode) break;
       }
       
-      console.log('[Input Debug] Source node for connection:', conn.from, sourceNode);
+      console.log('[Input Debug] Source node for connection:', fromId, sourceNode);
       
       if (!sourceNode) continue;
       
