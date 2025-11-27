@@ -540,6 +540,8 @@ const Index = () => {
   };
 
   const cloneNode = (nodeId: string) => {
+    let clonedNodeId: string | null = null;
+
     setWorkflow((prev) => {
       let foundStageId: string | null = null;
       let nodeToClone: WorkflowNode | null = null;
@@ -563,6 +565,9 @@ const Index = () => {
       clonedNode.output = undefined; // Clear the output
       clonedNode.status = "idle";
       
+      // Store the cloned node ID to select it after update
+      clonedNodeId = clonedNode.id;
+      
       // Clear outputs for function nodes
       if (clonedNode.nodeType === "function") {
         (clonedNode as FunctionNode).outputs = {};
@@ -585,6 +590,11 @@ const Index = () => {
         ),
       };
     });
+
+    // Select the cloned node
+    if (clonedNodeId) {
+      setSelectedNode(clonedNodeId);
+    }
 
     addLog("success", "Node cloned successfully");
   };
