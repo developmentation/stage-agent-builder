@@ -59,15 +59,23 @@ export const Stage = ({
   const [isEditingName, setIsEditingName] = useState(false);
   const displayName = stage.name || `Stage ${stageNumber}`;
   const [editedName, setEditedName] = useState(displayName);
+  const [stageMinimized, setStageMinimized] = useState(false);
 
-  // Check if all nodes are minimized to determine toggle state
+  // Check if all nodes are minimized to determine initial state
   const allMinimized = stage.nodes.length > 0 && stage.nodes.every(node => node.minimized);
 
   const handleToggleAllMinimize = () => {
-    // Toggle all nodes in the stage
+    // Determine target state: if currently minimized, expand all; otherwise minimize all
+    const targetMinimized = !stageMinimized;
+    
+    // Set all nodes to the target state
     stage.nodes.forEach(node => {
-      onToggleMinimize(node.id);
+      if (node.minimized !== targetMinimized) {
+        onToggleMinimize(node.id);
+      }
     });
+    
+    setStageMinimized(targetMinimized);
   };
 
   const handleDragStart = (e: React.DragEvent) => {
@@ -222,9 +230,9 @@ export const Stage = ({
             variant="ghost" 
             size="sm" 
             onClick={handleToggleAllMinimize} 
-            title={allMinimized ? "Expand All" : "Collapse All"}
+            title={stageMinimized ? "Expand All" : "Collapse All"}
           >
-            {allMinimized ? (
+            {stageMinimized ? (
               <Maximize2 className="h-4 w-4" />
             ) : (
               <Minimize2 className="h-4 w-4" />
