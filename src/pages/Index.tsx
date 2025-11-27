@@ -1438,7 +1438,7 @@ const Index = () => {
         throw new Error(result.error || "Function execution failed");
       }
 
-      // Store the full outputs object for multi-output functions, or primary output for single-output
+      // Store the full outputs object for multi-output functions, or normalized single-output
       const hasMultipleOutputs = Object.keys(result.outputs).length > 1;
       
       if (hasMultipleOutputs) {
@@ -1453,12 +1453,12 @@ const Index = () => {
           outputs: result.outputs 
         });
       } else {
-        // For single-output functions, store in output
+        // For single-output functions, normalize to an "output" port for universal port syntax
         const outputValue = result.outputs.output || Object.values(result.outputs)[0] || "";
         updateNode(nodeId, { 
           status: "complete", 
           output: outputValue as any,
-          outputs: undefined
+          outputs: { output: outputValue as any }
         });
       }
       addLog("success", `✓ Function ${functionNode.name} completed`);
