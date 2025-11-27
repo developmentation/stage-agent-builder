@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { AgentNode } from "./AgentNode";
 import { FunctionNode } from "./FunctionNode";
-import { GripVertical, Plus, Trash2 } from "lucide-react";
+import { GripVertical, Plus, Trash2, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FunctionSelector } from "@/components/FunctionSelector";
@@ -28,6 +28,7 @@ interface StageProps {
   onPortClick: (agentId: string, isOutput: boolean, outputPort?: string) => void;
   onRunAgent?: (agentId: string, customInput?: string) => void;
   onRunFunction?: (functionId: string, customInput?: string) => void;
+  onCloneStage?: (stageId: string) => void;
 }
 
 export const Stage = ({
@@ -49,6 +50,7 @@ export const Stage = ({
   onPortClick,
   onRunAgent,
   onRunFunction,
+  onCloneStage,
 }: StageProps) => {
   const [isAddAgentOpen, setIsAddAgentOpen] = useState(false);
   const [isAddFunctionOpen, setIsAddFunctionOpen] = useState(false);
@@ -196,6 +198,12 @@ export const Stage = ({
           onOpenChange={setIsAddFunctionOpen}
           onSelectFunction={handleAddFunction}
         />
+        
+        {onCloneStage && (
+          <Button variant="ghost" size="sm" onClick={() => onCloneStage(stage.id)} title="Clone Stage">
+            <Copy className="h-4 w-4" />
+          </Button>
+        )}
         
         <Button variant="ghost" size="sm" onClick={() => onDeleteStage(stage.id)}>
           <Trash2 className="h-4 w-4 text-destructive" />

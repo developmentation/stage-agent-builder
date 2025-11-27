@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { X, Plus, Settings, Play, Database, Download, Eye, EyeOff, Save, Upload, Lock, Unlock } from "lucide-react";
+import { X, Plus, Settings, Play, Database, Download, Eye, EyeOff, Save, Upload, Lock, Unlock, Copy, BookPlus } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { useState, useRef } from "react";
@@ -51,6 +51,8 @@ interface PropertiesPanelProps {
   onDeselectAgent: () => void;
   onRunAgent: (agentId: string, customInput?: string) => void;
   onRunFunction?: (functionId: string, customInput?: string) => void;
+  onCloneNode?: (nodeId: string) => void;
+  onAddAgentToLibrary?: (agent: AgentNode) => void;
 }
 
 const availableTools = [
@@ -72,6 +74,8 @@ export const PropertiesPanel = ({
   onDeselectAgent,
   onRunAgent,
   onRunFunction,
+  onCloneNode,
+  onAddAgentToLibrary,
 }: PropertiesPanelProps) => {
   const [toolDialogOpen, setToolDialogOpen] = useState(false);
   const [configDialogInstance, setConfigDialogInstance] = useState<string | null>(null);
@@ -637,29 +641,54 @@ export const PropertiesPanel = ({
           </Button>
         </div>
         
-        {activeNode.nodeType === "agent" && (
-          <Button 
-            onClick={() => onRunAgent(activeNode.id)}
-            className="w-full mt-3"
-            variant="default"
-            size="sm"
-          >
-            <Play className="h-4 w-4 mr-2" />
-            Run Agent
-          </Button>
-        )}
+        <div className="flex gap-2 mt-3">
+          {activeNode.nodeType === "agent" && (
+            <>
+              <Button 
+                onClick={() => onRunAgent(activeNode.id)}
+                className="flex-1"
+                variant="default"
+                size="sm"
+              >
+                <Play className="h-4 w-4 mr-2" />
+                Run Agent
+              </Button>
+              {onAddAgentToLibrary && (
+                <Button
+                  onClick={() => onAddAgentToLibrary(activeNode as AgentNode)}
+                  variant="outline"
+                  size="sm"
+                  title="Add to Library"
+                >
+                  <BookPlus className="h-4 w-4" />
+                </Button>
+              )}
+            </>
+          )}
 
-        {activeNode.nodeType === "function" && onRunFunction && (
-          <Button 
-            onClick={() => onRunFunction(activeNode.id)}
-            className="w-full mt-3"
-            variant="default"
-            size="sm"
-          >
-            <Play className="h-4 w-4 mr-2" />
-            Run Function
-          </Button>
-        )}
+          {activeNode.nodeType === "function" && onRunFunction && (
+            <Button 
+              onClick={() => onRunFunction(activeNode.id)}
+              className="flex-1"
+              variant="default"
+              size="sm"
+            >
+              <Play className="h-4 w-4 mr-2" />
+              Run Function
+            </Button>
+          )}
+          
+          {onCloneNode && (
+            <Button
+              onClick={() => onCloneNode(activeNode.id)}
+              variant="outline"
+              size="sm"
+              title="Clone Node"
+            >
+              <Copy className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Running Banner */}
