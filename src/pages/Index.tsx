@@ -1394,9 +1394,12 @@ const Index = () => {
         (c) => c.toNodeId === nodeId
       );
       
-      let input = userInput || "";
-      if (incomingConnections.length > 0) {
-        const outputs = incomingConnections
+      let input = customInput !== undefined ? customInput : (userInput || "");
+      
+      // If customInput is provided (e.g., from runStage), trust it and do not
+      // recompute from connections here to avoid overriding port-specific values.
+      if (incomingConnections.length > 0 && customInput === undefined) {
+        const outputsFromConnections = incomingConnections
           .map((c) => {
             const fromNode = allNodes.find((n) => n.id === c.fromNodeId);
             if (!fromNode) return "";
@@ -1407,13 +1410,37 @@ const Index = () => {
               return contentNode.output || contentNode.config.content || "";
             }
             
+            // Determine which port to read from (universal port syntax)
+            let portToRead = c.fromOutputPort;
+            
+            // Legacy support: if no port specified, default to first port
+            if (!portToRead && fromNode.nodeType === "function") {
+              const funcNode = fromNode as FunctionNode;
+              if (funcNode.outputs) {
+                portToRead = Object.keys(funcNode.outputs)[0] || "output";
+              } else {
+                portToRead = "output";
+              }
+            }
+            
+            // For functions, read from the specific port
+            if (fromNode.nodeType === "function" && portToRead) {
+              const funcNode = fromNode as FunctionNode;
+              const portValue = funcNode.outputs?.[portToRead];
+              return portValue !== undefined && portValue !== null ? String(portValue) : "";
+            }
+            
+            // For agents, use the primary output
             return fromNode?.output || "";
-          })
-          .filter(Boolean);
+          });
         
-        if (outputs.length > 0) {
-          input = outputs.join("\n\n---\n\n");
+        const nonEmptyOutputs = outputsFromConnections.filter((v) => v !== undefined && v !== null && String(v).trim().length > 0);
+        
+        if (nonEmptyOutputs.length > 0) {
+          input = nonEmptyOutputs.join("\n\n---\n\n");
           addLog("info", `Function ${functionNode.name} received input from ${incomingConnections.length} connection(s)`);
+        } else {
+          input = "";
         }
       }
       
