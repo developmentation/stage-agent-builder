@@ -126,6 +126,7 @@ interface WorkflowCanvasModeProps {
   onDeleteNote?: (noteId: string) => void;
   onCloneNode?: (nodeId: string) => void;
   onCloneStage?: (stageId: string) => void;
+  onRunStage?: (stageId: string) => void;
 }
 
 export function WorkflowCanvasMode({
@@ -156,6 +157,7 @@ export function WorkflowCanvasMode({
   onDeleteNote,
   onCloneNode,
   onCloneStage,
+  onRunStage,
 }: WorkflowCanvasModeProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -295,6 +297,7 @@ export function WorkflowCanvasMode({
           onAddAgent: () => setShowAddAgent(stage.id),
           onAddFunction: () => setShowAddFunction(stage.id),
           onClone: onCloneStage ? () => onCloneStage(stage.id) : undefined,
+          onRunStage: onRunStage ? () => onRunStage(stage.id) : undefined,
           width: bounds.width,
           height: bounds.height,
         },

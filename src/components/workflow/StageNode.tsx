@@ -3,7 +3,7 @@ import { Handle, Position, NodeProps } from "reactflow";
 import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Trash2, Plus, FunctionSquare, Bot, Copy } from "lucide-react";
+import { Trash2, Plus, FunctionSquare, Bot, Copy, Play } from "lucide-react";
 import { useState } from "react";
 import type { Stage } from "@/types/workflow";
 
@@ -14,6 +14,7 @@ interface StageNodeData {
   onAddAgent: () => void;
   onAddFunction: () => void;
   onClone?: () => void;
+  onRunStage?: () => void;
   width: number;
   height: number;
 }
@@ -60,6 +61,17 @@ export const StageNode = memo(({ data }: NodeProps<StageNodeData>) => {
             </CardTitle>
           )}
           <div className="flex items-center gap-1">
+            {data.onRunStage && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={data.onRunStage}
+                className="h-7 w-7 p-0"
+                title="Run stage"
+              >
+                <Play className="h-3 w-3 text-primary" />
+              </Button>
+            )}
             {data.onClone && (
               <Button
                 variant="ghost"

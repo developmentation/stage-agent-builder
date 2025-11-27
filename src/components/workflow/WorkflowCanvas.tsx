@@ -23,6 +23,7 @@ interface WorkflowCanvasProps {
   onRunAgent?: (agentId: string, customInput?: string) => void;
   onRunFunction?: (functionId: string, customInput?: string) => void;
   onCloneStage?: (stageId: string) => void;
+  onRunStage?: (stageId: string) => void;
 }
 
 export const WorkflowCanvas = ({
@@ -45,6 +46,7 @@ export const WorkflowCanvas = ({
   onRunAgent,
   onRunFunction,
   onCloneStage,
+  onRunStage,
 }: WorkflowCanvasProps) => {
   const [forceUpdate, setForceUpdate] = useState(0);
   const [svgDimensions, setSvgDimensions] = useState({ width: 0, height: 0 });
@@ -293,6 +295,7 @@ export const WorkflowCanvas = ({
                     onRunAgent={onRunAgent}
                     onRunFunction={onRunFunction}
                     onCloneStage={onCloneStage}
+                    onRunStage={onRunStage}
                   />
                 ))
               )}

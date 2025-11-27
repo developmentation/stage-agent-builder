@@ -447,6 +447,74 @@ const Index = () => {
     updateNode(agentId, updates);
   };
 
+  const runStage = async (stageId: string) => {
+    const stage = workflow.stages.find((s) => s.id === stageId);
+    if (!stage) return;
+    
+    addLog("info", `🎯 Stage "${stage.name}" execution started`);
+    setLogs([]);
+    addLog("info", `🎯 Stage "${stage.name}" execution started`);
+    
+    // Reset all non-locked nodes in this stage to idle
+    stage.nodes.forEach((node) => {
+      if (!node.locked) {
+        updateNode(node.id, { status: "idle", output: undefined });
+      }
+    });
+
+    // Execute all nodes in the stage sequentially
+    for (const node of stage.nodes) {
+      // Skip locked nodes
+      if (node.locked) {
+        addLog("info", `${node.nodeType === "agent" ? "Agent" : "Function"} "${node.name}" is locked, skipping execution`);
+        continue;
+      }
+
+      // Get input from connected nodes or use user input
+      const incomingConnections = workflow.connections.filter(
+        (c) => c.toNodeId === node.id
+      );
+      
+      let input = userInput || "";
+      if (incomingConnections.length > 0) {
+        const allNodes = workflow.stages.flatMap((s) => s.nodes);
+        const outputs = incomingConnections
+          .map((c) => {
+            const fromNode = allNodes.find((n) => n.id === c.fromNodeId);
+            if (!fromNode) return "";
+            
+            // Handle output port selection for multi-output functions
+            if (c.fromOutputPort && fromNode.nodeType === "function") {
+              const funcNode = fromNode as FunctionNode;
+              const portValue = funcNode.outputs?.[c.fromOutputPort];
+              if (portValue !== undefined) {
+                return portValue;
+              }
+              if (typeof funcNode.output === 'object' && funcNode.output !== null) {
+                return (funcNode.output as any)[c.fromOutputPort] || "";
+              }
+              return funcNode.output || "";
+            }
+            
+            return fromNode.output || "";
+          })
+          .filter(Boolean);
+        if (outputs.length > 0) {
+          input = outputs.join("\n\n");
+        }
+      }
+
+      // Execute the node based on type
+      if (node.nodeType === "agent") {
+        await runSingleAgent(node.id, input);
+      } else if (node.nodeType === "function") {
+        await runSingleFunction(node.id, input);
+      }
+    }
+    
+    addLog("success", `✓ Stage "${stage.name}" execution completed`);
+  };
+
   const toggleMinimize = (nodeId: string) => {
     setWorkflow((prev) => ({
       ...prev,
@@ -1309,9 +1377,11 @@ const Index = () => {
     setLogs([]); // Clear previous logs
     addLog("info", "🚀 Workflow execution started");
     
-    // Reset all nodes to idle
+    // Reset all non-locked nodes to idle
     allNodes.forEach((node) => {
-      updateNode(node.id, { status: "idle", output: undefined });
+      if (!node.locked) {
+        updateNode(node.id, { status: "idle", output: undefined });
+      }
     });
 
     const outputs = new Map<string, string>();
@@ -1765,6 +1835,7 @@ const Index = () => {
                 onDeleteNote={deleteNote}
                 onCloneNode={cloneNode}
                 onCloneStage={cloneStage}
+                onRunStage={runStage}
               />
             ) : (
               <WorkflowCanvas 
@@ -1787,6 +1858,7 @@ const Index = () => {
                 onRunAgent={runSingleAgent}
                 onRunFunction={runSingleFunction}
                 onCloneStage={cloneStage}
+                onRunStage={runStage}
               />
             )
           }
@@ -1835,6 +1907,7 @@ const Index = () => {
                 onDeleteNote={deleteNote}
                 onCloneNode={cloneNode}
                 onCloneStage={cloneStage}
+                onRunStage={runStage}
               />
             ) : (
               <WorkflowCanvas 
@@ -1857,6 +1930,7 @@ const Index = () => {
                 onRunAgent={runSingleAgent}
                 onRunFunction={runSingleFunction}
                 onCloneStage={cloneStage}
+                onRunStage={runStage}
               />
             )
           }
