@@ -7,6 +7,7 @@ import { Toolbar } from "@/components/toolbar/Toolbar";
 import { OutputLog } from "@/components/output/OutputLog";
 import { ResponsiveLayout } from "@/components/layout/ResponsiveLayout";
 import { useState } from "react";
+import { useToast } from "@/hooks/use-toast";
 import type { 
   Workflow, 
   WorkflowNode, 
@@ -26,6 +27,7 @@ export type { ToolInstance, LogEntry } from "@/types/workflow";
 export type Agent = AgentNode;
 
 const Index = () => {
+  const { toast } = useToast();
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [connectingFrom, setConnectingFrom] = useState<string | null>(null);
   const [connectingFromPort, setConnectingFromPort] = useState<string | undefined>(undefined);
@@ -1878,6 +1880,26 @@ const Index = () => {
     addLog("success", "🎉 Workflow execution completed");
   };
 
+  const clearWorkflowOutputs = () => {
+    setWorkflow(prev => ({
+      ...prev,
+      stages: prev.stages.map(stage => ({
+        ...stage,
+        nodes: stage.nodes.map(node => ({
+          ...node,
+          output: "",
+          outputs: {},
+          input: "",
+          status: "idle" as const
+        }))
+      }))
+    }));
+    toast({
+      title: "Outputs Cleared",
+      description: "All node outputs and inputs have been cleared."
+    });
+  };
+
   const selectedNodeData = workflow.stages
     .flatMap((s) => s.nodes)
     .find((n) => n.id === selectedNode);
@@ -1892,6 +1914,7 @@ const Index = () => {
         onSave={saveWorkflow}
         onLoad={loadWorkflow}
         onClear={clearWorkflow}
+        onClearOutputs={clearWorkflowOutputs}
         onRun={runWorkflow}
         viewMode={workflow.viewMode || "stacked"}
         onSetViewMode={setViewMode}
@@ -2098,6 +2121,7 @@ const Index = () => {
           onSave={saveWorkflow}
           onLoad={loadWorkflow}
           onClear={clearWorkflow}
+          onClearOutputs={clearWorkflowOutputs}
           hasSelectedAgent={!!selectedNodeData}
           viewMode={workflow.viewMode}
           onToggleViewMode={toggleViewMode}

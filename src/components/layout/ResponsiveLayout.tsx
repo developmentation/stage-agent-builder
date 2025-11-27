@@ -16,6 +16,7 @@ interface ResponsiveLayoutProps {
   onSave: () => void;
   onLoad: (file: File) => void;
   onClear: () => void;
+  onClearOutputs: () => void;
   hasSelectedAgent: boolean;
   viewMode?: "stacked" | "canvas" | "simple";
   onToggleViewMode?: () => void;
@@ -32,6 +33,7 @@ export const ResponsiveLayout = ({
   onSave,
   onLoad,
   onClear,
+  onClearOutputs,
   hasSelectedAgent,
   viewMode,
   onToggleViewMode,
@@ -51,6 +53,7 @@ export const ResponsiveLayout = ({
           onSave={onSave}
           onLoad={onLoad}
           onClear={onClear}
+          onClearOutputs={onClearOutputs}
           hasSelectedAgent={hasSelectedAgent}
           viewMode={viewMode}
           onToggleViewMode={onToggleViewMode}

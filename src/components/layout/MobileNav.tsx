@@ -1,8 +1,18 @@
 import { Button } from "@/components/ui/button";
-import { Library, Workflow, Settings, Plus, Play, Save, Upload, Trash2, HelpCircle, LayoutGrid, LayoutList, Eye } from "lucide-react";
+import { Library, Workflow, Settings, Plus, Play, Save, Upload, Trash2, HelpCircle, LayoutGrid, LayoutList, Eye, Eraser } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRef, useState } from "react";
 import { HelpModal } from "@/components/help/HelpModal";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface MobileNavProps {
   activeTab: "library" | "workflow" | "properties";
@@ -12,6 +22,7 @@ interface MobileNavProps {
   onSave: () => void;
   onLoad: (file: File) => void;
   onClear: () => void;
+  onClearOutputs: () => void;
   hasSelectedAgent: boolean;
   viewMode?: "stacked" | "canvas" | "simple";
   onToggleViewMode?: () => void;
@@ -25,12 +36,14 @@ export const MobileNav = ({
   onSave,
   onLoad,
   onClear,
+  onClearOutputs,
   hasSelectedAgent,
   viewMode,
   onToggleViewMode
 }: MobileNavProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [clearDialogOpen, setClearDialogOpen] = useState(false);
 
   const handleLoadClick = () => {
     fileInputRef.current?.click();
@@ -108,6 +121,14 @@ export const MobileNav = ({
         </Button>
         <Button
           size="sm"
+          variant="outline"
+          className="gap-2 border-orange-500 text-orange-500 hover:bg-orange-500/10"
+          onClick={() => setClearDialogOpen(true)}
+        >
+          <Eraser className="h-4 w-4" />
+        </Button>
+        <Button
+          size="sm"
           className="gap-2 bg-gradient-to-r from-primary to-primary-hover ml-auto"
           onClick={onRun}
         >
@@ -115,6 +136,28 @@ export const MobileNav = ({
         </Button>
       </div>
       <HelpModal open={helpOpen} onOpenChange={setHelpOpen} />
+      <AlertDialog open={clearDialogOpen} onOpenChange={setClearDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will clear all outputs and inputs from agents and functions. Your configurations and prompts will be preserved.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                onClearOutputs();
+                setClearDialogOpen(false);
+              }}
+              className="bg-orange-500 hover:bg-orange-600"
+            >
+              Clear Outputs
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       {/* Tab Navigation */}
       <div className="h-14 border-b border-border bg-card flex items-center">
