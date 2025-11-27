@@ -7,7 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { X, Plus, Settings, Play, Database, Download, Eye, EyeOff, Save, Upload, Lock, Unlock, Copy, BookPlus } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef } from "react";
 import type { WorkflowNode, AgentNode, FunctionNode, ToolInstance } from "@/types/workflow";
 import { getFunctionById } from "@/lib/functionDefinitions";
 import { FunctionExecutor } from "@/lib/functionExecutor";
@@ -105,8 +105,8 @@ export const PropertiesPanel = ({
   // Use selectedNode if provided, otherwise fall back to selectedAgent
   const activeNode = selectedNode || selectedAgent;
 
-  // Calculate input value from connections - memoized to update when dependencies change
-  const computedInput = useMemo(() => {
+  // Calculate input value from connections
+  const getNodeInput = (): string => {
     if (!activeNode || !workflow) {
       console.log('[Input Debug] No activeNode or workflow:', { activeNode: !!activeNode, workflow: !!workflow });
       return "";
@@ -187,7 +187,9 @@ export const PropertiesPanel = ({
     
     // Concatenate all inputs
     return inputs.join("\n\n---\n\n");
-  }, [activeNode, workflow]);
+  };
+
+  const computedInput = getNodeInput();
 
   if (!activeNode) {
     return (
