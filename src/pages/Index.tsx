@@ -1057,18 +1057,50 @@ const Index = () => {
     // Check if input is null-like and executeOnNullInput is false
     if (!agent.executeOnNullInput) {
       const incomingConnections = workflow.connections.filter((c) => c.toNodeId === nodeId);
-      let input = customInput !== undefined ? customInput : (userInput || "");
+      const allNodes = workflow.stages.flatMap((s) => s.nodes);
+      const isStage1 = workflow.stages[0]?.nodes.some(n => n.id === agent.id);
+      
+      let input = "";
+      
       if (incomingConnections.length > 0) {
-        const allNodes = workflow.stages.flatMap((s) => s.nodes);
-        const outputs = incomingConnections
+        const outputsFromConnections = incomingConnections
           .map((c) => {
             const fromNode = allNodes.find((n) => n.id === c.fromNodeId);
+            if (!fromNode) return "";
+            
+            // Determine which port to read from (universal port syntax)
+            let portToRead = c.fromOutputPort;
+            
+            // Legacy support: if no port specified, default to first port
+            if (!portToRead && fromNode.nodeType === "function") {
+              const funcNode = fromNode as FunctionNode;
+              if (funcNode.outputs) {
+                portToRead = Object.keys(funcNode.outputs)[0] || "output";
+              } else {
+                portToRead = "output";
+              }
+            }
+            
+            // For functions, read from the specific port
+            if (fromNode.nodeType === "function" && portToRead) {
+              const funcNode = fromNode as FunctionNode;
+              const portValue = funcNode.outputs?.[portToRead];
+              return portValue !== undefined && portValue !== null ? String(portValue) : "";
+            }
+            
+            // For agents, use the primary output
             return fromNode?.output || "";
-          })
-          .filter(Boolean);
-        if (outputs.length > 0) {
-          input = outputs.join("\n\n");
+          });
+        
+        const nonEmptyOutputs = outputsFromConnections.filter((v) => v !== undefined && v !== null && String(v).trim().length > 0);
+        
+        if (nonEmptyOutputs.length > 0) {
+          input = nonEmptyOutputs.join("\n\n---\n\n");
+        } else {
+          input = "";
         }
+      } else if (isStage1) {
+        input = userInput || "";
       }
       
       if (isNullLikeValue(input)) {
@@ -1300,40 +1332,50 @@ const Index = () => {
     // Check if input is null-like and executeOnNullInput is false
     if (!functionNode.executeOnNullInput) {
       const incomingConnections = workflow.connections.filter((c) => c.toNodeId === nodeId);
-      let input = customInput !== undefined ? customInput : (userInput || "");
+      const allNodes = workflow.stages.flatMap((s) => s.nodes);
+      const isStage1 = workflow.stages[0]?.nodes.some(n => n.id === functionNode.id);
+      
+      let input = "";
+      
       if (incomingConnections.length > 0) {
-        const allNodes = workflow.stages.flatMap((s) => s.nodes);
-        const outputs = incomingConnections
+        const outputsFromConnections = incomingConnections
           .map((c) => {
             const fromNode = allNodes.find((n) => n.id === c.fromNodeId);
             if (!fromNode) return "";
             
-            if (fromNode.nodeType === "function" && (fromNode as FunctionNode).functionType === "content") {
-              const contentNode = fromNode as FunctionNode;
-              return contentNode.config.content || contentNode.output || "";
-            }
+            // Determine which port to read from (universal port syntax)
+            let portToRead = c.fromOutputPort;
             
-            // Handle output port selection for multi-output functions
-            if (c.fromOutputPort && fromNode.nodeType === "function") {
+            // Legacy support: if no port specified, default to first port
+            if (!portToRead && fromNode.nodeType === "function") {
               const funcNode = fromNode as FunctionNode;
-              // Try to get from outputs map first, then fallback to output
-              const portValue = funcNode.outputs?.[c.fromOutputPort];
-              if (portValue !== undefined) {
-                return portValue;
+              if (funcNode.outputs) {
+                portToRead = Object.keys(funcNode.outputs)[0] || "output";
+              } else {
+                portToRead = "output";
               }
-              // Fallback to output if it's an object
-              if (typeof funcNode.output === 'object' && funcNode.output !== null) {
-                return (funcNode.output as any)[c.fromOutputPort] || "";
-              }
-              return funcNode.output || "";
             }
             
-            return fromNode.output || "";
-          })
-          .filter(Boolean);
-        if (outputs.length > 0) {
-          input = outputs.join("\n\n");
+            // For functions, read from the specific port
+            if (fromNode.nodeType === "function" && portToRead) {
+              const funcNode = fromNode as FunctionNode;
+              const portValue = funcNode.outputs?.[portToRead];
+              return portValue !== undefined && portValue !== null ? String(portValue) : "";
+            }
+            
+            // For agents, use the primary output
+            return fromNode?.output || "";
+          });
+        
+        const nonEmptyOutputs = outputsFromConnections.filter((v) => v !== undefined && v !== null && String(v).trim().length > 0);
+        
+        if (nonEmptyOutputs.length > 0) {
+          input = nonEmptyOutputs.join("\n\n---\n\n");
+        } else {
+          input = "";
         }
+      } else if (isStage1) {
+        input = userInput || "";
       }
       
       if (isNullLikeValue(input)) {

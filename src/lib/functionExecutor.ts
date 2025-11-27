@@ -536,12 +536,13 @@ export class FunctionExecutor {
 
   // Content Function
   private static executeContent(node: FunctionNode, input: string): FunctionExecutionResult {
-    // Simply output the configured content, ignoring any input
+    // Output the configured content + input value concatenated
     const content = node.config.content || "";
+    const output = content + input;
     
     return {
       success: true,
-      outputs: { output: content },
+      outputs: { output: output },
     };
   }
 
