@@ -1089,7 +1089,7 @@ const Index = () => {
       
       let input = userInput || "";
       if (incomingConnections.length > 0) {
-        const outputs = incomingConnections
+        const outputsFromConnections = incomingConnections
           .map((c) => {
             const fromNode = allNodes.find((n) => n.id === c.fromNodeId);
             if (!fromNode) return "";
@@ -1100,16 +1100,36 @@ const Index = () => {
               return contentNode.output || contentNode.config.content || "";
             }
             
+            // Handle output port selection for multi-output functions
+            if (c.fromOutputPort && fromNode.nodeType === "function") {
+              const funcNode = fromNode as FunctionNode;
+              const portValue = funcNode.outputs?.[c.fromOutputPort];
+
+              if (portValue !== undefined && portValue !== null) {
+                return String(portValue);
+              }
+
+              if (typeof funcNode.output === "object" && funcNode.output !== null && c.fromOutputPort in (funcNode.output as any)) {
+                const legacyPortValue = (funcNode.output as any)[c.fromOutputPort];
+                return legacyPortValue !== undefined && legacyPortValue !== null ? String(legacyPortValue) : "";
+              }
+
+              return "";
+            }
+            
             return fromNode?.output || "";
-          })
-          .filter(Boolean);
+          });
         
-        if (outputs.length > 0) {
-          input = outputs.join("\n\n---\n\n");
+        const nonEmptyOutputs = outputsFromConnections.filter((v) => v !== undefined && v !== null && String(v).trim().length > 0);
+        
+        if (nonEmptyOutputs.length > 0) {
+          input = nonEmptyOutputs.join("\n\n---\n\n");
           addLog("info", `Agent ${agent.name} received input from ${incomingConnections.length} connection(s)`);
+        } else {
+          input = "";
         }
       }
-      
+
       // Log tool execution
       if (agent.tools.length > 0) {
         agent.tools.forEach(tool => {
@@ -1712,27 +1732,31 @@ const Index = () => {
         
         // If there are incoming connections, use the output from the specific port
         if (incomingConnections.length > 0) {
-          const connectedOutputs = incomingConnections
+          const rawOutputs = incomingConnections
             .map((c) => {
               // Check if there's a specific output port
               if (c.fromOutputPort) {
                 const portOutput = outputs.get(`${c.fromNodeId}:${c.fromOutputPort}`);
-                return portOutput;
+                return portOutput ?? "";
               }
               // Get the primary output for the node
               const nodeOutput = outputs.get(c.fromNodeId);
               // Handle case where output might be an object (shouldn't happen with fixed code, but defensive)
               if (typeof nodeOutput === "object") {
                 console.warn(`Warning: Node ${c.fromNodeId} output is an object, concatenating values`);
-                return Object.values(nodeOutput).filter(v => v).join("\n\n---\n\n");
+                return Object.values(nodeOutput as any).filter(v => v).join("\n\n---\n\n");
               }
-              return nodeOutput;
-            })
-            .filter(Boolean);
+              return nodeOutput ?? "";
+            });
           
-          if (connectedOutputs.length > 0) {
-            input = connectedOutputs.join("\n\n---\n\n");
+          const nonEmptyOutputs = rawOutputs.filter((v) => v !== undefined && v !== null && String(v).trim().length > 0);
+          
+          if (nonEmptyOutputs.length > 0) {
+            input = nonEmptyOutputs.join("\n\n---\n\n");
             addLog("info", `${node.name} received input from ${incomingConnections.length} connection(s) (${input.length} chars)`);
+          } else {
+            // Connections exist but all produced null-like outputs; treat input as empty
+            input = "";
           }
         }
 
