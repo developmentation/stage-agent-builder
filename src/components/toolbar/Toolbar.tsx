@@ -128,7 +128,7 @@ export const Toolbar = ({
           Help
         </Button>
         <div className="w-px h-6 bg-border mx-2" />
-        <Button className="gap-2 bg-gradient-to-r from-primary to-primary-hover hover:opacity-90" onClick={onRun}>
+        <Button size="sm" className="gap-2 bg-gradient-to-r from-primary to-primary-hover hover:opacity-90" onClick={onRun}>
           <Play className="h-4 w-4" />
           Run Workflow
         </Button>
