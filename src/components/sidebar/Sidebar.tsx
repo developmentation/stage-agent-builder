@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Upload, Search, FileText, Bot, Plus, Download, Trash2, X, Eye } from "lucide-react";
+import { Upload, Search, FileText, Bot, Plus, Download, Trash2, X, Eye, Pencil } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useState, useRef } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -126,6 +126,8 @@ export const Sidebar = ({
   onAddNode,
 }: SidebarProps) => {
   const [isAddAgentOpen, setIsAddAgentOpen] = useState(false);
+  const [isEditAgentOpen, setIsEditAgentOpen] = useState(false);
+  const [editingAgentId, setEditingAgentId] = useState<string | null>(null);
   const [newAgentName, setNewAgentName] = useState("");
   const [newAgentDescription, setNewAgentDescription] = useState("");
   const [newAgentSystemPrompt, setNewAgentSystemPrompt] = useState("");
@@ -194,6 +196,40 @@ export const Sidebar = ({
         description: `Agent "${agent.name}" has been deleted`
       });
     }
+  };
+  const handleEditAgent = (agent: any) => {
+    setEditingAgentId(agent.id);
+    setNewAgentName(agent.name);
+    setNewAgentDescription(agent.description);
+    setNewAgentSystemPrompt(agent.defaultSystemPrompt);
+    setNewAgentUserPrompt(agent.defaultUserPrompt);
+    setIsEditAgentOpen(true);
+  };
+  const handleSaveEditedAgent = () => {
+    if (!newAgentName.trim() || !editingAgentId) return;
+    const updatedAgents = customAgents.map(agent => {
+      if (agent.id === editingAgentId) {
+        return {
+          ...agent,
+          name: newAgentName,
+          description: newAgentDescription || "Custom agent",
+          defaultSystemPrompt: newAgentSystemPrompt || `You are a ${newAgentName} agent.`,
+          defaultUserPrompt: newAgentUserPrompt || "Process the following: {input}"
+        };
+      }
+      return agent;
+    });
+    onCustomAgentsChange(updatedAgents);
+    setNewAgentName("");
+    setNewAgentDescription("");
+    setNewAgentSystemPrompt("");
+    setNewAgentUserPrompt("");
+    setEditingAgentId(null);
+    setIsEditAgentOpen(false);
+    toast({
+      title: "Agent updated",
+      description: "Agent has been updated in the library"
+    });
   };
   const handleUploadAgents = (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
@@ -658,6 +694,12 @@ export const Sidebar = ({
                         <p className="text-xs text-muted-foreground mt-0.5">{agent.description}</p>
                       </div>
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {isCustom && <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={e => {
+                      e.stopPropagation();
+                      handleEditAgent(agent);
+                    }} title="Edit agent">
+                            <Pencil className="h-3 w-3" />
+                          </Button>}
                         <Button variant="ghost" size="sm" className="h-6 w-6 p-0" onClick={e => {
                       e.stopPropagation();
                       handleDownloadAgent(agent);
@@ -728,6 +770,36 @@ export const Sidebar = ({
           </div>
         </div>
       </ScrollArea>
+      
+      {/* Edit Agent Modal */}
+      <Dialog open={isEditAgentOpen} onOpenChange={setIsEditAgentOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Agent</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="edit-agent-name">Agent Name</Label>
+              <Input id="edit-agent-name" placeholder="e.g., Code Reviewer" value={newAgentName} onChange={e => setNewAgentName(e.target.value)} />
+            </div>
+            <div>
+              <Label htmlFor="edit-agent-desc">Description</Label>
+              <Input id="edit-agent-desc" placeholder="Brief description" value={newAgentDescription} onChange={e => setNewAgentDescription(e.target.value)} />
+            </div>
+            <div>
+              <Label htmlFor="edit-agent-system">System Prompt</Label>
+              <Textarea id="edit-agent-system" placeholder="You are a helpful assistant..." value={newAgentSystemPrompt} onChange={e => setNewAgentSystemPrompt(e.target.value)} className="min-h-[80px]" />
+            </div>
+            <div>
+              <Label htmlFor="edit-agent-user">User Prompt Template</Label>
+              <Textarea id="edit-agent-user" placeholder="Process: {input}" value={newAgentUserPrompt} onChange={e => setNewAgentUserPrompt(e.target.value)} className="min-h-[60px]" />
+            </div>
+            <Button onClick={handleSaveEditedAgent} className="w-full">
+              Save Changes
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       
       {/* View/Edit Input Modal */}
       <Dialog open={isViewInputOpen} onOpenChange={setIsViewInputOpen}>
