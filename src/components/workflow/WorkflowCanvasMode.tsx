@@ -249,9 +249,20 @@ export function WorkflowCanvasMode({
         maxY = Math.max(maxY, nodeY + nodeHeight);
       });
 
-      // Stage position is the bounding box with padding
-      const stageX = minX - stagePaddingLeft;
-      const stageY = minY - stagePaddingTop;
+      // Use saved stage position if available, otherwise calculate from nodes
+      let stageX: number;
+      let stageY: number;
+      
+      if (stage.position !== undefined) {
+        // Stage has a saved position - use it and adjust minX/minY accordingly
+        stageX = stage.position.x;
+        stageY = stage.position.y;
+      } else {
+        // No saved position - calculate from node bounding box with padding
+        stageX = minX - stagePaddingLeft;
+        stageY = minY - stagePaddingTop;
+      }
+      
       const stageWidth = (maxX - minX) + stagePaddingLeft + stagePaddingRight;
       const stageHeight = (maxY - minY) + stagePaddingTop + stagePaddingBottom;
 
@@ -471,6 +482,12 @@ export function WorkflowCanvasMode({
           });
         } else {
           // Stage with nodes - update all child node positions by the delta
+          // Also save the stage position itself
+          onUpdateStagePosition(stageId, {
+            x: node.position.x,
+            y: node.position.y,
+          });
+          
           stage.nodes.forEach((workflowNode) => {
             const currentX = workflowNode.position?.x ?? 0;
             const currentY = workflowNode.position?.y ?? 0;
