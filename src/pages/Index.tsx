@@ -1128,12 +1128,6 @@ const Index = () => {
             const fromNode = allNodes.find((n) => n.id === c.fromNodeId);
             if (!fromNode) return "";
             
-            // Special handling for Content function
-            if (fromNode.nodeType === "function" && (fromNode as FunctionNode).functionType === "content") {
-              const contentNode = fromNode as FunctionNode;
-              return contentNode.output || contentNode.config.content || "";
-            }
-            
             // Determine which port to read from (universal port syntax)
             let portToRead = c.fromOutputPort;
             
@@ -1403,12 +1397,6 @@ const Index = () => {
           .map((c) => {
             const fromNode = allNodes.find((n) => n.id === c.fromNodeId);
             if (!fromNode) return "";
-            
-            // Special handling for Content function - get from config if not yet executed
-            if (fromNode.nodeType === "function" && (fromNode as FunctionNode).functionType === "content") {
-              const contentNode = fromNode as FunctionNode;
-              return contentNode.output || contentNode.config.content || "";
-            }
             
             // Determine which port to read from (universal port syntax)
             let portToRead = c.fromOutputPort;
