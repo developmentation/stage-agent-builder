@@ -1373,7 +1373,8 @@ const Index = () => {
       }
       
       // Special case for Content function: check both input AND user-defined content
-      const hasContentValue = functionNode.functionType === 'content' && functionNode.config?.outputValue;
+      const rawContent = functionNode.config?.content ?? "";
+      const hasContentValue = functionNode.functionType === "content" && !isNullLikeValue(rawContent);
       const shouldSkip = isNullLikeValue(input) && !hasContentValue;
       
       if (shouldSkip) {
@@ -1698,10 +1699,14 @@ const Index = () => {
       }
 
       // Check if input is null-like and executeOnNullInput is false
-      if (!functionNode.executeOnNullInput && isNullLikeValue(input)) {
-        addLog("warning", `Function "${functionNode.name}" skipped - input is null/empty and "Execute on NULL Input" is disabled`);
-        updateNode(nodeId, { status: "idle", output: "" });
-        return { outputs: new Map(), primaryOutput: "" };
+      if (!functionNode.executeOnNullInput) {
+        const rawContent = functionNode.config?.content ?? "";
+        const hasContentValue = functionNode.functionType === "content" && !isNullLikeValue(rawContent);
+        if (isNullLikeValue(input) && !hasContentValue) {
+          addLog("warning", `Function "${functionNode.name}" skipped - input is null/empty and "Execute on NULL Input" is disabled`);
+          updateNode(nodeId, { status: "idle", output: "" });
+          return { outputs: new Map(), primaryOutput: "" };
+        }
       }
 
       addLog("info", `Executing function: ${functionNode.name} (input length: ${input.length} chars)`);
