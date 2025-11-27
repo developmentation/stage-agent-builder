@@ -294,6 +294,7 @@ export function WorkflowCanvasMode({
           onRename: (name: string) => onRenameStage(stage.id, name),
           onAddAgent: () => setShowAddAgent(stage.id),
           onAddFunction: () => setShowAddFunction(stage.id),
+          onClone: onCloneStage ? () => onCloneStage(stage.id) : undefined,
           width: bounds.width,
           height: bounds.height,
         },
