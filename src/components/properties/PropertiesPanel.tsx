@@ -107,12 +107,20 @@ export const PropertiesPanel = ({
 
   // Calculate input value from connections
   const getNodeInput = (): string => {
-    if (!activeNode || !workflow) return "";
+    if (!activeNode || !workflow) {
+      console.log('[Input Debug] No activeNode or workflow:', { activeNode: !!activeNode, workflow: !!workflow });
+      return "";
+    }
+    
+    console.log('[Input Debug] Active node:', activeNode.id, activeNode.name);
+    console.log('[Input Debug] Workflow connections:', workflow.connections);
     
     // Find all connections that target this node
     const incomingConnections = workflow.connections.filter(
       (conn: any) => conn.to === activeNode.id
     );
+    
+    console.log('[Input Debug] Incoming connections found:', incomingConnections);
     
     if (incomingConnections.length === 0) return "";
     
@@ -127,23 +135,31 @@ export const PropertiesPanel = ({
         if (sourceNode) break;
       }
       
+      console.log('[Input Debug] Source node for connection:', conn.from, sourceNode);
+      
       if (!sourceNode) continue;
+      
+      console.log('[Input Debug] Source node output:', sourceNode.output, typeof sourceNode.output);
       
       // Get the output from the specific port or default output
       let outputValue = "";
       if (conn.fromOutputPort && typeof sourceNode.output === 'object' && sourceNode.output !== null) {
         // Multi-output node - get specific port output
         outputValue = sourceNode.output[conn.fromOutputPort] || "";
+        console.log('[Input Debug] Multi-output extraction:', conn.fromOutputPort, outputValue);
       } else if (typeof sourceNode.output === 'string') {
         // Single output
         outputValue = sourceNode.output;
+        console.log('[Input Debug] String output extraction:', outputValue.length, 'chars');
       } else if (typeof sourceNode.output === 'object' && sourceNode.output !== null) {
         // Object output - check for conditional outputs
         const obj = sourceNode.output as any;
         if ('true' in obj || 'false' in obj) {
           outputValue = obj.true || obj.false || "";
+          console.log('[Input Debug] Conditional output extraction:', outputValue.length, 'chars');
         } else {
           outputValue = JSON.stringify(sourceNode.output);
+          console.log('[Input Debug] JSON output extraction:', outputValue.length, 'chars');
         }
       }
       
@@ -151,6 +167,8 @@ export const PropertiesPanel = ({
         inputs.push(outputValue);
       }
     }
+    
+    console.log('[Input Debug] Final concatenated input:', inputs.length, 'parts, total length:', inputs.join("").length);
     
     // Concatenate all inputs
     return inputs.join("");
