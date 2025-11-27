@@ -471,6 +471,110 @@ const Index = () => {
     }));
   };
 
+  const cloneNode = (nodeId: string) => {
+    setWorkflow((prev) => {
+      let foundStageId: string | null = null;
+      let nodeToClone: WorkflowNode | null = null;
+
+      // Find the node and its stage
+      for (const stage of prev.stages) {
+        const node = stage.nodes.find(n => n.id === nodeId);
+        if (node) {
+          foundStageId = stage.id;
+          nodeToClone = node;
+          break;
+        }
+      }
+
+      if (!foundStageId || !nodeToClone) return prev;
+
+      // Create a deep copy of the node with a new ID
+      const clonedNode: WorkflowNode = JSON.parse(JSON.stringify(nodeToClone));
+      clonedNode.id = `${nodeToClone.nodeType}-${Date.now()}`;
+      clonedNode.name = `${nodeToClone.name} (Copy)`;
+      clonedNode.output = undefined; // Clear the output
+      clonedNode.status = "idle";
+      
+      // Clear outputs for function nodes
+      if (clonedNode.nodeType === "function") {
+        (clonedNode as FunctionNode).outputs = {};
+      }
+
+      // Offset position by 50px right and 50px down
+      if (nodeToClone.position) {
+        clonedNode.position = {
+          x: nodeToClone.position.x + 50,
+          y: nodeToClone.position.y + 50,
+        };
+      }
+
+      return {
+        ...prev,
+        stages: prev.stages.map((stage) =>
+          stage.id === foundStageId
+            ? { ...stage, nodes: [...stage.nodes, clonedNode] }
+            : stage
+        ),
+      };
+    });
+
+    addLog("success", "Node cloned successfully");
+  };
+
+  const cloneStage = (stageId: string) => {
+    setWorkflow((prev) => {
+      const stageToClone = prev.stages.find(s => s.id === stageId);
+      if (!stageToClone) return prev;
+
+      // Deep copy the stage
+      const clonedStage: Stage = JSON.parse(JSON.stringify(stageToClone));
+      clonedStage.id = `stage-${Date.now()}`;
+      clonedStage.name = `${stageToClone.name} (Copy)`;
+
+      // Update all node IDs in the cloned stage
+      clonedStage.nodes = clonedStage.nodes.map((node) => {
+        const clonedNode = { ...node };
+        clonedNode.id = `${node.nodeType}-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        clonedNode.output = undefined;
+        clonedNode.status = "idle";
+        
+        // Clear outputs for function nodes
+        if (clonedNode.nodeType === "function") {
+          (clonedNode as FunctionNode).outputs = {};
+        }
+
+        // Offset position if exists
+        if (clonedNode.position) {
+          clonedNode.position = {
+            x: clonedNode.position.x + 50,
+            y: clonedNode.position.y + 50,
+          };
+        }
+        return clonedNode;
+      });
+
+      // Offset stage position if exists
+      if (clonedStage.position) {
+        clonedStage.position = {
+          x: clonedStage.position.x + 100,
+          y: clonedStage.position.y + 100,
+        };
+      }
+
+      // Insert after the original stage
+      const stageIndex = prev.stages.findIndex(s => s.id === stageId);
+      const newStages = [...prev.stages];
+      newStages.splice(stageIndex + 1, 0, clonedStage);
+
+      return {
+        ...prev,
+        stages: newStages,
+      };
+    });
+
+    addLog("success", "Stage cloned successfully");
+  };
+
   const deleteNode = (stageId: string, nodeId: string) => {
     setWorkflow((prev) => {
       const targetStage = prev.stages.find(s => s.id === stageId);
@@ -1659,6 +1763,8 @@ const Index = () => {
                 onAddNote={addNote}
                 onUpdateNote={updateNote}
                 onDeleteNote={deleteNote}
+                onCloneNode={cloneNode}
+                onCloneStage={cloneStage}
               />
             ) : (
               <WorkflowCanvas 
@@ -1680,6 +1786,7 @@ const Index = () => {
                 onDeleteConnection={deleteConnection}
                 onRunAgent={runSingleAgent}
                 onRunFunction={runSingleFunction}
+                onCloneStage={cloneStage}
               />
             )
           }
@@ -1726,6 +1833,8 @@ const Index = () => {
                 onAddNote={addNote}
                 onUpdateNote={updateNote}
                 onDeleteNote={deleteNote}
+                onCloneNode={cloneNode}
+                onCloneStage={cloneStage}
               />
             ) : (
               <WorkflowCanvas 
@@ -1747,6 +1856,7 @@ const Index = () => {
                 onDeleteConnection={deleteConnection}
                 onRunAgent={runSingleAgent}
                 onRunFunction={runSingleFunction}
+                onCloneStage={cloneStage}
               />
             )
           }
@@ -1762,6 +1872,20 @@ const Index = () => {
               onDeselectAgent={() => setSelectedNode(null)}
               onRunAgent={runSingleAgent}
               onRunFunction={runSingleFunction}
+              onCloneNode={cloneNode}
+              onAddAgentToLibrary={(agent) => {
+                const agentTemplate = {
+                  id: `custom-${Date.now()}`,
+                  name: agent.name,
+                  description: `Custom agent: ${agent.name}`,
+                  icon: agent.type || "Bot",
+                  defaultSystemPrompt: agent.systemPrompt,
+                  defaultUserPrompt: agent.userPrompt,
+                  isCustom: true,
+                };
+                setCustomAgents([...customAgents, agentTemplate]);
+                addLog("success", `Agent "${agent.name}" added to library`);
+              }}
             />
           }
           onAddStage={addStage}

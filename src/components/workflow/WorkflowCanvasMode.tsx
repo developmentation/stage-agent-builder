@@ -124,6 +124,8 @@ interface WorkflowCanvasModeProps {
   onAddNote?: (x?: number, y?: number) => void;
   onUpdateNote?: (noteId: string, updates: Partial<Note>) => void;
   onDeleteNote?: (noteId: string) => void;
+  onCloneNode?: (nodeId: string) => void;
+  onCloneStage?: (stageId: string) => void;
 }
 
 export function WorkflowCanvasMode({
@@ -152,13 +154,41 @@ export function WorkflowCanvasMode({
   onAddNote,
   onUpdateNote,
   onDeleteNote,
+  onCloneNode,
+  onCloneStage,
 }: WorkflowCanvasModeProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   const [showAddAgent, setShowAddAgent] = useState<string | null>(null);
   const [showAddFunction, setShowAddFunction] = useState<string | null>(null);
   const [showMiniMap, setShowMiniMap] = useState(true);
+  const [copiedNodeId, setCopiedNodeId] = useState<string | null>(null);
   const isMobile = useIsMobile();
+
+  // Keyboard shortcuts for copy/paste
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Check if Ctrl (or Cmd on Mac) is pressed
+      const isModifierPressed = e.ctrlKey || e.metaKey;
+      
+      // Ignore if typing in an input/textarea
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+        return;
+      }
+
+      if (isModifierPressed && e.key.toLowerCase() === 'c' && selectedNode) {
+        e.preventDefault();
+        setCopiedNodeId(selectedNode.id);
+      } else if (isModifierPressed && e.key.toLowerCase() === 'v' && copiedNodeId && onCloneNode) {
+        e.preventDefault();
+        onCloneNode(copiedNodeId);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [selectedNode, copiedNodeId, onCloneNode]);
 
   // Calculate stage bounds - positioned directly from node bounding boxes
   const stageBounds = useMemo(() => {
