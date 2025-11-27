@@ -218,6 +218,7 @@ export const WorkflowNodeComponent = memo(({ data }: NodeProps<WorkflowNodeCompo
         <Handle
           type="source"
           position={Position.Bottom}
+          id={outputPorts[0]}
           className="w-3 h-3 !bg-primary"
           isConnectable={true}
         />

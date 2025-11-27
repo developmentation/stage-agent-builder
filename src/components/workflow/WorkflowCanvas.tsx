@@ -151,7 +151,14 @@ export const WorkflowCanvas = ({
         outputPortId = `port-output-${conn.fromNodeId}-${conn.fromOutputPort}-${layoutId}`;
       }
       
-      const fromEl = document.getElementById(outputPortId);
+      let fromEl = document.getElementById(outputPortId);
+      
+      // Fallback: if port not found and no fromOutputPort specified, try default "output" port for functions
+      if (!fromEl && !conn.fromOutputPort) {
+        const fallbackPortId = `port-output-${conn.fromNodeId}-output-${layoutId}`;
+        fromEl = document.getElementById(fallbackPortId);
+      }
+      
       const toEl = document.getElementById(`port-input-${conn.toNodeId}-${layoutId}`);
       if (!fromEl || !toEl) return null;
       
