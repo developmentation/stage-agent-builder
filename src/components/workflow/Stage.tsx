@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { AgentNode } from "./AgentNode";
 import { FunctionNode } from "./FunctionNode";
-import { GripVertical, Plus, Trash2, Copy, Play } from "lucide-react";
+import { GripVertical, Plus, Trash2, Copy, Play, Minimize2, Maximize2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { FunctionSelector } from "@/components/FunctionSelector";
@@ -59,6 +59,16 @@ export const Stage = ({
   const [isEditingName, setIsEditingName] = useState(false);
   const displayName = stage.name || `Stage ${stageNumber}`;
   const [editedName, setEditedName] = useState(displayName);
+
+  // Check if all nodes are minimized to determine toggle state
+  const allMinimized = stage.nodes.length > 0 && stage.nodes.every(node => node.minimized);
+
+  const handleToggleAllMinimize = () => {
+    // Toggle all nodes in the stage
+    stage.nodes.forEach(node => {
+      onToggleMinimize(node.id);
+    });
+  };
 
   const handleDragStart = (e: React.DragEvent) => {
     e.dataTransfer.effectAllowed = "move";
@@ -204,6 +214,21 @@ export const Stage = ({
         {onRunStage && (
           <Button variant="ghost" size="sm" onClick={() => onRunStage(stage.id)} title="Run Stage">
             <Play className="h-4 w-4 text-primary" />
+          </Button>
+        )}
+        
+        {stage.nodes.length > 0 && (
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={handleToggleAllMinimize} 
+            title={allMinimized ? "Expand All" : "Collapse All"}
+          >
+            {allMinimized ? (
+              <Maximize2 className="h-4 w-4" />
+            ) : (
+              <Minimize2 className="h-4 w-4" />
+            )}
           </Button>
         )}
         
