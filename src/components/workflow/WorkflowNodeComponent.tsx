@@ -40,10 +40,10 @@ const agentIcons: Record<string, any> = {
 };
 
 const statusConfig = {
-  idle: { icon: Circle, color: "text-muted-foreground", bg: "bg-muted" },
-  running: { icon: Loader2, color: "text-blue-500", bg: "bg-blue-500/10" },
-  complete: { icon: CheckCircle, color: "text-green-500", bg: "bg-green-500/10" },
-  error: { icon: XCircle, color: "text-red-500", bg: "bg-red-500/10" },
+  idle: { icon: Circle, color: "text-muted-foreground", bg: "bg-background", border: "border-border" },
+  running: { icon: Loader2, color: "text-yellow-600", bg: "bg-yellow-100", border: "border-yellow-400" },
+  complete: { icon: CheckCircle, color: "text-green-600", bg: "bg-green-100", border: "border-green-400" },
+  error: { icon: XCircle, color: "text-red-500", bg: "bg-red-100", border: "border-red-400" },
 };
 
 export const WorkflowNodeComponent = memo(({ data }: NodeProps<WorkflowNodeComponentData>) => {
@@ -83,7 +83,8 @@ export const WorkflowNodeComponent = memo(({ data }: NodeProps<WorkflowNodeCompo
   return (
     <Card
       className={`
-        cursor-pointer transition-all
+        cursor-pointer transition-all border-2
+        ${status.bg} ${status.border}
         ${selected ? "ring-2 ring-primary shadow-lg" : "hover:shadow-md"}
         ${node.status === "running" ? "animate-pulse" : ""}
       `}
