@@ -1778,112 +1778,128 @@ const Index = () => {
       }
     };
 
-    // Execute stages sequentially
-    for (let i = 0; i < workflow.stages.length; i++) {
-      const stage = workflow.stages[i];
-      if (stage.nodes.length === 0) continue;
+    // Build dependency graph for dependency-driven execution
+    const nodeIds = allNodes.map(n => n.id);
+    const dependencyMap = new Map<string, string[]>(); // nodeId -> array of dependency nodeIds
+    
+    // Build the dependency map from connections
+    nodeIds.forEach(nodeId => {
+      const incomingConnections = workflow.connections.filter(c => c.toNodeId === nodeId);
+      const dependencies = incomingConnections.map(c => c.fromNodeId);
+      dependencyMap.set(nodeId, dependencies);
+    });
 
-      // Filter nodes to only execute those whose dependencies are met
-      // A node's dependencies are met if ALL incoming connections come from current or previous stages
-      const nodesToExecute = stage.nodes.filter(node => {
-        const incomingConnections = workflow.connections.filter(c => c.toNodeId === node.id);
-        
-        // If no incoming connections, node can execute
-        if (incomingConnections.length === 0) return true;
-        
-        // Check if all incoming connections come from current or previous stages
-        return incomingConnections.every(conn => {
-          const fromNode = allNodes.find(n => n.id === conn.fromNodeId);
-          if (!fromNode) return false;
-          
-          // Find which stage the source node is in
-          const fromStageIndex = workflow.stages.findIndex(s => 
-            s.nodes.some(n => n.id === conn.fromNodeId)
-          );
-          
-          // Only execute if source is in current or previous stages
-          return fromStageIndex <= i;
-        });
-      });
-
-      // Skip stage if no nodes should execute
-      if (nodesToExecute.length === 0) {
-        addLog("info", `▸ Stage ${i + 1}: Skipped (no nodes ready for execution)`);
-        continue;
+    // Track completed nodes
+    const completedNodes = new Set<string>();
+    const executingNodes = new Set<string>();
+    
+    // Helper to get input for a node based on its connections
+    const getNodeInput = (node: WorkflowNode): string => {
+      const incomingConnections = workflow.connections.filter(c => c.toNodeId === node.id);
+      
+      if (incomingConnections.length === 0) {
+        return userInput || "";
       }
-
-      const agentCount = nodesToExecute.filter(n => n.nodeType === "agent").length;
-      const functionCount = nodesToExecute.filter(n => n.nodeType === "function").length;
-      addLog("info", `▸ Stage ${i + 1}: Processing ${agentCount} agent(s) and ${functionCount} function(s)`);
-
-      const nodePromises = nodesToExecute.map(async (node) => {
-        // Get incoming connections for this node
-        const incomingConnections = workflow.connections.filter(
-          (c) => c.toNodeId === node.id
-        );
-
-        let input = userInput || "";
+      
+      const rawOutputs = incomingConnections.map((c) => {
+        const fromNode = allNodes.find(n => n.id === c.fromNodeId);
+        if (!fromNode) return "";
         
-        // If there are incoming connections, use the output from the specific port
-        if (incomingConnections.length > 0) {
-          const rawOutputs = incomingConnections
-            .map((c) => {
-              const fromNode = allNodes.find(n => n.id === c.fromNodeId);
-              if (!fromNode) return "";
-              
-              // Determine which port to read from
-              let portToRead = c.fromOutputPort;
-              
-              // For agents, always use the primary output (stored without port syntax)
-              if (fromNode.nodeType === "agent") {
-                return outputs.get(c.fromNodeId) ?? "";
-              }
-              
-              // Legacy support: if no port specified for functions, default to first port
-              if (!portToRead && fromNode.nodeType === "function") {
-                const funcNode = fromNode as FunctionNode;
-                // For functions, check if outputs exist and use the first port
-                if (funcNode.outputs) {
-                  const firstPort = Object.keys(funcNode.outputs)[0];
-                  portToRead = firstPort || "output";
-                } else {
-                  portToRead = "output";
-                }
-              }
-              
-              // Read from the specific port for functions
-              const portOutput = outputs.get(`${c.fromNodeId}:${portToRead}`);
-              return portOutput ?? "";
-            });
-          
-          const nonEmptyOutputs = rawOutputs.filter((v) => v !== undefined && v !== null && String(v).trim().length > 0);
-          
-          if (nonEmptyOutputs.length > 0) {
-            input = nonEmptyOutputs.join("\n\n---\n\n");
-            addLog("info", `${node.name} received input from ${incomingConnections.length} connection(s) (${input.length} chars)`);
+        let portToRead = c.fromOutputPort;
+        
+        // For agents, always use the primary output
+        if (fromNode.nodeType === "agent") {
+          return outputs.get(c.fromNodeId) ?? "";
+        }
+        
+        // Legacy support: if no port specified for functions, default to first port
+        if (!portToRead && fromNode.nodeType === "function") {
+          const funcNode = fromNode as FunctionNode;
+          if (funcNode.outputs) {
+            const firstPort = Object.keys(funcNode.outputs)[0];
+            portToRead = firstPort || "output";
           } else {
-            // Connections exist but all produced null-like outputs; treat input as empty
-            input = "";
+            portToRead = "output";
           }
         }
-
-        if (node.nodeType === "agent") {
-          const output = await executeAgent(node.id, input);
-          outputs.set(node.id, output);
-        } else if (node.nodeType === "function") {
-          const { outputs: functionOutputs, primaryOutput } = await executeFunction(node.id, input);
-          // Merge port-specific outputs into the main outputs map
-          functionOutputs.forEach((value, key) => {
-            outputs.set(key, value);
-          });
-          // Set the primary output (string) for connections that don't specify a port
-          outputs.set(node.id, primaryOutput);
-        }
+        
+        // Read from the specific port for functions
+        const portOutput = outputs.get(`${c.fromNodeId}:${portToRead}`);
+        return portOutput ?? "";
       });
-
-      // Wait for all nodes in this stage to complete before moving to next stage
-      await Promise.all(nodePromises);
-      addLog("success", `✓ Stage ${i + 1} completed`);
+      
+      const nonEmptyOutputs = rawOutputs.filter((v) => v !== undefined && v !== null && String(v).trim().length > 0);
+      
+      if (nonEmptyOutputs.length > 0) {
+        return nonEmptyOutputs.join("\n\n---\n\n");
+      }
+      
+      return "";
+    };
+    
+    // Execute a single node
+    const executeNode = async (node: WorkflowNode): Promise<void> => {
+      if (executingNodes.has(node.id) || completedNodes.has(node.id)) {
+        return;
+      }
+      
+      executingNodes.add(node.id);
+      const input = getNodeInput(node);
+      
+      if (node.nodeType === "agent") {
+        const output = await executeAgent(node.id, input);
+        outputs.set(node.id, output);
+      } else if (node.nodeType === "function") {
+        const { outputs: functionOutputs, primaryOutput } = await executeFunction(node.id, input);
+        functionOutputs.forEach((value, key) => {
+          outputs.set(key, value);
+        });
+        outputs.set(node.id, primaryOutput);
+      }
+      
+      executingNodes.delete(node.id);
+      completedNodes.add(node.id);
+    };
+    
+    // Check if a node is ready to execute (all dependencies complete)
+    const isNodeReady = (nodeId: string): boolean => {
+      const node = allNodes.find(n => n.id === nodeId);
+      if (!node || node.locked) return false;
+      
+      const dependencies = dependencyMap.get(nodeId) || [];
+      return dependencies.every(depId => completedNodes.has(depId));
+    };
+    
+    // Dependency-driven execution loop
+    addLog("info", "Starting dependency-driven workflow execution");
+    
+    while (completedNodes.size < allNodes.filter(n => !n.locked).length) {
+      // Find all nodes that are ready to execute
+      const readyNodes = allNodes.filter(node => 
+        !node.locked && 
+        !completedNodes.has(node.id) && 
+        !executingNodes.has(node.id) &&
+        isNodeReady(node.id)
+      );
+      
+      if (readyNodes.length === 0) {
+        // No nodes ready - check if we have executing nodes or if we're stuck
+        if (executingNodes.size === 0) {
+          // We're stuck - no nodes executing and no nodes ready
+          const remainingNodes = allNodes.filter(n => !n.locked && !completedNodes.has(n.id));
+          if (remainingNodes.length > 0) {
+            addLog("warning", `Workflow stuck: ${remainingNodes.length} node(s) cannot execute due to missing dependencies`);
+          }
+          break;
+        }
+        // Wait a bit for executing nodes to complete
+        await new Promise(resolve => setTimeout(resolve, 100));
+        continue;
+      }
+      
+      // Execute all ready nodes in parallel
+      addLog("info", `Executing ${readyNodes.length} ready node(s): ${readyNodes.map(n => n.name).join(", ")}`);
+      await Promise.all(readyNodes.map(node => executeNode(node)));
     }
     
     addLog("success", "🎉 Workflow execution completed");
