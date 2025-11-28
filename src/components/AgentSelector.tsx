@@ -12,6 +12,14 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Search, X, FileText, Bot, Sparkles } from "lucide-react";
 
+// Icon mapping for custom agents (string to component)
+const iconMap: Record<string, any> = {
+  Search,
+  FileText,
+  Bot,
+  Sparkles,
+};
+
 interface AgentTemplate {
   id: string;
   name: string;
@@ -161,6 +169,14 @@ export const AgentSelector = ({
     setSelectedCategory("all");
   };
 
+  // Helper to get the icon component (handles both component and string icons)
+  const getIconComponent = (icon: any) => {
+    if (typeof icon === "string") {
+      return iconMap[icon] || Bot; // Fallback to Bot if icon string not found
+    }
+    return icon;
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-[90vw] max-h-[90vh] w-[90vw] h-[90vh] flex flex-col p-0">
@@ -214,28 +230,31 @@ export const AgentSelector = ({
           {/* Agents List - Scrollable */}
           <div className="flex-1 overflow-y-auto px-6 py-4">
             <div className="grid gap-3">
-              {filteredAgents.map((template) => (
-                <Card
-                  key={template.id}
-                  className="p-4 cursor-pointer hover:shadow-md transition-all hover:ring-2 hover:ring-primary/20"
-                  onClick={() => handleSelectAgent(template)}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <template.icon className="h-6 w-6 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2 mb-1">
-                        <h4 className="text-sm font-semibold text-foreground">{template.name}</h4>
-                        <Badge variant="secondary" className="text-xs capitalize shrink-0">
-                          {template.category}
-                        </Badge>
+              {filteredAgents.map((template) => {
+                const IconComponent = getIconComponent(template.icon);
+                return (
+                  <Card
+                    key={template.id}
+                    className="p-4 cursor-pointer hover:shadow-md transition-all hover:ring-2 hover:ring-primary/20"
+                    onClick={() => handleSelectAgent(template)}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <IconComponent className="h-6 w-6 text-primary" />
                       </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed">{template.description}</p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <h4 className="text-sm font-semibold text-foreground">{template.name}</h4>
+                          <Badge variant="secondary" className="text-xs capitalize shrink-0">
+                            {template.category}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground leading-relaxed">{template.description}</p>
+                      </div>
                     </div>
-                  </div>
-                </Card>
-              ))}
+                  </Card>
+                );
+              })}
             </div>
             {filteredAgents.length === 0 && (
               <div className="text-center py-12">
@@ -296,28 +315,31 @@ export const AgentSelector = ({
           {/* Right Content - Agents Grid */}
           <div className="flex-1 overflow-y-auto p-6">
             <div className="grid grid-cols-1 2xl:grid-cols-2 gap-4">
-              {filteredAgents.map((template) => (
-                <Card
-                  key={template.id}
-                  className="p-4 cursor-pointer hover:shadow-lg transition-all hover:ring-2 hover:ring-primary/20"
-                  onClick={() => handleSelectAgent(template)}
-                >
-                  <div className="flex items-start gap-3">
-                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                      <template.icon className="h-6 w-6 text-primary" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-2 mb-1">
-                        <h4 className="text-sm font-semibold text-foreground">{template.name}</h4>
-                        <Badge variant="secondary" className="text-xs capitalize shrink-0">
-                          {template.category}
-                        </Badge>
+              {filteredAgents.map((template) => {
+                const IconComponent = getIconComponent(template.icon);
+                return (
+                  <Card
+                    key={template.id}
+                    className="p-4 cursor-pointer hover:shadow-lg transition-all hover:ring-2 hover:ring-primary/20"
+                    onClick={() => handleSelectAgent(template)}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <IconComponent className="h-6 w-6 text-primary" />
                       </div>
-                      <p className="text-xs text-muted-foreground leading-relaxed">{template.description}</p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <h4 className="text-sm font-semibold text-foreground">{template.name}</h4>
+                          <Badge variant="secondary" className="text-xs capitalize shrink-0">
+                            {template.category}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground leading-relaxed">{template.description}</p>
+                      </div>
                     </div>
-                  </div>
-                </Card>
-              ))}
+                  </Card>
+                );
+              })}
             </div>
             {filteredAgents.length === 0 && (
               <div className="text-center py-12">
