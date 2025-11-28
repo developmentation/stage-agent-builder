@@ -1789,8 +1789,10 @@ const Index = () => {
       dependencyMap.set(nodeId, dependencies);
     });
 
-    // Track completed nodes
-    const completedNodes = new Set<string>();
+    // Track completed nodes, seeding with locked nodes so they act as cached dependencies
+    const completedNodes = new Set<string>(
+      allNodes.filter(n => n.locked).map(n => n.id)
+    );
     const executingNodes = new Set<string>();
     
     // Helper to get input for a node based on its connections
@@ -1809,13 +1811,18 @@ const Index = () => {
         
         // For agents, always use the primary output
         if (fromNode.nodeType === "agent") {
-          return outputs.get(c.fromNodeId) ?? "";
+          const mappedOutput = outputs.get(c.fromNodeId);
+          if (mappedOutput !== undefined) {
+            return mappedOutput;
+          }
+          // Fallback to the agent's existing output (e.g., from a previous run or locked node)
+          return fromNode.output || "";
         }
         
         // Legacy support: if no port specified for functions, default to first port
         if (!portToRead && fromNode.nodeType === "function") {
           const funcNode = fromNode as FunctionNode;
-          if (funcNode.outputs) {
+          if (funcNode.outputs && Object.keys(funcNode.outputs).length > 0) {
             const firstPort = Object.keys(funcNode.outputs)[0];
             portToRead = firstPort || "output";
           } else {
@@ -1824,8 +1831,23 @@ const Index = () => {
         }
         
         // Read from the specific port for functions
-        const portOutput = outputs.get(`${c.fromNodeId}:${portToRead}`);
-        return portOutput ?? "";
+        const portOutput = portToRead ? outputs.get(`${c.fromNodeId}:${portToRead}`) : undefined;
+        if (portOutput !== undefined) {
+          return portOutput;
+        }
+
+        // Fallback for functions: use stored outputs on the node itself (e.g., locked nodes)
+        if (fromNode.nodeType === "function") {
+          const funcNode = fromNode as FunctionNode;
+          if (portToRead && funcNode.outputs && funcNode.outputs[portToRead] !== undefined) {
+            return funcNode.outputs[portToRead] as string;
+          }
+          if (!portToRead && typeof funcNode.output === "string") {
+            return funcNode.output;
+          }
+        }
+
+        return "";
       });
       
       const nonEmptyOutputs = rawOutputs.filter((v) => v !== undefined && v !== null && String(v).trim().length > 0);
@@ -1897,9 +1919,14 @@ const Index = () => {
         continue;
       }
       
-      // Execute all ready nodes in parallel
+      // Execute all ready nodes in parallel without waiting for the whole "wave" to finish
       addLog("info", `Executing ${readyNodes.length} ready node(s): ${readyNodes.map(n => n.name).join(", ")}`);
-      await Promise.all(readyNodes.map(node => executeNode(node)));
+      readyNodes.forEach(node => {
+        void executeNode(node);
+      });
+
+      // Small delay before checking for newly-ready nodes (based on completed dependencies)
+      await new Promise(resolve => setTimeout(resolve, 50));
     }
     
     addLog("success", "🎉 Workflow execution completed");
