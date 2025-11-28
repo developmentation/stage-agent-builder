@@ -108,6 +108,7 @@ const agentTemplates: AgentTemplate[] = [
 
 const categories = [
   { id: "all", name: "All Agents" },
+  { id: "library", name: "Library" },
   { id: "research", name: "Research" },
   { id: "content", name: "Content" },
   { id: "analysis", name: "Analysis" },
@@ -117,18 +118,25 @@ interface AgentSelectorProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSelectAgent: (template: AgentTemplate) => void;
+  customAgents?: any[];
 }
 
 export const AgentSelector = ({
   open,
   onOpenChange,
   onSelectAgent,
+  customAgents = [],
 }: AgentSelectorProps) => {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [searchQuery, setSearchQuery] = useState("");
 
   const filteredAgents = useMemo(() => {
-    let agents = agentTemplates;
+    // Merge custom agents with predefined templates
+    const customAgentsWithCategory = customAgents.map(agent => ({
+      ...agent,
+      category: "library",
+    }));
+    let agents = [...customAgentsWithCategory, ...agentTemplates];
 
     if (selectedCategory !== "all") {
       agents = agents.filter((a) => a.category === selectedCategory);

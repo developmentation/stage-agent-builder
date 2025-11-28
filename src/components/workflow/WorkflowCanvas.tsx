@@ -8,6 +8,7 @@ interface WorkflowCanvasProps {
   selectedNode: string | null;
   connectingFrom: string | null;
   layoutId?: string;
+  customAgents?: any[];
   onSelectNode: (id: string | null) => void;
   onAddAgent: (stageId: string, agentTemplate: any) => void;
   onAddNode: (stageId: string, template: any, nodeType: "agent" | "function" | "tool") => void;
@@ -31,6 +32,7 @@ export const WorkflowCanvas = ({
   selectedNode,
   connectingFrom,
   layoutId = 'default',
+  customAgents = [],
   onSelectNode,
   onAddAgent,
   onAddNode,
@@ -289,6 +291,7 @@ export const WorkflowCanvas = ({
                     selectedNode={selectedNode}
                     connectingFrom={connectingFrom}
                     layoutId={layoutId}
+                    customAgents={customAgents}
                     onSelectNode={onSelectNode}
                     onAddAgent={onAddAgent}
                     onAddNode={onAddNode}

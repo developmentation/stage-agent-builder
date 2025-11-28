@@ -101,6 +101,7 @@ interface WorkflowCanvasModeProps {
   workflow: Workflow;
   selectedNode: WorkflowNode | null;
   isConnecting: boolean;
+  customAgents?: any[];
   onSelectNode: (nodeId: string | null) => void;
   onAddStage: () => void;
   onDeleteStage: (stageId: string) => void;
@@ -133,6 +134,7 @@ export function WorkflowCanvasMode({
   workflow,
   selectedNode,
   isConnecting,
+  customAgents = [],
   onSelectNode,
   onAddStage,
   onDeleteStage,
@@ -620,6 +622,7 @@ export function WorkflowCanvasMode({
             onAddAgent(showAddAgent, agent);
             setShowAddAgent(null);
           }}
+          customAgents={customAgents}
         />
       )}
 

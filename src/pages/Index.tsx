@@ -2048,6 +2048,7 @@ const Index = () => {
                 selectedNode={selectedNode}
                 connectingFrom={connectingFrom}
                 layoutId="mobile"
+                customAgents={customAgents}
                 onSelectNode={setSelectedNode}
                 onAddAgent={addAgent}
                 onAddNode={addNode}
@@ -2081,6 +2082,7 @@ const Index = () => {
                 workflow={workflow}
                 selectedNode={selectedNodeData || null}
                 isConnecting={!!connectingFrom}
+                customAgents={customAgents}
                 onSelectNode={(nodeId) => setSelectedNode(nodeId)}
                 onAddStage={addStage}
                 onDeleteStage={deleteStage}
@@ -2120,6 +2122,7 @@ const Index = () => {
                 selectedNode={selectedNode}
                 connectingFrom={connectingFrom}
                 layoutId="desktop"
+                customAgents={customAgents}
                 onSelectNode={setSelectedNode}
                 onAddAgent={addAgent}
                 onAddNode={addNode}
