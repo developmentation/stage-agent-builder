@@ -896,6 +896,12 @@ const Index = () => {
         if (loaded.workflow) {
           // New format with metadata
           loadedWorkflow = loaded.workflow;
+          
+          // Migrate legacy "default" ports to "output" for consistency
+          loadedWorkflow.connections = loadedWorkflow.connections.map(conn => ({
+            ...conn,
+            fromOutputPort: conn.fromOutputPort === "default" ? "output" : conn.fromOutputPort
+          }));
           setUserInput(loaded.userInput || "");
           setWorkflowName(loaded.workflowName || "Untitled Workflow");
           setCustomAgents(loaded.customAgents || []);
@@ -909,7 +915,10 @@ const Index = () => {
           // Old format (just the workflow object) - ensure stages array exists
           loadedWorkflow = {
             stages: loaded.stages || [],
-            connections: loaded.connections || [],
+            connections: (loaded.connections || []).map((conn: Connection) => ({
+              ...conn,
+              fromOutputPort: conn.fromOutputPort === "default" ? "output" : conn.fromOutputPort
+            })),
             notes: loaded.notes || [],
           };
         }
@@ -1825,24 +1834,24 @@ const Index = () => {
               // Determine which port to read from
               let portToRead = c.fromOutputPort;
               
-              // Legacy support: if no port specified, default to first port
-              if (!portToRead) {
-                if (fromNode.nodeType === "function") {
-                  const funcNode = fromNode as FunctionNode;
-                  // For functions, check if outputs exist and use the first port
-                  if (funcNode.outputs) {
-                    const firstPort = Object.keys(funcNode.outputs)[0];
-                    portToRead = firstPort || "output";
-                  } else {
-                    portToRead = "output";
-                  }
+              // For agents, always use the primary output (stored without port syntax)
+              if (fromNode.nodeType === "agent") {
+                return outputs.get(c.fromNodeId) ?? "";
+              }
+              
+              // Legacy support: if no port specified for functions, default to first port
+              if (!portToRead && fromNode.nodeType === "function") {
+                const funcNode = fromNode as FunctionNode;
+                // For functions, check if outputs exist and use the first port
+                if (funcNode.outputs) {
+                  const firstPort = Object.keys(funcNode.outputs)[0];
+                  portToRead = firstPort || "output";
                 } else {
-                  // For agents, no port syntax needed - use the primary output
-                  return outputs.get(c.fromNodeId) ?? "";
+                  portToRead = "output";
                 }
               }
               
-              // Read from the specific port
+              // Read from the specific port for functions
               const portOutput = outputs.get(`${c.fromNodeId}:${portToRead}`);
               return portOutput ?? "";
             });

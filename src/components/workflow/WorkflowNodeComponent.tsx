@@ -65,9 +65,9 @@ export const WorkflowNodeComponent = memo(({ data }: NodeProps<WorkflowNodeCompo
   const getOutputPorts = () => {
     if (node.nodeType === "function") {
       const functionNode = node as FunctionNode;
-      return functionNode.outputPorts || ["default"];
+      return functionNode.outputPorts || ["output"];
     }
-    return ["default"];
+    return ["output"]; // Use "output" for agents for consistency
   };
 
   const outputPorts = getOutputPorts();
