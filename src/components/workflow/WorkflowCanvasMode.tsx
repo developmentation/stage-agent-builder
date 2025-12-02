@@ -307,8 +307,20 @@ export function WorkflowCanvasMode({
           stage,
           onDelete: () => onDeleteStage(stage.id),
           onRename: (name: string) => onRenameStage(stage.id, name),
-          onAddAgent: () => setShowAddAgent(stage.id),
-          onAddFunction: () => setShowAddFunction(stage.id),
+          onAddAgent: (template?: any) => {
+            if (template) {
+              onAddAgent(stage.id, template);
+            } else {
+              setShowAddAgent(stage.id);
+            }
+          },
+          onAddFunction: (template?: any) => {
+            if (template) {
+              onAddFunction(stage.id, template);
+            } else {
+              setShowAddFunction(stage.id);
+            }
+          },
           onClone: onCloneStage ? () => onCloneStage(stage.id) : undefined,
           onRunStage: onRunStage ? () => onRunStage(stage.id) : undefined,
           width: bounds.width,

@@ -11,8 +11,8 @@ interface StageNodeData {
   stage: Stage;
   onDelete: () => void;
   onRename: (name: string) => void;
-  onAddAgent: () => void;
-  onAddFunction: () => void;
+  onAddAgent: (template?: any) => void;
+  onAddFunction: (template?: any) => void;
   onClone?: () => void;
   onRunStage?: () => void;
   width: number;
@@ -22,6 +22,7 @@ interface StageNodeData {
 export const StageNode = memo(({ data }: NodeProps<StageNodeData>) => {
   const [isEditing, setIsEditing] = useState(false);
   const [stageName, setStageName] = useState(data.stage.name);
+  const [isDragOver, setIsDragOver] = useState(false);
 
   const handleRename = () => {
     if (stageName.trim()) {
@@ -30,10 +31,47 @@ export const StageNode = memo(({ data }: NodeProps<StageNodeData>) => {
     }
   };
 
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const hasTemplate = e.dataTransfer.types.includes("agenttemplate");
+    if (hasTemplate) {
+      setIsDragOver(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+    
+    const templateData = e.dataTransfer.getData("agentTemplate");
+    const nodeType = e.dataTransfer.getData("nodeType") as "agent" | "function" | "tool";
+    
+    if (templateData) {
+      const template = JSON.parse(templateData);
+      if (nodeType === "function") {
+        data.onAddFunction(template);
+      } else {
+        data.onAddAgent(template);
+      }
+    }
+  };
+
   return (
     <Card 
-      className="border-2 border-primary/20 bg-card/95 backdrop-blur-sm shadow-lg"
+      className={`border-2 bg-card/95 backdrop-blur-sm shadow-lg transition-colors ${
+        isDragOver ? "border-primary bg-primary/10" : "border-primary/20"
+      }`}
       style={{ width: data.width, height: data.height }}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
     >
       <CardHeader className="pb-2 space-y-2">
         <div className="flex items-center justify-between gap-2">
@@ -99,7 +137,7 @@ export const StageNode = memo(({ data }: NodeProps<StageNodeData>) => {
           <Button
             variant="outline"
             size="sm"
-            onClick={data.onAddAgent}
+            onClick={() => data.onAddAgent()}
             className="h-7 text-xs flex-1"
           >
             <Bot className="h-3 w-3 mr-1" />
@@ -108,7 +146,7 @@ export const StageNode = memo(({ data }: NodeProps<StageNodeData>) => {
           <Button
             variant="outline"
             size="sm"
-            onClick={data.onAddFunction}
+            onClick={() => data.onAddFunction()}
             className="h-7 text-xs flex-1"
           >
             <FunctionSquare className="h-3 w-3 mr-1" />
