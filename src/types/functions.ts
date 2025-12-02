@@ -35,7 +35,7 @@ export interface FunctionDefinition {
     description: string;
   };
   outputs: string[]; // Array of output port names (e.g., ["output"] or ["true", "false"])
-  supportsMultipleOutputs?: boolean; // If true, allows 1-10 configurable outputs
+  supportsMultipleOutputs?: boolean; // If true, allows 1-50 configurable outputs
   configSchema?: FunctionConfigSchema;
 }
 

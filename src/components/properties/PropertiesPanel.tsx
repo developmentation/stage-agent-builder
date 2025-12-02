@@ -1171,7 +1171,7 @@ export const PropertiesPanel = ({
                           onUpdateNode(activeNode.id, { outputCount: current + 1 });
                         }
                       }}
-                      disabled={((activeNode as FunctionNode).outputCount || 1) >= 10}
+                      disabled={((activeNode as FunctionNode).outputCount || 1) >= 50}
                     >
                       +
                     </Button>
