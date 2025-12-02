@@ -208,7 +208,7 @@ export function WorkflowCanvasMode({
     const getNodeWidth = (node: WorkflowNode): number => {
       if (node.nodeType === "function") {
         const functionNode = node as import("@/types/workflow").FunctionNode;
-        const outputPorts = functionNode.outputPorts || ["default"];
+        const outputPorts = functionNode.outputPorts || ["output"];
         const hasMultiplePorts = outputPorts.length > 1;
         
         if (hasMultiplePorts) {
