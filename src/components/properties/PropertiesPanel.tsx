@@ -1139,7 +1139,7 @@ export const PropertiesPanel = ({
               {renderMemoryViewer(activeNode as FunctionNode)}
               
               {/* Output Count Control for multi-output functions */}
-              {functionDef?.supportsMultipleOutputs && (
+               {functionDef?.supportsMultipleOutputs && (
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Number of Outputs</Label>
                   <div className="flex items-center gap-3 p-3 border rounded-lg bg-muted/30">
@@ -1158,8 +1158,20 @@ export const PropertiesPanel = ({
                       -
                     </Button>
                     <div className="flex-1 text-center">
-                      <div className="text-lg font-semibold">{(activeNode as FunctionNode).outputCount || 1}</div>
-                      <p className="text-xs text-muted-foreground">Output ports</p>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={50}
+                        value={(activeNode as FunctionNode).outputCount || 1}
+                        onChange={(e) => {
+                          const value = Math.max(1, Math.min(50, parseInt(e.target.value) || 1));
+                          if (onUpdateNode) {
+                            onUpdateNode(activeNode.id, { outputCount: value });
+                          }
+                        }}
+                        className="h-8 w-16 text-center mx-auto"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">Output ports</p>
                     </div>
                     <Button
                       variant="outline"
@@ -1167,7 +1179,7 @@ export const PropertiesPanel = ({
                       className="h-8 w-8 p-0"
                       onClick={() => {
                         const current = (activeNode as FunctionNode).outputCount || 1;
-                        if (current < 10 && onUpdateNode) {
+                        if (current < 50 && onUpdateNode) {
                           onUpdateNode(activeNode.id, { outputCount: current + 1 });
                         }
                       }}
@@ -1177,7 +1189,7 @@ export const PropertiesPanel = ({
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Add up to 10 output ports. Each split result will be assigned to a numbered output.
+                    Set 1-50 output ports. Each split result will be assigned to a numbered output.
                   </p>
                 </div>
               )}
