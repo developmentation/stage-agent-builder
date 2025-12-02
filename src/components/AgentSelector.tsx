@@ -171,6 +171,9 @@ export const AgentSelector = ({
 
   // Helper to get the icon component (handles both component and string icons)
   const getIconComponent = (icon: any) => {
+    if (!icon) {
+      return Bot; // Fallback to Bot if icon is undefined/null
+    }
     if (typeof icon === "string") {
       return iconMap[icon] || Bot; // Fallback to Bot if icon string not found
     }
