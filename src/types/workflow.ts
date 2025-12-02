@@ -29,7 +29,7 @@ export interface FunctionNode extends BaseNode {
   functionType: string; // string_contains, concat, is_json, memory, etc.
   config: Record<string, any>; // Function-specific configuration
   outputPorts: string[]; // Array of output port names (e.g., ["true", "false"] for if/else)
-  outputCount?: number; // Number of output ports for multi-output functions (1-10)
+  outputCount?: number; // Number of output ports for multi-output functions (1-50)
   outputs?: Record<string, string>; // Map of output port to value for visual indicators
 }
 
