@@ -1183,8 +1183,8 @@ const Index = () => {
         });
       }
       
-      // {input} uses the resolved input, {prompt} uses global userInput only in stage 1
-      const promptValue = isStage1 ? (userInput || "") : input;
+      // {input} uses the resolved input, {prompt} always uses the original userInput from Stage 1
+      const promptValue = userInput || "";
       
       const userPrompt = agent.userPrompt
         .replace(/{input}/gi, input)
@@ -1537,8 +1537,8 @@ const Index = () => {
         const isStage1 = agentStageIndex === 0;
         
         // {input} always uses the actual input from connections or stage 1 user input
-        // {prompt} only uses global userInput in stage 1 OR if explicitly in template
-        const promptValue = isStage1 ? (userInput || "") : input;
+        // {prompt} always uses the original userInput from Stage 1
+        const promptValue = userInput || "";
         
         const userPrompt = agent.userPrompt
           .replace(/{input}/gi, input)
