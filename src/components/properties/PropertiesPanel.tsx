@@ -926,14 +926,15 @@ export const PropertiesPanel = ({
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="gemini-2.5-flash">Gemini 2.5 Flash</SelectItem>
-                            <SelectItem value="gemini-2.5-pro">Gemini 2.5 Pro</SelectItem>
-                            <SelectItem value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite</SelectItem>
+                            <SelectItem value="gemini-2.5-flash">Gemini 2.5 Flash (Default)</SelectItem>
+                            <SelectItem value="gemini-2.5-pro">Gemini 2.5 Pro (Advanced)</SelectItem>
+                            <SelectItem value="gemini-3-pro-preview">Gemini 3 Pro Preview (Next-Gen)</SelectItem>
+                            <SelectItem value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite (Fast)</SelectItem>
                             <SelectItem value="claude-sonnet-4-5">Claude Sonnet 4.5</SelectItem>
                             <SelectItem value="claude-haiku-4-5">Claude Haiku 4.5</SelectItem>
-                            <SelectItem value="claude-opus-4-1">Claude Opus 4.1</SelectItem>
-                            <SelectItem value="grok-4-fast-reasoning">Grok 4 Fast Reasoning</SelectItem>
-                            <SelectItem value="grok-4-fast-non-reasoning">Grok 4 Fast Non-Reasoning</SelectItem>
+                            <SelectItem value="claude-opus-4-5">Claude Opus 4.5</SelectItem>
+                            <SelectItem value="grok-4-1-fast-reasoning">Grok 4.1 Fast Reasoning</SelectItem>
+                            <SelectItem value="grok-4-1-fast-non-reasoning">Grok 4.1 Fast Non-Reasoning</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -953,7 +954,7 @@ export const PropertiesPanel = ({
                             <SelectItem value="8192">Medium (8,192 tokens)</SelectItem>
                             <SelectItem value="16384">Large (16,384 tokens)</SelectItem>
                             <SelectItem value="32768">XL (32,768 tokens)</SelectItem>
-                            {(activeNode as AgentNode).model === "claude-opus-4-1" ? (
+                            {(activeNode as AgentNode).model === "claude-opus-4-5" ? (
                               <SelectItem value="32000">2XL (32,000 tokens)</SelectItem>
                             ) : (activeNode as AgentNode).model?.startsWith("claude-") ? (
                               <SelectItem value="64000">2XL (64,000 tokens)</SelectItem>
@@ -966,6 +967,7 @@ export const PropertiesPanel = ({
 
                       {/* Thinking Budget - only for compatible models */}
                       {(activeNode as AgentNode).model !== "gemini-2.5-pro" && 
+                       (activeNode as AgentNode).model !== "gemini-3-pro-preview" &&
                        !(activeNode as AgentNode).model?.startsWith("claude-") && 
                        !(activeNode as AgentNode).model?.startsWith("grok-") && (
                         <div className="space-y-2">

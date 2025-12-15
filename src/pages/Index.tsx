@@ -35,7 +35,7 @@ const Index = () => {
   const [workflowName, setWorkflowName] = useState<string>("Untitled Workflow");
   const [customAgents, setCustomAgents] = useState<any[]>([]);
   const [logs, setLogs] = useState<LogEntry[]>([]);
-  const [selectedModel, setSelectedModel] = useState<"gemini-2.5-flash" | "gemini-2.5-pro" | "gemini-2.5-flash-lite" | "claude-sonnet-4-5" | "claude-haiku-4-5" | "claude-opus-4-1" | "grok-4-fast-reasoning" | "grok-4-fast-non-reasoning">("gemini-2.5-flash");
+  const [selectedModel, setSelectedModel] = useState<"gemini-2.5-flash" | "gemini-2.5-pro" | "gemini-3-pro-preview" | "gemini-2.5-flash-lite" | "claude-sonnet-4-5" | "claude-haiku-4-5" | "claude-opus-4-5" | "grok-4-1-fast-reasoning" | "grok-4-1-fast-non-reasoning">("gemini-2.5-flash");
   const [responseLength, setResponseLength] = useState<number>(16384);
   const [thinkingEnabled, setThinkingEnabled] = useState<boolean>(false);
   const [thinkingBudget, setThinkingBudget] = useState<number>(0);
