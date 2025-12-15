@@ -4,7 +4,14 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { X, Plus, Settings, Play, Database, Download, Eye, EyeOff, Save, Upload, Lock, Unlock, Copy, BookPlus } from "lucide-react";
+import { X, Plus, Settings, Play, Database, Download, Eye, EyeOff, Save, Upload, Lock, Unlock, Copy, BookPlus, Bot } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { useState, useRef } from "react";
@@ -870,6 +877,156 @@ export const PropertiesPanel = ({
                   }}
                 />
               </div>
+
+              {/* Use a Specific Model toggle - only for agents */}
+              {activeNode.nodeType === "agent" && (
+                <div className="space-y-3 p-3 border rounded-lg bg-muted/30">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Bot className="h-4 w-4 text-muted-foreground" />
+                      <div>
+                        <Label htmlFor="use-specific-model-toggle" className="text-sm font-medium cursor-pointer">
+                          Use a Specific Model
+                        </Label>
+                        <p className="text-xs text-muted-foreground">
+                          Override global workflow model settings
+                        </p>
+                      </div>
+                    </div>
+                    <Switch
+                      id="use-specific-model-toggle"
+                      checked={(activeNode as AgentNode).useSpecificModel || false}
+                      onCheckedChange={(checked) => {
+                        onUpdateAgent(activeNode.id, { 
+                          useSpecificModel: checked,
+                          // Initialize with sensible defaults when enabling
+                          ...(checked && !(activeNode as AgentNode).model ? {
+                            model: "gemini-2.5-flash",
+                            responseLength: 16384,
+                            thinkingEnabled: false,
+                            thinkingBudget: 0,
+                          } : {})
+                        });
+                      }}
+                    />
+                  </div>
+                  
+                  {(activeNode as AgentNode).useSpecificModel && (
+                    <div className="space-y-4 pt-3 border-t">
+                      {/* Model Selection */}
+                      <div className="space-y-2">
+                        <Label htmlFor="agent-model-select" className="text-sm font-medium">Model</Label>
+                        <Select 
+                          value={(activeNode as AgentNode).model || "gemini-2.5-flash"} 
+                          onValueChange={(value) => onUpdateAgent(activeNode.id, { 
+                            model: value as AgentNode["model"]
+                          })}
+                        >
+                          <SelectTrigger id="agent-model-select" className="w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="gemini-2.5-flash">Gemini 2.5 Flash</SelectItem>
+                            <SelectItem value="gemini-2.5-pro">Gemini 2.5 Pro</SelectItem>
+                            <SelectItem value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite</SelectItem>
+                            <SelectItem value="claude-sonnet-4-5">Claude Sonnet 4.5</SelectItem>
+                            <SelectItem value="claude-haiku-4-5">Claude Haiku 4.5</SelectItem>
+                            <SelectItem value="claude-opus-4-1">Claude Opus 4.1</SelectItem>
+                            <SelectItem value="grok-4-fast-reasoning">Grok 4 Fast Reasoning</SelectItem>
+                            <SelectItem value="grok-4-fast-non-reasoning">Grok 4 Fast Non-Reasoning</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Response Length */}
+                      <div className="space-y-2">
+                        <Label htmlFor="agent-response-length-select" className="text-sm font-medium">Response Length</Label>
+                        <Select 
+                          value={((activeNode as AgentNode).responseLength || 16384).toString()} 
+                          onValueChange={(val) => onUpdateAgent(activeNode.id, { responseLength: Number(val) })}
+                        >
+                          <SelectTrigger id="agent-response-length-select" className="w-full">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="2048">Short (2,048 tokens)</SelectItem>
+                            <SelectItem value="8192">Medium (8,192 tokens)</SelectItem>
+                            <SelectItem value="16384">Large (16,384 tokens)</SelectItem>
+                            <SelectItem value="32768">XL (32,768 tokens)</SelectItem>
+                            {(activeNode as AgentNode).model === "claude-opus-4-1" ? (
+                              <SelectItem value="32000">2XL (32,000 tokens)</SelectItem>
+                            ) : (activeNode as AgentNode).model?.startsWith("claude-") ? (
+                              <SelectItem value="64000">2XL (64,000 tokens)</SelectItem>
+                            ) : (
+                              <SelectItem value="65535">2XL (65,535 tokens)</SelectItem>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {/* Thinking Budget - only for compatible models */}
+                      {(activeNode as AgentNode).model !== "gemini-2.5-pro" && 
+                       !(activeNode as AgentNode).model?.startsWith("claude-") && 
+                       !(activeNode as AgentNode).model?.startsWith("grok-") && (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <Label htmlFor="agent-thinking-enabled" className="text-sm font-medium">
+                              Thinking Enabled
+                            </Label>
+                            <Switch
+                              id="agent-thinking-enabled"
+                              checked={(activeNode as AgentNode).thinkingEnabled || false}
+                              onCheckedChange={(checked) => {
+                                onUpdateAgent(activeNode.id, { 
+                                  thinkingEnabled: checked,
+                                  thinkingBudget: checked ? -1 : 0
+                                });
+                              }}
+                            />
+                          </div>
+                          
+                          {(activeNode as AgentNode).thinkingEnabled && (
+                            <div className="space-y-2 mt-2">
+                              <Label htmlFor="agent-thinking-budget-select" className="text-sm font-medium">
+                                Thinking Budget
+                              </Label>
+                              <Select 
+                                value={((activeNode as AgentNode).thinkingBudget ?? -1).toString()} 
+                                onValueChange={(val) => onUpdateAgent(activeNode.id, { thinkingBudget: Number(val) })}
+                              >
+                                <SelectTrigger id="agent-thinking-budget-select" className="w-full">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="-1">Fully Activated (Auto)</SelectItem>
+                                  {(activeNode as AgentNode).model === "gemini-2.5-flash" && (
+                                    <>
+                                      <SelectItem value="1024">Small (1,024 tokens)</SelectItem>
+                                      <SelectItem value="4096">Medium (4,096 tokens)</SelectItem>
+                                      <SelectItem value="8192">Large (8,192 tokens)</SelectItem>
+                                      <SelectItem value="16384">XL (16,384 tokens)</SelectItem>
+                                      <SelectItem value="24576">Max (24,576 tokens)</SelectItem>
+                                    </>
+                                  )}
+                                  {(activeNode as AgentNode).model === "gemini-2.5-flash-lite" && (
+                                    <>
+                                      <SelectItem value="512">Minimum (512 tokens)</SelectItem>
+                                      <SelectItem value="1024">Small (1,024 tokens)</SelectItem>
+                                      <SelectItem value="2048">Medium (2,048 tokens)</SelectItem>
+                                      <SelectItem value="4096">Large (4,096 tokens)</SelectItem>
+                                      <SelectItem value="8192">Max (8,192 tokens)</SelectItem>
+                                    </>
+                                  )}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </>
           )}
 
