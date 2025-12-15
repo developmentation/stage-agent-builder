@@ -1198,10 +1198,16 @@ const Index = () => {
       
       addLog("running", `Agent ${agent.name} processing with AI...`);
       
-      // Determine which edge function to use based on model
-      const edgeFunction = selectedModel.startsWith("claude-") 
+      // Determine effective model settings - use agent-specific if useSpecificModel is true, otherwise global
+      const effectiveModel = agent.useSpecificModel && agent.model ? agent.model : selectedModel;
+      const effectiveResponseLength = agent.useSpecificModel && agent.responseLength ? agent.responseLength : responseLength;
+      const effectiveThinkingEnabled = agent.useSpecificModel ? (agent.thinkingEnabled ?? false) : thinkingEnabled;
+      const effectiveThinkingBudget = agent.useSpecificModel ? (agent.thinkingBudget ?? 0) : thinkingBudget;
+      
+      // Determine which edge function to use based on effective model
+      const edgeFunction = effectiveModel.startsWith("claude-") 
         ? "run-agent-anthropic" 
-        : selectedModel.startsWith("grok-")
+        : effectiveModel.startsWith("grok-")
         ? "run-agent-xai"
         : "run-agent";
       
@@ -1214,10 +1220,10 @@ const Index = () => {
           systemPrompt: agent.systemPrompt,
           userPrompt,
           tools: toolsPayload,
-          model: selectedModel,
-          maxOutputTokens: responseLength,
-          thinkingEnabled,
-          thinkingBudget,
+          model: effectiveModel,
+          maxOutputTokens: effectiveResponseLength,
+          thinkingEnabled: effectiveThinkingEnabled,
+          thinkingBudget: effectiveThinkingBudget,
         }),
       });
 
@@ -1552,10 +1558,16 @@ const Index = () => {
         
         addLog("running", `Agent ${agent.name} processing with AI...`);
         
-        // Determine which edge function to use based on model
-        const edgeFunction = selectedModel.startsWith("claude-") 
+        // Determine effective model settings - use agent-specific if useSpecificModel is true, otherwise global
+        const effectiveModel = agent.useSpecificModel && agent.model ? agent.model : selectedModel;
+        const effectiveResponseLength = agent.useSpecificModel && agent.responseLength ? agent.responseLength : responseLength;
+        const effectiveThinkingEnabled = agent.useSpecificModel ? (agent.thinkingEnabled ?? false) : thinkingEnabled;
+        const effectiveThinkingBudget = agent.useSpecificModel ? (agent.thinkingBudget ?? 0) : thinkingBudget;
+        
+        // Determine which edge function to use based on effective model
+        const edgeFunction = effectiveModel.startsWith("claude-") 
           ? "run-agent-anthropic" 
-          : selectedModel.startsWith("grok-")
+          : effectiveModel.startsWith("grok-")
           ? "run-agent-xai"
           : "run-agent";
         
@@ -1568,10 +1580,10 @@ const Index = () => {
             systemPrompt: agent.systemPrompt,
             userPrompt,
             tools: toolsPayload,
-            model: selectedModel,
-            maxOutputTokens: responseLength,
-            thinkingEnabled,
-            thinkingBudget,
+            model: effectiveModel,
+            maxOutputTokens: effectiveResponseLength,
+            thinkingEnabled: effectiveThinkingEnabled,
+            thinkingBudget: effectiveThinkingBudget,
           }),
         });
 
