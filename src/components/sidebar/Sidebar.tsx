@@ -97,8 +97,8 @@ interface SidebarProps {
   onWorkflowNameChange: (value: string) => void;
   customAgents: any[];
   onCustomAgentsChange: (agents: any[]) => void;
-  selectedModel: "gemini-2.5-flash" | "gemini-2.5-pro" | "gemini-2.5-flash-lite" | "claude-sonnet-4-5" | "claude-haiku-4-5" | "claude-opus-4-1" | "grok-4-fast-reasoning" | "grok-4-fast-non-reasoning";
-  onSelectedModelChange: (model: "gemini-2.5-flash" | "gemini-2.5-pro" | "gemini-2.5-flash-lite" | "claude-sonnet-4-5" | "claude-haiku-4-5" | "claude-opus-4-1" | "grok-4-fast-reasoning" | "grok-4-fast-non-reasoning") => void;
+  selectedModel: "gemini-2.5-flash" | "gemini-2.5-pro" | "gemini-3-pro-preview" | "gemini-2.5-flash-lite" | "claude-sonnet-4-5" | "claude-haiku-4-5" | "claude-opus-4-5" | "grok-4-1-fast-reasoning" | "grok-4-1-fast-non-reasoning";
+  onSelectedModelChange: (model: "gemini-2.5-flash" | "gemini-2.5-pro" | "gemini-3-pro-preview" | "gemini-2.5-flash-lite" | "claude-sonnet-4-5" | "claude-haiku-4-5" | "claude-opus-4-5" | "grok-4-1-fast-reasoning" | "grok-4-1-fast-non-reasoning") => void;
   responseLength: number;
   onResponseLengthChange: (length: number) => void;
   thinkingEnabled: boolean;
@@ -516,30 +516,15 @@ export const Sidebar = ({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="gemini-2.5-flash">
-                  Gemini 2.5 Flash (Default)
-                </SelectItem>
-                <SelectItem value="gemini-2.5-pro">
-                  Gemini 2.5 Pro (Advanced)
-                </SelectItem>
-                <SelectItem value="gemini-2.5-flash-lite">
-                  Gemini 2.5 Flash Lite (Fast)
-                </SelectItem>
-                <SelectItem value="claude-sonnet-4-5">
-                  Claude Sonnet 4.5
-                </SelectItem>
-                <SelectItem value="claude-haiku-4-5">
-                  Claude Haiku 4.5
-                </SelectItem>
-                <SelectItem value="claude-opus-4-1">
-                  Claude Opus 4.1
-                </SelectItem>
-                <SelectItem value="grok-4-fast-reasoning">
-                  Grok 4 Fast Reasoning
-                </SelectItem>
-                <SelectItem value="grok-4-fast-non-reasoning">
-                  Grok 4 Fast Non-Reasoning
-                </SelectItem>
+                <SelectItem value="gemini-2.5-flash">Gemini 2.5 Flash (Default)</SelectItem>
+                <SelectItem value="gemini-2.5-pro">Gemini 2.5 Pro (Advanced)</SelectItem>
+                <SelectItem value="gemini-3-pro-preview">Gemini 3 Pro Preview (Next-Gen)</SelectItem>
+                <SelectItem value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite (Fast)</SelectItem>
+                <SelectItem value="claude-sonnet-4-5">Claude Sonnet 4.5</SelectItem>
+                <SelectItem value="claude-haiku-4-5">Claude Haiku 4.5</SelectItem>
+                <SelectItem value="claude-opus-4-5">Claude Opus 4.5</SelectItem>
+                <SelectItem value="grok-4-1-fast-reasoning">Grok 4.1 Fast Reasoning</SelectItem>
+                <SelectItem value="grok-4-1-fast-non-reasoning">Grok 4.1 Fast Non-Reasoning</SelectItem>
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
@@ -561,7 +546,7 @@ export const Sidebar = ({
                 <SelectItem value="8192">Medium (8,192 tokens)</SelectItem>
                 <SelectItem value="16384">Large (16,384 tokens)</SelectItem>
                 <SelectItem value="32768">XL (32,768 tokens)</SelectItem>
-                {selectedModel === "claude-opus-4-1" ? (
+                {selectedModel === "claude-opus-4-5" ? (
                   <SelectItem value="32000">2XL (32,000 tokens)</SelectItem>
                 ) : selectedModel.startsWith("claude-") ? (
                   <SelectItem value="64000">2XL (64,000 tokens)</SelectItem>
@@ -576,7 +561,7 @@ export const Sidebar = ({
           </div>
 
           {/* Thinking Budget Section */}
-          {selectedModel !== "gemini-2.5-pro" && !selectedModel.startsWith("claude-") && !selectedModel.startsWith("grok-") && (
+          {selectedModel !== "gemini-2.5-pro" && selectedModel !== "gemini-3-pro-preview" && !selectedModel.startsWith("claude-") && !selectedModel.startsWith("grok-") && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label htmlFor="thinking-enabled" className="text-sm font-semibold text-foreground">
