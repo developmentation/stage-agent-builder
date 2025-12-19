@@ -541,15 +541,12 @@ export function WorkflowCanvasMode({
         if (!currentStage) return;
 
         const bounds = stageBounds[currentStage.id];
-        if (!bounds) return;
-        
         const stagePaddingLeft = 40;
         const stagePaddingTop = 100;
 
-        // Calculate absolute position: stage position + relative node position within stage
-        // The node.position is relative to the stage, so we add it to the stage's absolute position
-        const absoluteX = bounds.x + node.position.x;
-        const absoluteY = bounds.y + node.position.y;
+        // Calculate absolute position from relative position within stage
+        const absoluteX = bounds.minX + (node.position.x - stagePaddingLeft);
+        const absoluteY = bounds.minY + (node.position.y - stagePaddingTop);
 
         // Check if Alt key was held - if so, check for cross-stage move
         if (altKeyPressed && onMoveNodeToStage) {
