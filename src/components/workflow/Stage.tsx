@@ -31,6 +31,7 @@ interface StageProps {
   onRunFunction?: (functionId: string, customInput?: string) => void;
   onCloneStage?: (stageId: string) => void;
   onRunStage?: (stageId: string) => void;
+  onMoveNodeToStage?: (nodeId: string, fromStageId: string, toStageId: string) => void;
 }
 
 export const Stage = ({
@@ -55,6 +56,7 @@ export const Stage = ({
   onRunFunction,
   onCloneStage,
   onRunStage,
+  onMoveNodeToStage,
 }: StageProps) => {
   const [isAddAgentOpen, setIsAddAgentOpen] = useState(false);
   const [isAddFunctionOpen, setIsAddFunctionOpen] = useState(false);
@@ -62,6 +64,7 @@ export const Stage = ({
   const displayName = stage.name || `Stage ${stageNumber}`;
   const [editedName, setEditedName] = useState(displayName);
   const [stageMinimized, setStageMinimized] = useState(false);
+  const [isDragOverForNode, setIsDragOverForNode] = useState(false);
 
   // Check if all nodes are minimized to determine initial state
   const allMinimized = stage.nodes.length > 0 && stage.nodes.every(node => node.minimized);
@@ -85,13 +88,26 @@ export const Stage = ({
     e.dataTransfer.setData("stageIndex", stageIndex.toString());
   };
 
+  // Handle node drag start for moving between stages
+  const handleNodeDragStart = (e: React.DragEvent, nodeId: string) => {
+    e.stopPropagation(); // Prevent stage drag from triggering
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("nodeId", nodeId);
+    e.dataTransfer.setData("sourceStageId", stage.id);
+  };
+
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     const templateData = e.dataTransfer.types.includes("agenttemplate");
     const stageData = e.dataTransfer.types.includes("text/plain");
+    const nodeData = e.dataTransfer.types.includes("nodeid");
     
     if (templateData) {
       e.currentTarget.classList.add("border-primary");
+    } else if (nodeData) {
+      // Node being dragged from another stage
+      e.dataTransfer.dropEffect = "move";
+      setIsDragOverForNode(true);
     } else if (stageData) {
       e.dataTransfer.dropEffect = "move";
     }
@@ -99,15 +115,27 @@ export const Stage = ({
 
   const handleDragLeave = (e: React.DragEvent) => {
     e.currentTarget.classList.remove("border-primary");
+    setIsDragOverForNode(false);
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.currentTarget.classList.remove("border-primary");
+    setIsDragOverForNode(false);
     
     const templateData = e.dataTransfer.getData("agentTemplate");
     const nodeType = e.dataTransfer.getData("nodeType") as "agent" | "function" | "tool";
     const draggedStageIndex = e.dataTransfer.getData("stageIndex");
+    const draggedNodeId = e.dataTransfer.getData("nodeId");
+    const sourceStageId = e.dataTransfer.getData("sourceStageId");
+    
+    // Handle node move between stages
+    if (draggedNodeId && sourceStageId && onMoveNodeToStage) {
+      if (sourceStageId !== stage.id) {
+        onMoveNodeToStage(draggedNodeId, sourceStageId, stage.id);
+      }
+      return;
+    }
     
     if (templateData) {
       const template = JSON.parse(templateData);
@@ -157,7 +185,9 @@ export const Stage = ({
 
   return (
     <Card
-      className="p-3 bg-card/80 backdrop-blur border-border/60 shadow-md transition-colors w-full max-w-full"
+      className={`p-3 bg-card/80 backdrop-blur border-border/60 shadow-md transition-colors w-full max-w-full ${
+        isDragOverForNode ? "border-2 border-primary bg-primary/5" : ""
+      }`}
       draggable
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
@@ -266,7 +296,9 @@ export const Stage = ({
               <div 
                 key={node.id} 
                 id={`agent-${node.id}`}
-                className={node.minimized ? "w-16 flex-shrink-0" : "w-full md:w-[calc(50%-0.375rem)] flex-shrink-0"}
+                className={`${node.minimized ? "w-16 flex-shrink-0" : "w-full md:w-[calc(50%-0.375rem)] flex-shrink-0"} cursor-grab active:cursor-grabbing`}
+                draggable
+                onDragStart={(e) => handleNodeDragStart(e, node.id)}
               >
                 {node.nodeType === "agent" ? (
                   <AgentNode
