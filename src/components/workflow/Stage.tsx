@@ -24,7 +24,7 @@ interface StageProps {
   onDeleteStage: (stageId: string) => void;
   onRenameStage: (stageId: string, name: string) => void;
   onReorderStages: (fromIndex: number, toIndex: number) => void;
-  onMoveNodeToStage?: (nodeId: string, targetStageId: string) => void;
+  onMoveNodeToStage?: (nodeId: string, targetStageId: string, newPosition?: { x: number; y: number }) => void;
   onToggleMinimize: (agentId: string) => void;
   onToggleLock: (nodeId: string) => void;
   onPortClick: (agentId: string, isOutput: boolean, outputPort?: string) => void;
