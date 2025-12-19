@@ -731,6 +731,73 @@ const Index = () => {
     });
   };
 
+  const moveNodeToStage = (nodeId: string, fromStageId: string, toStageId: string) => {
+    if (fromStageId === toStageId) return;
+    
+    setWorkflow((prev) => {
+      const fromStage = prev.stages.find(s => s.id === fromStageId);
+      const toStage = prev.stages.find(s => s.id === toStageId);
+      
+      if (!fromStage || !toStage) return prev;
+      
+      const nodeToMove = fromStage.nodes.find(n => n.id === nodeId);
+      if (!nodeToMove) return prev;
+      
+      // Calculate new position in target stage
+      const nodeHeight = 150;
+      const nodeSpacing = 30;
+      let newPosition = nodeToMove.position;
+      
+      if (toStage.nodes.length === 0) {
+        // First node in the target stage
+        if (toStage.position) {
+          const stagePaddingLeft = 40;
+          const stagePaddingTop = 100;
+          newPosition = {
+            x: toStage.position.x + stagePaddingLeft,
+            y: toStage.position.y + stagePaddingTop,
+          };
+        } else {
+          newPosition = { x: 0, y: 0 };
+        }
+      } else {
+        // Position below the lowest existing node
+        let minX = Infinity;
+        let maxY = -Infinity;
+        
+        toStage.nodes.forEach((node) => {
+          const nodeX = node.position?.x ?? 0;
+          const nodeY = node.position?.y ?? 0;
+          minX = Math.min(minX, nodeX);
+          maxY = Math.max(maxY, nodeY);
+        });
+
+        newPosition = {
+          x: minX,
+          y: maxY + nodeHeight + nodeSpacing,
+        };
+      }
+      
+      const movedNode = { ...nodeToMove, position: newPosition };
+      
+      return {
+        ...prev,
+        stages: prev.stages.map((stage) => {
+          if (stage.id === fromStageId) {
+            return { ...stage, nodes: stage.nodes.filter(n => n.id !== nodeId) };
+          }
+          if (stage.id === toStageId) {
+            return { ...stage, nodes: [...stage.nodes, movedNode] };
+          }
+          return stage;
+        }),
+        // Connections are preserved - the node ID doesn't change
+      };
+    });
+    
+    addLog("info", `Moved node to new stage`);
+  };
+
   const addToolInstance = (nodeId: string, toolId: string) => {
     const newToolInstance: ToolInstance = {
       id: `tool-${Date.now()}`,
@@ -2077,6 +2144,7 @@ const Index = () => {
                 onRunFunction={runSingleFunction}
                 onCloneStage={cloneStage}
                 onRunStage={runStage}
+                onMoveNodeToStage={moveNodeToStage}
               />
             )
           }
