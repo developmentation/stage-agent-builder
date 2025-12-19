@@ -2225,6 +2225,7 @@ const Index = () => {
                 onRunFunction={runSingleFunction}
                 onCloneStage={cloneStage}
                 onRunStage={runStage}
+                onMoveNodeToStage={moveNodeToStage}
               />
             )
           }
