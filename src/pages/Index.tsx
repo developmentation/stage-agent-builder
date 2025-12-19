@@ -322,6 +322,86 @@ const Index = () => {
     });
   };
 
+  const moveNodeToStage = (nodeId: string, targetStageId: string) => {
+    setWorkflow((prev) => {
+      // Find current stage and node
+      let sourceStageIndex = -1;
+      let nodeToMove: WorkflowNode | null = null;
+      
+      for (let i = 0; i < prev.stages.length; i++) {
+        const foundNode = prev.stages[i].nodes.find(n => n.id === nodeId);
+        if (foundNode) {
+          sourceStageIndex = i;
+          nodeToMove = foundNode;
+          break;
+        }
+      }
+      
+      if (!nodeToMove || sourceStageIndex === -1) {
+        addLog("warning", "Could not find node to move");
+        return prev;
+      }
+      
+      const targetStageIndex = prev.stages.findIndex(s => s.id === targetStageId);
+      if (targetStageIndex === -1) {
+        addLog("warning", "Could not find target stage");
+        return prev;
+      }
+      
+      // Don't move if same stage
+      if (prev.stages[sourceStageIndex].id === targetStageId) {
+        return prev;
+      }
+      
+      // Remove from source stage and add to target stage
+      const newStages = prev.stages.map((stage, idx) => {
+        if (idx === sourceStageIndex) {
+          return {
+            ...stage,
+            nodes: stage.nodes.filter(n => n.id !== nodeId)
+          };
+        }
+        if (stage.id === targetStageId) {
+          return {
+            ...stage,
+            nodes: [...stage.nodes, nodeToMove!]
+          };
+        }
+        return stage;
+      });
+      
+      // Validate connections - keep connections but warn about direction issues
+      const getStageIndex = (nId: string): number => {
+        for (let i = 0; i < newStages.length; i++) {
+          if (newStages[i].nodes.some(n => n.id === nId)) {
+            return i;
+          }
+        }
+        return -1;
+      };
+      
+      // Filter out invalid backward connections
+      const validConnections = prev.connections.filter((conn) => {
+        const fromStageIndex = getStageIndex(conn.fromNodeId);
+        const toStageIndex = getStageIndex(conn.toNodeId);
+        return fromStageIndex !== -1 && toStageIndex !== -1 && fromStageIndex < toStageIndex;
+      });
+      
+      const removedCount = prev.connections.length - validConnections.length;
+      if (removedCount > 0) {
+        addLog("warning", `Removed ${removedCount} invalid connection(s) after moving node`);
+      }
+      
+      addLog("info", `Moved "${nodeToMove.name}" to ${newStages[targetStageIndex].name}`);
+      
+      return {
+        ...prev,
+        stages: newStages,
+        connections: validConnections,
+      };
+    });
+  };
+
   const addNode = (stageId: string, template: any, nodeType: "agent" | "function" | "tool" = "agent") => {
     let newNode: WorkflowNode;
 
@@ -2068,6 +2148,7 @@ const Index = () => {
                 onDeleteStage={deleteStage}
                 onRenameStage={renameStage}
                 onReorderStages={reorderStages}
+                onMoveNodeToStage={moveNodeToStage}
                 onToggleMinimize={toggleMinimize}
                 onToggleLock={toggleNodeLock}
                 onStartConnection={handleStartConnection}
@@ -2142,6 +2223,7 @@ const Index = () => {
                 onDeleteStage={deleteStage}
                 onRenameStage={renameStage}
                 onReorderStages={reorderStages}
+                onMoveNodeToStage={moveNodeToStage}
                 onToggleMinimize={toggleMinimize}
                 onToggleLock={toggleNodeLock}
                 onStartConnection={handleStartConnection}

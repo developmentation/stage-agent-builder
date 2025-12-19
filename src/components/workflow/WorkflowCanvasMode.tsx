@@ -116,6 +116,7 @@ interface WorkflowCanvasModeProps {
   onUpdateNode: (nodeId: string, updates: Partial<WorkflowNode>) => void;
   onUpdateStagePosition: (stageId: string, position: { x: number; y: number }) => void;
   onUpdateNodePosition: (nodeId: string, position: { x: number; y: number }) => void;
+  onMoveNodeToStage?: (nodeId: string, targetStageId: string) => void;
   onDeleteConnection?: (connectionId: string) => void;
   onCompleteConnection?: (fromNodeId: string, toNodeId: string, fromOutputPort?: string) => void;
   onToggleViewMode?: () => void;
@@ -148,6 +149,7 @@ export function WorkflowCanvasMode({
   onUpdateNode,
   onUpdateStagePosition,
   onUpdateNodePosition,
+  onMoveNodeToStage,
   onDeleteConnection,
   onCompleteConnection,
   onToggleViewMode,
@@ -516,6 +518,33 @@ export function WorkflowCanvasMode({
         const stage = workflow.stages.find(s => `stage-${s.id}` === node.parentNode);
         if (!stage) return;
 
+        // Check if Alt key is held - if so, check if we should move to another stage
+        if (event.altKey && onMoveNodeToStage) {
+          // Get the absolute position of the node
+          const bounds = stageBounds[stage.id];
+          const stagePaddingLeft = 40;
+          const stagePaddingTop = 100;
+          const absoluteX = bounds.x + node.position.x;
+          const absoluteY = bounds.y + node.position.y;
+          
+          // Find which stage the node was dropped on
+          for (const targetStage of workflow.stages) {
+            if (targetStage.id === stage.id) continue;
+            
+            const targetBounds = stageBounds[targetStage.id];
+            if (!targetBounds) continue;
+            
+            // Check if node is within target stage bounds
+            if (absoluteX >= targetBounds.x && 
+                absoluteX <= targetBounds.x + targetBounds.width &&
+                absoluteY >= targetBounds.y && 
+                absoluteY <= targetBounds.y + targetBounds.height) {
+              onMoveNodeToStage(node.id, targetStage.id);
+              return;
+            }
+          }
+        }
+
         const bounds = stageBounds[stage.id];
         const stagePaddingLeft = 40;
         const stagePaddingTop = 100;
@@ -527,7 +556,7 @@ export function WorkflowCanvasMode({
         onUpdateNodePosition(node.id, { x: absoluteX, y: absoluteY });
       }
     },
-    [workflow.stages, stageBounds, onUpdateNodePosition, onUpdateStagePosition, onUpdateNote]
+    [workflow.stages, stageBounds, onUpdateNodePosition, onUpdateStagePosition, onUpdateNote, onMoveNodeToStage]
   );
 
   return (

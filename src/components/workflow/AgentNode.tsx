@@ -18,6 +18,7 @@ interface AgentNodeProps {
   onToggleLock: () => void;
   onPortClick: (agentId: string, isOutput: boolean) => void;
   onRun?: () => void;
+  onDragStart?: (e: React.DragEvent, nodeId: string) => void;
 }
 
 const agentIcons = {
@@ -33,7 +34,7 @@ const statusConfig = {
   error: { icon: AlertCircle, color: "text-destructive", bg: "bg-destructive/10" },
 };
 
-export const AgentNode = ({ agent, isSelected, isConnecting, agentNumber, stageIndex, layoutId = 'default', onSelect, onDelete, onToggleMinimize, onToggleLock, onPortClick, onRun }: AgentNodeProps) => {
+export const AgentNode = ({ agent, isSelected, isConnecting, agentNumber, stageIndex, layoutId = 'default', onSelect, onDelete, onToggleMinimize, onToggleLock, onPortClick, onRun, onDragStart }: AgentNodeProps) => {
   const Icon = agentIcons[agent.type as keyof typeof agentIcons] || Bot;
   const statusInfo = statusConfig[agent.status];
   const StatusIcon = statusInfo.icon;
@@ -119,6 +120,14 @@ export const AgentNode = ({ agent, isSelected, isConnecting, agentNumber, stageI
     }
   };
 
+  const handleDragStart = (e: React.DragEvent) => {
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("existingNodeId", agent.id);
+    if (onDragStart) {
+      onDragStart(e, agent.id);
+    }
+  };
+
   // Status-based styling
   const statusStyles = {
     running: "bg-yellow-50 dark:bg-yellow-950/20",
@@ -134,6 +143,8 @@ export const AgentNode = ({ agent, isSelected, isConnecting, agentNumber, stageI
           isSelected ? "ring-2 ring-primary shadow-lg" : ""
         } ${statusStyles[agent.status]}`}
         onClick={onToggleMinimize}
+        draggable
+        onDragStart={handleDragStart}
         style={{ position: 'relative', zIndex: 20 }}
       >
         {/* Input/Output Ports */}
@@ -176,6 +187,8 @@ export const AgentNode = ({ agent, isSelected, isConnecting, agentNumber, stageI
         isSelected ? "ring-2 ring-primary shadow-lg" : ""
       } ${statusStyles[agent.status]}`}
       onClick={onSelect}
+      draggable
+      onDragStart={handleDragStart}
       style={{ position: 'relative', zIndex: 20 }}
     >
       {/* Input/Output Ports */}

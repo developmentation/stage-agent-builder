@@ -24,6 +24,7 @@ interface StageProps {
   onDeleteStage: (stageId: string) => void;
   onRenameStage: (stageId: string, name: string) => void;
   onReorderStages: (fromIndex: number, toIndex: number) => void;
+  onMoveNodeToStage?: (nodeId: string, targetStageId: string) => void;
   onToggleMinimize: (agentId: string) => void;
   onToggleLock: (nodeId: string) => void;
   onPortClick: (agentId: string, isOutput: boolean, outputPort?: string) => void;
@@ -48,6 +49,7 @@ export const Stage = ({
   onDeleteStage,
   onRenameStage,
   onReorderStages,
+  onMoveNodeToStage,
   onToggleMinimize,
   onToggleLock,
   onPortClick,
@@ -89,8 +91,9 @@ export const Stage = ({
     e.preventDefault();
     const templateData = e.dataTransfer.types.includes("agenttemplate");
     const stageData = e.dataTransfer.types.includes("text/plain");
+    const nodeData = e.dataTransfer.types.includes("existingnodeid");
     
-    if (templateData) {
+    if (templateData || nodeData) {
       e.currentTarget.classList.add("border-primary");
     } else if (stageData) {
       e.dataTransfer.dropEffect = "move";
@@ -108,6 +111,13 @@ export const Stage = ({
     const templateData = e.dataTransfer.getData("agentTemplate");
     const nodeType = e.dataTransfer.getData("nodeType") as "agent" | "function" | "tool";
     const draggedStageIndex = e.dataTransfer.getData("stageIndex");
+    const draggedNodeId = e.dataTransfer.getData("existingNodeId");
+    
+    // Handle moving existing node between stages
+    if (draggedNodeId && onMoveNodeToStage) {
+      onMoveNodeToStage(draggedNodeId, stage.id);
+      return;
+    }
     
     if (templateData) {
       const template = JSON.parse(templateData);
