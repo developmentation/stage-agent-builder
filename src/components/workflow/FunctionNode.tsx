@@ -19,6 +19,7 @@ interface FunctionNodeProps {
   onToggleLock: () => void;
   onPortClick: (nodeId: string, isOutput: boolean, outputPort?: string) => void;
   onRun?: () => void;
+  onDragStart?: (e: React.DragEvent, nodeId: string) => void;
 }
 
 const statusConfig = {
@@ -40,7 +41,8 @@ export const FunctionNode = ({
   onToggleMinimize,
   onToggleLock,
   onPortClick,
-  onRun 
+  onRun,
+  onDragStart
 }: FunctionNodeProps) => {
   const functionDef = getFunctionById(node.functionType);
   const Icon = functionDef?.icon || Circle;
@@ -98,6 +100,14 @@ export const FunctionNode = ({
     }
   };
 
+  const handleDragStart = (e: React.DragEvent) => {
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("existingNodeId", node.id);
+    if (onDragStart) {
+      onDragStart(e, node.id);
+    }
+  };
+
   // Status-based styling
   const statusStyles = {
     running: "bg-yellow-50 dark:bg-yellow-950/20",
@@ -113,6 +123,8 @@ export const FunctionNode = ({
           isSelected ? "ring-2 ring-primary shadow-lg" : ""
         } ${statusStyles[node.status]} ${functionDef?.color || "bg-card/50"}`}
         onClick={onToggleMinimize}
+        draggable
+        onDragStart={handleDragStart}
         style={{ position: 'relative', zIndex: 20 }}
       >
         {/* Input Port */}
@@ -171,6 +183,8 @@ export const FunctionNode = ({
         isSelected ? "ring-2 ring-primary shadow-lg" : ""
       } ${statusStyles[node.status]} ${functionDef?.color || "bg-card/50"}`}
       onClick={onSelect}
+      draggable
+      onDragStart={handleDragStart}
       style={{ position: 'relative', zIndex: 20 }}
     >
       {/* Input Port */}
