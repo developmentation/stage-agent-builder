@@ -110,77 +110,6 @@ const Index = () => {
     }));
   };
 
-  // Move a node from one stage to another - connections are preserved since node IDs don't change
-  const moveNodeToStage = (nodeId: string, fromStageId: string, toStageId: string) => {
-    if (fromStageId === toStageId) return;
-    
-    setWorkflow((prev) => {
-      const sourceStage = prev.stages.find(s => s.id === fromStageId);
-      const targetStage = prev.stages.find(s => s.id === toStageId);
-      if (!sourceStage || !targetStage) return prev;
-      
-      const nodeToMove = sourceStage.nodes.find(n => n.id === nodeId);
-      if (!nodeToMove) return prev;
-      
-      // Calculate new position in target stage
-      const nodeHeight = 150;
-      const nodeSpacing = 30;
-      const stagePaddingLeft = 40;
-      const stagePaddingTop = 100;
-      
-      let newPosition: { x: number; y: number };
-      
-      if (targetStage.nodes.length === 0) {
-        // First node in target stage
-        if (targetStage.position) {
-          newPosition = {
-            x: targetStage.position.x + stagePaddingLeft,
-            y: targetStage.position.y + stagePaddingTop,
-          };
-        } else {
-          // Calculate based on stage index for stacked view
-          newPosition = { x: stagePaddingLeft, y: stagePaddingTop };
-        }
-      } else {
-        // Find the lowest Y and leftmost X among existing nodes
-        let minX = Infinity;
-        let maxY = -Infinity;
-        
-        targetStage.nodes.forEach((node) => {
-          const nodeX = node.position?.x ?? 0;
-          const nodeY = node.position?.y ?? 0;
-          minX = Math.min(minX, nodeX);
-          maxY = Math.max(maxY, nodeY);
-        });
-        
-        newPosition = {
-          x: minX,
-          y: maxY + nodeHeight + nodeSpacing,
-        };
-      }
-      
-      // Move node: remove from source, add to target with new position
-      return {
-        ...prev,
-        stages: prev.stages.map((stage) => {
-          if (stage.id === fromStageId) {
-            return { ...stage, nodes: stage.nodes.filter(n => n.id !== nodeId) };
-          }
-          if (stage.id === toStageId) {
-            return { 
-              ...stage, 
-              nodes: [...stage.nodes, { ...nodeToMove, position: newPosition }] 
-            };
-          }
-          return stage;
-        }),
-        // Connections are preserved since node IDs don't change!
-      };
-    });
-    
-    addLog("info", `Moved node to new stage`);
-  };
-
   const autoLayoutVertical = () => {
     const stageGap = 50;
     const nodeGap = 30;
@@ -2124,7 +2053,6 @@ const Index = () => {
                 onCloneNode={cloneNode}
                 onCloneStage={cloneStage}
                 onRunStage={runStage}
-                onMoveNodeToStage={moveNodeToStage}
               />
             ) : (
               <WorkflowCanvas 
@@ -2149,7 +2077,6 @@ const Index = () => {
                 onRunFunction={runSingleFunction}
                 onCloneStage={cloneStage}
                 onRunStage={runStage}
-                onMoveNodeToStage={moveNodeToStage}
               />
             )
           }
@@ -2200,7 +2127,6 @@ const Index = () => {
                 onCloneNode={cloneNode}
                 onCloneStage={cloneStage}
                 onRunStage={runStage}
-                onMoveNodeToStage={moveNodeToStage}
               />
             ) : (
               <WorkflowCanvas 
@@ -2225,7 +2151,6 @@ const Index = () => {
                 onRunFunction={runSingleFunction}
                 onCloneStage={cloneStage}
                 onRunStage={runStage}
-                onMoveNodeToStage={moveNodeToStage}
               />
             )
           }

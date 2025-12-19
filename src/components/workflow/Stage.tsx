@@ -31,7 +31,6 @@ interface StageProps {
   onRunFunction?: (functionId: string, customInput?: string) => void;
   onCloneStage?: (stageId: string) => void;
   onRunStage?: (stageId: string) => void;
-  onMoveNodeToStage?: (nodeId: string, fromStageId: string, toStageId: string) => void;
 }
 
 export const Stage = ({
@@ -56,7 +55,6 @@ export const Stage = ({
   onRunFunction,
   onCloneStage,
   onRunStage,
-  onMoveNodeToStage,
 }: StageProps) => {
   const [isAddAgentOpen, setIsAddAgentOpen] = useState(false);
   const [isAddFunctionOpen, setIsAddFunctionOpen] = useState(false);
@@ -64,7 +62,6 @@ export const Stage = ({
   const displayName = stage.name || `Stage ${stageNumber}`;
   const [editedName, setEditedName] = useState(displayName);
   const [stageMinimized, setStageMinimized] = useState(false);
-  const [isDragOverForNode, setIsDragOverForNode] = useState(false);
 
   // Check if all nodes are minimized to determine initial state
   const allMinimized = stage.nodes.length > 0 && stage.nodes.every(node => node.minimized);
@@ -88,28 +85,13 @@ export const Stage = ({
     e.dataTransfer.setData("stageIndex", stageIndex.toString());
   };
 
-  // Handle node drag start for moving between stages
-  const handleNodeDragStart = (e: React.DragEvent, nodeId: string) => {
-    e.stopPropagation(); // Prevent stage drag from triggering
-    e.dataTransfer.effectAllowed = "move";
-    // Use lowercase keys for consistency with dataTransfer.types
-    e.dataTransfer.setData("nodeid", nodeId);
-    e.dataTransfer.setData("sourcestageid", stage.id);
-  };
-
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     const templateData = e.dataTransfer.types.includes("agenttemplate");
-    const stageData = e.dataTransfer.types.includes("stageindex");
-    // Note: dataTransfer.types are always lowercase
-    const nodeData = e.dataTransfer.types.includes("nodeid");
+    const stageData = e.dataTransfer.types.includes("text/plain");
     
     if (templateData) {
       e.currentTarget.classList.add("border-primary");
-    } else if (nodeData) {
-      // Node being dragged from another stage
-      e.dataTransfer.dropEffect = "move";
-      setIsDragOverForNode(true);
     } else if (stageData) {
       e.dataTransfer.dropEffect = "move";
     }
@@ -117,28 +99,15 @@ export const Stage = ({
 
   const handleDragLeave = (e: React.DragEvent) => {
     e.currentTarget.classList.remove("border-primary");
-    setIsDragOverForNode(false);
   };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     e.currentTarget.classList.remove("border-primary");
-    setIsDragOverForNode(false);
     
     const templateData = e.dataTransfer.getData("agentTemplate");
     const nodeType = e.dataTransfer.getData("nodeType") as "agent" | "function" | "tool";
     const draggedStageIndex = e.dataTransfer.getData("stageIndex");
-    // Use lowercase keys to match what we set in handleNodeDragStart
-    const draggedNodeId = e.dataTransfer.getData("nodeid");
-    const sourceStageId = e.dataTransfer.getData("sourcestageid");
-    
-    // Handle node move between stages
-    if (draggedNodeId && sourceStageId && onMoveNodeToStage) {
-      if (sourceStageId !== stage.id) {
-        onMoveNodeToStage(draggedNodeId, sourceStageId, stage.id);
-      }
-      return;
-    }
     
     if (templateData) {
       const template = JSON.parse(templateData);
@@ -188,9 +157,7 @@ export const Stage = ({
 
   return (
     <Card
-      className={`p-3 bg-card/80 backdrop-blur border-border/60 shadow-md transition-colors w-full max-w-full ${
-        isDragOverForNode ? "border-2 border-primary bg-primary/5" : ""
-      }`}
+      className="p-3 bg-card/80 backdrop-blur border-border/60 shadow-md transition-colors w-full max-w-full"
       draggable
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
@@ -299,9 +266,7 @@ export const Stage = ({
               <div 
                 key={node.id} 
                 id={`agent-${node.id}`}
-                className={`${node.minimized ? "w-16 flex-shrink-0" : "w-full md:w-[calc(50%-0.375rem)] flex-shrink-0"} cursor-grab active:cursor-grabbing`}
-                draggable
-                onDragStart={(e) => handleNodeDragStart(e, node.id)}
+                className={node.minimized ? "w-16 flex-shrink-0" : "w-full md:w-[calc(50%-0.375rem)] flex-shrink-0"}
               >
                 {node.nodeType === "agent" ? (
                   <AgentNode

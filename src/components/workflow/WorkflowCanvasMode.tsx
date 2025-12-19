@@ -128,7 +128,6 @@ interface WorkflowCanvasModeProps {
   onCloneNode?: (nodeId: string) => void;
   onCloneStage?: (stageId: string) => void;
   onRunStage?: (stageId: string) => void;
-  onMoveNodeToStage?: (nodeId: string, fromStageId: string, toStageId: string) => void;
 }
 
 export function WorkflowCanvasMode({
@@ -161,7 +160,6 @@ export function WorkflowCanvasMode({
   onCloneNode,
   onCloneStage,
   onRunStage,
-  onMoveNodeToStage,
 }: WorkflowCanvasModeProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -169,29 +167,7 @@ export function WorkflowCanvasMode({
   const [showAddFunction, setShowAddFunction] = useState<string | null>(null);
   const [showMiniMap, setShowMiniMap] = useState(true);
   const [copiedNodeId, setCopiedNodeId] = useState<string | null>(null);
-  const [altKeyPressed, setAltKeyPressed] = useState(false);
   const isMobile = useIsMobile();
-
-  // Track Alt key for cross-stage node movement
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Alt') {
-        setAltKeyPressed(true);
-      }
-    };
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.key === 'Alt') {
-        setAltKeyPressed(false);
-      }
-    };
-    
-    document.addEventListener('keydown', handleKeyDown);
-    document.addEventListener('keyup', handleKeyUp);
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown);
-      document.removeEventListener('keyup', handleKeyUp);
-    };
-  }, []);
 
   // Keyboard shortcuts for copy/paste
   useEffect(() => {
@@ -537,10 +513,10 @@ export function WorkflowCanvasMode({
         }
       } else if (node.parentNode) {
         // Individual node was dragged
-        const currentStage = workflow.stages.find(s => `stage-${s.id}` === node.parentNode);
-        if (!currentStage) return;
+        const stage = workflow.stages.find(s => `stage-${s.id}` === node.parentNode);
+        if (!stage) return;
 
-        const bounds = stageBounds[currentStage.id];
+        const bounds = stageBounds[stage.id];
         const stagePaddingLeft = 40;
         const stagePaddingTop = 100;
 
@@ -548,43 +524,10 @@ export function WorkflowCanvasMode({
         const absoluteX = bounds.minX + (node.position.x - stagePaddingLeft);
         const absoluteY = bounds.minY + (node.position.y - stagePaddingTop);
 
-        // Check if Alt key was held - if so, check for cross-stage move
-        if (altKeyPressed && onMoveNodeToStage) {
-          // Check if node position is outside current stage bounds
-          const isOutsideCurrentStage = 
-            absoluteX < bounds.x || 
-            absoluteX > bounds.x + bounds.width ||
-            absoluteY < bounds.y || 
-            absoluteY > bounds.y + bounds.height;
-          
-          if (isOutsideCurrentStage) {
-            // Find which stage the node was dropped into
-            for (const stage of workflow.stages) {
-              if (stage.id === currentStage.id) continue;
-              
-              const targetBounds = stageBounds[stage.id];
-              if (!targetBounds) continue;
-              
-              // Check if drop position is within this stage's bounds
-              if (
-                absoluteX >= targetBounds.x &&
-                absoluteX <= targetBounds.x + targetBounds.width &&
-                absoluteY >= targetBounds.y &&
-                absoluteY <= targetBounds.y + targetBounds.height
-              ) {
-                // Move node to target stage
-                onMoveNodeToStage(node.id, currentStage.id, stage.id);
-                return;
-              }
-            }
-          }
-        }
-
-        // Normal position update within same stage
         onUpdateNodePosition(node.id, { x: absoluteX, y: absoluteY });
       }
     },
-    [workflow.stages, stageBounds, onUpdateNodePosition, onUpdateStagePosition, onUpdateNote, altKeyPressed, onMoveNodeToStage]
+    [workflow.stages, stageBounds, onUpdateNodePosition, onUpdateStagePosition, onUpdateNote]
   );
 
   return (
