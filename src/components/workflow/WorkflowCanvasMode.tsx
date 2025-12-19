@@ -116,7 +116,7 @@ interface WorkflowCanvasModeProps {
   onUpdateNode: (nodeId: string, updates: Partial<WorkflowNode>) => void;
   onUpdateStagePosition: (stageId: string, position: { x: number; y: number }) => void;
   onUpdateNodePosition: (nodeId: string, position: { x: number; y: number }) => void;
-  onMoveNodeToStage?: (nodeId: string, targetStageId: string) => void;
+  onMoveNodeToStage?: (nodeId: string, targetStageId: string, newPosition?: { x: number; y: number }) => void;
   onDeleteConnection?: (connectionId: string) => void;
   onCompleteConnection?: (fromNodeId: string, toNodeId: string, fromOutputPort?: string) => void;
   onToggleViewMode?: () => void;
@@ -521,11 +521,9 @@ export function WorkflowCanvasMode({
         // Check if Alt key is held - if so, check if we should move to another stage
         if (event.altKey && onMoveNodeToStage) {
           // Get the absolute position of the node
-          const bounds = stageBounds[stage.id];
-          const stagePaddingLeft = 40;
-          const stagePaddingTop = 100;
-          const absoluteX = bounds.x + node.position.x;
-          const absoluteY = bounds.y + node.position.y;
+          const currentBounds = stageBounds[stage.id];
+          const absoluteX = currentBounds.x + node.position.x;
+          const absoluteY = currentBounds.y + node.position.y;
           
           // Find which stage the node was dropped on
           for (const targetStage of workflow.stages) {
@@ -539,7 +537,12 @@ export function WorkflowCanvasMode({
                 absoluteX <= targetBounds.x + targetBounds.width &&
                 absoluteY >= targetBounds.y && 
                 absoluteY <= targetBounds.y + targetBounds.height) {
-              onMoveNodeToStage(node.id, targetStage.id);
+              
+              // Calculate the relative position within the target stage
+              const relativeX = absoluteX - targetBounds.x;
+              const relativeY = absoluteY - targetBounds.y;
+              
+              onMoveNodeToStage(node.id, targetStage.id, { x: relativeX, y: relativeY });
               return;
             }
           }

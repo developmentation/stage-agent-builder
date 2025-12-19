@@ -322,7 +322,7 @@ const Index = () => {
     });
   };
 
-  const moveNodeToStage = (nodeId: string, targetStageId: string) => {
+  const moveNodeToStage = (nodeId: string, targetStageId: string, newPosition?: { x: number; y: number }) => {
     setWorkflow((prev) => {
       // Find current stage and node
       let sourceStageIndex = -1;
@@ -353,6 +353,11 @@ const Index = () => {
         return prev;
       }
       
+      // Update node with new position if provided
+      const updatedNode = newPosition 
+        ? { ...nodeToMove, position: newPosition }
+        : nodeToMove;
+      
       // Remove from source stage and add to target stage
       const newStages = prev.stages.map((stage, idx) => {
         if (idx === sourceStageIndex) {
@@ -364,7 +369,7 @@ const Index = () => {
         if (stage.id === targetStageId) {
           return {
             ...stage,
-            nodes: [...stage.nodes, nodeToMove!]
+            nodes: [...stage.nodes, updatedNode!]
           };
         }
         return stage;
@@ -2123,6 +2128,7 @@ const Index = () => {
                 onUpdateNode={updateNode}
                 onUpdateStagePosition={updateStagePosition}
                 onUpdateNodePosition={updateNodePosition}
+                onMoveNodeToStage={moveNodeToStage}
                 onToggleViewMode={toggleViewMode}
                 onAutoLayoutVertical={autoLayoutVertical}
                 onAutoLayoutHorizontal={autoLayoutHorizontal}
@@ -2198,6 +2204,7 @@ const Index = () => {
                 onUpdateNode={updateNode}
                 onUpdateStagePosition={updateStagePosition}
                 onUpdateNodePosition={updateNodePosition}
+                onMoveNodeToStage={moveNodeToStage}
                 onToggleViewMode={toggleViewMode}
                 onAutoLayoutVertical={autoLayoutVertical}
                 onAutoLayoutHorizontal={autoLayoutHorizontal}
