@@ -17,7 +17,6 @@ interface StageNodeData {
   onRunStage?: () => void;
   width: number;
   height: number;
-  isDropTarget?: boolean;
 }
 
 export const StageNode = memo(({ data }: NodeProps<StageNodeData>) => {
@@ -66,12 +65,8 @@ export const StageNode = memo(({ data }: NodeProps<StageNodeData>) => {
 
   return (
     <Card 
-      className={`border-2 bg-card/95 backdrop-blur-sm shadow-lg transition-all ${
-        data.isDropTarget 
-          ? "border-primary ring-2 ring-primary ring-offset-2 bg-primary/10" 
-          : isDragOver 
-            ? "border-primary bg-primary/10" 
-            : "border-primary/20"
+      className={`border-2 bg-card/95 backdrop-blur-sm shadow-lg transition-colors ${
+        isDragOver ? "border-primary bg-primary/10" : "border-primary/20"
       }`}
       style={{ width: data.width, height: data.height }}
       onDragOver={handleDragOver}

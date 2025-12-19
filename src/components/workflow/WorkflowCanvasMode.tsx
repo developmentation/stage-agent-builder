@@ -128,7 +128,6 @@ interface WorkflowCanvasModeProps {
   onCloneNode?: (nodeId: string) => void;
   onCloneStage?: (stageId: string) => void;
   onRunStage?: (stageId: string) => void;
-  onMoveNodeToStage?: (nodeId: string, fromStageId: string, toStageId: string) => void;
 }
 
 export function WorkflowCanvasMode({
@@ -161,7 +160,6 @@ export function WorkflowCanvasMode({
   onCloneNode,
   onCloneStage,
   onRunStage,
-  onMoveNodeToStage,
 }: WorkflowCanvasModeProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -169,8 +167,6 @@ export function WorkflowCanvasMode({
   const [showAddFunction, setShowAddFunction] = useState<string | null>(null);
   const [showMiniMap, setShowMiniMap] = useState(true);
   const [copiedNodeId, setCopiedNodeId] = useState<string | null>(null);
-  const [crossStageDragNodeId, setCrossStageDragNodeId] = useState<string | null>(null);
-  const [hoveredStageId, setHoveredStageId] = useState<string | null>(null);
   const isMobile = useIsMobile();
 
   // Keyboard shortcuts for copy/paste
@@ -329,7 +325,6 @@ export function WorkflowCanvasMode({
           onRunStage: onRunStage ? () => onRunStage(stage.id) : undefined,
           width: bounds.width,
           height: bounds.height,
-          isDropTarget: crossStageDragNodeId && hoveredStageId === stage.id,
         },
         style: {
           width: bounds.width,
@@ -361,9 +356,6 @@ export function WorkflowCanvasMode({
             onRun: () => onRunAgent(node.id),
             onPortClick: (outputPort?: string) => onPortClick(node.id, outputPort),
             onToggleLock: () => onUpdateNode(node.id, { locked: !node.locked }),
-            currentStageId: stage.id,
-            allStages: workflow.stages,
-            onMoveToStage: onMoveNodeToStage,
           },
           parentNode: `stage-${stage.id}`,
           draggable: true,
@@ -479,69 +471,15 @@ export function WorkflowCanvasMode({
     [workflow.connections, onDeleteConnection]
   );
 
-  // Handle node drag start to detect Alt+drag for cross-stage movement
-  const onNodeDragStart = useCallback(
-    (event: React.MouseEvent, node: Node) => {
-      if (event.altKey && node.parentNode && !node.id.startsWith('stage-') && !node.id.startsWith('note-')) {
-        setCrossStageDragNodeId(node.id);
-      }
-    },
-    []
-  );
-
-  // Handle node drag to highlight target stages
-  const onNodeDrag = useCallback(
-    (event: React.MouseEvent, node: Node) => {
-      if (!crossStageDragNodeId || crossStageDragNodeId !== node.id) return;
-      
-      // Find which stage the mouse is over based on node position and stage bounds
-      for (const stage of workflow.stages) {
-        const bounds = stageBounds[stage.id];
-        if (!bounds) continue;
-        
-        // Check if node center is within stage bounds
-        const nodeCenter = {
-          x: node.position.x + (node.parentNode ? stageBounds[node.parentNode.replace('stage-', '')]?.x || 0 : 0),
-          y: node.position.y + (node.parentNode ? stageBounds[node.parentNode.replace('stage-', '')]?.y || 0 : 0),
-        };
-        
-        if (
-          nodeCenter.x >= bounds.x &&
-          nodeCenter.x <= bounds.x + bounds.width &&
-          nodeCenter.y >= bounds.y &&
-          nodeCenter.y <= bounds.y + bounds.height
-        ) {
-          setHoveredStageId(stage.id);
-          return;
-        }
-      }
-      setHoveredStageId(null);
-    },
-    [crossStageDragNodeId, workflow.stages, stageBounds]
-  );
-
   // Handle node drag end to update positions
   const onNodeDragStop = useCallback(
     (event: React.MouseEvent, node: Node, nodes: Node[]) => {
-      // Check for cross-stage drag completion
-      if (crossStageDragNodeId === node.id && event.altKey && onMoveNodeToStage && hoveredStageId) {
-        const currentStage = workflow.stages.find(s => `stage-${s.id}` === node.parentNode);
-        if (currentStage && hoveredStageId !== currentStage.id) {
-          onMoveNodeToStage(node.id, currentStage.id, hoveredStageId);
-        }
-        setCrossStageDragNodeId(null);
-        setHoveredStageId(null);
-        return;
-      }
-      
-      // Reset cross-stage drag state
-      setCrossStageDragNodeId(null);
-      setHoveredStageId(null);
-
       if (node.id.startsWith('note-')) {
+        // Note was dragged - update its position
         const noteId = node.id;
         onUpdateNote?.(noteId, { position: node.position });
       } else if (node.id.startsWith('stage-')) {
+        // Stage was dragged
         const stageId = node.id.replace('stage-', '');
         const stage = workflow.stages.find(s => s.id === stageId);
         if (!stage) return;
@@ -551,16 +489,30 @@ export function WorkflowCanvasMode({
         const deltaY = node.position.y - oldBounds.y;
 
         if (stage.nodes.length === 0) {
-          onUpdateStagePosition(stageId, { x: node.position.x, y: node.position.y });
+          // Empty stage - save its position directly
+          onUpdateStagePosition(stageId, {
+            x: node.position.x,
+            y: node.position.y,
+          });
         } else {
-          onUpdateStagePosition(stageId, { x: node.position.x, y: node.position.y });
+          // Stage with nodes - update all child node positions by the delta
+          // Also save the stage position itself
+          onUpdateStagePosition(stageId, {
+            x: node.position.x,
+            y: node.position.y,
+          });
+          
           stage.nodes.forEach((workflowNode) => {
             const currentX = workflowNode.position?.x ?? 0;
             const currentY = workflowNode.position?.y ?? 0;
-            onUpdateNodePosition(workflowNode.id, { x: currentX + deltaX, y: currentY + deltaY });
+            onUpdateNodePosition(workflowNode.id, {
+              x: currentX + deltaX,
+              y: currentY + deltaY,
+            });
           });
         }
       } else if (node.parentNode) {
+        // Individual node was dragged
         const stage = workflow.stages.find(s => `stage-${s.id}` === node.parentNode);
         if (!stage) return;
 
@@ -568,13 +520,14 @@ export function WorkflowCanvasMode({
         const stagePaddingLeft = 40;
         const stagePaddingTop = 100;
 
+        // Calculate absolute position from relative position within stage
         const absoluteX = bounds.minX + (node.position.x - stagePaddingLeft);
         const absoluteY = bounds.minY + (node.position.y - stagePaddingTop);
 
         onUpdateNodePosition(node.id, { x: absoluteX, y: absoluteY });
       }
     },
-    [workflow.stages, stageBounds, onUpdateNodePosition, onUpdateStagePosition, onUpdateNote, crossStageDragNodeId, hoveredStageId, onMoveNodeToStage]
+    [workflow.stages, stageBounds, onUpdateNodePosition, onUpdateStagePosition, onUpdateNote]
   );
 
   return (
@@ -586,8 +539,6 @@ export function WorkflowCanvasMode({
           onNodesChange={onNodesChange}
           onEdgesChange={onEdgesChange}
           onEdgesDelete={onEdgesDelete}
-          onNodeDragStart={onNodeDragStart}
-          onNodeDrag={onNodeDrag}
           onNodeDragStop={onNodeDragStop}
           onConnect={onConnect}
           nodeTypes={nodeTypes}

@@ -25,7 +25,6 @@ interface WorkflowCanvasProps {
   onRunFunction?: (functionId: string, customInput?: string) => void;
   onCloneStage?: (stageId: string) => void;
   onRunStage?: (stageId: string) => void;
-  onMoveNodeToStage?: (nodeId: string, fromStageId: string, toStageId: string) => void;
 }
 
 export const WorkflowCanvas = ({
@@ -50,7 +49,6 @@ export const WorkflowCanvas = ({
   onRunFunction,
   onCloneStage,
   onRunStage,
-  onMoveNodeToStage,
 }: WorkflowCanvasProps) => {
   const [forceUpdate, setForceUpdate] = useState(0);
   const [svgDimensions, setSvgDimensions] = useState({ width: 0, height: 0 });
@@ -308,7 +306,6 @@ export const WorkflowCanvas = ({
                     onRunFunction={onRunFunction}
                     onCloneStage={onCloneStage}
                     onRunStage={onRunStage}
-                    onMoveNodeToStage={onMoveNodeToStage}
                   />
                 ))
               )}

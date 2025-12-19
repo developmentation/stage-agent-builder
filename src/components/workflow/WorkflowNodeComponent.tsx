@@ -4,15 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   Brain,
   FileText,
   Trash2,
@@ -27,10 +18,8 @@ import {
   FunctionSquare,
   Lock,
   LockOpen,
-  MoreVertical,
-  MoveRight,
 } from "lucide-react";
-import type { WorkflowNode, AgentNode, FunctionNode, Stage } from "@/types/workflow";
+import type { WorkflowNode, AgentNode, FunctionNode } from "@/types/workflow";
 
 interface WorkflowNodeComponentData {
   node: WorkflowNode;
@@ -41,9 +30,6 @@ interface WorkflowNodeComponentData {
   onRun: () => void;
   onPortClick: (outputPort?: string) => void;
   onToggleLock: () => void;
-  currentStageId?: string;
-  allStages?: Stage[];
-  onMoveToStage?: (nodeId: string, fromStageId: string, toStageId: string) => void;
 }
 
 const agentIcons: Record<string, any> = {
@@ -61,7 +47,7 @@ const statusConfig = {
 };
 
 export const WorkflowNodeComponent = memo(({ data }: NodeProps<WorkflowNodeComponentData>) => {
-  const { node, selected, isConnecting, onSelect, onDelete, onRun, onPortClick, onToggleLock, currentStageId, allStages, onMoveToStage } = data;
+  const { node, selected, isConnecting, onSelect, onDelete, onRun, onPortClick, onToggleLock } = data;
   const status = statusConfig[node.status];
   const StatusIcon = status.icon;
 
@@ -142,59 +128,34 @@ export const WorkflowNodeComponent = memo(({ data }: NodeProps<WorkflowNodeCompo
           </div>
           <div className="flex flex-col gap-1">
             <div className="flex gap-1 items-center">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={(e) => e.stopPropagation()}
-                    className="h-6 w-6 p-0"
-                  >
-                    <MoreVertical className="h-3 w-3" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                  <DropdownMenuItem onClick={onToggleLock}>
-                    {node.locked ? (
-                      <>
-                        <LockOpen className="h-3 w-3 mr-2" />
-                        Unlock
-                      </>
-                    ) : (
-                      <>
-                        <Lock className="h-3 w-3 mr-2" />
-                        Lock
-                      </>
-                    )}
-                  </DropdownMenuItem>
-                  {allStages && allStages.length > 1 && currentStageId && onMoveToStage && (
-                    <DropdownMenuSub>
-                      <DropdownMenuSubTrigger>
-                        <MoveRight className="h-3 w-3 mr-2" />
-                        Move to Stage
-                      </DropdownMenuSubTrigger>
-                      <DropdownMenuSubContent>
-                        {allStages
-                          .filter(s => s.id !== currentStageId)
-                          .map(stage => (
-                            <DropdownMenuItem
-                              key={stage.id}
-                              onClick={() => onMoveToStage(node.id, currentStageId, stage.id)}
-                            >
-                              {stage.name}
-                            </DropdownMenuItem>
-                          ))}
-                      </DropdownMenuSubContent>
-                    </DropdownMenuSub>
-                  )}
-                  <DropdownMenuItem onClick={onDelete} className="text-destructive">
-                    <Trash2 className="h-3 w-3 mr-2" />
-                    Delete
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleLock();
+                }}
+                className="h-6 w-6 p-0"
+              >
+                {node.locked ? (
+                  <Lock className="h-3 w-3 text-red-500" />
+                ) : (
+                  <LockOpen className="h-3 w-3 text-muted-foreground" />
+                )}
+              </Button>
               <StatusIcon className={`h-4 w-4 ${status.color} ${node.status === "running" ? "animate-spin" : ""}`} />
             </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              className="h-6 w-6 p-0"
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
           </div>
         </div>
       </CardHeader>
