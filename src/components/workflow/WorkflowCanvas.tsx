@@ -308,6 +308,7 @@ export const WorkflowCanvas = ({
                     onRunFunction={onRunFunction}
                     onCloneStage={onCloneStage}
                     onRunStage={onRunStage}
+                    onMoveNodeToStage={onMoveNodeToStage}
                   />
                 ))
               )}

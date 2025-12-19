@@ -92,14 +92,16 @@ export const Stage = ({
   const handleNodeDragStart = (e: React.DragEvent, nodeId: string) => {
     e.stopPropagation(); // Prevent stage drag from triggering
     e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("nodeId", nodeId);
-    e.dataTransfer.setData("sourceStageId", stage.id);
+    // Use lowercase keys for consistency with dataTransfer.types
+    e.dataTransfer.setData("nodeid", nodeId);
+    e.dataTransfer.setData("sourcestageid", stage.id);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     const templateData = e.dataTransfer.types.includes("agenttemplate");
-    const stageData = e.dataTransfer.types.includes("text/plain");
+    const stageData = e.dataTransfer.types.includes("stageindex");
+    // Note: dataTransfer.types are always lowercase
     const nodeData = e.dataTransfer.types.includes("nodeid");
     
     if (templateData) {
@@ -126,8 +128,9 @@ export const Stage = ({
     const templateData = e.dataTransfer.getData("agentTemplate");
     const nodeType = e.dataTransfer.getData("nodeType") as "agent" | "function" | "tool";
     const draggedStageIndex = e.dataTransfer.getData("stageIndex");
-    const draggedNodeId = e.dataTransfer.getData("nodeId");
-    const sourceStageId = e.dataTransfer.getData("sourceStageId");
+    // Use lowercase keys to match what we set in handleNodeDragStart
+    const draggedNodeId = e.dataTransfer.getData("nodeid");
+    const sourceStageId = e.dataTransfer.getData("sourcestageid");
     
     // Handle node move between stages
     if (draggedNodeId && sourceStageId && onMoveNodeToStage) {
