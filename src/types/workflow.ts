@@ -17,9 +17,7 @@ export interface BaseNode {
 // Beast Mode configuration
 export interface BeastModeConfig {
   enabled: boolean;
-  source: "connected_card" | "all_connected" | "entire_stage";
   outputMode: "concatenate" | "split";
-  memoryKey?: string;
 }
 
 // Agent-specific properties
@@ -36,6 +34,9 @@ export interface AgentNode extends BaseNode {
   thinkingEnabled?: boolean;
   thinkingBudget?: number;
   beastMode?: BeastModeConfig;
+  // Beast Mode split outputs
+  beastModeOutputs?: Record<string, string>;
+  beastModeOutputPorts?: string[];
 }
 
 // Function-specific properties
@@ -48,6 +49,8 @@ export interface FunctionNode extends BaseNode {
   outputs?: Record<string, string>; // Map of output port to value for visual indicators
   imageOutput?: string; // Base64 image data for image generation functions
   audioOutput?: string; // Base64 audio data for TTS functions
+  imageOutputs?: string[]; // Array of base64 images for Beast Mode
+  audioOutputs?: string[]; // Array of base64 audio for Beast Mode
   beastMode?: BeastModeConfig;
 }
 
