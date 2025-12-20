@@ -1244,15 +1244,23 @@ export class FunctionExecutor {
         if (binaryCheck) {
           // Extract the base64 content (remove data URL prefix if present)
           let base64Content = singleInput;
-          const dataUrlMatch = singleInput.match(/^data:[^;]+;base64,(.+)$/);
+          const dataUrlMatch = singleInput.match(/^data:[^;]+;base64,([A-Za-z0-9+/=]+)$/);
           if (dataUrlMatch) {
             base64Content = dataUrlMatch[1];
+          }
+          
+          // Ensure base64 content is clean (no whitespace, valid chars only)
+          base64Content = base64Content.replace(/\s/g, '').trim();
+          
+          // Validate it looks like valid base64
+          if (!/^[A-Za-z0-9+/=]+$/.test(base64Content)) {
+            throw new Error("Invalid base64 content detected");
           }
           
           items.push({
             type: binaryCheck.type,
             content: base64Content,
-            contentType: binaryCheck.contentType,
+            contentType: binaryCheck.contentType || (binaryCheck.type === "image" ? "image/png" : "application/octet-stream"),
             fileName: binaryCheck.type === "image" ? "image.png" : "audio.mp3",
           });
         } else {
@@ -1266,15 +1274,18 @@ export class FunctionExecutor {
             const partBinaryCheck = detectBinaryType(part);
             if (partBinaryCheck) {
               let base64Content = part;
-              const dataUrlMatch = part.match(/^data:[^;]+;base64,(.+)$/);
+              const dataUrlMatch = part.match(/^data:[^;]+;base64,([A-Za-z0-9+/=]+)$/);
               if (dataUrlMatch) {
                 base64Content = dataUrlMatch[1];
               }
               
+              // Clean the base64 content
+              base64Content = base64Content.replace(/\s/g, '').trim();
+              
               items.push({
                 type: partBinaryCheck.type,
                 content: base64Content,
-                contentType: partBinaryCheck.contentType,
+                contentType: partBinaryCheck.contentType || (partBinaryCheck.type === "image" ? "image/png" : "application/octet-stream"),
                 fileName: partBinaryCheck.type === "image" ? "image.png" : "audio.mp3",
               });
             } else {
@@ -1298,15 +1309,18 @@ export class FunctionExecutor {
           
           if (binaryCheck) {
             let base64Content = value;
-            const dataUrlMatch = value.match(/^data:[^;]+;base64,(.+)$/);
+            const dataUrlMatch = value.match(/^data:[^;]+;base64,([A-Za-z0-9+/=]+)$/);
             if (dataUrlMatch) {
               base64Content = dataUrlMatch[1];
             }
             
+            // Clean the base64 content
+            base64Content = base64Content.replace(/\s/g, '').trim();
+            
             items.push({
               type: binaryCheck.type,
               content: base64Content,
-              contentType: binaryCheck.contentType,
+              contentType: binaryCheck.contentType || (binaryCheck.type === "image" ? "image/png" : "application/octet-stream"),
               fileName: binaryCheck.type === "image" ? `image_${index + 1}.png` : `audio_${index + 1}.mp3`,
             });
           } else {
