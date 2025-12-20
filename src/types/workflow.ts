@@ -36,6 +36,9 @@ export interface AgentNode extends BaseNode {
   thinkingEnabled?: boolean;
   thinkingBudget?: number;
   beastMode?: BeastModeConfig;
+  // Beast Mode dynamic outputs (when split mode is used)
+  beastModeOutputPorts?: string[];
+  beastModeOutputs?: Record<string, string>;
 }
 
 // Function-specific properties

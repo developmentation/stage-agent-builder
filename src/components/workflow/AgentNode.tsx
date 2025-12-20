@@ -1,12 +1,12 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Search, FileText, Bot, Play, CheckCircle2, AlertCircle, Circle, Trash2, Minimize2, Maximize2, Download, Copy, Lock, Unlock } from "lucide-react";
-import type { Agent } from "@/pages/Index";
+import { Search, FileText, Bot, Play, CheckCircle2, AlertCircle, Circle, Trash2, Minimize2, Maximize2, Download, Copy, Lock, Unlock, Zap } from "lucide-react";
+import type { AgentNode as AgentNodeType } from "@/types/workflow";
 import { useToast } from "@/hooks/use-toast";
 
 interface AgentNodeProps {
-  agent: Agent;
+  agent: AgentNodeType;
   isSelected: boolean;
   isConnecting: boolean;
   agentNumber: string;
@@ -16,7 +16,7 @@ interface AgentNodeProps {
   onDelete: () => void;
   onToggleMinimize: () => void;
   onToggleLock: () => void;
-  onPortClick: (agentId: string, isOutput: boolean) => void;
+  onPortClick: (agentId: string, isOutput: boolean, outputPort?: string) => void;
   onRun?: () => void;
   onDragStart?: (e: React.DragEvent, nodeId: string) => void;
 }
@@ -136,6 +136,13 @@ export const AgentNode = ({ agent, isSelected, isConnecting, agentNumber, stageI
     idle: "",
   };
 
+  // Determine output ports - use beast mode outputs if available, otherwise single "output"
+  const outputPorts = agent.beastModeOutputPorts && agent.beastModeOutputPorts.length > 0 
+    ? agent.beastModeOutputPorts 
+    : ["output"];
+  
+  const hasBeastModeOutputs = agent.beastModeOutputPorts && agent.beastModeOutputPorts.length > 1;
+
   if (agent.minimized) {
     return (
       <Card 
@@ -147,7 +154,7 @@ export const AgentNode = ({ agent, isSelected, isConnecting, agentNumber, stageI
         onDragStart={handleDragStart}
         style={{ position: 'relative', zIndex: 20 }}
       >
-        {/* Input/Output Ports */}
+        {/* Input Port */}
         <div 
           id={`port-input-${agent.id}-${layoutId}`}
           className={`absolute -top-2 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-primary border-2 border-card cursor-pointer hover:scale-125 transition-transform z-20 ${
@@ -158,22 +165,40 @@ export const AgentNode = ({ agent, isSelected, isConnecting, agentNumber, stageI
             onPortClick(agent.id, false);
           }}
         />
-        <div 
-          id={`port-output-${agent.id}-${layoutId}`}
-          className={`absolute -bottom-2 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-primary border-2 border-card cursor-pointer hover:scale-125 transition-transform z-20 ${
-            isConnecting ? "ring-2 ring-primary animate-pulse" : ""
-          }`}
-          onClick={(e) => {
-            e.stopPropagation();
-            onPortClick(agent.id, true);
-          }}
-        />
+        
+        {/* Output Port(s) */}
+        {outputPorts.map((portName, idx) => {
+          const hasData = portName === "output" 
+            ? agent.output && agent.output.trim().length > 0
+            : agent.beastModeOutputs?.[portName] && agent.beastModeOutputs[portName].trim().length > 0;
+          
+          return (
+            <div 
+              key={portName}
+              id={`port-output-${agent.id}-${portName}-${layoutId}`}
+              className={`absolute -bottom-2 w-3 h-3 rounded-full border-2 border-card cursor-pointer hover:scale-125 transition-transform z-20 ${
+                hasData ? 'bg-green-500 ring-2 ring-green-300' : 'bg-primary'
+              } ${isConnecting ? "ring-2 ring-primary animate-pulse" : ""}`}
+              style={{ 
+                left: outputPorts.length > 1 
+                  ? `${((idx + 1) / (outputPorts.length + 1)) * 100}%` 
+                  : '50%',
+                transform: 'translateX(-50%)'
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onPortClick(agent.id, true, portName);
+              }}
+            />
+          );
+        })}
         
         {/* Agent number and locked icon */}
         <div className="text-center">
           <div className="flex items-center justify-center gap-0.5">
             <div className="text-xs font-bold text-foreground">{agentNumber}</div>
             {agent.locked && <Lock className="h-2.5 w-2.5 text-muted-foreground" />}
+            {hasBeastModeOutputs && <Zap className="h-2.5 w-2.5 text-yellow-500" />}
           </div>
           <StatusIcon className={`h-3 w-3 mx-auto mt-0.5 ${statusInfo.color}`} />
         </div>
@@ -191,7 +216,7 @@ export const AgentNode = ({ agent, isSelected, isConnecting, agentNumber, stageI
       onDragStart={handleDragStart}
       style={{ position: 'relative', zIndex: 20 }}
     >
-      {/* Input/Output Ports */}
+      {/* Input Port */}
       <div 
         id={`port-input-${agent.id}-${layoutId}`}
         className={`absolute -top-2 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-primary border-2 border-card cursor-pointer hover:scale-125 transition-transform z-20 ${
@@ -202,16 +227,33 @@ export const AgentNode = ({ agent, isSelected, isConnecting, agentNumber, stageI
           onPortClick(agent.id, false);
         }}
       />
-      <div 
-        id={`port-output-${agent.id}-${layoutId}`}
-        className={`absolute -bottom-2 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-primary border-2 border-card cursor-pointer hover:scale-125 transition-transform z-20 ${
-          isConnecting ? "ring-2 ring-primary animate-pulse" : ""
-        }`}
-        onClick={(e) => {
-          e.stopPropagation();
-          onPortClick(agent.id, true);
-        }}
-      />
+      
+      {/* Output Port(s) */}
+      {outputPorts.map((portName, idx) => {
+        const hasData = portName === "output" 
+          ? agent.output && agent.output.trim().length > 0
+          : agent.beastModeOutputs?.[portName] && agent.beastModeOutputs[portName].trim().length > 0;
+        
+        return (
+          <div 
+            key={portName}
+            id={`port-output-${agent.id}-${portName}-${layoutId}`}
+            className={`absolute -bottom-2 w-3 h-3 rounded-full border-2 border-card cursor-pointer hover:scale-125 transition-transform z-20 ${
+              hasData ? 'bg-green-500 ring-2 ring-green-300' : 'bg-primary'
+            } ${isConnecting ? "ring-2 ring-primary animate-pulse" : ""}`}
+            style={{ 
+              left: outputPorts.length > 1 
+                ? `${((idx + 1) / (outputPorts.length + 1)) * 100}%` 
+                : '50%',
+              transform: 'translateX(-50%)'
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onPortClick(agent.id, true, portName);
+            }}
+          />
+        );
+      })}
 
       <div className="space-y-3">
         <div className="flex items-start gap-2">
@@ -291,6 +333,12 @@ export const AgentNode = ({ agent, isSelected, isConnecting, agentNumber, stageI
             <StatusIcon className="h-3 w-3" />
             <span className="text-xs capitalize">{agent.status}</span>
           </div>
+          {hasBeastModeOutputs && (
+            <Badge variant="outline" className="text-xs bg-yellow-500/10 text-yellow-600 border-yellow-500/30">
+              <Zap className="h-2.5 w-2.5 mr-0.5" />
+              {outputPorts.length} outputs
+            </Badge>
+          )}
           {agent.tools.length > 0 && (
             <Badge variant="outline" className="text-xs">
               {agent.tools.length} tools
