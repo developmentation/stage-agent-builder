@@ -90,6 +90,9 @@ export class FunctionExecutor {
       case "github_files":
         return await this.executeGitHubFiles(functionNode, input);
       
+      case "logic_gate":
+        return this.executeLogicGate(functionNode, input);
+      
       default:
         return {
           success: false,
@@ -1095,6 +1098,72 @@ export class FunctionExecutor {
         outputs: { output: "" },
         error: error instanceof Error ? error.message : "GitHub fetch failed",
       };
+    }
+  }
+
+  // Logic Gate - Evaluates AND, OR, NAND, NOR logic across multiple inputs
+  private static executeLogicGate(node: FunctionNode, input: string): FunctionExecutionResult {
+    const gateType = (node.config.gateType as string) || "AND";
+    const outputMode = (node.config.outputMode as string) || "single";
+    const separator = node.config.separator !== undefined ? String(node.config.separator) : "\n";
+    
+    // Get input values from inputPorts - if no inputPorts defined, use the passed input
+    const inputPorts = node.inputPorts || ["input_1", "input_2"];
+    const inputValues = inputPorts.map(port => {
+      const value = node.inputs?.[port];
+      return value !== undefined && value !== null ? value : "";
+    });
+    
+    // Check non-null status for each input (non-empty after trim)
+    const nonNullStatus = inputValues.map(v => v !== null && v !== undefined && v.trim() !== "");
+    const allNonNull = nonNullStatus.every(Boolean);
+    const anyNonNull = nonNullStatus.some(Boolean);
+    const allNull = nonNullStatus.every(v => !v);
+    const anyNull = nonNullStatus.some(v => !v);
+    
+    // Evaluate gate logic
+    let shouldProceed = false;
+    switch (gateType.toUpperCase()) {
+      case "AND":
+        shouldProceed = allNonNull;
+        break;
+      case "OR":
+        shouldProceed = anyNonNull;
+        break;
+      case "NAND":
+        shouldProceed = allNull;
+        break;
+      case "NOR":
+        shouldProceed = anyNull;
+        break;
+      default:
+        shouldProceed = allNonNull; // Default to AND behavior
+    }
+    
+    if (!shouldProceed) {
+      // Gate blocked - return empty outputs
+      if (outputMode === "matching") {
+        const outputs: Record<string, string> = {};
+        inputPorts.forEach((_, index) => {
+          outputs[`output_${index + 1}`] = "";
+        });
+        return { success: true, outputs };
+      }
+      return { success: true, outputs: { output: "" } };
+    }
+    
+    // Gate passed - generate outputs based on mode
+    if (outputMode === "matching") {
+      // Matching outputs - one per input, same values passing through
+      const outputs: Record<string, string> = {};
+      inputValues.forEach((value, index) => {
+        outputs[`output_${index + 1}`] = value || "";
+      });
+      return { success: true, outputs };
+    } else {
+      // Single output - concatenate all non-empty inputs
+      const concatenated = inputValues.filter(v => v && v.trim()).join(separator);
+      return { success: true, outputs: { output: concatenated } };
     }
   }
 }

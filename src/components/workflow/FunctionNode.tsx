@@ -17,7 +17,7 @@ interface FunctionNodeProps {
   onDelete: () => void;
   onToggleMinimize: () => void;
   onToggleLock: () => void;
-  onPortClick: (nodeId: string, isOutput: boolean, outputPort?: string) => void;
+  onPortClick: (nodeId: string, isOutput: boolean, outputPort?: string, inputPort?: string) => void;
   onRun?: () => void;
   onDragStart?: (e: React.DragEvent, nodeId: string) => void;
 }
@@ -116,6 +116,10 @@ export const FunctionNode = ({
     idle: "",
   };
 
+  // Get input ports for multi-input functions
+  const inputPorts = node.inputPorts || ["input"];
+  const hasMultipleInputs = inputPorts.length > 1;
+
   if (node.minimized) {
     return (
       <Card 
@@ -127,17 +131,30 @@ export const FunctionNode = ({
         onDragStart={handleDragStart}
         style={{ position: 'relative', zIndex: 20 }}
       >
-        {/* Input Port */}
-        <div 
-          id={`port-input-${node.id}-${layoutId}`}
-          className={`absolute -top-2 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-primary border-2 border-card cursor-pointer hover:scale-125 transition-transform z-20 ${
-            isConnecting ? "ring-2 ring-primary animate-pulse" : ""
-          }`}
-          onClick={(e) => {
-            e.stopPropagation();
-            onPortClick(node.id, false);
-          }}
-        />
+        {/* Input Port(s) */}
+        {inputPorts.map((portName, idx) => {
+          const hasData = node.inputs?.[portName] && node.inputs[portName].trim().length > 0;
+          
+          return (
+            <div 
+              key={portName}
+              id={`port-input-${node.id}-${portName}-${layoutId}`}
+              className={`absolute -top-2 w-3 h-3 rounded-full border-2 border-card cursor-pointer hover:scale-125 transition-transform z-20 ${
+                hasData ? 'bg-green-500 ring-2 ring-green-300' : 'bg-primary'
+              } ${isConnecting ? "ring-2 ring-primary animate-pulse" : ""}`}
+              style={{ 
+                left: hasMultipleInputs 
+                  ? `${((idx + 1) / (inputPorts.length + 1)) * 100}%` 
+                  : '50%',
+                transform: 'translateX(-50%)'
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onPortClick(node.id, false, undefined, portName);
+              }}
+            />
+          );
+        })}
         
         {/* Output Port(s) */}
         {node.outputPorts.map((portName, idx) => {
@@ -187,17 +204,31 @@ export const FunctionNode = ({
       onDragStart={handleDragStart}
       style={{ position: 'relative', zIndex: 20 }}
     >
-      {/* Input Port */}
-      <div 
-        id={`port-input-${node.id}-${layoutId}`}
-        className={`absolute -top-2 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-primary border-2 border-card cursor-pointer hover:scale-125 transition-transform z-20 ${
-          isConnecting ? "ring-2 ring-primary animate-pulse" : ""
-        }`}
-        onClick={(e) => {
-          e.stopPropagation();
-          onPortClick(node.id, false);
-        }}
-      />
+      {/* Input Port(s) - Multiple for logic gates, single for others */}
+      {inputPorts.map((portName, idx) => {
+        const hasData = node.inputs?.[portName] && node.inputs[portName].trim().length > 0;
+        
+        return (
+          <div 
+            key={portName}
+            id={`port-input-${node.id}-${portName}-${layoutId}`}
+            className={`absolute -top-2 w-3 h-3 rounded-full border-2 border-card cursor-pointer hover:scale-125 transition-transform z-20 ${
+              hasData ? 'bg-green-500 ring-2 ring-green-300' : 'bg-primary'
+            } ${isConnecting ? "ring-2 ring-primary animate-pulse" : ""}`}
+            style={{ 
+              left: hasMultipleInputs 
+                ? `${((idx + 1) / (inputPorts.length + 1)) * 100}%` 
+                : '50%',
+              transform: 'translateX(-50%)'
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onPortClick(node.id, false, undefined, portName);
+            }}
+            title={portName}
+          />
+        );
+      })}
       
       {/* Output Port(s) - Multiple ports for functions with conditional outputs */}
       {node.outputPorts.map((portName, idx) => {
@@ -298,6 +329,11 @@ export const FunctionNode = ({
           <Badge variant="secondary" className="text-xs">
             {functionDef?.category || "function"}
           </Badge>
+          {hasMultipleInputs && (
+            <Badge variant="outline" className="text-xs">
+              {inputPorts.length} inputs
+            </Badge>
+          )}
           {node.outputPorts.length > 1 && (
             <Badge variant="outline" className="text-xs">
               {node.outputPorts.length} outputs
@@ -308,6 +344,29 @@ export const FunctionNode = ({
         <p className="text-xs text-muted-foreground line-clamp-2">
           {functionDef?.description || "Custom function"}
         </p>
+        
+        {/* Show input port labels for multi-input functions */}
+        {hasMultipleInputs && (
+          <div className="flex gap-1 text-[10px] text-muted-foreground flex-wrap">
+            <span>Inputs:</span>
+            {inputPorts.map((port) => {
+              const hasContent = node.inputs && node.inputs[port] && node.inputs[port].length > 0;
+              
+              return (
+                <Badge 
+                  key={port} 
+                  variant="outline" 
+                  className={`text-[9px] px-1 py-0 h-4 ${
+                    hasContent ? 'bg-green-500/20 border-green-500 text-green-700 dark:text-green-400' : 'opacity-50'
+                  }`}
+                  title={hasContent ? `${port}: ${node.inputs![port].substring(0, 50)}...` : `${port}: empty`}
+                >
+                  {port}
+                </Badge>
+              );
+            })}
+          </div>
+        )}
         
         {/* Show output port labels for multi-output functions */}
         {node.outputPorts.length > 1 && (

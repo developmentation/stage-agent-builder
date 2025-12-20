@@ -128,6 +128,44 @@ export const functionDefinitions: FunctionDefinition[] = [
 
   // Logic Functions
   {
+    id: "logic_gate",
+    name: "Logic Gate",
+    description: "Control data flow based on AND, OR, NAND, NOR logic across multiple inputs",
+    category: "logic",
+    icon: GitBranch,
+    color: "bg-purple-500/10 text-purple-500",
+    inputs: {
+      label: "Multiple inputs",
+      description: "Configure number of input sockets in properties panel",
+    },
+    outputs: ["output"],
+    supportsMultipleInputs: true,
+    supportsMultipleOutputs: true,
+    configSchema: {
+      gateType: {
+        type: "string",
+        label: "Gate Type",
+        description: "AND (all non-null), OR (any non-null), NAND (all null), NOR (any null)",
+        required: true,
+        default: "AND",
+      },
+      outputMode: {
+        type: "string",
+        label: "Output Mode",
+        description: "Single (concatenated) or Matching (same as inputs)",
+        required: true,
+        default: "single",
+      },
+      separator: {
+        type: "string",
+        label: "Separator",
+        description: "Text between concatenated values (for Single mode)",
+        default: "\n",
+        placeholder: "\\n",
+      },
+    },
+  },
+  {
     id: "is_json",
     name: "Is JSON",
     description: "Check if input is valid JSON. Outputs 'true' or 'false' port.",
