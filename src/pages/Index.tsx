@@ -1162,8 +1162,8 @@ const Index = () => {
       return;
     }
 
-    // Check if Beast Mode is enabled
-    if (agent.beastMode?.enabled && agent.beastMode.source === "connected_card") {
+    // Check if Beast Mode is enabled (any source type)
+    if (agent.beastMode?.enabled) {
       await runAgentBeastMode(nodeId, agent);
       return;
     }
