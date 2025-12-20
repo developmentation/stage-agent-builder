@@ -660,10 +660,10 @@ const Index = () => {
         (clonedNode as FunctionNode).outputs = {};
       }
 
-      // Offset position horizontally: card width (250px) + gap (50px) = 300px right
+      // Offset position horizontally: card width (250px) + gap (25px) = 275px right
       if (nodeToClone.position) {
         clonedNode.position = {
-          x: nodeToClone.position.x + 300,
+          x: nodeToClone.position.x + 275,
           y: nodeToClone.position.y,
         };
       }
