@@ -78,6 +78,12 @@ export class FunctionExecutor {
       case "content":
         return this.executeContent(functionNode, input);
       
+      case "image_generation":
+        return await this.executeImageGeneration(functionNode, input);
+      
+      case "text_to_speech":
+        return await this.executeTextToSpeech(functionNode, input);
+      
       default:
         return {
           success: false,
@@ -544,6 +550,107 @@ export class FunctionExecutor {
       success: true,
       outputs: { output: output },
     };
+  }
+
+  // Image Generation (Nano Banana)
+  private static async executeImageGeneration(node: FunctionNode, input: string): Promise<FunctionExecutionResult> {
+    try {
+      // Use override prompt if provided, otherwise use input
+      const prompt = node.config.overridePrompt || input;
+      
+      if (!prompt) {
+        throw new Error("Image prompt is required (provide via connection or override)");
+      }
+      
+      const model = node.config.model || "gemini-2.5-flash-image";
+      
+      console.log(`Generating image with model: ${model}, prompt: ${prompt.substring(0, 50)}...`);
+      
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/run-nano`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ prompt, model }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Image generation failed: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      
+      if (!data.imageUrl) {
+        throw new Error("No image generated");
+      }
+
+      // Return both the image URL and metadata
+      return {
+        success: true,
+        outputs: { output: data.imageUrl },
+        imageOutput: data.imageUrl,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        outputs: { output: "" },
+        error: error instanceof Error ? error.message : "Image generation failed",
+      };
+    }
+  }
+
+  // Text to Speech (ElevenLabs)
+  private static async executeTextToSpeech(node: FunctionNode, input: string): Promise<FunctionExecutionResult> {
+    try {
+      const voiceId = node.config.voiceId;
+      
+      if (!voiceId) {
+        throw new Error("Voice ID is required - please select a voice");
+      }
+      
+      const text = input;
+      if (!text) {
+        throw new Error("Text is required for speech generation");
+      }
+      
+      const model = node.config.model || "eleven_multilingual_v2";
+      
+      console.log(`Generating speech with voice: ${voiceId}, model: ${model}`);
+      
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/elevenlabs-tts`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ text, voice_id: voiceId, model_id: model }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `TTS failed: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      
+      if (!data.audioContent) {
+        throw new Error("No audio generated");
+      }
+
+      const audioUrl = `data:${data.mimeType || 'audio/mpeg'};base64,${data.audioContent}`;
+
+      return {
+        success: true,
+        outputs: { output: audioUrl },
+        audioOutput: audioUrl,
+      };
+    } catch (error) {
+      return {
+        success: false,
+        outputs: { output: "" },
+        error: error instanceof Error ? error.message : "TTS failed",
+      };
+    }
   }
 
   // Google Search

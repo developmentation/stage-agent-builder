@@ -26,3 +26,12 @@ verify_jwt = false
 
 [functions.run-agent-xai]
 verify_jwt = false
+
+[functions.run-nano]
+verify_jwt = false
+
+[functions.get-elevenlabs-voices]
+verify_jwt = false
+
+[functions.elevenlabs-tts]
+verify_jwt = false

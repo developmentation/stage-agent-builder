@@ -37,6 +37,8 @@ export interface FunctionNode extends BaseNode {
   outputPorts: string[]; // Array of output port names (e.g., ["true", "false"] for if/else)
   outputCount?: number; // Number of output ports for multi-output functions (1-50)
   outputs?: Record<string, string>; // Map of output port to value for visual indicators
+  imageOutput?: string; // Base64 image data for image generation functions
+  audioOutput?: string; // Base64 audio data for TTS functions
 }
 
 // Tool-specific properties (standalone tools)

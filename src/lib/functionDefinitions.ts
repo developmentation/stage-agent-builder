@@ -13,7 +13,9 @@ import {
   Merge,
   ExternalLink,
   Zap,
-  FileText
+  FileText,
+  Image,
+  Volume2
 } from "lucide-react";
 import type { FunctionDefinition } from "@/types/functions";
 
@@ -555,6 +557,64 @@ export const functionDefinitions: FunctionDefinition[] = [
         label: "Content",
         description: "Static content to output (can be manually entered or uploaded from files)",
         placeholder: "Enter your content here or upload files...",
+      },
+    },
+  },
+  // AI Media Generation
+  {
+    id: "image_generation",
+    name: "Image Generation",
+    description: "Generate images from text prompts using Gemini Nano Banana models",
+    category: "data",
+    icon: Image,
+    color: "bg-pink-500/10 text-pink-500",
+    inputs: {
+      label: "Prompt",
+      description: "Text description of the image to generate"
+    },
+    outputs: ["output"],
+    configSchema: {
+      model: {
+        type: "string",
+        label: "Model",
+        description: "gemini-2.5-flash-image (fast) or gemini-3-pro-image-preview (quality)",
+        default: "gemini-2.5-flash-image",
+        placeholder: "gemini-2.5-flash-image",
+      },
+      overridePrompt: {
+        type: "string",
+        label: "Override Prompt",
+        description: "Optional: Use this prompt instead of input connection",
+        placeholder: "A beautiful sunset over mountains...",
+      },
+    },
+  },
+  {
+    id: "text_to_speech",
+    name: "Text to Speech",
+    description: "Convert text to audio using ElevenLabs TTS",
+    category: "data",
+    icon: Volume2,
+    color: "bg-violet-500/10 text-violet-500",
+    inputs: {
+      label: "Text",
+      description: "Text to convert to speech"
+    },
+    outputs: ["output"],
+    configSchema: {
+      voiceId: {
+        type: "string",
+        label: "Voice",
+        description: "Select a voice from your ElevenLabs account",
+        required: true,
+        placeholder: "Select a voice...",
+      },
+      model: {
+        type: "string",
+        label: "Model",
+        description: "ElevenLabs model to use",
+        default: "eleven_multilingual_v2",
+        placeholder: "eleven_multilingual_v2",
       },
     },
   },

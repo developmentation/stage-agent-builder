@@ -1569,7 +1569,9 @@ const Index = () => {
         updateNode(nodeId, { 
           status: "complete", 
           output: outputSummary,
-          outputs: result.outputs 
+          outputs: result.outputs,
+          imageOutput: result.imageOutput,
+          audioOutput: result.audioOutput
         });
       } else {
         // For single-output functions, normalize to an "output" port for universal port syntax
@@ -1577,7 +1579,9 @@ const Index = () => {
         updateNode(nodeId, { 
           status: "complete", 
           output: outputValue as any,
-          outputs: { output: outputValue as any }
+          outputs: { output: outputValue as any },
+          imageOutput: result.imageOutput,
+          audioOutput: result.audioOutput
         });
       }
       addLog("success", `✓ Function ${functionNode.name} completed`);
@@ -1873,7 +1877,9 @@ const Index = () => {
         updateNode(nodeId, { 
           status: "complete", 
           output: primaryOutput,  // Keep primary output for display
-          outputs: normalizedOutputs  // Store port-specific values
+          outputs: normalizedOutputs,  // Store port-specific values
+          imageOutput: result.imageOutput,
+          audioOutput: result.audioOutput
         });
         addLog("success", `✓ Function ${functionNode.name} completed (output length: ${primaryOutput.length} chars)`);
 
