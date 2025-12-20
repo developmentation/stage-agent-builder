@@ -111,6 +111,7 @@ export const PropertiesPanel = ({
   const [elevenlabsVoices, setElevenlabsVoices] = useState<{ voice_id: string; name: string; category: string }[]>([]);
   const [loadingVoices, setLoadingVoices] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
 
   // Use selectedNode if provided, otherwise fall back to selectedAgent
   const activeNode = selectedNode || selectedAgent;
@@ -1512,9 +1513,31 @@ export const PropertiesPanel = ({
                 <img 
                   src={(activeNode as FunctionNode).imageOutput} 
                   alt="Generated image" 
-                  className="w-full h-auto rounded-md max-h-[300px] object-contain"
+                  className="w-full h-auto rounded-md max-h-[300px] object-contain cursor-pointer hover:opacity-80 transition-opacity"
+                  onClick={() => setImagePreviewOpen(true)}
                 />
               </Card>
+              
+              {/* Fullscreen Image Preview Modal */}
+              <Dialog open={imagePreviewOpen} onOpenChange={setImagePreviewOpen}>
+                <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 bg-black/95 border-none">
+                  <div className="relative w-full h-full flex items-center justify-center p-4">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute top-4 right-4 text-white hover:bg-white/20 z-10"
+                      onClick={() => setImagePreviewOpen(false)}
+                    >
+                      <X className="h-6 w-6" />
+                    </Button>
+                    <img 
+                      src={(activeNode as FunctionNode).imageOutput} 
+                      alt="Generated image fullscreen" 
+                      className="max-w-full max-h-[85vh] object-contain"
+                    />
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
           )}
 
@@ -1557,8 +1580,16 @@ export const PropertiesPanel = ({
             </div>
           )}
 
-          {/* Common: Output */}
-          {activeNode.output && (
+          {/* Common: Output - hide for image_generation and text_to_speech when media is present */}
+          {activeNode.output && !(
+            activeNode.nodeType === "function" && 
+            (activeNode as FunctionNode).functionType === "image_generation" && 
+            (activeNode as FunctionNode).imageOutput
+          ) && !(
+            activeNode.nodeType === "function" && 
+            (activeNode as FunctionNode).functionType === "text_to_speech" && 
+            (activeNode as FunctionNode).audioOutput
+          ) && (
             <div className="space-y-2">
               <div className="flex items-center justify-between gap-2">
                 <Label className="text-sm font-medium">Output</Label>
