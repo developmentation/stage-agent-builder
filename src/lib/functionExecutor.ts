@@ -1073,9 +1073,15 @@ export class FunctionExecutor {
 
       if (outputMode === "separate" && data.outputs) {
         // Return multiple outputs (one per file)
+        // Map file paths to port names (output_1, output_2, etc.)
+        const mappedOutputs: Record<string, string> = {};
+        const filePaths = Object.keys(data.outputs);
+        filePaths.forEach((filePath, index) => {
+          mappedOutputs[`output_${index + 1}`] = data.outputs[filePath];
+        });
         return {
           success: true,
-          outputs: data.outputs,
+          outputs: mappedOutputs,
         };
       } else {
         // Return combined output
