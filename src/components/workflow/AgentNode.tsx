@@ -16,7 +16,7 @@ interface AgentNodeProps {
   onDelete: () => void;
   onToggleMinimize: () => void;
   onToggleLock: () => void;
-  onPortClick: (agentId: string, isOutput: boolean) => void;
+  onPortClick: (agentId: string, isOutput: boolean, outputPort?: string) => void;
   onRun?: () => void;
   onDragStart?: (e: React.DragEvent, nodeId: string) => void;
 }
@@ -136,6 +136,11 @@ export const AgentNode = ({ agent, isSelected, isConnecting, agentNumber, stageI
     idle: "",
   };
 
+  // Get beast mode output ports or fallback to single "output"
+  const outputPorts = agent.beastModeOutputPorts && agent.beastModeOutputPorts.length > 0 
+    ? agent.beastModeOutputPorts 
+    : ["output"];
+
   if (agent.minimized) {
     return (
       <Card 
@@ -147,7 +152,7 @@ export const AgentNode = ({ agent, isSelected, isConnecting, agentNumber, stageI
         onDragStart={handleDragStart}
         style={{ position: 'relative', zIndex: 20 }}
       >
-        {/* Input/Output Ports */}
+        {/* Input Port */}
         <div 
           id={`port-input-${agent.id}-${layoutId}`}
           className={`absolute -top-2 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-primary border-2 border-card cursor-pointer hover:scale-125 transition-transform z-20 ${
@@ -158,16 +163,34 @@ export const AgentNode = ({ agent, isSelected, isConnecting, agentNumber, stageI
             onPortClick(agent.id, false);
           }}
         />
-        <div 
-          id={`port-output-${agent.id}-${layoutId}`}
-          className={`absolute -bottom-2 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-primary border-2 border-card cursor-pointer hover:scale-125 transition-transform z-20 ${
-            isConnecting ? "ring-2 ring-primary animate-pulse" : ""
-          }`}
-          onClick={(e) => {
-            e.stopPropagation();
-            onPortClick(agent.id, true);
-          }}
-        />
+        
+        {/* Output Port(s) - Multiple for beast mode split outputs */}
+        {outputPorts.map((portName, idx) => {
+          const hasData = portName === "output" 
+            ? agent.output && agent.output.trim().length > 0
+            : agent.beastModeOutputs?.[portName] && agent.beastModeOutputs[portName].trim().length > 0;
+          
+          return (
+            <div 
+              key={portName}
+              id={`port-output-${agent.id}-${portName}-${layoutId}`}
+              className={`absolute -bottom-2 w-3 h-3 rounded-full border-2 border-card cursor-pointer hover:scale-125 transition-transform z-20 ${
+                hasData ? 'bg-green-500 ring-2 ring-green-300' : 'bg-primary'
+              } ${isConnecting ? "ring-2 ring-primary animate-pulse" : ""}`}
+              style={{ 
+                left: outputPorts.length > 1 
+                  ? `${((idx + 1) / (outputPorts.length + 1)) * 100}%` 
+                  : '50%',
+                transform: 'translateX(-50%)'
+              }}
+              onClick={(e) => {
+                e.stopPropagation();
+                onPortClick(agent.id, true, portName);
+              }}
+              title={portName}
+            />
+          );
+        })}
         
         {/* Agent number and locked icon */}
         <div className="text-center">
@@ -191,7 +214,7 @@ export const AgentNode = ({ agent, isSelected, isConnecting, agentNumber, stageI
       onDragStart={handleDragStart}
       style={{ position: 'relative', zIndex: 20 }}
     >
-      {/* Input/Output Ports */}
+      {/* Input Port */}
       <div 
         id={`port-input-${agent.id}-${layoutId}`}
         className={`absolute -top-2 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-primary border-2 border-card cursor-pointer hover:scale-125 transition-transform z-20 ${
@@ -202,16 +225,34 @@ export const AgentNode = ({ agent, isSelected, isConnecting, agentNumber, stageI
           onPortClick(agent.id, false);
         }}
       />
-      <div 
-        id={`port-output-${agent.id}-${layoutId}`}
-        className={`absolute -bottom-2 left-1/2 -translate-x-1/2 w-3 h-3 rounded-full bg-primary border-2 border-card cursor-pointer hover:scale-125 transition-transform z-20 ${
-          isConnecting ? "ring-2 ring-primary animate-pulse" : ""
-        }`}
-        onClick={(e) => {
-          e.stopPropagation();
-          onPortClick(agent.id, true);
-        }}
-      />
+      
+      {/* Output Port(s) - Multiple for beast mode split outputs */}
+      {outputPorts.map((portName, idx) => {
+        const hasData = portName === "output" 
+          ? agent.output && agent.output.trim().length > 0
+          : agent.beastModeOutputs?.[portName] && agent.beastModeOutputs[portName].trim().length > 0;
+        
+        return (
+          <div 
+            key={portName}
+            id={`port-output-${agent.id}-${portName}-${layoutId}`}
+            className={`absolute -bottom-2 w-3 h-3 rounded-full border-2 border-card cursor-pointer hover:scale-125 transition-transform z-20 ${
+              hasData ? 'bg-green-500 ring-2 ring-green-300' : 'bg-primary'
+            } ${isConnecting ? "ring-2 ring-primary animate-pulse" : ""}`}
+            style={{ 
+              left: outputPorts.length > 1 
+                ? `${((idx + 1) / (outputPorts.length + 1)) * 100}%` 
+                : '50%',
+              transform: 'translateX(-50%)'
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              onPortClick(agent.id, true, portName);
+            }}
+            title={portName}
+          />
+        );
+      })}
 
       <div className="space-y-3">
         <div className="flex items-start gap-2">
@@ -296,11 +337,39 @@ export const AgentNode = ({ agent, isSelected, isConnecting, agentNumber, stageI
               {agent.tools.length} tools
             </Badge>
           )}
+          {outputPorts.length > 1 && (
+            <Badge variant="outline" className="text-xs">
+              {outputPorts.length} outputs
+            </Badge>
+          )}
         </div>
         
         <p className="text-xs text-muted-foreground line-clamp-2">
           {agent.systemPrompt}
         </p>
+        
+        {/* Show output port labels for beast mode split outputs */}
+        {outputPorts.length > 1 && (
+          <div className="flex gap-1 text-[10px] text-muted-foreground flex-wrap">
+            <span>Outputs:</span>
+            {outputPorts.map((port) => {
+              const hasContent = agent.beastModeOutputs?.[port] && agent.beastModeOutputs[port].length > 0;
+              
+              return (
+                <Badge 
+                  key={port} 
+                  variant="outline" 
+                  className={`text-[9px] px-1 py-0 h-4 ${
+                    hasContent ? 'bg-green-500/20 border-green-500 text-green-700 dark:text-green-400' : 'opacity-50'
+                  }`}
+                  title={hasContent ? `${port}: ${agent.beastModeOutputs![port].substring(0, 50)}...` : `${port}: empty`}
+                >
+                  {port}
+                </Badge>
+              );
+            })}
+          </div>
+        )}
       </div>
     </Card>
   );
