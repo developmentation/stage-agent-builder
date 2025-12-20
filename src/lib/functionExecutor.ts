@@ -1361,8 +1361,9 @@ export class FunctionExecutor {
       }
       if (data.results) {
         data.results.forEach((r: any, i: number) => {
-          if (r.success && r.artifactId) {
-            lines.push(`  • Artifact ${i + 1}: ${r.artifactId}`);
+          if (r.success) {
+            const id = typeof r.artifactId === 'object' ? JSON.stringify(r.artifactId) : r.artifactId;
+            lines.push(`  • Artifact ${i + 1}: ${id || 'created'}`);
           } else if (!r.success && r.error) {
             lines.push(`  • Item ${i + 1} failed: ${r.error}`);
           }
