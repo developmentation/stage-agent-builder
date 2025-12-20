@@ -688,6 +688,24 @@ export const PropertiesPanel = ({
                     </SelectItem>
                   </SelectContent>
                 </Select>
+              ) : key === "outputMode" && node.functionType === "github_files" ? (
+                <Select
+                  value={node.config[key] ?? "combined"}
+                  onValueChange={(value) =>
+                    updateNodeConfig({ ...node.config, [key]: value })
+                  }
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Select output mode" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="combined">Combined (single output)</SelectItem>
+                    <SelectItem value="separate">Separate (one output per file)</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : key === "selectedPaths" && node.functionType === "github_files" ? (
+                // Hide this field - it's managed by the tree modal
+                null
               ) : (
                 <Input
                   id={key}
@@ -1387,24 +1405,46 @@ export const PropertiesPanel = ({
 
               {renderFunctionConfig(activeNode as FunctionNode)}
               
-              {/* GitHub File Selector Button */}
-              {(activeNode as FunctionNode).functionType === "github_files" && (activeNode as FunctionNode).config.repoUrl && (
+              {/* GitHub File Selector */}
+              {(activeNode as FunctionNode).functionType === "github_files" && (
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">File Selection</Label>
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => setGithubTreeOpen(true)}
-                  >
-                    Select Files ({((activeNode as FunctionNode).config.selectedPaths || []).length} selected)
-                  </Button>
+                  {(activeNode as FunctionNode).config.repoUrl ? (
+                    <>
+                      <Button
+                        variant="outline"
+                        className="w-full justify-between"
+                        onClick={() => setGithubTreeOpen(true)}
+                      >
+                        <span>Select Files from Repository</span>
+                        <span className="ml-2 px-2 py-0.5 bg-primary/10 rounded text-xs">
+                          {((activeNode as FunctionNode).config.selectedPaths || []).length} selected
+                        </span>
+                      </Button>
+                      {((activeNode as FunctionNode).config.selectedPaths || []).length > 0 && (
+                        <Card className="p-2 bg-muted/30 max-h-[100px] overflow-y-auto">
+                          <p className="text-xs text-muted-foreground">
+                            {((activeNode as FunctionNode).config.selectedPaths || []).slice(0, 5).join(", ")}
+                            {((activeNode as FunctionNode).config.selectedPaths || []).length > 5 && 
+                              ` +${((activeNode as FunctionNode).config.selectedPaths || []).length - 5} more`}
+                          </p>
+                        </Card>
+                      )}
+                    </>
+                  ) : (
+                    <Card className="p-3 bg-muted/30">
+                      <p className="text-xs text-muted-foreground">
+                        Enter a repository URL above to select files
+                      </p>
+                    </Card>
+                  )}
                 </div>
               )}
               
               {renderMemoryViewer(activeNode as FunctionNode)}
               
-              {/* Output Count Control for multi-output functions */}
-               {functionDef?.supportsMultipleOutputs && (
+              {/* Output Count Control for multi-output functions (excluding github_files which is dynamic) */}
+               {functionDef?.supportsMultipleOutputs && (activeNode as FunctionNode).functionType !== "github_files" && (
                 <div className="space-y-2">
                   <Label className="text-sm font-medium">Number of Outputs</Label>
                   <div className="flex items-center gap-3 p-3 border rounded-lg bg-muted/30">
@@ -1456,6 +1496,24 @@ export const PropertiesPanel = ({
                   <p className="text-xs text-muted-foreground">
                     Set 1-50 output ports. Each split result will be assigned to a numbered output.
                   </p>
+                </div>
+              )}
+              
+              {/* GitHub Files output info */}
+              {(activeNode as FunctionNode).functionType === "github_files" && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Output Configuration</Label>
+                  <Card className="p-3 bg-muted/30">
+                    {(activeNode as FunctionNode).config.outputMode === "separate" ? (
+                      <p className="text-xs text-muted-foreground">
+                        <span className="font-medium text-foreground">Separate mode:</span> Creates {((activeNode as FunctionNode).config.selectedPaths || []).length || 0} dynamic output(s) - one per selected file
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        <span className="font-medium text-foreground">Combined mode:</span> Single output with all file contents concatenated
+                      </p>
+                    )}
+                  </Card>
                 </div>
               )}
             </>
