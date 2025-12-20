@@ -648,7 +648,19 @@ const Index = () => {
       // Create a deep copy of the node with a new ID
       const clonedNode: WorkflowNode = JSON.parse(JSON.stringify(nodeToClone));
       clonedNode.id = `${nodeToClone.nodeType}-${Date.now()}`;
-      clonedNode.name = `${nodeToClone.name} (Copy)`;
+      
+      // Generate incremented name: "Node" -> "Node 1" -> "Node 2"
+      const baseName = nodeToClone.name.replace(/\s+\d+$/, ''); // Remove trailing " #"
+      const allNodes = prev.stages.flatMap(s => s.nodes);
+      const existingNumbers = allNodes
+        .filter(n => n.name === baseName || n.name.match(new RegExp(`^${baseName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s+\\d+$`)))
+        .map(n => {
+          const match = n.name.match(/\s+(\d+)$/);
+          return match ? parseInt(match[1], 10) : 0;
+        });
+      const nextNumber = existingNumbers.length > 0 ? Math.max(...existingNumbers) + 1 : 1;
+      clonedNode.name = `${baseName} ${nextNumber}`;
+      
       clonedNode.output = undefined; // Clear the output
       clonedNode.status = "idle";
       
