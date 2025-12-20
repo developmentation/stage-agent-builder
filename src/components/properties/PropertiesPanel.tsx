@@ -112,6 +112,7 @@ export const PropertiesPanel = ({
   const [loadingVoices, setLoadingVoices] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
   const [githubTreeOpen, setGithubTreeOpen] = useState(false);
 
   // Use selectedNode if provided, otherwise fall back to selectedAgent
@@ -1565,9 +1566,7 @@ export const PropertiesPanel = ({
                 onCheckedChange={(checked) => {
                   const beastMode = {
                     enabled: checked,
-                    source: "connected_card" as const,
                     outputMode: "concatenate" as const,
-                    memoryKey: "",
                   };
                   if (activeNode.nodeType === "agent") {
                     onUpdateAgent(activeNode.id, { beastMode });
@@ -1582,38 +1581,8 @@ export const PropertiesPanel = ({
               (activeNode.nodeType === "function" && (activeNode as FunctionNode).beastMode?.enabled)) && (
               <Card className="p-3 bg-muted/30 space-y-3">
                 <p className="text-xs text-muted-foreground">
-                  Iterate through multiple inputs and execute this {activeNode.nodeType} for each one.
+                  Iterate through all outputs from the connected card and execute this {activeNode.nodeType} for each one.
                 </p>
-                
-                {/* Source Selection */}
-                <div className="space-y-2">
-                  <Label className="text-xs">Input Source</Label>
-                  <Select
-                    value={(activeNode.nodeType === "agent" 
-                      ? (activeNode as AgentNode).beastMode?.source 
-                      : (activeNode as FunctionNode).beastMode?.source) || "connected_card"}
-                    onValueChange={(value: "connected_card" | "all_connected" | "entire_stage") => {
-                      const currentBeastMode = activeNode.nodeType === "agent" 
-                        ? (activeNode as AgentNode).beastMode 
-                        : (activeNode as FunctionNode).beastMode;
-                      const beastMode = { ...currentBeastMode, enabled: true, source: value };
-                      if (activeNode.nodeType === "agent") {
-                        onUpdateAgent(activeNode.id, { beastMode });
-                      } else if (onUpdateNode) {
-                        onUpdateNode(activeNode.id, { beastMode });
-                      }
-                    }}
-                  >
-                    <SelectTrigger className="h-8 text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="connected_card">Connected Card Outputs</SelectItem>
-                      <SelectItem value="all_connected">All Connected Cards</SelectItem>
-                      <SelectItem value="entire_stage">Entire Stage</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
                 
                 {/* Output Mode */}
                 <div className="space-y-2">
@@ -1642,29 +1611,6 @@ export const PropertiesPanel = ({
                       <SelectItem value="split">Split to Dynamic Outputs</SelectItem>
                     </SelectContent>
                   </Select>
-                </div>
-                
-                {/* Memory Key (optional) */}
-                <div className="space-y-2">
-                  <Label className="text-xs">Memory Key (optional)</Label>
-                  <Input
-                    placeholder="Store results in memory array..."
-                    className="h-8 text-xs"
-                    value={(activeNode.nodeType === "agent" 
-                      ? (activeNode as AgentNode).beastMode?.memoryKey 
-                      : (activeNode as FunctionNode).beastMode?.memoryKey) || ""}
-                    onChange={(e) => {
-                      const currentBeastMode = activeNode.nodeType === "agent" 
-                        ? (activeNode as AgentNode).beastMode 
-                        : (activeNode as FunctionNode).beastMode;
-                      const beastMode = { ...currentBeastMode, enabled: true, memoryKey: e.target.value };
-                      if (activeNode.nodeType === "agent") {
-                        onUpdateAgent(activeNode.id, { beastMode });
-                      } else if (onUpdateNode) {
-                        onUpdateNode(activeNode.id, { beastMode });
-                      }
-                    }}
-                  />
                 </div>
               </Card>
             )}
@@ -1706,44 +1652,58 @@ export const PropertiesPanel = ({
             </Card>
           </div>
 
-          {/* Image Preview for image_generation functions */}
-          {activeNode.nodeType === "function" && (activeNode as FunctionNode).functionType === "image_generation" && (activeNode as FunctionNode).imageOutput && (
+          {/* Image Preview for image_generation functions - supports single and multiple images */}
+          {activeNode.nodeType === "function" && (activeNode as FunctionNode).functionType === "image_generation" && 
+            ((activeNode as FunctionNode).imageOutput || ((activeNode as FunctionNode).imageOutputs && (activeNode as FunctionNode).imageOutputs!.length > 0)) && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label className="text-sm font-medium flex items-center gap-2">
                   <Image className="h-4 w-4 text-pink-500" />
-                  Generated Image
+                  Generated Image{(activeNode as FunctionNode).imageOutputs && (activeNode as FunctionNode).imageOutputs!.length > 1 ? `s (${(activeNode as FunctionNode).imageOutputs!.length})` : ''}
                 </Label>
                 <Button
                   variant="outline"
                   size="sm"
                   className="h-7 px-2"
                   onClick={() => {
-                    const imageData = (activeNode as FunctionNode).imageOutput;
-                    if (imageData) {
+                    const images = (activeNode as FunctionNode).imageOutputs || [(activeNode as FunctionNode).imageOutput!];
+                    images.forEach((img, i) => {
                       const link = document.createElement("a");
-                      link.href = imageData;
-                      link.download = `generated-image-${Date.now()}.png`;
+                      link.href = img;
+                      link.download = `generated-image-${Date.now()}-${i + 1}.png`;
                       document.body.appendChild(link);
                       link.click();
                       document.body.removeChild(link);
-                    }
+                    });
                   }}
                 >
                   <Download className="h-3 w-3 mr-1" />
-                  Download
+                  Download All
                 </Button>
               </div>
               <Card className="p-2 bg-muted/30">
-                <img 
-                  src={(activeNode as FunctionNode).imageOutput} 
-                  alt="Generated image" 
-                  className="w-full h-auto rounded-md max-h-[300px] object-contain cursor-pointer hover:opacity-80 transition-opacity"
-                  onClick={() => setImagePreviewOpen(true)}
-                />
+                {(activeNode as FunctionNode).imageOutputs && (activeNode as FunctionNode).imageOutputs!.length > 1 ? (
+                  <div className="grid grid-cols-2 gap-2 max-h-[300px] overflow-y-auto">
+                    {(activeNode as FunctionNode).imageOutputs!.map((img, idx) => (
+                      <img 
+                        key={idx}
+                        src={img} 
+                        alt={`Generated image ${idx + 1}`} 
+                        className="w-full h-auto rounded-md object-contain cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => { setSelectedImageIndex(idx); setImagePreviewOpen(true); }}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <img 
+                    src={(activeNode as FunctionNode).imageOutput} 
+                    alt="Generated image" 
+                    className="w-full h-auto rounded-md max-h-[300px] object-contain cursor-pointer hover:opacity-80 transition-opacity"
+                    onClick={() => setImagePreviewOpen(true)}
+                  />
+                )}
               </Card>
               
-              {/* Fullscreen Image Preview Modal */}
               <Dialog open={imagePreviewOpen} onOpenChange={setImagePreviewOpen}>
                 <DialogContent className="max-w-[95vw] max-h-[95vh] p-0 bg-black/95 border-none">
                   <div className="relative w-full h-full flex items-center justify-center p-4">
@@ -1756,7 +1716,7 @@ export const PropertiesPanel = ({
                       <X className="h-6 w-6" />
                     </Button>
                     <img 
-                      src={(activeNode as FunctionNode).imageOutput} 
+                      src={(activeNode as FunctionNode).imageOutputs?.[selectedImageIndex] || (activeNode as FunctionNode).imageOutput} 
                       alt="Generated image fullscreen" 
                       className="max-w-full max-h-[85vh] object-contain"
                     />
@@ -1766,41 +1726,47 @@ export const PropertiesPanel = ({
             </div>
           )}
 
-          {/* Audio Preview for text_to_speech functions */}
-          {activeNode.nodeType === "function" && (activeNode as FunctionNode).functionType === "text_to_speech" && (activeNode as FunctionNode).audioOutput && (
+          {/* Audio Preview for text_to_speech functions - supports single and multiple audio */}
+          {activeNode.nodeType === "function" && (activeNode as FunctionNode).functionType === "text_to_speech" && 
+            ((activeNode as FunctionNode).audioOutput || ((activeNode as FunctionNode).audioOutputs && (activeNode as FunctionNode).audioOutputs!.length > 0)) && (
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <Label className="text-sm font-medium flex items-center gap-2">
                   <Volume2 className="h-4 w-4 text-violet-500" />
-                  Generated Audio
+                  Generated Audio{(activeNode as FunctionNode).audioOutputs && (activeNode as FunctionNode).audioOutputs!.length > 1 ? `s (${(activeNode as FunctionNode).audioOutputs!.length})` : ''}
                 </Label>
                 <Button
                   variant="outline"
                   size="sm"
                   className="h-7 px-2"
                   onClick={() => {
-                    const audioData = (activeNode as FunctionNode).audioOutput;
-                    if (audioData) {
+                    const audios = (activeNode as FunctionNode).audioOutputs || [(activeNode as FunctionNode).audioOutput!];
+                    audios.forEach((audio, i) => {
                       const link = document.createElement("a");
-                      link.href = audioData;
-                      link.download = `generated-audio-${Date.now()}.mp3`;
+                      link.href = audio;
+                      link.download = `generated-audio-${Date.now()}-${i + 1}.mp3`;
                       document.body.appendChild(link);
                       link.click();
                       document.body.removeChild(link);
-                    }
+                    });
                   }}
                 >
                   <Download className="h-3 w-3 mr-1" />
-                  Download
+                  Download All
                 </Button>
               </div>
-              <Card className="p-3 bg-muted/30">
-                <audio
-                  ref={audioRef}
-                  controls
-                  className="w-full h-10"
-                  src={(activeNode as FunctionNode).audioOutput}
-                />
+              <Card className="p-3 bg-muted/30 space-y-2 max-h-[300px] overflow-y-auto">
+                {((activeNode as FunctionNode).audioOutputs && (activeNode as FunctionNode).audioOutputs!.length > 0 
+                  ? (activeNode as FunctionNode).audioOutputs! 
+                  : [(activeNode as FunctionNode).audioOutput!]
+                ).map((audio, idx) => (
+                  <audio
+                    key={idx}
+                    controls
+                    className="w-full h-10"
+                    src={audio}
+                  />
+                ))}
               </Card>
             </div>
           )}
