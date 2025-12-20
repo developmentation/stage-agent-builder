@@ -15,7 +15,9 @@ import {
   Zap,
   FileText,
   Image,
-  Volume2
+  Volume2,
+  Mail,
+  Github
 } from "lucide-react";
 import type { FunctionDefinition } from "@/types/functions";
 
@@ -615,6 +617,86 @@ export const functionDefinitions: FunctionDefinition[] = [
         description: "ElevenLabs model to use",
         default: "eleven_multilingual_v2",
         placeholder: "eleven_multilingual_v2",
+      },
+    },
+  },
+  // Email
+  {
+    id: "send_email",
+    name: "Send Email",
+    description: "Send email via Resend from info@agentbuilderconsole.com",
+    category: "export",
+    icon: Mail,
+    color: "bg-rose-500/10 text-rose-500",
+    inputs: {
+      label: "Email Body",
+      description: "Content to send in the email body"
+    },
+    outputs: ["output"],
+    configSchema: {
+      to: {
+        type: "string",
+        label: "To",
+        description: "Recipient email address",
+        required: true,
+        placeholder: "recipient@example.com",
+      },
+      subject: {
+        type: "string",
+        label: "Subject",
+        description: "Email subject line",
+        required: true,
+        placeholder: "Enter subject...",
+      },
+      useHtml: {
+        type: "boolean",
+        label: "Send as HTML",
+        description: "Send body as HTML instead of plain text",
+        default: false,
+      },
+    },
+  },
+  // GitHub Integration
+  {
+    id: "github_files",
+    name: "GitHub Files",
+    description: "Fetch files from a GitHub repository",
+    category: "data",
+    icon: Github,
+    color: "bg-slate-500/10 text-slate-500",
+    supportsMultipleOutputs: true,
+    inputs: {
+      label: "Optional Input",
+      description: "Optional input (not used directly)"
+    },
+    outputs: ["output"],
+    configSchema: {
+      repoUrl: {
+        type: "string",
+        label: "Repository URL",
+        description: "GitHub repository URL (e.g., github.com/owner/repo)",
+        required: true,
+        placeholder: "github.com/owner/repo",
+      },
+      branch: {
+        type: "string",
+        label: "Branch",
+        description: "Branch name (defaults to main/master)",
+        default: "",
+        placeholder: "main",
+      },
+      selectedPaths: {
+        type: "json",
+        label: "Selected Files",
+        description: "File paths to fetch (populated by file selector)",
+        default: [],
+      },
+      outputMode: {
+        type: "string",
+        label: "Output Mode",
+        description: "combined = single output, separate = one output per file",
+        default: "combined",
+        placeholder: "combined",
       },
     },
   },

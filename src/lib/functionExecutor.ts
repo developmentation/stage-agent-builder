@@ -84,6 +84,12 @@ export class FunctionExecutor {
       case "text_to_speech":
         return await this.executeTextToSpeech(functionNode, input);
       
+      case "send_email":
+        return await this.executeSendEmail(functionNode, input);
+      
+      case "github_files":
+        return await this.executeGitHubFiles(functionNode, input);
+      
       default:
         return {
           success: false,
@@ -969,6 +975,120 @@ export class FunctionExecutor {
         success: false,
         outputs: { output: "" },
         error: error instanceof Error ? error.message : "API call failed",
+      };
+    }
+  }
+
+  // Send Email (Resend)
+  private static async executeSendEmail(node: FunctionNode, input: string): Promise<FunctionExecutionResult> {
+    try {
+      const to = node.config.to as string;
+      const subject = node.config.subject as string;
+      const useHtml = node.config.useHtml === true;
+      
+      if (!to) {
+        throw new Error("Recipient email is required");
+      }
+      
+      if (!subject) {
+        throw new Error("Email subject is required");
+      }
+      
+      const body = input || "";
+      if (!body) {
+        throw new Error("Email body is required (provide via connection)");
+      }
+      
+      console.log(`Sending email to: ${to}, subject: ${subject}`);
+      
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/send-email`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ to, subject, body, useHtml }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Email send failed: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.error || "Email sending failed");
+      }
+
+      return {
+        success: true,
+        outputs: { output: `Email sent successfully to ${to}` },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        outputs: { output: "" },
+        error: error instanceof Error ? error.message : "Email send failed",
+      };
+    }
+  }
+
+  // GitHub Files
+  private static async executeGitHubFiles(node: FunctionNode, input: string): Promise<FunctionExecutionResult> {
+    try {
+      const repoUrl = node.config.repoUrl as string;
+      
+      if (!repoUrl) {
+        throw new Error("Repository URL is required");
+      }
+      
+      const branch = node.config.branch as string || undefined;
+      const selectedPaths = node.config.selectedPaths as string[] || [];
+      const outputMode = (node.config.outputMode as string) || "combined";
+      
+      if (selectedPaths.length === 0) {
+        throw new Error("No files selected. Use the file selector to choose files.");
+      }
+      
+      console.log(`Fetching ${selectedPaths.length} files from ${repoUrl}`);
+      
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/github-fetch`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ repoUrl, branch, selectedPaths, outputMode }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `GitHub fetch failed: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.error || "GitHub fetch failed");
+      }
+
+      if (outputMode === "separate" && data.outputs) {
+        // Return multiple outputs (one per file)
+        return {
+          success: true,
+          outputs: data.outputs,
+        };
+      } else {
+        // Return combined output
+        return {
+          success: true,
+          outputs: { output: data.output || "" },
+        };
+      }
+    } catch (error) {
+      return {
+        success: false,
+        outputs: { output: "" },
+        error: error instanceof Error ? error.message : "GitHub fetch failed",
       };
     }
   }

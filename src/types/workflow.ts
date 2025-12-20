@@ -14,6 +14,14 @@ export interface BaseNode {
   position?: { x: number; y: number }; // For canvas mode positioning within stage
 }
 
+// Beast Mode configuration
+export interface BeastModeConfig {
+  enabled: boolean;
+  source: "connected_card" | "all_connected" | "entire_stage";
+  outputMode: "concatenate" | "split";
+  memoryKey?: string;
+}
+
 // Agent-specific properties
 export interface AgentNode extends BaseNode {
   nodeType: "agent";
@@ -27,6 +35,7 @@ export interface AgentNode extends BaseNode {
   responseLength?: number;
   thinkingEnabled?: boolean;
   thinkingBudget?: number;
+  beastMode?: BeastModeConfig;
 }
 
 // Function-specific properties
@@ -39,6 +48,7 @@ export interface FunctionNode extends BaseNode {
   outputs?: Record<string, string>; // Map of output port to value for visual indicators
   imageOutput?: string; // Base64 image data for image generation functions
   audioOutput?: string; // Base64 audio data for TTS functions
+  beastMode?: BeastModeConfig;
 }
 
 // Tool-specific properties (standalone tools)

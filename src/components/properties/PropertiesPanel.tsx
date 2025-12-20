@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { X, Plus, Settings, Play, Database, Download, Eye, EyeOff, Save, Upload, Lock, Unlock, Copy, BookPlus, Bot, Image, Volume2, Loader2 } from "lucide-react";
+import { X, Plus, Settings, Play, Database, Download, Eye, EyeOff, Save, Upload, Lock, Unlock, Copy, BookPlus, Bot, Image, Volume2, Loader2, Zap } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -46,7 +46,7 @@ import { toast } from "@/hooks/use-toast";
 import { extractTextFromFile, formatExtractedContent, ExtractedContent } from "@/utils/fileTextExtraction";
 import { parseExcelFile, ExcelData } from "@/utils/parseExcel";
 import { ExcelSelector } from "@/components/ExcelSelector";
-
+import { GitHubTreeModal } from "@/components/github/GitHubTreeModal";
 interface PropertiesPanelProps {
   selectedAgent: AgentNode | undefined;
   selectedNode?: WorkflowNode;
@@ -112,6 +112,7 @@ export const PropertiesPanel = ({
   const [loadingVoices, setLoadingVoices] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
   const [imagePreviewOpen, setImagePreviewOpen] = useState(false);
+  const [githubTreeOpen, setGithubTreeOpen] = useState(false);
 
   // Use selectedNode if provided, otherwise fall back to selectedAgent
   const activeNode = selectedNode || selectedAgent;
@@ -1385,6 +1386,21 @@ export const PropertiesPanel = ({
               })()}
 
               {renderFunctionConfig(activeNode as FunctionNode)}
+              
+              {/* GitHub File Selector Button */}
+              {(activeNode as FunctionNode).functionType === "github_files" && (activeNode as FunctionNode).config.repoUrl && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">File Selection</Label>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => setGithubTreeOpen(true)}
+                  >
+                    Select Files ({((activeNode as FunctionNode).config.selectedPaths || []).length} selected)
+                  </Button>
+                </div>
+              )}
+              
               {renderMemoryViewer(activeNode as FunctionNode)}
               
               {/* Output Count Control for multi-output functions */}
@@ -1444,6 +1460,125 @@ export const PropertiesPanel = ({
               )}
             </>
           )}
+
+          {/* Beast Mode - for both Agents and Functions */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-sm font-medium flex items-center gap-2">
+                <Zap className="h-4 w-4 text-yellow-500" />
+                Beast Mode
+              </Label>
+              <Switch
+                checked={(activeNode.nodeType === "agent" 
+                  ? (activeNode as AgentNode).beastMode?.enabled 
+                  : (activeNode as FunctionNode).beastMode?.enabled) || false}
+                onCheckedChange={(checked) => {
+                  const beastMode = {
+                    enabled: checked,
+                    source: "connected_card" as const,
+                    outputMode: "concatenate" as const,
+                    memoryKey: "",
+                  };
+                  if (activeNode.nodeType === "agent") {
+                    onUpdateAgent(activeNode.id, { beastMode });
+                  } else if (onUpdateNode) {
+                    onUpdateNode(activeNode.id, { beastMode });
+                  }
+                }}
+              />
+            </div>
+            
+            {((activeNode.nodeType === "agent" && (activeNode as AgentNode).beastMode?.enabled) ||
+              (activeNode.nodeType === "function" && (activeNode as FunctionNode).beastMode?.enabled)) && (
+              <Card className="p-3 bg-muted/30 space-y-3">
+                <p className="text-xs text-muted-foreground">
+                  Iterate through multiple inputs and execute this {activeNode.nodeType} for each one.
+                </p>
+                
+                {/* Source Selection */}
+                <div className="space-y-2">
+                  <Label className="text-xs">Input Source</Label>
+                  <Select
+                    value={(activeNode.nodeType === "agent" 
+                      ? (activeNode as AgentNode).beastMode?.source 
+                      : (activeNode as FunctionNode).beastMode?.source) || "connected_card"}
+                    onValueChange={(value: "connected_card" | "all_connected" | "entire_stage") => {
+                      const currentBeastMode = activeNode.nodeType === "agent" 
+                        ? (activeNode as AgentNode).beastMode 
+                        : (activeNode as FunctionNode).beastMode;
+                      const beastMode = { ...currentBeastMode, enabled: true, source: value };
+                      if (activeNode.nodeType === "agent") {
+                        onUpdateAgent(activeNode.id, { beastMode });
+                      } else if (onUpdateNode) {
+                        onUpdateNode(activeNode.id, { beastMode });
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="connected_card">Connected Card Outputs</SelectItem>
+                      <SelectItem value="all_connected">All Connected Cards</SelectItem>
+                      <SelectItem value="entire_stage">Entire Stage</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                {/* Output Mode */}
+                <div className="space-y-2">
+                  <Label className="text-xs">Output Mode</Label>
+                  <Select
+                    value={(activeNode.nodeType === "agent" 
+                      ? (activeNode as AgentNode).beastMode?.outputMode 
+                      : (activeNode as FunctionNode).beastMode?.outputMode) || "concatenate"}
+                    onValueChange={(value: "concatenate" | "split") => {
+                      const currentBeastMode = activeNode.nodeType === "agent" 
+                        ? (activeNode as AgentNode).beastMode 
+                        : (activeNode as FunctionNode).beastMode;
+                      const beastMode = { ...currentBeastMode, enabled: true, outputMode: value };
+                      if (activeNode.nodeType === "agent") {
+                        onUpdateAgent(activeNode.id, { beastMode });
+                      } else if (onUpdateNode) {
+                        onUpdateNode(activeNode.id, { beastMode });
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="concatenate">Concatenate Results</SelectItem>
+                      <SelectItem value="split">Split to Dynamic Outputs</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                {/* Memory Key (optional) */}
+                <div className="space-y-2">
+                  <Label className="text-xs">Memory Key (optional)</Label>
+                  <Input
+                    placeholder="Store results in memory array..."
+                    className="h-8 text-xs"
+                    value={(activeNode.nodeType === "agent" 
+                      ? (activeNode as AgentNode).beastMode?.memoryKey 
+                      : (activeNode as FunctionNode).beastMode?.memoryKey) || ""}
+                    onChange={(e) => {
+                      const currentBeastMode = activeNode.nodeType === "agent" 
+                        ? (activeNode as AgentNode).beastMode 
+                        : (activeNode as FunctionNode).beastMode;
+                      const beastMode = { ...currentBeastMode, enabled: true, memoryKey: e.target.value };
+                      if (activeNode.nodeType === "agent") {
+                        onUpdateAgent(activeNode.id, { beastMode });
+                      } else if (onUpdateNode) {
+                        onUpdateNode(activeNode.id, { beastMode });
+                      }
+                    }}
+                  />
+                </div>
+              </Card>
+            )}
+          </div>
 
           {/* Common: Input Value (from connections) */}
           <div className="space-y-2">
@@ -1965,7 +2100,28 @@ export const PropertiesPanel = ({
             </div>
           )}
         </div>
-      </ScrollArea>
+    </ScrollArea>
+      
+      {/* GitHub Tree Modal */}
+      {activeNode?.nodeType === "function" && (activeNode as FunctionNode).functionType === "github_files" && (
+        <GitHubTreeModal
+          open={githubTreeOpen}
+          onOpenChange={setGithubTreeOpen}
+          repoUrl={(activeNode as FunctionNode).config.repoUrl || ""}
+          branch={(activeNode as FunctionNode).config.branch || undefined}
+          selectedPaths={(activeNode as FunctionNode).config.selectedPaths || []}
+          onSelectPaths={(paths) => {
+            if (onUpdateNode) {
+              onUpdateNode(activeNode.id, {
+                config: {
+                  ...(activeNode as FunctionNode).config,
+                  selectedPaths: paths,
+                },
+              });
+            }
+          }}
+        />
+      )}
     </div>
   );
 };
