@@ -1162,10 +1162,23 @@ const Index = () => {
       return;
     }
 
+    // Check if Beast Mode is enabled
+    if (agent.beastMode?.enabled && agent.beastMode.source === "connected_card") {
+      await runAgentBeastMode(nodeId, agent);
+      return;
+    }
+
+    // Regular execution
+    await executeAgentOnce(nodeId, agent, customInput);
+  };
+
+  // Execute agent a single time with given input
+  const executeAgentOnce = async (nodeId: string, agent: AgentNode, customInput?: string, portOverride?: { nodeId: string; port: string }) => {
+    const allNodes = workflow.stages.flatMap((s) => s.nodes);
+
     // Check if input is null-like and executeOnNullInput is false
-    if (!agent.executeOnNullInput) {
+    if (!agent.executeOnNullInput && !customInput && !portOverride) {
       const incomingConnections = workflow.connections.filter((c) => c.toNodeId === nodeId);
-      const allNodes = workflow.stages.flatMap((s) => s.nodes);
       const isStage1 = workflow.stages[0]?.nodes.some(n => n.id === agent.id);
       
       let input = "";
@@ -1176,10 +1189,8 @@ const Index = () => {
             const fromNode = allNodes.find((n) => n.id === c.fromNodeId);
             if (!fromNode) return "";
             
-            // Determine which port to read from (universal port syntax)
             let portToRead = c.fromOutputPort;
             
-            // Legacy support: if no port specified, default to first port
             if (!portToRead && fromNode.nodeType === "function") {
               const funcNode = fromNode as FunctionNode;
               if (funcNode.outputs) {
@@ -1189,14 +1200,12 @@ const Index = () => {
               }
             }
             
-            // For functions, read from the specific port
             if (fromNode.nodeType === "function" && portToRead) {
               const funcNode = fromNode as FunctionNode;
               const portValue = funcNode.outputs?.[portToRead];
               return portValue !== undefined && portValue !== null ? String(portValue) : "";
             }
             
-            // For agents, use the primary output
             return fromNode?.output || "";
           });
         
@@ -1204,8 +1213,6 @@ const Index = () => {
         
         if (nonEmptyOutputs.length > 0) {
           input = nonEmptyOutputs.join("\n\n---\n\n");
-        } else {
-          input = "";
         }
       } else if (isStage1) {
         input = userInput || "";
@@ -1214,7 +1221,7 @@ const Index = () => {
       if (isNullLikeValue(input)) {
         addLog("warning", `Agent "${agent.name}" skipped - input is null/empty and "Execute on NULL Input" is disabled`);
         updateNode(nodeId, { status: "idle", output: "" });
-        return;
+        return "";
       }
     }
 
@@ -1222,7 +1229,6 @@ const Index = () => {
     updateNode(nodeId, { status: "running" });
     
     try {
-      // Get input from connected nodes or use user's initial input
       const incomingConnections = workflow.connections.filter(
         (c) => c.toNodeId === nodeId
       );
@@ -1230,16 +1236,27 @@ const Index = () => {
       let input = "";
       const isStage1 = workflow.stages[0]?.nodes.some(n => n.id === agent.id);
       
-      if (incomingConnections.length > 0) {
+      // If portOverride is provided, use that specific port's content
+      if (portOverride) {
+        const fromNode = allNodes.find((n) => n.id === portOverride.nodeId);
+        if (fromNode) {
+          if (fromNode.nodeType === "function") {
+            const funcNode = fromNode as FunctionNode;
+            input = funcNode.outputs?.[portOverride.port] || "";
+          } else {
+            input = fromNode.output || "";
+          }
+        }
+      } else if (customInput !== undefined) {
+        input = customInput;
+      } else if (incomingConnections.length > 0) {
         const outputsFromConnections = incomingConnections
           .map((c) => {
             const fromNode = allNodes.find((n) => n.id === c.fromNodeId);
             if (!fromNode) return "";
             
-            // Determine which port to read from (universal port syntax)
             let portToRead = c.fromOutputPort;
             
-            // Legacy support: if no port specified, default to first port
             if (!portToRead && fromNode.nodeType === "function") {
               const funcNode = fromNode as FunctionNode;
               if (funcNode.outputs) {
@@ -1249,14 +1266,12 @@ const Index = () => {
               }
             }
             
-            // For functions, read from the specific port
             if (fromNode.nodeType === "function" && portToRead) {
               const funcNode = fromNode as FunctionNode;
               const portValue = funcNode.outputs?.[portToRead];
               return portValue !== undefined && portValue !== null ? String(portValue) : "";
             }
             
-            // For agents, use the primary output
             return fromNode?.output || "";
           });
         
@@ -1265,29 +1280,23 @@ const Index = () => {
         if (nonEmptyOutputs.length > 0) {
           input = nonEmptyOutputs.join("\n\n---\n\n");
           addLog("info", `Agent ${agent.name} received input from ${incomingConnections.length} connection(s)`);
-        } else {
-          input = "";
         }
       } else if (isStage1) {
-        // Only use userInput if in stage 1 and no connections
         input = userInput || "";
       }
 
-      // Log tool execution
       if (agent.tools.length > 0) {
         agent.tools.forEach(tool => {
           addLog("running", `Executing tool: ${tool.toolId}`);
         });
       }
       
-      // {input} uses the resolved input, {prompt} always uses the original userInput from Stage 1
       const promptValue = userInput || "";
       
       const userPrompt = agent.userPrompt
         .replace(/{input}/gi, input)
         .replace(/{prompt}/gi, promptValue);
       
-      // Convert tool instances to the format expected by the edge function
       const toolsPayload = agent.tools.map(t => ({
         toolId: t.toolId,
         config: t.config,
@@ -1295,13 +1304,11 @@ const Index = () => {
       
       addLog("running", `Agent ${agent.name} processing with AI...`);
       
-      // Determine effective model settings - use agent-specific if useSpecificModel is true, otherwise global
       const effectiveModel = agent.useSpecificModel && agent.model ? agent.model : selectedModel;
       const effectiveResponseLength = agent.useSpecificModel && agent.responseLength ? agent.responseLength : responseLength;
       const effectiveThinkingEnabled = agent.useSpecificModel ? (agent.thinkingEnabled ?? false) : thinkingEnabled;
       const effectiveThinkingBudget = agent.useSpecificModel ? (agent.thinkingBudget ?? 0) : thinkingBudget;
       
-      // Determine which edge function to use based on effective model
       const edgeFunction = effectiveModel.startsWith("claude-") 
         ? "run-agent-anthropic" 
         : effectiveModel.startsWith("grok-")
@@ -1330,7 +1337,6 @@ const Index = () => {
         throw new Error(errorText || `Server error: ${response.status}`);
       }
 
-      // Handle streaming response
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
       
@@ -1355,7 +1361,6 @@ const Index = () => {
           chunksReceived++;
           textBuffer += decoder.decode(value, { stream: true });
           
-          // Process complete lines
           let newlineIndex: number;
           while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
             let line = textBuffer.slice(0, newlineIndex);
@@ -1372,29 +1377,24 @@ const Index = () => {
               const parsed = JSON.parse(jsonStr);
               
               if (parsed.type === 'tools' && parsed.toolOutputs) {
-                // Log tool outputs
                 parsed.toolOutputs.forEach((toolOutput: any) => {
                   console.log(`Tool Output [${toolOutput.toolId}]:`, toolOutput.output);
                   addLog("info", `Tool Output [${toolOutput.toolId}]: ${JSON.stringify(toolOutput.output, null, 2)}`);
                 });
               } else if (parsed.type === 'delta' && parsed.text) {
-                // Clear output on first delta to prevent jumpy updates
                 if (isFirstDelta) {
                   updateNode(nodeId, { output: "" });
                   isFirstDelta = false;
                 }
                 
-                // Accumulate text and update node in real-time
                 accumulatedOutput += parsed.text;
                 
-                // Throttle UI updates to avoid excessive re-renders
                 const now = Date.now();
                 if (now - lastUpdate > 100) {
                   updateNode(nodeId, { output: accumulatedOutput });
                   lastUpdate = now;
                 }
               } else if (parsed.type === 'done') {
-                // Stream complete
                 console.log(`Stream finished. Reason: ${parsed.finishReason}, Total output length: ${accumulatedOutput.length}`);
                 if (parsed.truncated) {
                   addLog("warning", `Response was truncated (${parsed.finishReason})`);
@@ -1406,7 +1406,6 @@ const Index = () => {
           }
         }
         
-        // Final update to ensure latest content is shown
         updateNode(nodeId, { output: accumulatedOutput });
       } catch (streamError) {
         console.error("Stream reading error:", streamError);
@@ -1417,10 +1416,108 @@ const Index = () => {
       
       updateNode(nodeId, { status: "complete", output: accumulatedOutput || "No output generated" });
       addLog("success", `Agent ${agent.name} completed successfully`);
+      return accumulatedOutput;
     } catch (error) {
       console.error("Agent execution failed:", error);
       updateNode(nodeId, { status: "error", output: `Error: ${error}` });
       addLog("error", `Agent ${agent.name} failed: ${error}`);
+      return "";
+    }
+  };
+
+  // Beast Mode execution - iterate through all output ports of connected card
+  const runAgentBeastMode = async (nodeId: string, agent: AgentNode) => {
+    const allNodes = workflow.stages.flatMap((s) => s.nodes);
+    const incomingConnections = workflow.connections.filter((c) => c.toNodeId === nodeId);
+    
+    if (incomingConnections.length === 0) {
+      addLog("warning", `Beast Mode: No connections found for agent "${agent.name}"`);
+      return;
+    }
+
+    // Get the first connected node (the "connected card")
+    const firstConnection = incomingConnections[0];
+    const connectedNode = allNodes.find((n) => n.id === firstConnection.fromNodeId);
+    
+    if (!connectedNode) {
+      addLog("error", `Beast Mode: Connected node not found`);
+      return;
+    }
+
+    // Get all output ports from the connected node
+    let outputPorts: string[] = [];
+    if (connectedNode.nodeType === "function") {
+      const funcNode = connectedNode as FunctionNode;
+      outputPorts = funcNode.outputPorts || ["output"];
+      // Filter to only ports that have content
+      outputPorts = outputPorts.filter(port => {
+        const content = funcNode.outputs?.[port];
+        return content && content.trim().length > 0;
+      });
+    } else {
+      // For agents, there's typically just one output
+      if (connectedNode.output && connectedNode.output.trim().length > 0) {
+        outputPorts = ["output"];
+      }
+    }
+
+    if (outputPorts.length === 0) {
+      addLog("warning", `Beast Mode: No outputs with content found in connected card "${connectedNode.name}"`);
+      return;
+    }
+
+    addLog("info", `Beast Mode: Processing ${outputPorts.length} outputs from "${connectedNode.name}"`);
+    updateNode(nodeId, { status: "running", output: "" });
+
+    const results: string[] = [];
+    const outputMode = agent.beastMode?.outputMode || "concatenate";
+
+    // Store original connections to restore later
+    const originalConnections = [...workflow.connections];
+
+    try {
+      for (let i = 0; i < outputPorts.length; i++) {
+        const port = outputPorts[i];
+        addLog("running", `Beast Mode: Iteration ${i + 1}/${outputPorts.length} - processing port "${port}"`);
+        
+        // Update progress in output
+        updateNode(nodeId, { 
+          output: `Beast Mode: Processing ${i + 1}/${outputPorts.length}...\n\n${results.join("\n\n---\n\n")}` 
+        });
+
+        // Execute agent with this specific port's content
+        const result = await executeAgentOnce(nodeId, agent, undefined, { 
+          nodeId: connectedNode.id, 
+          port 
+        });
+        
+        if (result) {
+          results.push(result);
+        }
+      }
+
+      // Combine results based on outputMode
+      let finalOutput = "";
+      if (outputMode === "concatenate") {
+        finalOutput = results.join("\n\n---\n\n");
+      } else {
+        // For split mode, we'd need to create multiple output ports - for now, still concatenate
+        finalOutput = results.join("\n\n---\n\n");
+      }
+
+      updateNode(nodeId, { status: "complete", output: finalOutput });
+      addLog("success", `Beast Mode: Agent "${agent.name}" completed ${outputPorts.length} iterations`);
+
+      // Restore original connections (they weren't modified, but good practice)
+      setWorkflow(prev => ({ ...prev, connections: originalConnections }));
+
+    } catch (error) {
+      console.error("Beast Mode execution failed:", error);
+      updateNode(nodeId, { status: "error", output: `Beast Mode Error: ${error}` });
+      addLog("error", `Beast Mode: Agent "${agent.name}" failed: ${error}`);
+      
+      // Restore connections on error
+      setWorkflow(prev => ({ ...prev, connections: originalConnections }));
     }
   };
 
