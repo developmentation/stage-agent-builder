@@ -36,6 +36,7 @@ export interface FunctionDefinition {
   };
   outputs: string[]; // Array of output port names (e.g., ["output"] or ["true", "false"])
   supportsMultipleOutputs?: boolean; // If true, allows 1-50 configurable outputs
+  supportsMultipleInputs?: boolean; // If true, allows configurable input ports (e.g., Logic Gate)
   configSchema?: FunctionConfigSchema;
 }
 

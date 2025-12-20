@@ -52,6 +52,10 @@ export interface FunctionNode extends BaseNode {
   imageOutputs?: string[]; // Array of base64 images for Beast Mode
   audioOutputs?: string[]; // Array of base64 audio for Beast Mode
   beastMode?: BeastModeConfig;
+  // Multi-input support (for Logic Gate functions)
+  inputCount?: number; // Number of input ports (default 2)
+  inputPorts?: string[]; // Array of input port names ["input_1", "input_2", ...]
+  inputs?: Record<string, string>; // Map of input port to received value
 }
 
 // Tool-specific properties (standalone tools)
@@ -86,6 +90,7 @@ export interface Connection {
   fromNodeId: string;
   toNodeId: string;
   fromOutputPort?: string; // Which output port (e.g., "output_1", "output_2")
+  toInputPort?: string; // Which input port for multi-input functions (e.g., "input_1", "input_2")
 }
 
 // Note for canvas annotations

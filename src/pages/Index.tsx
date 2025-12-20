@@ -422,18 +422,23 @@ const Index = () => {
         status: "idle",
       } as AgentNode;
     } else if (nodeType === "function") {
+      const isLogicGate = template.id === "logic_gate";
       newNode = {
         id: `function-${Date.now()}`,
         nodeType: "function",
         name: template.name,
         functionType: template.id,
-        config: {},
+        config: isLogicGate ? { gateType: "AND", outputMode: "single", separator: "\n" } : {},
         outputPorts: template.supportsMultipleOutputs 
           ? ["output_1"] 
           : (template.outputs || ["output"]),
         outputCount: template.supportsMultipleOutputs ? 1 : undefined,
         outputs: {},
         status: "idle",
+        // Multi-input support for Logic Gate
+        inputCount: isLogicGate ? 2 : undefined,
+        inputPorts: isLogicGate ? ["input_1", "input_2"] : undefined,
+        inputs: isLogicGate ? {} : undefined,
       } as FunctionNode;
 
     } else {
@@ -521,6 +526,20 @@ const Index = () => {
             const functionNode = updatedNode as FunctionNode;
             const count = functionNode.outputCount || 1;
             functionNode.outputPorts = Array.from({ length: count }, (_, i) => `output_${i + 1}`);
+          }
+          
+          // If inputCount changed for a logic gate, update inputPorts
+          if (updatedNode.nodeType === "function" && "inputCount" in updates) {
+            const functionNode = updatedNode as FunctionNode;
+            if (functionNode.functionType === "logic_gate") {
+              const count = functionNode.inputCount || 2;
+              functionNode.inputPorts = Array.from({ length: count }, (_, i) => `input_${i + 1}`);
+              // Also update outputPorts if in matching mode
+              if (functionNode.config.outputMode === "matching") {
+                functionNode.outputCount = count;
+                functionNode.outputPorts = Array.from({ length: count }, (_, i) => `output_${i + 1}`);
+              }
+            }
           }
           
           return updatedNode;

@@ -1404,6 +1404,154 @@ export const PropertiesPanel = ({
                 </Card>
               </div>
 
+              {/* Logic Gate Configuration */}
+              {(activeNode as FunctionNode).functionType === "logic_gate" && (
+                <div className="space-y-4">
+                  {/* Gate Type */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Gate Type</Label>
+                    <Select
+                      value={(activeNode as FunctionNode).config.gateType || "AND"}
+                      onValueChange={(value) => {
+                        updateNodeConfig({ ...(activeNode as FunctionNode).config, gateType: value });
+                      }}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="AND">AND - All inputs must have values</SelectItem>
+                        <SelectItem value="OR">OR - Any input having a value proceeds</SelectItem>
+                        <SelectItem value="NAND">NAND - Proceeds if all values are null</SelectItem>
+                        <SelectItem value="NOR">NOR - Proceeds if any value is null</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Number of Inputs */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Number of Inputs</Label>
+                    <div className="flex items-center gap-3 p-3 border rounded-lg bg-muted/30">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={() => {
+                          const current = (activeNode as FunctionNode).inputCount || 2;
+                          if (current > 2 && onUpdateNode) {
+                            onUpdateNode(activeNode.id, { inputCount: current - 1 });
+                          }
+                        }}
+                        disabled={((activeNode as FunctionNode).inputCount || 2) <= 2}
+                      >
+                        -
+                      </Button>
+                      <div className="flex-1 text-center">
+                        <Input
+                          type="number"
+                          min={2}
+                          max={50}
+                          value={(activeNode as FunctionNode).inputCount || 2}
+                          onChange={(e) => {
+                            const value = Math.max(2, Math.min(50, parseInt(e.target.value) || 2));
+                            if (onUpdateNode) {
+                              onUpdateNode(activeNode.id, { inputCount: value });
+                            }
+                          }}
+                          className="h-8 w-16 text-center mx-auto"
+                        />
+                        <p className="text-xs text-muted-foreground mt-1">Input ports</p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 w-8 p-0"
+                        onClick={() => {
+                          const current = (activeNode as FunctionNode).inputCount || 2;
+                          if (current < 50 && onUpdateNode) {
+                            onUpdateNode(activeNode.id, { inputCount: current + 1 });
+                          }
+                        }}
+                        disabled={((activeNode as FunctionNode).inputCount || 2) >= 50}
+                      >
+                        +
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Output Mode */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Output Mode</Label>
+                    <Select
+                      value={(activeNode as FunctionNode).config.outputMode || "single"}
+                      onValueChange={(value) => {
+                        updateNodeConfig({ ...(activeNode as FunctionNode).config, outputMode: value });
+                        // Also update outputCount/outputPorts based on mode
+                        if (onUpdateNode) {
+                          if (value === "matching") {
+                            const inputCount = (activeNode as FunctionNode).inputCount || 2;
+                            onUpdateNode(activeNode.id, { outputCount: inputCount });
+                          } else {
+                            onUpdateNode(activeNode.id, { outputCount: 1 });
+                          }
+                        }
+                      }}
+                    >
+                      <SelectTrigger className="w-full">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="single">Single - Concatenate all inputs</SelectItem>
+                        <SelectItem value="matching">Matching - One output per input</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      {(activeNode as FunctionNode).config.outputMode === "matching" 
+                        ? "Each input passes through to a corresponding output port"
+                        : "All non-null inputs are combined into a single output"}
+                    </p>
+                  </div>
+
+                  {/* Separator (for single mode) */}
+                  {(activeNode as FunctionNode).config.outputMode !== "matching" && (
+                    <div className="space-y-2">
+                      <Label className="text-sm font-medium">Separator</Label>
+                      <Input
+                        value={(activeNode as FunctionNode).config.separator || "\\n"}
+                        onChange={(e) => {
+                          updateNodeConfig({ ...(activeNode as FunctionNode).config, separator: e.target.value });
+                        }}
+                        placeholder="\n"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Text between concatenated values (use \n for newline)
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Input Status Display */}
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Input Status</Label>
+                    <Card className="p-3 bg-muted/30 space-y-1">
+                      {((activeNode as FunctionNode).inputPorts || ["input_1", "input_2"]).map((port) => {
+                        const hasValue = (activeNode as FunctionNode).inputs?.[port]?.trim();
+                        return (
+                          <div key={port} className="flex items-center gap-2 text-xs">
+                            <div className={`w-2 h-2 rounded-full ${hasValue ? 'bg-green-500' : 'bg-muted-foreground/30'}`} />
+                            <span className={hasValue ? 'text-foreground' : 'text-muted-foreground'}>{port}</span>
+                            {hasValue && (
+                              <span className="text-muted-foreground truncate max-w-[120px]">
+                                {(activeNode as FunctionNode).inputs![port].substring(0, 30)}...
+                              </span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </Card>
+                  </div>
+                </div>
+              )}
+
               {/* Show condition result for conditional functions */}
               {(() => {
                 const output = activeNode.output as any;
