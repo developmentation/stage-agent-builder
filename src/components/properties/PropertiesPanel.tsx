@@ -464,6 +464,9 @@ export const PropertiesPanel = ({
   // Render function configuration fields
   const renderFunctionConfig = (node: FunctionNode) => {
     if (!functionDef?.configSchema) return null;
+    
+    // Logic Gate has custom UI - skip auto-generated config fields
+    if (node.functionType === "logic_gate") return null;
 
     // Special rendering for Content function
     if (node.functionType === "content") {
@@ -1549,6 +1552,47 @@ export const PropertiesPanel = ({
                       })}
                     </Card>
                   </div>
+
+                  {/* Gate Status (Pass/Block) Indicator */}
+                  {(() => {
+                    const funcNode = activeNode as FunctionNode;
+                    const gateType = (funcNode.config.gateType as string) || "AND";
+                    const inputPorts = funcNode.inputPorts || ["input_1", "input_2"];
+                    const nonNullStatus = inputPorts.map(port => {
+                      const value = funcNode.inputs?.[port];
+                      return value !== undefined && value !== null && value.trim() !== "";
+                    });
+                    const allNonNull = nonNullStatus.every(Boolean);
+                    const anyNonNull = nonNullStatus.some(Boolean);
+                    const allNull = nonNullStatus.every(v => !v);
+                    const anyNull = nonNullStatus.some(v => !v);
+                    
+                    let shouldPass = false;
+                    switch (gateType.toUpperCase()) {
+                      case "AND": shouldPass = allNonNull; break;
+                      case "OR": shouldPass = anyNonNull; break;
+                      case "NAND": shouldPass = allNull; break;
+                      case "NOR": shouldPass = anyNull; break;
+                      default: shouldPass = allNonNull;
+                    }
+                    
+                    return (
+                      <div className="space-y-2">
+                        <Label className="text-sm font-medium">Gate Status</Label>
+                        <Card className={`p-3 ${shouldPass ? 'bg-green-500/10 border-green-500' : 'bg-red-500/10 border-red-500'}`}>
+                          <div className="flex items-center gap-2">
+                            <div className={`w-3 h-3 rounded-full ${shouldPass ? 'bg-green-500' : 'bg-red-500'}`} />
+                            <span className={`text-sm font-medium ${shouldPass ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                              {shouldPass ? 'PASS' : 'BLOCK'}
+                            </span>
+                            <span className="text-xs text-muted-foreground">
+                              {shouldPass ? '- Outputs will be populated' : '- Outputs will be null'}
+                            </span>
+                          </div>
+                        </Card>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
 

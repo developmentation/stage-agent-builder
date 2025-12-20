@@ -329,6 +329,38 @@ export const FunctionNode = ({
           <Badge variant="secondary" className="text-xs">
             {functionDef?.category || "function"}
           </Badge>
+          {/* Pass/Block indicator for logic gates */}
+          {node.functionType === "logic_gate" && (() => {
+            const gateType = (node.config.gateType as string) || "AND";
+            const nonNullStatus = inputPorts.map(port => {
+              const value = node.inputs?.[port];
+              return value !== undefined && value !== null && value.trim() !== "";
+            });
+            const allNonNull = nonNullStatus.every(Boolean);
+            const anyNonNull = nonNullStatus.some(Boolean);
+            const allNull = nonNullStatus.every(v => !v);
+            const anyNull = nonNullStatus.some(v => !v);
+            
+            let shouldPass = false;
+            switch (gateType.toUpperCase()) {
+              case "AND": shouldPass = allNonNull; break;
+              case "OR": shouldPass = anyNonNull; break;
+              case "NAND": shouldPass = allNull; break;
+              case "NOR": shouldPass = anyNull; break;
+              default: shouldPass = allNonNull;
+            }
+            
+            return (
+              <Badge 
+                variant="outline" 
+                className={`text-xs ${shouldPass 
+                  ? 'bg-green-500/10 text-green-600 dark:text-green-400 border-green-500' 
+                  : 'bg-red-500/10 text-red-600 dark:text-red-400 border-red-500'}`}
+              >
+                {shouldPass ? 'PASS' : 'BLOCK'}
+              </Badge>
+            );
+          })()}
           {hasMultipleInputs && (
             <Badge variant="outline" className="text-xs">
               {inputPorts.length} inputs
