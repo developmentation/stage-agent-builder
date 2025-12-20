@@ -25,7 +25,7 @@ interface GitHubTreeModalProps {
   repoUrl: string;
   branch?: string;
   selectedPaths: string[];
-  onSelectPaths: (paths: string[]) => void;
+  onSelectPaths: (paths: string[], contents?: Record<string, string>) => void;
 }
 
 export const GitHubTreeModal = ({
@@ -37,6 +37,7 @@ export const GitHubTreeModal = ({
   onSelectPaths,
 }: GitHubTreeModalProps) => {
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [treeData, setTreeData] = useState<TreeNode[]>([]);
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
   const [localSelected, setLocalSelected] = useState<Set<string>>(new Set(selectedPaths));
@@ -237,9 +238,60 @@ export const GitHubTreeModal = ({
     );
   };
 
-  const handleSave = () => {
-    onSelectPaths(Array.from(localSelected));
-    onOpenChange(false);
+  const handleSave = async () => {
+    const paths = Array.from(localSelected);
+    
+    if (paths.length === 0) {
+      onSelectPaths(paths, {});
+      onOpenChange(false);
+      return;
+    }
+
+    // Fetch the actual file contents
+    setSaving(true);
+    try {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/github-fetch`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ 
+          repoUrl, 
+          branch, 
+          selectedPaths: paths, 
+          outputMode: "separate" 
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Failed to fetch files: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.error || "Failed to fetch file contents");
+      }
+
+      // data.outputs contains { "path/to/file.ts": "content..." }
+      onSelectPaths(paths, data.outputs || {});
+      onOpenChange(false);
+      
+      toast({
+        title: "Files loaded",
+        description: `Successfully loaded ${paths.length} file(s)`,
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Failed to fetch file contents";
+      toast({
+        title: "Error loading files",
+        description: message,
+        variant: "destructive",
+      });
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -294,11 +346,18 @@ export const GitHubTreeModal = ({
         </div>
 
         <div className="flex justify-end gap-2 pt-4 border-t">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             Cancel
           </Button>
-          <Button onClick={handleSave} disabled={loading || !!error}>
-            Save Selection ({localSelected.size} files)
+          <Button onClick={handleSave} disabled={loading || saving || !!error}>
+            {saving ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Loading Files...
+              </>
+            ) : (
+              `Load ${localSelected.size} File(s)`
+            )}
           </Button>
         </div>
       </DialogContent>
