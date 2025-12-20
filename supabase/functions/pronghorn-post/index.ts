@@ -79,17 +79,42 @@ serve(async (req) => {
     }
 
     if (!response.ok) {
-      console.error("Pronghorn API error:", data);
+      console.error("Pronghorn API HTTP error:", data);
       return new Response(
         JSON.stringify({ 
           success: false, 
-          error: data.error || data.message || `Pronghorn API error: ${response.status}` 
+          error: data.error || data.message || `Pronghorn API error: ${response.status}`,
+          details: data
         }),
         { status: response.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     console.log("Pronghorn response:", data);
+
+    // Check if the API returned success: false even with HTTP 200
+    if (data.success === false || (data.itemsFailed && data.itemsFailed > 0)) {
+      const failedResults = data.results?.filter((r: any) => !r.success) || [];
+      const errorMessages = failedResults.map((r: any) => r.error).filter(Boolean);
+      
+      console.error("Pronghorn API reported failures:", errorMessages);
+      
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: errorMessages.length > 0 
+            ? errorMessages.join("; ") 
+            : data.message || "Pronghorn API reported failure",
+          message: data.message,
+          itemsReceived: data.itemsReceived,
+          itemsCreated: data.itemsCreated,
+          itemsFailed: data.itemsFailed,
+          processingTimeMs: data.processingTimeMs,
+          results: data.results,
+        }),
+        { status: 422, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     return new Response(
       JSON.stringify({

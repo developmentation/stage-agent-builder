@@ -1333,22 +1333,45 @@ export class FunctionExecutor {
         body: JSON.stringify({ projectId, token, items }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || `Pronghorn post failed: ${response.statusText}`);
-      }
-
       const data = await response.json();
-      
-      if (!data.success) {
-        throw new Error(data.error || "Pronghorn post failed");
+
+      if (!response.ok || !data.success) {
+        // Build detailed error message
+        let errorDetails = data.error || "Pronghorn post failed";
+        if (data.results) {
+          const failedResults = data.results.filter((r: any) => !r.success);
+          if (failedResults.length > 0) {
+            const errors = failedResults.map((r: any) => r.error).filter(Boolean);
+            if (errors.length > 0) {
+              errorDetails = errors.join("\n");
+            }
+          }
+        }
+        throw new Error(errorDetails);
       }
 
-      const summary = `Sent ${data.itemsCreated || items.length} artifact(s) to Pronghorn (${data.processingTimeMs || 0}ms)`;
+      // Build detailed success summary
+      const lines: string[] = [];
+      lines.push(`✅ Pronghorn: ${data.itemsCreated || 0} artifact(s) created`);
+      if (data.itemsFailed > 0) {
+        lines.push(`⚠️ ${data.itemsFailed} item(s) failed`);
+      }
+      if (data.processingTimeMs) {
+        lines.push(`⏱️ ${data.processingTimeMs}ms`);
+      }
+      if (data.results) {
+        data.results.forEach((r: any, i: number) => {
+          if (r.success && r.artifactId) {
+            lines.push(`  • Artifact ${i + 1}: ${r.artifactId}`);
+          } else if (!r.success && r.error) {
+            lines.push(`  • Item ${i + 1} failed: ${r.error}`);
+          }
+        });
+      }
       
       return {
         success: true,
-        outputs: { output: summary },
+        outputs: { output: lines.join("\n") },
       };
     } catch (error) {
       return {
