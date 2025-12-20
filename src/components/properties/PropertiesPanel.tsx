@@ -1620,6 +1620,62 @@ export const PropertiesPanel = ({
                 </div>
               )}
 
+              {/* Pronghorn Input Count */}
+              {(activeNode as FunctionNode).functionType === "pronghorn" && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium">Number of Inputs</Label>
+                  <div className="flex items-center gap-3 p-3 border rounded-lg bg-muted/30">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={() => {
+                        const current = (activeNode as FunctionNode).inputCount || 1;
+                        if (current > 1 && onUpdateNode) {
+                          onUpdateNode(activeNode.id, { inputCount: current - 1 });
+                        }
+                      }}
+                      disabled={((activeNode as FunctionNode).inputCount || 1) <= 1}
+                    >
+                      -
+                    </Button>
+                    <div className="flex-1 text-center">
+                      <Input
+                        type="number"
+                        min={1}
+                        max={10}
+                        value={(activeNode as FunctionNode).inputCount || 1}
+                        onChange={(e) => {
+                          const value = Math.max(1, Math.min(10, parseInt(e.target.value) || 1));
+                          if (onUpdateNode) {
+                            onUpdateNode(activeNode.id, { inputCount: value });
+                          }
+                        }}
+                        className="h-8 w-16 text-center mx-auto"
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">Input sockets</p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={() => {
+                        const current = (activeNode as FunctionNode).inputCount || 1;
+                        if (current < 10 && onUpdateNode) {
+                          onUpdateNode(activeNode.id, { inputCount: current + 1 });
+                        }
+                      }}
+                      disabled={((activeNode as FunctionNode).inputCount || 1) >= 10}
+                    >
+                      +
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Each input socket receives text or media separately.
+                  </p>
+                </div>
+              )}
+
               {/* Show condition result for conditional functions */}
               {(() => {
                 const output = activeNode.output as any;

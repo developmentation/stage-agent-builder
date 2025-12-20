@@ -423,6 +423,15 @@ const Index = () => {
       } as AgentNode;
     } else if (nodeType === "function") {
       const isLogicGate = template.id === "logic_gate";
+      const isPronghorn = template.id === "pronghorn";
+      const supportsMultiInput = isLogicGate || isPronghorn;
+      
+      // Default input counts
+      const defaultInputCount = isLogicGate ? 2 : (isPronghorn ? 1 : undefined);
+      const defaultInputPorts = supportsMultiInput 
+        ? Array.from({ length: defaultInputCount || 1 }, (_, i) => `input_${i + 1}`)
+        : undefined;
+      
       newNode = {
         id: `function-${Date.now()}`,
         nodeType: "function",
@@ -435,10 +444,10 @@ const Index = () => {
         outputCount: template.supportsMultipleOutputs ? 1 : undefined,
         outputs: {},
         status: "idle",
-        // Multi-input support for Logic Gate
-        inputCount: isLogicGate ? 2 : undefined,
-        inputPorts: isLogicGate ? ["input_1", "input_2"] : undefined,
-        inputs: isLogicGate ? {} : undefined,
+        // Multi-input support for Logic Gate and Pronghorn
+        inputCount: defaultInputCount,
+        inputPorts: defaultInputPorts,
+        inputs: supportsMultiInput ? {} : undefined,
       } as FunctionNode;
 
     } else {
@@ -528,14 +537,16 @@ const Index = () => {
             functionNode.outputPorts = Array.from({ length: count }, (_, i) => `output_${i + 1}`);
           }
           
-          // If inputCount changed for a logic gate, update inputPorts
+          // If inputCount changed for multi-input functions (logic_gate, pronghorn), update inputPorts
           if (updatedNode.nodeType === "function" && "inputCount" in updates) {
             const functionNode = updatedNode as FunctionNode;
-            if (functionNode.functionType === "logic_gate") {
-              const count = functionNode.inputCount || 2;
+            const supportsMultiInput = functionNode.functionType === "logic_gate" || functionNode.functionType === "pronghorn";
+            if (supportsMultiInput) {
+              const defaultCount = functionNode.functionType === "logic_gate" ? 2 : 1;
+              const count = functionNode.inputCount || defaultCount;
               functionNode.inputPorts = Array.from({ length: count }, (_, i) => `input_${i + 1}`);
-              // Also update outputPorts if in matching mode
-              if (functionNode.config.outputMode === "matching") {
+              // Also update outputPorts if in matching mode (logic_gate only)
+              if (functionNode.functionType === "logic_gate" && functionNode.config.outputMode === "matching") {
                 functionNode.outputCount = count;
                 functionNode.outputPorts = Array.from({ length: count }, (_, i) => `output_${i + 1}`);
               }
