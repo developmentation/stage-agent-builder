@@ -345,50 +345,25 @@ export const FunctionNode = ({
           {functionDef?.description || "Custom function"}
         </p>
         
-        {/* Show input port labels for multi-input functions */}
+        {/* Show input count for multi-input functions - simplified */}
         {hasMultipleInputs && (
-          <div className="flex gap-1 text-[10px] text-muted-foreground flex-wrap">
-            <span>Inputs:</span>
-            {inputPorts.map((port) => {
-              const hasContent = node.inputs && node.inputs[port] && node.inputs[port].length > 0;
-              
-              return (
-                <Badge 
-                  key={port} 
-                  variant="outline" 
-                  className={`text-[9px] px-1 py-0 h-4 ${
-                    hasContent ? 'bg-green-500/20 border-green-500 text-green-700 dark:text-green-400' : 'opacity-50'
-                  }`}
-                  title={hasContent ? `${port}: ${node.inputs![port].substring(0, 50)}...` : `${port}: empty`}
-                >
-                  {port}
-                </Badge>
-              );
-            })}
+          <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+            <span>Inputs: {inputPorts.length}</span>
+            <span className="text-muted-foreground/50">•</span>
+            <span className="text-green-600 dark:text-green-400">
+              {inputPorts.filter(p => node.inputs?.[p]?.trim()).length} connected
+            </span>
           </div>
         )}
         
-        {/* Show output port labels for multi-output functions */}
+        {/* Show output count for multi-output functions - simplified */}
         {node.outputPorts.length > 1 && (
-          <div className="flex gap-1 text-[10px] text-muted-foreground flex-wrap">
-            <span>Outputs:</span>
-            {node.outputPorts.map((port) => {
-              // Check if this specific output port has content
-              const hasContent = node.outputs && node.outputs[port] && node.outputs[port].length > 0;
-              
-              return (
-                <Badge 
-                  key={port} 
-                  variant="outline" 
-                  className={`text-[9px] px-1 py-0 h-4 ${
-                    hasContent ? 'bg-green-500/20 border-green-500 text-green-700 dark:text-green-400' : 'opacity-50'
-                  }`}
-                  title={hasContent ? `${port}: ${node.outputs![port].substring(0, 50)}...` : `${port}: empty`}
-                >
-                  {port}
-                </Badge>
-              );
-            })}
+          <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+            <span>Outputs: {node.outputPorts.length}</span>
+            <span className="text-muted-foreground/50">•</span>
+            <span className="text-green-600 dark:text-green-400">
+              {node.outputPorts.filter(p => node.outputs?.[p]?.trim()).length} with data
+            </span>
           </div>
         )}
       </div>

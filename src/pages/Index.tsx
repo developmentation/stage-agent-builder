@@ -1079,29 +1079,31 @@ const Index = () => {
     setConnectingFromPort(outputPort);
   };
 
-  const handleCompleteConnection = (fromNodeId: string, toNodeId: string, fromOutputPort?: string) => {
+  const handleCompleteConnection = (fromNodeId: string, toNodeId: string, fromOutputPort?: string, toInputPort?: string) => {
     console.log("=== handleCompleteConnection START ===");
     console.log("fromNodeId:", fromNodeId);
     console.log("toNodeId:", toNodeId);
     console.log("fromOutputPort:", fromOutputPort);
+    console.log("toInputPort:", toInputPort);
     console.log("Current connections:", workflow.connections.length);
     
-    addConnection(fromNodeId, toNodeId, fromOutputPort);
+    addConnection(fromNodeId, toNodeId, fromOutputPort, toInputPort);
     setConnectingFrom(null);
     setConnectingFromPort(undefined);
     
     console.log("=== handleCompleteConnection END ===");
   };
 
-  const addConnection = (fromNodeId: string, toNodeId: string, fromOutputPort?: string) => {
+  const addConnection = (fromNodeId: string, toNodeId: string, fromOutputPort?: string, toInputPort?: string) => {
     console.log("=== addConnection START ===");
-    console.log("Creating connection from", fromNodeId, "to", toNodeId, "port:", fromOutputPort);
+    console.log("Creating connection from", fromNodeId, "to", toNodeId, "port:", fromOutputPort, "toInputPort:", toInputPort);
     
     const newConnection: Connection = {
       id: `conn-${Date.now()}-${Math.random()}`,
       fromNodeId,
       toNodeId,
       fromOutputPort,
+      toInputPort,
     };
     
     console.log("New connection object:", JSON.stringify(newConnection));

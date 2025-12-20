@@ -27,7 +27,7 @@ interface StageProps {
   onMoveNodeToStage?: (nodeId: string, targetStageId: string, newPosition?: { x: number; y: number }) => void;
   onToggleMinimize: (agentId: string) => void;
   onToggleLock: (nodeId: string) => void;
-  onPortClick: (agentId: string, isOutput: boolean, outputPort?: string) => void;
+  onPortClick: (nodeId: string, isOutput: boolean, outputPort?: string, inputPort?: string) => void;
   onRunAgent?: (agentId: string, customInput?: string) => void;
   onRunFunction?: (functionId: string, customInput?: string) => void;
   onCloneStage?: (stageId: string) => void;

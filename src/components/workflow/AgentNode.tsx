@@ -16,7 +16,7 @@ interface AgentNodeProps {
   onDelete: () => void;
   onToggleMinimize: () => void;
   onToggleLock: () => void;
-  onPortClick: (agentId: string, isOutput: boolean, outputPort?: string) => void;
+  onPortClick: (agentId: string, isOutput: boolean, outputPort?: string, inputPort?: string) => void;
   onRun?: () => void;
   onDragStart?: (e: React.DragEvent, nodeId: string) => void;
 }
