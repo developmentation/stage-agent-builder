@@ -2232,7 +2232,42 @@ const Index = () => {
       const node = allNodes.find((n) => n.id === nodeId);
       if (!node || node.nodeType !== "function") return { outputs: new Map(), primaryOutput: "" };
       
-      const functionNode = node as FunctionNode;
+      let functionNode = node as FunctionNode;
+
+      // For multi-input functions (like logic_gate), populate inputs from connections
+      if (functionNode.inputPorts && functionNode.inputPorts.length > 1) {
+        const incomingConnections = workflow.connections.filter((c) => c.toNodeId === nodeId);
+        const inputsMap: Record<string, string> = {};
+        
+        for (const conn of incomingConnections) {
+          const targetPort = conn.toInputPort || "input_1";
+          const fromNode = allNodes.find((n) => n.id === conn.fromNodeId);
+          if (!fromNode) continue;
+          
+          let value = "";
+          let portToRead = conn.fromOutputPort;
+          
+          if (fromNode.nodeType === "function") {
+            if (!portToRead) {
+              const funcNode = fromNode as FunctionNode;
+              portToRead = funcNode.outputs ? Object.keys(funcNode.outputs)[0] || "output" : "output";
+            }
+            value = outputs.get(`${conn.fromNodeId}:${portToRead}`) || 
+                    (fromNode as FunctionNode).outputs?.[portToRead] as string || "";
+          } else if (fromNode.nodeType === "agent") {
+            if (portToRead && (fromNode as AgentNode).beastModeOutputs?.[portToRead]) {
+              value = (fromNode as AgentNode).beastModeOutputs![portToRead];
+            } else {
+              value = outputs.get(conn.fromNodeId) || fromNode.output || "";
+            }
+          }
+          
+          inputsMap[targetPort] = String(value);
+        }
+        
+        updateNode(nodeId, { inputs: inputsMap });
+        functionNode = { ...functionNode, inputs: inputsMap };
+      }
 
       // Skip execution if node is locked
       if (functionNode.locked) {
@@ -2491,6 +2526,363 @@ const Index = () => {
     addLog("success", "🎉 Workflow execution completed");
   };
 
+  // Run Downstream: Execute a node and all its downstream connected nodes
+  const runDownstream = async (startNodeId: string) => {
+    const allNodes = workflow.stages.flatMap((s) => s.nodes);
+    const startNode = allNodes.find(n => n.id === startNodeId);
+    
+    if (!startNode) {
+      addLog("error", "Cannot run downstream: starting node not found");
+      return;
+    }
+
+    // Build set of downstream nodes using BFS
+    const downstreamNodeIds = new Set<string>();
+    const queue = [startNodeId];
+    
+    while (queue.length > 0) {
+      const nodeId = queue.shift()!;
+      if (!downstreamNodeIds.has(nodeId)) {
+        downstreamNodeIds.add(nodeId);
+        const outgoingConnections = workflow.connections.filter(c => c.fromNodeId === nodeId);
+        outgoingConnections.forEach(c => {
+          if (!downstreamNodeIds.has(c.toNodeId)) {
+            queue.push(c.toNodeId);
+          }
+        });
+      }
+    }
+
+    const downstreamNodes = allNodes.filter(n => downstreamNodeIds.has(n.id));
+    addLog("info", `🚀 Running downstream from "${startNode.name}" (${downstreamNodes.length} node(s))`);
+
+    // Pre-populate outputs from non-downstream nodes (treat as already completed)
+    const outputs = new Map<string, string>();
+    allNodes.forEach(node => {
+      if (!downstreamNodeIds.has(node.id)) {
+        if (node.nodeType === "agent") {
+          outputs.set(node.id, node.output || "");
+          const agentNode = node as AgentNode;
+          if (agentNode.beastModeOutputs) {
+            Object.entries(agentNode.beastModeOutputs).forEach(([port, value]) => {
+              outputs.set(`${node.id}:${port}`, value);
+            });
+          }
+        } else if (node.nodeType === "function") {
+          const funcNode = node as FunctionNode;
+          if (funcNode.outputs) {
+            Object.entries(funcNode.outputs).forEach(([port, value]) => {
+              outputs.set(`${node.id}:${port}`, String(value));
+            });
+          }
+          outputs.set(node.id, funcNode.output || "");
+        }
+      }
+    });
+
+    // Build dependency graph for downstream nodes only
+    const dependencyMap = new Map<string, string[]>();
+    downstreamNodes.forEach(node => {
+      const incomingConnections = workflow.connections.filter(c => c.toNodeId === node.id);
+      const dependencies = incomingConnections.map(c => c.fromNodeId);
+      dependencyMap.set(node.id, dependencies);
+    });
+
+    const completedNodes = new Set<string>(
+      allNodes.filter(n => !downstreamNodeIds.has(n.id) || n.locked).map(n => n.id)
+    );
+    const executingNodes = new Set<string>();
+
+    const getNodeInput = (node: WorkflowNode): string => {
+      const incomingConnections = workflow.connections.filter(c => c.toNodeId === node.id);
+      
+      if (incomingConnections.length === 0) {
+        return userInput || "";
+      }
+      
+      const rawOutputs = incomingConnections.map((c) => {
+        const fromNode = allNodes.find(n => n.id === c.fromNodeId);
+        if (!fromNode) return "";
+        
+        let portToRead = c.fromOutputPort;
+        
+        if (fromNode.nodeType === "agent") {
+          const agentNode = fromNode as AgentNode;
+          if (portToRead && agentNode.beastModeOutputs?.[portToRead]) {
+            return agentNode.beastModeOutputs[portToRead];
+          }
+          return outputs.get(c.fromNodeId) || fromNode.output || "";
+        }
+        
+        if (!portToRead && fromNode.nodeType === "function") {
+          const funcNode = fromNode as FunctionNode;
+          if (funcNode.outputs && Object.keys(funcNode.outputs).length > 0) {
+            portToRead = Object.keys(funcNode.outputs)[0] || "output";
+          } else {
+            portToRead = "output";
+          }
+        }
+        
+        const portOutput = portToRead ? outputs.get(`${c.fromNodeId}:${portToRead}`) : undefined;
+        if (portOutput !== undefined) return portOutput;
+
+        if (fromNode.nodeType === "function") {
+          const funcNode = fromNode as FunctionNode;
+          if (portToRead && funcNode.outputs && funcNode.outputs[portToRead] !== undefined) {
+            return funcNode.outputs[portToRead] as string;
+          }
+          if (!portToRead && typeof funcNode.output === "string") {
+            return funcNode.output;
+          }
+        }
+
+        return "";
+      });
+      
+      const nonEmptyOutputs = rawOutputs.filter((v) => v !== undefined && v !== null && String(v).trim().length > 0);
+      return nonEmptyOutputs.length > 0 ? nonEmptyOutputs.join("\n\n---\n\n") : "";
+    };
+
+    const executeAgent = async (nodeId: string, input: string): Promise<string> => {
+      const node = allNodes.find((n) => n.id === nodeId);
+      if (!node || node.nodeType !== "agent") return "";
+      
+      const agent = node as AgentNode;
+      if (agent.locked) {
+        addLog("info", `Agent "${agent.name}" is locked, using existing output`);
+        return agent.output || "";
+      }
+
+      updateNode(nodeId, { status: "running" });
+      addLog("info", `Running agent: ${agent.name}`);
+      
+      try {
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/run-agent`, {
+          method: "POST",
+          headers: { 
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`
+          },
+          body: JSON.stringify({
+            systemPrompt: agent.systemPrompt,
+            userPrompt: agent.userPrompt,
+            input,
+            model: agent.model || selectedModel,
+            maxTokens: agent.responseLength || responseLength,
+            thinkingEnabled: agent.thinkingEnabled ?? thinkingEnabled,
+            thinkingBudget: agent.thinkingBudget ?? thinkingBudget,
+            tools: agent.tools,
+            beastMode: agent.beastMode,
+            beastModeOutputPorts: agent.beastModeOutputPorts,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Agent failed: ${response.status} - ${errorText}`);
+        }
+
+        const reader = response.body?.getReader();
+        if (!reader) throw new Error("No response body");
+
+        const decoder = new TextDecoder();
+        let accumulatedOutput = "";
+
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            const chunk = decoder.decode(value, { stream: true });
+            const lines = chunk.split("\n");
+            
+            for (const line of lines) {
+              if (line.startsWith("data: ")) {
+                try {
+                  const parsed = JSON.parse(line.slice(6));
+                  if (parsed.text) {
+                    accumulatedOutput += parsed.text;
+                    updateNode(nodeId, { output: accumulatedOutput });
+                  }
+                  if (parsed.beastModeOutputs) {
+                    updateNode(nodeId, { beastModeOutputs: parsed.beastModeOutputs });
+                  }
+                } catch {}
+              }
+            }
+          }
+        } finally {
+          reader.releaseLock();
+        }
+        
+        updateNode(nodeId, { status: "complete", output: accumulatedOutput || "No output generated" });
+        addLog("success", `✓ Agent ${agent.name} completed`);
+        return accumulatedOutput;
+      } catch (error) {
+        const errorMsg = `Error: ${error}`;
+        updateNode(nodeId, { status: "error", output: errorMsg });
+        addLog("error", `✗ Agent ${agent.name} failed: ${error}`);
+        return errorMsg;
+      }
+    };
+
+    const executeFunction = async (nodeId: string, input: string): Promise<{ outputs: Map<string, string>; primaryOutput: string }> => {
+      const node = allNodes.find((n) => n.id === nodeId);
+      if (!node || node.nodeType !== "function") return { outputs: new Map(), primaryOutput: "" };
+      
+      let functionNode = node as FunctionNode;
+
+      // For multi-input functions, populate inputs from connections
+      if (functionNode.inputPorts && functionNode.inputPorts.length > 1) {
+        const incomingConnections = workflow.connections.filter((c) => c.toNodeId === nodeId);
+        const inputsMap: Record<string, string> = {};
+        
+        for (const conn of incomingConnections) {
+          const targetPort = conn.toInputPort || "input_1";
+          const fromNode = allNodes.find((n) => n.id === conn.fromNodeId);
+          if (!fromNode) continue;
+          
+          let value = "";
+          let portToRead = conn.fromOutputPort;
+          
+          if (fromNode.nodeType === "function") {
+            if (!portToRead) {
+              const funcNode = fromNode as FunctionNode;
+              portToRead = funcNode.outputs ? Object.keys(funcNode.outputs)[0] || "output" : "output";
+            }
+            value = outputs.get(`${conn.fromNodeId}:${portToRead}`) || 
+                    (fromNode as FunctionNode).outputs?.[portToRead] as string || "";
+          } else if (fromNode.nodeType === "agent") {
+            if (portToRead && (fromNode as AgentNode).beastModeOutputs?.[portToRead]) {
+              value = (fromNode as AgentNode).beastModeOutputs![portToRead];
+            } else {
+              value = outputs.get(conn.fromNodeId) || fromNode.output || "";
+            }
+          }
+          
+          inputsMap[targetPort] = String(value);
+        }
+        
+        updateNode(nodeId, { inputs: inputsMap });
+        functionNode = { ...functionNode, inputs: inputsMap };
+      }
+
+      if (functionNode.locked) {
+        addLog("info", `Function "${functionNode.name}" is locked, using existing output`);
+        const existingOutputs = new Map<string, string>();
+        if (functionNode.outputs) {
+          Object.entries(functionNode.outputs).forEach(([key, value]) => {
+            existingOutputs.set(`${nodeId}:${key}`, String(value));
+          });
+          const primaryOutput = Object.values(functionNode.outputs).find(v => v) || 
+            Object.values(functionNode.outputs).filter(v => v).join("\n\n---\n\n");
+          return { outputs: existingOutputs, primaryOutput: String(primaryOutput) };
+        }
+        if (functionNode.output) {
+          existingOutputs.set("output", String(functionNode.output));
+          return { outputs: existingOutputs, primaryOutput: String(functionNode.output) };
+        }
+        return { outputs: existingOutputs, primaryOutput: "" };
+      }
+
+      addLog("info", `Executing function: ${functionNode.name}`);
+      updateNode(nodeId, { status: "running" });
+      
+      try {
+        const result = await FunctionExecutor.execute(functionNode, input);
+        
+        if (!result.success) throw new Error(result.error || "Function execution failed");
+
+        const functionOutputs = new Map<string, string>();
+        Object.entries(result.outputs).forEach(([port, value]) => {
+          functionOutputs.set(`${nodeId}:${port}`, value);
+        });
+
+        let primaryOutput: string;
+        if (Object.keys(result.outputs).length > 1) {
+          primaryOutput = Object.values(result.outputs).filter(v => v).join("\n\n---\n\n");
+        } else {
+          primaryOutput = result.outputs.output || Object.values(result.outputs)[0] || "";
+        }
+
+        let normalizedOutputs: Record<string, string> = {};
+        if (Object.keys(result.outputs).length > 1) {
+          normalizedOutputs = { ...result.outputs };
+        } else {
+          normalizedOutputs.output = result.outputs.output || Object.values(result.outputs)[0] || "";
+        }
+        
+        updateNode(nodeId, { 
+          status: "complete", 
+          output: primaryOutput,
+          outputs: normalizedOutputs,
+          imageOutput: result.imageOutput,
+          audioOutput: result.audioOutput
+        });
+        addLog("success", `✓ Function ${functionNode.name} completed`);
+        return { outputs: functionOutputs, primaryOutput };
+      } catch (error) {
+        const errorMsg = `Error: ${error}`;
+        updateNode(nodeId, { status: "error", output: errorMsg });
+        addLog("error", `✗ Function ${functionNode.name} failed: ${error}`);
+        return { outputs: new Map(), primaryOutput: errorMsg };
+      }
+    };
+
+    const executeNode = async (node: WorkflowNode): Promise<void> => {
+      if (executingNodes.has(node.id) || completedNodes.has(node.id)) return;
+      
+      executingNodes.add(node.id);
+      const input = getNodeInput(node);
+      
+      if (node.nodeType === "agent") {
+        const output = await executeAgent(node.id, input);
+        outputs.set(node.id, output);
+      } else if (node.nodeType === "function") {
+        const { outputs: functionOutputs, primaryOutput } = await executeFunction(node.id, input);
+        functionOutputs.forEach((value, key) => outputs.set(key, value));
+        outputs.set(node.id, primaryOutput);
+      }
+      
+      executingNodes.delete(node.id);
+      completedNodes.add(node.id);
+    };
+
+    const isNodeReady = (nodeId: string): boolean => {
+      const node = allNodes.find(n => n.id === nodeId);
+      if (!node || node.locked) return false;
+      const dependencies = dependencyMap.get(nodeId) || [];
+      return dependencies.every(depId => completedNodes.has(depId));
+    };
+
+    // Execution loop for downstream nodes
+    while (completedNodes.size < allNodes.filter(n => !n.locked).length) {
+      const readyNodes = downstreamNodes.filter(node => 
+        !node.locked && 
+        !completedNodes.has(node.id) && 
+        !executingNodes.has(node.id) &&
+        isNodeReady(node.id)
+      );
+      
+      if (readyNodes.length === 0) {
+        if (executingNodes.size === 0) {
+          const remainingDownstream = downstreamNodes.filter(n => !n.locked && !completedNodes.has(n.id));
+          if (remainingDownstream.length === 0) break;
+          addLog("warning", `Downstream execution stuck: ${remainingDownstream.length} node(s) cannot execute`);
+          break;
+        }
+        await new Promise(resolve => setTimeout(resolve, 100));
+        continue;
+      }
+      
+      addLog("info", `Executing ${readyNodes.length} ready node(s): ${readyNodes.map(n => n.name).join(", ")}`);
+      readyNodes.forEach(node => void executeNode(node));
+      await new Promise(resolve => setTimeout(resolve, 50));
+    }
+    
+    addLog("success", "🎉 Downstream execution completed");
+  };
+
   const clearWorkflowOutputs = () => {
     setWorkflow(prev => ({
       ...prev,
@@ -2717,6 +3109,7 @@ const Index = () => {
               onDeselectAgent={() => setSelectedNode(null)}
               onRunAgent={runSingleAgent}
               onRunFunction={runSingleFunction}
+              onRunDownstream={runDownstream}
               onCloneNode={cloneNode}
               onAddAgentToLibrary={(agent) => {
                 const agentTemplate = {

@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { X, Plus, Settings, Play, Database, Download, Eye, EyeOff, Save, Upload, Lock, Unlock, Copy, BookPlus, Bot, Image, Volume2, Loader2, Zap } from "lucide-react";
+import { X, Plus, Settings, Play, Database, Download, Eye, EyeOff, Save, Upload, Lock, Unlock, Copy, BookPlus, Bot, Image, Volume2, Loader2, Zap, ArrowDown } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -58,6 +58,7 @@ interface PropertiesPanelProps {
   onDeselectAgent: () => void;
   onRunAgent: (agentId: string, customInput?: string) => void;
   onRunFunction?: (functionId: string, customInput?: string) => void;
+  onRunDownstream?: (nodeId: string) => void;
   onCloneNode?: (nodeId: string) => void;
   onAddAgentToLibrary?: (agent: AgentNode) => void;
   workflow?: {
@@ -85,6 +86,7 @@ export const PropertiesPanel = ({
   onDeselectAgent,
   onRunAgent,
   onRunFunction,
+  onRunDownstream,
   onCloneNode,
   onAddAgentToLibrary,
   workflow,
@@ -896,6 +898,16 @@ export const PropertiesPanel = ({
                 <Play className="h-4 w-4 mr-2" />
                 Run Agent
               </Button>
+              {onRunDownstream && (
+                <Button
+                  onClick={() => onRunDownstream(activeNode.id)}
+                  variant="outline"
+                  size="sm"
+                  title="Run this agent and all downstream nodes"
+                >
+                  <ArrowDown className="h-4 w-4" />
+                </Button>
+              )}
               {onAddAgentToLibrary && (
                 <Button
                   onClick={() => onAddAgentToLibrary(activeNode as AgentNode)}
@@ -910,15 +922,27 @@ export const PropertiesPanel = ({
           )}
 
           {activeNode.nodeType === "function" && onRunFunction && (
-            <Button 
-              onClick={() => onRunFunction(activeNode.id)}
-              className="flex-1"
-              variant="default"
-              size="sm"
-            >
-              <Play className="h-4 w-4 mr-2" />
-              Run Function
-            </Button>
+            <>
+              <Button 
+                onClick={() => onRunFunction(activeNode.id)}
+                className="flex-1"
+                variant="default"
+                size="sm"
+              >
+                <Play className="h-4 w-4 mr-2" />
+                Run Function
+              </Button>
+              {onRunDownstream && (
+                <Button
+                  onClick={() => onRunDownstream(activeNode.id)}
+                  variant="outline"
+                  size="sm"
+                  title="Run this function and all downstream nodes"
+                >
+                  <ArrowDown className="h-4 w-4" />
+                </Button>
+              )}
+            </>
           )}
           
           {onCloneNode && (
