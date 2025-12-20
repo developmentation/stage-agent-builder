@@ -1909,35 +1909,65 @@ const Index = () => {
       
       let input = customInput !== undefined ? customInput : (userInput || "");
       
-      // If customInput is provided (e.g., from runStage), trust it and do not
-      // recompute from connections here to avoid overriding port-specific values.
-      if (incomingConnections.length > 0 && customInput === undefined) {
+      // For multi-input functions (like logic_gate), populate node.inputs from connections
+      const hasMultipleInputs = functionNode.inputPorts && functionNode.inputPorts.length > 1;
+      let nodeToExecute = functionNode;
+      
+      if (hasMultipleInputs && incomingConnections.length > 0) {
+        const inputsMap: Record<string, string> = {};
+        
+        for (const conn of incomingConnections) {
+          const targetPort = conn.toInputPort || "input_1";
+          const fromNode = allNodes.find((n) => n.id === conn.fromNodeId);
+          if (!fromNode) continue;
+          
+          // Determine which port to read from
+          let portToRead = conn.fromOutputPort;
+          if (!portToRead && fromNode.nodeType === "function") {
+            const funcNode = fromNode as FunctionNode;
+            portToRead = funcNode.outputs ? Object.keys(funcNode.outputs)[0] || "output" : "output";
+          }
+          
+          // Get the output value
+          let value = "";
+          if (fromNode.nodeType === "function" && portToRead) {
+            const funcNode = fromNode as FunctionNode;
+            const portValue = funcNode.outputs?.[portToRead];
+            value = portValue !== undefined && portValue !== null ? String(portValue) : "";
+          } else if (fromNode.nodeType === "agent" && portToRead && (fromNode as AgentNode).beastModeOutputs?.[portToRead]) {
+            value = (fromNode as AgentNode).beastModeOutputs![portToRead];
+          } else {
+            value = fromNode?.output || "";
+          }
+          
+          inputsMap[targetPort] = value;
+        }
+        
+        // Update the node with populated inputs BEFORE execution
+        updateNode(nodeId, { inputs: inputsMap });
+        // Create updated node reference for immediate use in executor
+        nodeToExecute = { ...functionNode, inputs: inputsMap };
+        
+        addLog("info", `Function ${nodeToExecute.name} received ${Object.keys(inputsMap).length} port-specific input(s)`);
+      } else if (incomingConnections.length > 0 && customInput === undefined) {
+        // Single-input function: standard concatenation logic
         const outputsFromConnections = incomingConnections
           .map((c) => {
             const fromNode = allNodes.find((n) => n.id === c.fromNodeId);
             if (!fromNode) return "";
             
-            // Determine which port to read from (universal port syntax)
             let portToRead = c.fromOutputPort;
-            
-            // Legacy support: if no port specified, default to first port
             if (!portToRead && fromNode.nodeType === "function") {
               const funcNode = fromNode as FunctionNode;
-              if (funcNode.outputs) {
-                portToRead = Object.keys(funcNode.outputs)[0] || "output";
-              } else {
-                portToRead = "output";
-              }
+              portToRead = funcNode.outputs ? Object.keys(funcNode.outputs)[0] || "output" : "output";
             }
             
-            // For functions, read from the specific port
             if (fromNode.nodeType === "function" && portToRead) {
               const funcNode = fromNode as FunctionNode;
               const portValue = funcNode.outputs?.[portToRead];
               return portValue !== undefined && portValue !== null ? String(portValue) : "";
             }
             
-            // For agents with beast mode outputs, read from the specific port
             if (fromNode.nodeType === "agent" && portToRead) {
               const agentNode = fromNode as AgentNode;
               if (agentNode.beastModeOutputs?.[portToRead]) {
@@ -1945,7 +1975,6 @@ const Index = () => {
               }
             }
             
-            // For agents, use the primary output
             return fromNode?.output || "";
           });
         
@@ -1959,7 +1988,7 @@ const Index = () => {
         }
       }
       
-      const result = await FunctionExecutor.execute(functionNode, input);
+      const result = await FunctionExecutor.execute(nodeToExecute, input);
       
       if (!result.success) {
         throw new Error(result.error || "Function execution failed");
