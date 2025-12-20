@@ -691,9 +691,18 @@ export const PropertiesPanel = ({
               ) : key === "outputMode" && node.functionType === "github_files" ? (
                 <Select
                   value={node.config[key] ?? "combined"}
-                  onValueChange={(value) =>
-                    updateNodeConfig({ ...node.config, [key]: value })
-                  }
+                  onValueChange={(value) => {
+                    updateNodeConfig({ ...node.config, [key]: value });
+                    // Auto-update output count when switching modes
+                    if (onUpdateNode) {
+                      const selectedPaths = node.config.selectedPaths || [];
+                      if (value === "separate") {
+                        onUpdateNode(node.id, { outputCount: Math.max(1, selectedPaths.length) });
+                      } else {
+                        onUpdateNode(node.id, { outputCount: 1 });
+                      }
+                    }
+                  }}
                 >
                   <SelectTrigger className="h-8 text-xs">
                     <SelectValue placeholder="Select output mode" />
@@ -703,8 +712,8 @@ export const PropertiesPanel = ({
                     <SelectItem value="separate">Separate (one output per file)</SelectItem>
                   </SelectContent>
                 </Select>
-              ) : key === "selectedPaths" && node.functionType === "github_files" ? (
-                // Hide this field - it's managed by the tree modal
+              ) : (key === "selectedPaths" || key === "outputMode") && node.functionType === "github_files" ? (
+                // Hide these fields - managed by dedicated UI sections
                 null
               ) : (
                 <Input
@@ -2170,12 +2179,18 @@ export const PropertiesPanel = ({
           selectedPaths={(activeNode as FunctionNode).config.selectedPaths || []}
           onSelectPaths={(paths) => {
             if (onUpdateNode) {
-              onUpdateNode(activeNode.id, {
+              const node = activeNode as FunctionNode;
+              const updates: Record<string, unknown> = {
                 config: {
-                  ...(activeNode as FunctionNode).config,
+                  ...node.config,
                   selectedPaths: paths,
                 },
-              });
+              };
+              // Auto-update output count if in separate mode
+              if (node.config.outputMode === "separate") {
+                updates.outputCount = Math.max(1, paths.length);
+              }
+              onUpdateNode(activeNode.id, updates);
             }
           }}
         />
