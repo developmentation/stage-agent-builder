@@ -93,6 +93,9 @@ export class FunctionExecutor {
       case "logic_gate":
         return this.executeLogicGate(functionNode, input);
       
+      case "pronghorn":
+        return await this.executePronghorn(functionNode, input);
+      
       default:
         return {
           success: false,
@@ -1164,6 +1167,195 @@ export class FunctionExecutor {
       // Single output - concatenate all non-empty inputs
       const concatenated = inputValues.filter(v => v && v.trim()).join(separator);
       return { success: true, outputs: { output: concatenated } };
+    }
+  }
+
+  // Pronghorn - Send artifacts to Pronghorn project
+  private static async executePronghorn(node: FunctionNode, input: string): Promise<FunctionExecutionResult> {
+    try {
+      const projectId = node.config.projectId as string;
+      const token = node.config.token as string;
+      
+      if (!projectId) {
+        throw new Error("Pronghorn Project ID is required");
+      }
+      if (!token) {
+        throw new Error("Pronghorn Token is required");
+      }
+      
+      // Get input values from inputPorts
+      const inputPorts = node.inputPorts || ["input_1"];
+      const inputValues = inputPorts.map(port => {
+        const value = node.inputs?.[port];
+        return value !== undefined && value !== null ? String(value) : "";
+      }).filter(v => v.trim() !== "");
+      
+      // If no inputs from ports, use the passed input
+      if (inputValues.length === 0 && input && input.trim()) {
+        inputValues.push(input);
+      }
+      
+      if (inputValues.length === 0) {
+        throw new Error("No input content to send to Pronghorn");
+      }
+      
+      // Helper to detect binary content (base64 encoded image/audio)
+      const detectBinaryType = (value: string): { type: "text" | "image" | "binary", contentType?: string } | null => {
+        // Check for base64 image data URL pattern
+        const imageMatch = value.match(/^data:(image\/[a-zA-Z+]+);base64,/);
+        if (imageMatch) {
+          return { type: "image", contentType: imageMatch[1] };
+        }
+        
+        // Check for base64 audio data URL pattern  
+        const audioMatch = value.match(/^data:(audio\/[a-zA-Z0-9]+);base64,/);
+        if (audioMatch) {
+          return { type: "binary", contentType: audioMatch[1] };
+        }
+        
+        // Check for raw base64 that looks like binary (long base64 string with specific patterns)
+        // This is a heuristic - if it's a long string with only base64 chars and no spaces/newlines, treat as potential binary
+        if (value.length > 1000 && /^[A-Za-z0-9+/=]+$/.test(value.trim())) {
+          // Could be raw base64 audio/image without data URL prefix
+          return { type: "binary" };
+        }
+        
+        return null;
+      };
+      
+      // Build items array
+      interface PronghornItem {
+        type: "text" | "image" | "binary";
+        content: string;
+        title?: string;
+        fileName?: string;
+        contentType?: string;
+      }
+      
+      const items: PronghornItem[] = [];
+      
+      if (inputValues.length === 1) {
+        // Single input mode: concatenate text, split out binary
+        const singleInput = inputValues[0];
+        let textContent = "";
+        
+        // Check if the entire input is binary
+        const binaryCheck = detectBinaryType(singleInput);
+        if (binaryCheck) {
+          // Extract the base64 content (remove data URL prefix if present)
+          let base64Content = singleInput;
+          const dataUrlMatch = singleInput.match(/^data:[^;]+;base64,(.+)$/);
+          if (dataUrlMatch) {
+            base64Content = dataUrlMatch[1];
+          }
+          
+          items.push({
+            type: binaryCheck.type,
+            content: base64Content,
+            contentType: binaryCheck.contentType,
+            fileName: binaryCheck.type === "image" ? "image.png" : "audio.mp3",
+          });
+        } else {
+          // Parse the input for embedded binary content
+          // Split on data URL patterns to find embedded media
+          const parts = singleInput.split(/(data:(?:image|audio)\/[^;]+;base64,[A-Za-z0-9+/=]+)/g);
+          
+          for (const part of parts) {
+            if (!part || !part.trim()) continue;
+            
+            const partBinaryCheck = detectBinaryType(part);
+            if (partBinaryCheck) {
+              let base64Content = part;
+              const dataUrlMatch = part.match(/^data:[^;]+;base64,(.+)$/);
+              if (dataUrlMatch) {
+                base64Content = dataUrlMatch[1];
+              }
+              
+              items.push({
+                type: partBinaryCheck.type,
+                content: base64Content,
+                contentType: partBinaryCheck.contentType,
+                fileName: partBinaryCheck.type === "image" ? "image.png" : "audio.mp3",
+              });
+            } else {
+              textContent += part;
+            }
+          }
+          
+          // Add concatenated text if any
+          if (textContent.trim()) {
+            items.push({
+              type: "text",
+              content: textContent.trim(),
+              title: "Workflow Output",
+            });
+          }
+        }
+      } else {
+        // Multiple inputs mode: each non-null input becomes an artifact
+        inputValues.forEach((value, index) => {
+          const binaryCheck = detectBinaryType(value);
+          
+          if (binaryCheck) {
+            let base64Content = value;
+            const dataUrlMatch = value.match(/^data:[^;]+;base64,(.+)$/);
+            if (dataUrlMatch) {
+              base64Content = dataUrlMatch[1];
+            }
+            
+            items.push({
+              type: binaryCheck.type,
+              content: base64Content,
+              contentType: binaryCheck.contentType,
+              fileName: binaryCheck.type === "image" ? `image_${index + 1}.png` : `audio_${index + 1}.mp3`,
+            });
+          } else {
+            items.push({
+              type: "text",
+              content: value,
+              title: `Input ${index + 1}`,
+            });
+          }
+        });
+      }
+      
+      if (items.length === 0) {
+        throw new Error("No valid content to send to Pronghorn");
+      }
+      
+      console.log(`Sending ${items.length} items to Pronghorn project ${projectId}`);
+      
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pronghorn-post`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ projectId, token, items }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `Pronghorn post failed: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      
+      if (!data.success) {
+        throw new Error(data.error || "Pronghorn post failed");
+      }
+
+      const summary = `Sent ${data.itemsCreated || items.length} artifact(s) to Pronghorn (${data.processingTimeMs || 0}ms)`;
+      
+      return {
+        success: true,
+        outputs: { output: summary },
+      };
+    } catch (error) {
+      return {
+        success: false,
+        outputs: { output: "" },
+        error: error instanceof Error ? error.message : "Pronghorn post failed",
+      };
     }
   }
 }
