@@ -1444,15 +1444,16 @@ const Index = () => {
       return;
     }
 
-    // Get all output ports from the connected node
+    // Get all output ports from the connected node that have content
     let outputPorts: string[] = [];
     if (connectedNode.nodeType === "function") {
       const funcNode = connectedNode as FunctionNode;
-      outputPorts = funcNode.outputPorts || ["output"];
+      // Get all defined output ports
+      const allPorts = funcNode.outputPorts || ["output"];
       // Filter to only ports that have content
-      outputPorts = outputPorts.filter(port => {
+      outputPorts = allPorts.filter(port => {
         const content = funcNode.outputs?.[port];
-        return content && content.trim().length > 0;
+        return content && String(content).trim().length > 0;
       });
     } else {
       // For agents, there's typically just one output
@@ -1480,9 +1481,38 @@ const Index = () => {
         const port = outputPorts[i];
         addLog("running", `Beast Mode: Iteration ${i + 1}/${outputPorts.length} - processing port "${port}"`);
         
+        // Visually switch the connection to the current port
+        // Create a temporary connection pointing to this specific port
+        const tempConnections = originalConnections.map(conn => {
+          if (conn.toNodeId === nodeId && conn.fromNodeId === connectedNode.id) {
+            return { ...conn, fromOutputPort: port };
+          }
+          return conn;
+        });
+        
+        // If no existing connection to this node, create one temporarily
+        const hasConnectionFromSource = originalConnections.some(
+          c => c.toNodeId === nodeId && c.fromNodeId === connectedNode.id
+        );
+        
+        if (!hasConnectionFromSource) {
+          tempConnections.push({
+            id: `temp-beast-${Date.now()}-${i}`,
+            fromNodeId: connectedNode.id,
+            toNodeId: nodeId,
+            fromOutputPort: port
+          });
+        }
+        
+        // Update workflow with temporary connection (visual feedback)
+        setWorkflow(prev => ({ ...prev, connections: tempConnections }));
+        
+        // Small delay to allow UI to update and show the connection switch
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         // Update progress in output
         updateNode(nodeId, { 
-          output: `Beast Mode: Processing ${i + 1}/${outputPorts.length}...\n\n${results.join("\n\n---\n\n")}` 
+          output: `Beast Mode: Processing ${i + 1}/${outputPorts.length} (${port})...\n\n${results.join("\n\n---\n\n")}` 
         });
 
         // Execute agent with this specific port's content
@@ -1508,7 +1538,7 @@ const Index = () => {
       updateNode(nodeId, { status: "complete", output: finalOutput });
       addLog("success", `Beast Mode: Agent "${agent.name}" completed ${outputPorts.length} iterations`);
 
-      // Restore original connections (they weren't modified, but good practice)
+      // Restore original connections
       setWorkflow(prev => ({ ...prev, connections: originalConnections }));
 
     } catch (error) {
