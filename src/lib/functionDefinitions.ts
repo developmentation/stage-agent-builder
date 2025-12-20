@@ -17,7 +17,8 @@ import {
   Image,
   Volume2,
   Mail,
-  Github
+  Github,
+  Send
 } from "lucide-react";
 import type { FunctionDefinition } from "@/types/functions";
 
@@ -735,6 +736,37 @@ export const functionDefinitions: FunctionDefinition[] = [
         description: "combined = single output, separate = one output per file",
         default: "combined",
         placeholder: "combined",
+      },
+    },
+  },
+  // Pronghorn Integration
+  {
+    id: "pronghorn",
+    name: "Pronghorn",
+    description: "Send text and media artifacts to a Pronghorn project",
+    category: "export",
+    icon: Send,
+    color: "bg-amber-500/10 text-amber-500",
+    inputs: {
+      label: "Multiple inputs",
+      description: "Configure number of input sockets in properties panel",
+    },
+    outputs: ["output"],
+    supportsMultipleInputs: true,
+    configSchema: {
+      projectId: {
+        type: "string",
+        label: "Project ID",
+        description: "Your Pronghorn project UUID",
+        required: true,
+        placeholder: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
+      },
+      token: {
+        type: "string",
+        label: "Token",
+        description: "Your editor/owner token UUID",
+        required: true,
+        placeholder: "xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx",
       },
     },
   },

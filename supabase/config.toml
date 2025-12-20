@@ -41,3 +41,6 @@ verify_jwt = false
 
 [functions.github-fetch]
 verify_jwt = false
+
+[functions.pronghorn-post]
+verify_jwt = false
