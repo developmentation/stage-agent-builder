@@ -583,6 +583,14 @@ const Index = () => {
               return funcNode.output || "";
             }
             
+            // Handle output port selection for agent beast mode outputs
+            if (c.fromOutputPort && fromNode.nodeType === "agent") {
+              const agentNode = fromNode as AgentNode;
+              if (agentNode.beastModeOutputs?.[c.fromOutputPort]) {
+                return agentNode.beastModeOutputs[c.fromOutputPort];
+              }
+            }
+            
             return fromNode.output || "";
           })
           .filter(Boolean);
@@ -1431,6 +1439,8 @@ const Index = () => {
     const beastSource = agent.beastMode?.source || "connected_card";
     const outputMode = agent.beastMode?.outputMode || "concatenate";
     
+    console.log("Beast Mode starting:", { nodeId, beastSource, outputMode, agentName: agent.name });
+    
     // Store original connections to restore later
     const originalConnections = [...workflow.connections];
     
@@ -1439,8 +1449,11 @@ const Index = () => {
     const outputTargets: OutputTarget[] = [];
     
     if (beastSource === "entire_stage") {
+      console.log("Beast Mode: Processing entire_stage source");
       // Find which stage this agent is in
       const agentStage = workflow.stages.find(s => s.nodes.some(n => n.id === nodeId));
+      console.log("Beast Mode: Found agent stage:", agentStage?.name, "with", agentStage?.nodes.length, "nodes");
+      
       if (!agentStage) {
         addLog("error", `Beast Mode: Could not find stage for agent "${agent.name}"`);
         return;
@@ -1448,6 +1461,7 @@ const Index = () => {
       
       // Get all OTHER nodes in the same stage (exclude self)
       const stageNodes = agentStage.nodes.filter(n => n.id !== nodeId);
+      console.log("Beast Mode: Stage nodes (excluding self):", stageNodes.map(n => ({ id: n.id, name: n.name, type: n.nodeType })));
       
       if (stageNodes.length === 0) {
         addLog("warning", `Beast Mode: No other cards found in stage for agent "${agent.name}"`);
@@ -1459,6 +1473,7 @@ const Index = () => {
         if (stageNode.nodeType === "function") {
           const funcNode = stageNode as FunctionNode;
           const allPorts = funcNode.outputPorts || ["output"];
+          console.log("Beast Mode: Function node", funcNode.name, "has ports:", allPorts, "outputs:", funcNode.outputs);
           for (const port of allPorts) {
             const content = funcNode.outputs?.[port];
             if (content && String(content).trim().length > 0) {
@@ -1467,17 +1482,21 @@ const Index = () => {
           }
         } else if (stageNode.nodeType === "agent") {
           const agentNode = stageNode as AgentNode;
+          console.log("Beast Mode: Agent node", agentNode.name, "has output:", agentNode.output?.substring(0, 50));
           if (agentNode.output && agentNode.output.trim().length > 0) {
             outputTargets.push({ node: stageNode, port: "output" });
           }
         }
       }
       
+      console.log("Beast Mode (Entire Stage): Collected output targets:", outputTargets.length);
       addLog("info", `Beast Mode (Entire Stage): Found ${outputTargets.length} outputs from ${stageNodes.length} cards`);
       
     } else if (beastSource === "all_connected") {
+      console.log("Beast Mode: Processing all_connected source");
       // Process all existing connections
       const incomingConnections = workflow.connections.filter((c) => c.toNodeId === nodeId);
+      console.log("Beast Mode: Incoming connections:", incomingConnections);
       
       if (incomingConnections.length === 0) {
         addLog("warning", `Beast Mode: No connections found for agent "${agent.name}"`);
@@ -1494,9 +1513,9 @@ const Index = () => {
         if (fromNode.nodeType === "function") {
           const funcNode = fromNode as FunctionNode;
           const content = funcNode.outputs?.[port];
-          hasContent = content && String(content).trim().length > 0;
+          hasContent = !!(content && String(content).trim().length > 0);
         } else if (fromNode.nodeType === "agent") {
-          hasContent = fromNode.output && fromNode.output.trim().length > 0;
+          hasContent = !!(fromNode.output && fromNode.output.trim().length > 0);
         }
         
         if (hasContent) {
@@ -1504,11 +1523,14 @@ const Index = () => {
         }
       }
       
+      console.log("Beast Mode (All Connected): Collected output targets:", outputTargets.length);
       addLog("info", `Beast Mode (All Connected): Found ${outputTargets.length} outputs from connections`);
       
     } else {
+      console.log("Beast Mode: Processing connected_card source");
       // connected_card - iterate through all outputs of the first connected card
       const incomingConnections = workflow.connections.filter((c) => c.toNodeId === nodeId);
+      console.log("Beast Mode: Incoming connections for connected_card:", incomingConnections);
       
       if (incomingConnections.length === 0) {
         addLog("warning", `Beast Mode: No connections found for agent "${agent.name}"`);
@@ -1541,6 +1563,8 @@ const Index = () => {
       addLog("info", `Beast Mode (Connected Card): Found ${outputTargets.length} outputs from "${connectedNode.name}"`);
     }
 
+    console.log("Beast Mode: Final output targets count:", outputTargets.length);
+    
     if (outputTargets.length === 0) {
       addLog("warning", `Beast Mode: No outputs with content found`);
       return;
@@ -1585,17 +1609,37 @@ const Index = () => {
         }
       }
 
-      // Combine results based on outputMode
-      let finalOutput = "";
-      if (outputMode === "concatenate") {
-        finalOutput = results.join("\n\n---\n\n");
+      // Handle output based on outputMode
+      if (outputMode === "split") {
+        // Create dynamic output ports for each result
+        const outputPorts: string[] = [];
+        const outputs: Record<string, string> = {};
+        
+        for (let i = 0; i < results.length; i++) {
+          const portName = `output_${i + 1}`;
+          outputPorts.push(portName);
+          outputs[portName] = results[i];
+        }
+        
+        // Update agent with dynamic outputs (we need to extend AgentNode for this)
+        // For now, store in a special format that can be read
+        const finalOutput = results.map((r, i) => `=== Output ${i + 1} ===\n${r}`).join("\n\n");
+        
+        // Store outputs in dynamic output format
+        updateNode(nodeId, { 
+          status: "complete", 
+          output: finalOutput,
+          beastModeOutputs: outputs,
+          beastModeOutputPorts: outputPorts
+        });
+        
+        addLog("success", `Beast Mode: Agent "${agent.name}" completed ${outputTargets.length} iterations with ${outputPorts.length} dynamic outputs`);
       } else {
-        // For split mode, we'd need to create multiple output ports - for now, still concatenate
-        finalOutput = results.join("\n\n---\n\n");
+        // Concatenate mode
+        const finalOutput = results.join("\n\n---\n\n");
+        updateNode(nodeId, { status: "complete", output: finalOutput });
+        addLog("success", `Beast Mode: Agent "${agent.name}" completed ${outputTargets.length} iterations`);
       }
-
-      updateNode(nodeId, { status: "complete", output: finalOutput });
-      addLog("success", `Beast Mode: Agent "${agent.name}" completed ${outputTargets.length} iterations`);
 
       // Restore original connections
       setWorkflow(prev => ({ ...prev, connections: originalConnections }));
