@@ -754,6 +754,12 @@ export const functionDefinitions: FunctionDefinition[] = [
     outputs: ["output"],
     supportsMultipleInputs: true,
     configSchema: {
+      inputCount: {
+        type: "number",
+        label: "Input Count",
+        description: "Number of input sockets (1-10)",
+        default: 1,
+      },
       projectId: {
         type: "string",
         label: "Project ID",

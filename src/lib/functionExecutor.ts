@@ -1234,89 +1234,27 @@ export class FunctionExecutor {
       
       const items: PronghornItem[] = [];
       
-      if (inputValues.length === 1) {
-        // Single input mode: concatenate text, split out binary
-        const singleInput = inputValues[0];
-        let textContent = "";
+      // Process each input value - always treat as separate items when multiple inputs
+      // This properly supports multiple input sockets
+      for (let index = 0; index < inputValues.length; index++) {
+        const value = inputValues[index];
         
-        // Check if the entire input is binary
-        const binaryCheck = detectBinaryType(singleInput);
+        // Check if this input is binary (data URL or raw base64)
+        const binaryCheck = detectBinaryType(value);
+        
         if (binaryCheck) {
           // Extract the base64 content (remove data URL prefix if present)
-          let base64Content = singleInput;
-          const dataUrlMatch = singleInput.match(/^data:[^;]+;base64,([A-Za-z0-9+/=]+)$/);
+          let base64Content = value;
+          const dataUrlMatch = value.match(/^data:[^;]+;base64,(.+)$/s);
           if (dataUrlMatch) {
             base64Content = dataUrlMatch[1];
           }
           
-          // Ensure base64 content is clean (no whitespace, valid chars only)
-          base64Content = base64Content.replace(/\s/g, '').trim();
+          // Clean the base64 content - remove whitespace and newlines
+          base64Content = base64Content.replace(/[\s\r\n]/g, '');
           
-          // Validate it looks like valid base64
-          if (!/^[A-Za-z0-9+/=]+$/.test(base64Content)) {
-            throw new Error("Invalid base64 content detected");
-          }
-          
-          items.push({
-            type: binaryCheck.type,
-            content: base64Content,
-            contentType: binaryCheck.contentType || (binaryCheck.type === "image" ? "image/png" : "application/octet-stream"),
-            fileName: binaryCheck.type === "image" ? "image.png" : "audio.mp3",
-          });
-        } else {
-          // Parse the input for embedded binary content
-          // Split on data URL patterns to find embedded media
-          const parts = singleInput.split(/(data:(?:image|audio)\/[^;]+;base64,[A-Za-z0-9+/=]+)/g);
-          
-          for (const part of parts) {
-            if (!part || !part.trim()) continue;
-            
-            const partBinaryCheck = detectBinaryType(part);
-            if (partBinaryCheck) {
-              let base64Content = part;
-              const dataUrlMatch = part.match(/^data:[^;]+;base64,([A-Za-z0-9+/=]+)$/);
-              if (dataUrlMatch) {
-                base64Content = dataUrlMatch[1];
-              }
-              
-              // Clean the base64 content
-              base64Content = base64Content.replace(/\s/g, '').trim();
-              
-              items.push({
-                type: partBinaryCheck.type,
-                content: base64Content,
-                contentType: partBinaryCheck.contentType || (partBinaryCheck.type === "image" ? "image/png" : "application/octet-stream"),
-                fileName: partBinaryCheck.type === "image" ? "image.png" : "audio.mp3",
-              });
-            } else {
-              textContent += part;
-            }
-          }
-          
-          // Add concatenated text if any
-          if (textContent.trim()) {
-            items.push({
-              type: "text",
-              content: textContent.trim(),
-              title: "Workflow Output",
-            });
-          }
-        }
-      } else {
-        // Multiple inputs mode: each non-null input becomes an artifact
-        inputValues.forEach((value, index) => {
-          const binaryCheck = detectBinaryType(value);
-          
-          if (binaryCheck) {
-            let base64Content = value;
-            const dataUrlMatch = value.match(/^data:[^;]+;base64,([A-Za-z0-9+/=]+)$/);
-            if (dataUrlMatch) {
-              base64Content = dataUrlMatch[1];
-            }
-            
-            // Clean the base64 content
-            base64Content = base64Content.replace(/\s/g, '').trim();
-            
+          // Only add if it looks like valid base64, otherwise treat as text
+          if (/^[A-Za-z0-9+/]+=*$/.test(base64Content) && base64Content.length > 100) {
             items.push({
               type: binaryCheck.type,
               content: base64Content,
@@ -1324,13 +1262,63 @@ export class FunctionExecutor {
               fileName: binaryCheck.type === "image" ? `image_${index + 1}.png` : `audio_${index + 1}.mp3`,
             });
           } else {
+            // Not valid base64, treat as text
             items.push({
               type: "text",
               content: value,
-              title: `Input ${index + 1}`,
+              title: inputValues.length > 1 ? `Input ${index + 1}` : "Workflow Output",
             });
           }
-        });
+        } else {
+          // Check if text contains embedded data URLs that need to be extracted
+          const dataUrlPattern = /data:(image|audio)\/[^;]+;base64,[A-Za-z0-9+/=]+/g;
+          const matches = value.match(dataUrlPattern);
+          
+          if (matches && matches.length > 0) {
+            // Has embedded binary - extract them and the remaining text
+            let remainingText = value;
+            
+            for (const match of matches) {
+              // Extract the binary content
+              const typeMatch = match.match(/^data:(image|audio)\/([^;]+);base64,(.+)$/s);
+              if (typeMatch) {
+                const mediaType = typeMatch[1] as "image" | "audio";
+                const format = typeMatch[2];
+                let base64Data = typeMatch[3].replace(/[\s\r\n]/g, '');
+                
+                // Validate base64
+                if (/^[A-Za-z0-9+/]+=*$/.test(base64Data)) {
+                  items.push({
+                    type: mediaType === "image" ? "image" : "binary",
+                    content: base64Data,
+                    contentType: `${mediaType}/${format}`,
+                    fileName: mediaType === "image" ? `image_${items.length + 1}.png` : `audio_${items.length + 1}.mp3`,
+                  });
+                }
+              }
+              
+              // Remove this match from remaining text
+              remainingText = remainingText.replace(match, '');
+            }
+            
+            // Add any remaining text
+            const cleanedText = remainingText.trim();
+            if (cleanedText) {
+              items.push({
+                type: "text",
+                content: cleanedText,
+                title: inputValues.length > 1 ? `Input ${index + 1}` : "Workflow Output",
+              });
+            }
+          } else {
+            // Plain text input
+            items.push({
+              type: "text",
+              content: value,
+              title: inputValues.length > 1 ? `Input ${index + 1}` : "Workflow Output",
+            });
+          }
+        }
       }
       
       if (items.length === 0) {
