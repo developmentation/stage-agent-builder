@@ -693,13 +693,36 @@ export const PropertiesPanel = ({
                   value={node.config[key] ?? "combined"}
                   onValueChange={(value) => {
                     updateNodeConfig({ ...node.config, [key]: value });
-                    // Auto-update output count when switching modes
+                    // Auto-update output count and remap outputs when switching modes
                     if (onUpdateNode) {
-                      const selectedPaths = node.config.selectedPaths || [];
+                      const selectedPaths = (node.config.selectedPaths || []) as string[];
+                      const currentOutputs = node.outputs || {};
+                      
                       if (value === "separate") {
-                        onUpdateNode(node.id, { outputCount: Math.max(1, selectedPaths.length) });
+                        // Remap combined output to separate outputs if we have content
+                        // Try to parse existing combined content or keep separate outputs
+                        const newOutputs: Record<string, string> = {};
+                        selectedPaths.forEach((path, index) => {
+                          // Check if we already have separate output content
+                          newOutputs[`output_${index + 1}`] = currentOutputs[`output_${index + 1}`] || "";
+                        });
+                        onUpdateNode(node.id, { 
+                          outputCount: Math.max(1, selectedPaths.length),
+                          outputPorts: selectedPaths.map((_, index) => `output_${index + 1}`),
+                          outputs: newOutputs
+                        });
                       } else {
-                        onUpdateNode(node.id, { outputCount: 1 });
+                        // Combine separate outputs into one
+                        const combinedContent = selectedPaths.map((path, index) => {
+                          const content = currentOutputs[`output_${index + 1}`] || "";
+                          return content ? `// ===== ${path} =====\n${content}` : "";
+                        }).filter(Boolean).join("\n\n");
+                        
+                        onUpdateNode(node.id, { 
+                          outputCount: 1,
+                          outputPorts: ["output"],
+                          outputs: { output: combinedContent }
+                        });
                       }
                     }
                   }}
@@ -2177,20 +2200,44 @@ export const PropertiesPanel = ({
           repoUrl={(activeNode as FunctionNode).config.repoUrl || ""}
           branch={(activeNode as FunctionNode).config.branch || undefined}
           selectedPaths={(activeNode as FunctionNode).config.selectedPaths || []}
-          onSelectPaths={(paths) => {
+          onSelectPaths={(paths, contents) => {
             if (onUpdateNode) {
               const node = activeNode as FunctionNode;
-              const updates: Record<string, unknown> = {
+              const outputMode = (node.config.outputMode as string) || "combined";
+              
+              // Build the outputs object with port names
+              let outputs: Record<string, string> = {};
+              if (contents && Object.keys(contents).length > 0) {
+                if (outputMode === "separate") {
+                  // Map file paths to port names
+                  paths.forEach((path, index) => {
+                    outputs[`output_${index + 1}`] = contents[path] || "";
+                  });
+                } else {
+                  // Combine all content into a single output
+                  const combinedContent = paths.map(path => {
+                    const content = contents[path] || "";
+                    return `// ===== ${path} =====\n${content}`;
+                  }).join("\n\n");
+                  outputs = { output: combinedContent };
+                }
+              }
+              
+              const updates: Partial<FunctionNode> = {
                 config: {
                   ...node.config,
                   selectedPaths: paths,
                 },
+                outputs,
               };
-              // Auto-update output count if in separate mode
-              if (node.config.outputMode === "separate") {
+              
+              // Auto-update output count and port names if in separate mode
+              if (outputMode === "separate") {
                 updates.outputCount = Math.max(1, paths.length);
+                updates.outputPorts = paths.map((_, index) => `output_${index + 1}`);
               }
-              onUpdateNode(activeNode.id, updates);
+              
+              onUpdateNode(activeNode.id, updates as Partial<WorkflowNode>);
             }
           }}
         />
