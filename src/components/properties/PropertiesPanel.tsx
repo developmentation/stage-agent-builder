@@ -4,7 +4,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { X, Plus, Settings, Play, Database, Download, Eye, EyeOff, Save, Upload, Lock, Unlock, Copy, BookPlus, Bot } from "lucide-react";
+import { X, Plus, Settings, Play, Database, Download, Eye, EyeOff, Save, Upload, Lock, Unlock, Copy, BookPlus, Bot, Image, Volume2, Loader2 } from "lucide-react";
 import {
   Select,
   SelectContent,
@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import type { WorkflowNode, AgentNode, FunctionNode, ToolInstance } from "@/types/workflow";
 import { getFunctionById } from "@/lib/functionDefinitions";
 import { FunctionExecutor } from "@/lib/functionExecutor";
@@ -108,9 +108,49 @@ export const PropertiesPanel = ({
   const [systemPromptTab, setSystemPromptTab] = useState("edit");
   const [userPromptTab, setUserPromptTab] = useState("edit");
   const [showBearerToken, setShowBearerToken] = useState(false);
+  const [elevenlabsVoices, setElevenlabsVoices] = useState<{ voice_id: string; name: string; category: string }[]>([]);
+  const [loadingVoices, setLoadingVoices] = useState(false);
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   // Use selectedNode if provided, otherwise fall back to selectedAgent
   const activeNode = selectedNode || selectedAgent;
+
+  // Fetch ElevenLabs voices when a TTS function is selected
+  useEffect(() => {
+    const fetchVoices = async () => {
+      if (activeNode?.nodeType === "function" && (activeNode as FunctionNode).functionType === "text_to_speech") {
+        if (elevenlabsVoices.length === 0 && !loadingVoices) {
+          setLoadingVoices(true);
+          try {
+            const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/get-elevenlabs-voices`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({}),
+            });
+            
+            if (response.ok) {
+              const data = await response.json();
+              setElevenlabsVoices(data.voices || []);
+            } else {
+              console.error("Failed to fetch voices");
+              toast({
+                title: "Failed to load voices",
+                description: "Could not fetch ElevenLabs voices. Please check your API key.",
+                variant: "destructive",
+              });
+            }
+          } catch (error) {
+            console.error("Error fetching voices:", error);
+          } finally {
+            setLoadingVoices(false);
+          }
+        }
+      }
+    };
+    
+    fetchVoices();
+  }, [activeNode, elevenlabsVoices.length, loadingVoices]);
+
 
   // Calculate input value from connections
   const getNodeInput = (): string => {
@@ -597,6 +637,55 @@ export const PropertiesPanel = ({
                     )}
                   </Button>
                 </div>
+              ) : key === "voiceId" && node.functionType === "text_to_speech" ? (
+                <Select
+                  value={node.config[key] ?? ""}
+                  onValueChange={(value) =>
+                    updateNodeConfig({ ...node.config, [key]: value })
+                  }
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder={loadingVoices ? "Loading voices..." : "Select a voice"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {loadingVoices ? (
+                      <div className="flex items-center justify-center p-2">
+                        <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                        <span className="text-xs">Loading voices...</span>
+                      </div>
+                    ) : elevenlabsVoices.length === 0 ? (
+                      <div className="p-2 text-xs text-muted-foreground">
+                        No voices found. Check your API key.
+                      </div>
+                    ) : (
+                      elevenlabsVoices.map((voice) => (
+                        <SelectItem key={voice.voice_id} value={voice.voice_id}>
+                          <span>{voice.name}</span>
+                          <span className="text-muted-foreground ml-2 text-xs">({voice.category})</span>
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              ) : key === "model" && node.functionType === "image_generation" ? (
+                <Select
+                  value={node.config[key] ?? schema.default ?? "gemini-2.5-flash-image"}
+                  onValueChange={(value) =>
+                    updateNodeConfig({ ...node.config, [key]: value })
+                  }
+                >
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Select model" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="gemini-2.5-flash-image">
+                      gemini-2.5-flash-image (Fast)
+                    </SelectItem>
+                    <SelectItem value="gemini-3-pro-image-preview">
+                      gemini-3-pro-image-preview (Quality)
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
               ) : (
                 <Input
                   id={key}
@@ -1390,6 +1479,83 @@ export const PropertiesPanel = ({
               </p>
             </Card>
           </div>
+
+          {/* Image Preview for image_generation functions */}
+          {activeNode.nodeType === "function" && (activeNode as FunctionNode).functionType === "image_generation" && (activeNode as FunctionNode).imageOutput && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium flex items-center gap-2">
+                  <Image className="h-4 w-4 text-pink-500" />
+                  Generated Image
+                </Label>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2"
+                  onClick={() => {
+                    const imageData = (activeNode as FunctionNode).imageOutput;
+                    if (imageData) {
+                      const link = document.createElement("a");
+                      link.href = imageData;
+                      link.download = `generated-image-${Date.now()}.png`;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                    }
+                  }}
+                >
+                  <Download className="h-3 w-3 mr-1" />
+                  Download
+                </Button>
+              </div>
+              <Card className="p-2 bg-muted/30">
+                <img 
+                  src={(activeNode as FunctionNode).imageOutput} 
+                  alt="Generated image" 
+                  className="w-full h-auto rounded-md max-h-[300px] object-contain"
+                />
+              </Card>
+            </div>
+          )}
+
+          {/* Audio Preview for text_to_speech functions */}
+          {activeNode.nodeType === "function" && (activeNode as FunctionNode).functionType === "text_to_speech" && (activeNode as FunctionNode).audioOutput && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium flex items-center gap-2">
+                  <Volume2 className="h-4 w-4 text-violet-500" />
+                  Generated Audio
+                </Label>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 px-2"
+                  onClick={() => {
+                    const audioData = (activeNode as FunctionNode).audioOutput;
+                    if (audioData) {
+                      const link = document.createElement("a");
+                      link.href = audioData;
+                      link.download = `generated-audio-${Date.now()}.mp3`;
+                      document.body.appendChild(link);
+                      link.click();
+                      document.body.removeChild(link);
+                    }
+                  }}
+                >
+                  <Download className="h-3 w-3 mr-1" />
+                  Download
+                </Button>
+              </div>
+              <Card className="p-3 bg-muted/30">
+                <audio
+                  ref={audioRef}
+                  controls
+                  className="w-full h-10"
+                  src={(activeNode as FunctionNode).audioOutput}
+                />
+              </Card>
+            </div>
+          )}
 
           {/* Common: Output */}
           {activeNode.output && (

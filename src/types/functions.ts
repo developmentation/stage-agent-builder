@@ -44,6 +44,8 @@ export interface FunctionExecutionResult {
   success: boolean;
   outputs: Record<string, string>; // Map of output port name to value
   error?: string;
+  imageOutput?: string; // Base64 image data for image generation functions
+  audioOutput?: string; // Base64 audio data for TTS functions
 }
 
 // Memory store for Memory function
