@@ -20,7 +20,7 @@ interface WorkflowCanvasProps {
   onToggleMinimize: (agentId: string) => void;
   onToggleLock: (nodeId: string) => void;
   onStartConnection: (agentId: string, outputPort?: string) => void;
-  onCompleteConnection: (fromAgentId: string, toAgentId: string, fromOutputPort?: string) => void;
+  onCompleteConnection: (fromAgentId: string, toAgentId: string, fromOutputPort?: string, toInputPort?: string) => void;
   onDeleteConnection: (connectionId: string) => void;
   onRunAgent?: (agentId: string, customInput?: string) => void;
   onRunFunction?: (functionId: string, customInput?: string) => void;
@@ -123,12 +123,13 @@ export const WorkflowCanvas = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [selectedConnection, onDeleteConnection]);
 
-  const handlePortClick = (agentId: string, isOutput: boolean, outputPort?: string) => {
+  const handlePortClick = (nodeId: string, isOutput: boolean, outputPort?: string, inputPort?: string) => {
     if (isOutput && !connectingFrom) {
       setConnectingFromPort(outputPort);
-      onStartConnection(agentId, outputPort);
-    } else if (!isOutput && connectingFrom && connectingFrom !== agentId) {
-      onCompleteConnection(connectingFrom, agentId, connectingFromPort);
+      onStartConnection(nodeId, outputPort);
+    } else if (!isOutput && connectingFrom && connectingFrom !== nodeId) {
+      // Pass input port info for multi-input functions
+      onCompleteConnection(connectingFrom, nodeId, connectingFromPort, inputPort);
       setConnectingFromPort(undefined);
     } else if (connectingFrom) {
       setConnectingFromPort(undefined);
@@ -163,7 +164,27 @@ export const WorkflowCanvas = ({
         fromEl = document.getElementById(fallbackPortId);
       }
       
-      const toEl = document.getElementById(`port-input-${conn.toNodeId}-${layoutId}`);
+      // Build the correct input port ID - support multi-input functions
+      let inputPortId = `port-input-${conn.toNodeId}-${layoutId}`;
+      if (conn.toInputPort) {
+        inputPortId = `port-input-${conn.toNodeId}-${conn.toInputPort}-${layoutId}`;
+      } else {
+        // Try to find input_1 first for multi-input functions, then fall back to single input
+        const multiInputPortId = `port-input-${conn.toNodeId}-input_1-${layoutId}`;
+        const multiInputEl = document.getElementById(multiInputPortId);
+        if (multiInputEl) {
+          inputPortId = multiInputPortId;
+        } else {
+          // Try "input" port for single-input functions
+          const singleInputPortId = `port-input-${conn.toNodeId}-input-${layoutId}`;
+          const singleInputEl = document.getElementById(singleInputPortId);
+          if (singleInputEl) {
+            inputPortId = singleInputPortId;
+          }
+        }
+      }
+      
+      const toEl = document.getElementById(inputPortId);
       if (!fromEl || !toEl) return null;
       
       const fromRect = fromEl.getBoundingClientRect();

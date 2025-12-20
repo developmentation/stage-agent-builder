@@ -118,7 +118,7 @@ interface WorkflowCanvasModeProps {
   onUpdateNodePosition: (nodeId: string, position: { x: number; y: number }) => void;
   onMoveNodeToStage?: (nodeId: string, targetStageId: string, newPosition?: { x: number; y: number }) => void;
   onDeleteConnection?: (connectionId: string) => void;
-  onCompleteConnection?: (fromNodeId: string, toNodeId: string, fromOutputPort?: string) => void;
+  onCompleteConnection?: (fromNodeId: string, toNodeId: string, fromOutputPort?: string, toInputPort?: string) => void;
   onToggleViewMode?: () => void;
   onAutoLayoutVertical?: () => void;
   onAutoLayoutHorizontal?: () => void;
@@ -429,14 +429,16 @@ export function WorkflowCanvasMode({
         const fromNodeId = connection.source;
         const toNodeId = connection.target;
         const fromOutputPort = connection.sourceHandle || undefined;
+        const toInputPort = connection.targetHandle || undefined;
         
         console.log("Preparing to call onCompleteConnection with:");
         console.log("  fromNodeId:", fromNodeId);
         console.log("  toNodeId:", toNodeId);
         console.log("  fromOutputPort:", fromOutputPort);
+        console.log("  toInputPort:", toInputPort);
         
         // Call the parent's connection completion handler
-        onCompleteConnection(fromNodeId, toNodeId, fromOutputPort);
+        onCompleteConnection(fromNodeId, toNodeId, fromOutputPort, toInputPort);
         
         console.log("onCompleteConnection called");
         console.log("=== Canvas onConnect END ===");

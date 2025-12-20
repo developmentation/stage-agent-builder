@@ -70,14 +70,25 @@ export const WorkflowNodeComponent = memo(({ data }: NodeProps<WorkflowNodeCompo
     return ["output"]; // Use "output" for agents for consistency
   };
 
+  const getInputPorts = () => {
+    if (node.nodeType === "function") {
+      const functionNode = node as FunctionNode;
+      return functionNode.inputPorts || ["input"];
+    }
+    return ["input"]; // Single input for agents
+  };
+
   const outputPorts = getOutputPorts();
-  const hasMultiplePorts = outputPorts.length > 1;
+  const inputPorts = getInputPorts();
+  const hasMultipleOutputPorts = outputPorts.length > 1;
+  const hasMultipleInputPorts = inputPorts.length > 1;
   
   // Calculate dynamic width based on number of ports
   const minWidth = 200;
   const portSpacing = 30; // Space needed per port (reduced for tighter spacing)
-  const dynamicWidth = hasMultiplePorts 
-    ? Math.max(minWidth, outputPorts.length * portSpacing)
+  const maxPorts = Math.max(outputPorts.length, inputPorts.length);
+  const dynamicWidth = maxPorts > 1 
+    ? Math.max(minWidth, maxPorts * portSpacing)
     : minWidth;
 
   return (
@@ -91,13 +102,35 @@ export const WorkflowNodeComponent = memo(({ data }: NodeProps<WorkflowNodeCompo
       style={{ minWidth: `${dynamicWidth}px`, maxWidth: `${dynamicWidth}px` }}
       onClick={onSelect}
     >
-      {/* Input Handle */}
-      <Handle
-        type="target"
-        position={Position.Top}
-        className="w-3 h-3 !bg-primary"
-        isConnectable={true}
-      />
+      {/* Input Handles - Multiple for logic gates, single for others */}
+      {hasMultipleInputPorts ? (
+        <div className="absolute top-0 left-0 right-0 flex justify-around" style={{ transform: 'translateY(-50%)' }}>
+          {inputPorts.map((port) => {
+            const hasData = node.nodeType === "function" && 
+              (node as FunctionNode).inputs?.[port] && 
+              (node as FunctionNode).inputs![port].trim().length > 0;
+            
+            return (
+              <Handle
+                key={port}
+                type="target"
+                position={Position.Top}
+                id={port}
+                className={`w-3 h-3 ${hasData ? '!bg-green-500 ring-2 ring-green-300' : '!bg-primary'} !relative !top-0 !transform-none`}
+                isConnectable={true}
+              />
+            );
+          })}
+        </div>
+      ) : (
+        <Handle
+          type="target"
+          position={Position.Top}
+          id={inputPorts[0]}
+          className="w-3 h-3 !bg-primary"
+          isConnectable={true}
+        />
+      )}
 
       <CardHeader className="p-3 pb-2">
         <div className="flex items-start justify-between gap-2">
@@ -118,10 +151,17 @@ export const WorkflowNodeComponent = memo(({ data }: NodeProps<WorkflowNodeCompo
                 </div>
               )}
               {node.nodeType === "function" && (
-                <div className="flex gap-1 mt-1">
-                  <Badge variant="outline" className="text-xs">
-                    {(node as FunctionNode).output?.length || 0} chars
-                  </Badge>
+                <div className="flex gap-1 mt-1 flex-wrap">
+                  {hasMultipleInputPorts && (
+                    <Badge variant="outline" className="text-xs">
+                      {inputPorts.length} inputs
+                    </Badge>
+                  )}
+                  {hasMultipleOutputPorts && (
+                    <Badge variant="outline" className="text-xs">
+                      {outputPorts.length} outputs
+                    </Badge>
+                  )}
                 </div>
               )}
             </div>
@@ -179,7 +219,7 @@ export const WorkflowNodeComponent = memo(({ data }: NodeProps<WorkflowNodeCompo
       )}
 
       {/* Output Handles */}
-      {hasMultiplePorts ? (
+      {hasMultipleOutputPorts ? (
         <div className="flex justify-around pb-2">
           {outputPorts.map((port, index) => {
             // Extract number from port name (e.g., "output_1" -> "1")
