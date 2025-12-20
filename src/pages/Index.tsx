@@ -583,6 +583,14 @@ const Index = () => {
               return funcNode.output || "";
             }
             
+            // Handle beast mode outputs from agents
+            if (c.fromOutputPort && fromNode.nodeType === "agent") {
+              const agentNode = fromNode as AgentNode;
+              if (agentNode.beastModeOutputs?.[c.fromOutputPort]) {
+                return agentNode.beastModeOutputs[c.fromOutputPort];
+              }
+            }
+            
             return fromNode.output || "";
           })
           .filter(Boolean);
@@ -1243,6 +1251,9 @@ const Index = () => {
           if (fromNode.nodeType === "function") {
             const funcNode = fromNode as FunctionNode;
             input = funcNode.outputs?.[portOverride.port] || "";
+          } else if (fromNode.nodeType === "agent") {
+            const agentNode = fromNode as AgentNode;
+            input = agentNode.beastModeOutputs?.[portOverride.port] || fromNode.output || "";
           } else {
             input = fromNode.output || "";
           }
@@ -1270,6 +1281,14 @@ const Index = () => {
               const funcNode = fromNode as FunctionNode;
               const portValue = funcNode.outputs?.[portToRead];
               return portValue !== undefined && portValue !== null ? String(portValue) : "";
+            }
+            
+            // Handle beast mode outputs from agents
+            if (fromNode.nodeType === "agent" && portToRead) {
+              const agentNode = fromNode as AgentNode;
+              if (agentNode.beastModeOutputs?.[portToRead]) {
+                return agentNode.beastModeOutputs[portToRead];
+              }
             }
             
             return fromNode?.output || "";
@@ -1541,31 +1560,20 @@ const Index = () => {
           dynamicOutputs[portName] = results[i];
         }
         
-        // Update the agent node to be a "function-like" node with outputs
-        // Since agents don't normally have outputPorts, we store results in output as JSON
-        // and the UI will display them as individual outputs
         finalOutput = results.join("\n\n---\n\n");
         
-        // Update node with dynamic outputs
-        updateNode(nodeId, { 
-          status: "complete", 
-          output: finalOutput,
-          // Store structured outputs for downstream connections
-        });
-        
-        // Also update the agent to have FunctionNode-like behavior for Beast Mode
+        // Update agent with beast mode outputs AND restore connections in one update
         setWorkflow(prev => ({
           ...prev,
+          connections: originalConnections, // Restore original connections
           stages: prev.stages.map(stage => ({
             ...stage,
             nodes: stage.nodes.map(node => {
               if (node.id === nodeId && node.nodeType === "agent") {
-                // Store beast mode results that can be accessed like function outputs
                 return {
                   ...node,
                   status: "complete" as const,
                   output: finalOutput,
-                  // Create a special property for beast mode outputs
                   beastModeOutputs: dynamicOutputs,
                   beastModeOutputPorts: dynamicOutputPorts,
                 };
@@ -1575,15 +1583,30 @@ const Index = () => {
           })),
         }));
       } else {
-        // Concatenate mode
-        finalOutput = results.join("\n\n---\n\n");
-        updateNode(nodeId, { status: "complete", output: finalOutput });
+        // Concatenate mode - restore connections and update node
+        setWorkflow(prev => ({
+          ...prev,
+          connections: originalConnections,
+          stages: prev.stages.map(stage => ({
+            ...stage,
+            nodes: stage.nodes.map(node => {
+              if (node.id === nodeId) {
+                return {
+                  ...node,
+                  status: "complete" as const,
+                  output: finalOutput,
+                  // Clear any existing beast mode outputs
+                  beastModeOutputs: undefined,
+                  beastModeOutputPorts: undefined,
+                };
+              }
+              return node;
+            }),
+          })),
+        }));
       }
 
       addLog("success", `Beast Mode: Agent "${agent.name}" completed ${outputPorts.length} iterations`);
-
-      // Restore original connections
-      setWorkflow(prev => ({ ...prev, connections: originalConnections }));
 
     } catch (error) {
       console.error("Beast Mode execution failed:", error);
@@ -1891,6 +1914,14 @@ const Index = () => {
               const funcNode = fromNode as FunctionNode;
               const portValue = funcNode.outputs?.[portToRead];
               return portValue !== undefined && portValue !== null ? String(portValue) : "";
+            }
+            
+            // For agents with beast mode outputs, read from the specific port
+            if (fromNode.nodeType === "agent" && portToRead) {
+              const agentNode = fromNode as AgentNode;
+              if (agentNode.beastModeOutputs?.[portToRead]) {
+                return agentNode.beastModeOutputs[portToRead];
+              }
             }
             
             // For agents, use the primary output
@@ -2280,8 +2311,15 @@ const Index = () => {
         
         let portToRead = c.fromOutputPort;
         
-        // For agents, always use the primary output
+        // For agents with beast mode outputs
         if (fromNode.nodeType === "agent") {
+          const agentNode = fromNode as AgentNode;
+          
+          // Check for beast mode outputs first
+          if (portToRead && agentNode.beastModeOutputs?.[portToRead]) {
+            return agentNode.beastModeOutputs[portToRead];
+          }
+          
           const mappedOutput = outputs.get(c.fromNodeId);
           if (mappedOutput !== undefined) {
             return mappedOutput;
