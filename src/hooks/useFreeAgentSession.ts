@@ -364,24 +364,26 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
     [maxIterations, handleArtifactCreated, handleBlackboardUpdate, handleScratchpadUpdate, handleAssistanceNeeded, updateSession]
   );
 
-  // Start a new session
+  // Start a new session (or resume with preserved memory if existingSession provided)
   const startSession = useCallback(
-    async (prompt: string, files: SessionFile[] = []) => {
+    async (prompt: string, files: SessionFile[] = [], existingSession?: FreeAgentSession | null) => {
       try {
         setIsRunning(true);
         iterationRef.current = 0;
 
+        // If continuing from an existing session, preserve memory (blackboard, scratchpad, artifacts)
         const newSession: FreeAgentSession = {
-          id: crypto.randomUUID(),
+          id: existingSession?.id || crypto.randomUUID(),
           status: "running",
           prompt,
           model,
           maxIterations,
           currentIteration: 0,
-          blackboard: [],
-          scratchpad: "",
+          // Preserve memory from existing session if continuing
+          blackboard: existingSession?.blackboard || [],
+          scratchpad: existingSession?.scratchpad || "",
+          artifacts: existingSession?.artifacts || [],
           toolCalls: [],
-          artifacts: [],
           messages: [
             {
               id: crypto.randomUUID(),
