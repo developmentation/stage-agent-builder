@@ -599,24 +599,32 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
           iteration: iterationRef.current,
         };
 
-        updateSession((prev) =>
-          prev
+        // Build updated session SYNCHRONOUSLY with the assistance response
+        const updatedSession: FreeAgentSession = {
+          ...session,
+          status: "running",
+          messages: [...session.messages, userMessage],
+          assistanceRequest: session.assistanceRequest
             ? {
-                ...prev,
-                status: "running",
-                messages: [...prev.messages, userMessage],
-                assistanceRequest: prev.assistanceRequest
-                  ? {
-                      ...prev.assistanceRequest,
-                      response: response.response,
-                      fileId: response.fileId,
-                      selectedChoice: response.selectedChoice,
-                      respondedAt: new Date().toISOString(),
-                    }
-                  : undefined,
+                ...session.assistanceRequest,
+                response: response.response,
+                fileId: response.fileId,
+                selectedChoice: response.selectedChoice,
+                respondedAt: new Date().toISOString(),
               }
-            : null
-        );
+            : undefined,
+        };
+
+        // Save to localStorage IMMEDIATELY (synchronous) so executeIteration can read it
+        saveSessionToLocal(updatedSession);
+        console.log("Assistance response saved to localStorage:", {
+          response: response.response,
+          selectedChoice: response.selectedChoice,
+          respondedAt: updatedSession.assistanceRequest?.respondedAt,
+        });
+
+        // Also update React state for UI
+        setSession(updatedSession);
 
         // Continue iterations - pass tool results directly between iterations
         shouldStopRef.current = false;
@@ -644,7 +652,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
         setIsRunning(false);
       }
     },
-    [session, maxIterations, executeIteration, updateSession]
+    [session, maxIterations, executeIteration]
   );
 
   // Stop the current session

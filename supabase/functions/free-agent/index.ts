@@ -324,6 +324,21 @@ Iteration 3:
 2. Check your blackboard COMPLETED list - don't redo completed steps
 3. Never call the same search/read tool twice with the same parameters
 
+## ⚠️ MANDATORY: write_blackboard EVERY ITERATION - NO EXCEPTIONS ⚠️
+You MUST include write_blackboard as the FIRST tool_call in EVERY response. This includes:
+- When requesting assistance (request_assistance)
+- When completing tasks
+- When encountering errors
+- ALWAYS - no matter what
+
+Example for request_assistance:
+{
+  "tool_calls": [
+    { "tool": "write_blackboard", "params": { "category": "plan", "content": "Asking user for input: [your question]" } },
+    { "tool": "request_assistance", "params": { "question": "...", "inputType": "text" } }
+  ]
+}
+
 ## Response Format
 You MUST respond with valid JSON only. No markdown outside JSON:
 {
