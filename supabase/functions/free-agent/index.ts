@@ -42,19 +42,19 @@ Available Tools:
 - image_generation: Generate image from prompt (params: prompt)
 - get_call_api: Make GET request (params: url, headers?)
 - post_call_api: Make POST request (params: url, headers?)
-- read_blackboard: Read your memory entries (params: filter?)
-- write_blackboard: Write to your memory (params: category, content, data?)
+- write_blackboard: Write to your planning journal (params: category, content, data?)
 - read_file: Read session file content (params: fileId)
 - read_prompt: Read the original user prompt
 - read_prompt_files: Get list of available files with metadata
-- read_scratchpad: Read your working scratchpad content
-- write_scratchpad: Write to your scratchpad (params: content, mode?) - USE THIS TO SAVE DATA!
+- read_scratchpad: Read your data storage (for final summarization)
+- write_scratchpad: SAVE DATA HERE immediately after search/read (params: content, mode?)
 - request_assistance: Ask user for input (params: question, context?, inputType?, choices?)
 - export_word: Create Word document (params: content, filename?)
 - export_pdf: Create PDF document (params: content, filename?)
 - execute_sql: Execute SQL on external database (params: connectionString, query, isWrite?)
 - elevenlabs_tts: Text to speech (params: text, voiceId?, modelId?)
 `;
+// NOTE: read_blackboard removed - blackboard is ALWAYS shown above automatically
 
   // Include file content if available (for small text files)
   let filesSection = '\nNo session files provided.';
@@ -84,9 +84,29 @@ Available Tools:
     scratchpadSection = `\n## YOUR SCRATCHPAD: Contains ${scratchpad.length} chars of saved data. Use read_scratchpad to view full content.`;
   }
 
-  const resultsSection = previousResults.length > 0
-    ? `\n## PREVIOUS ITERATION'S TOOL RESULTS (Only available THIS iteration - save important data to scratchpad!):\n${JSON.stringify(previousResults, null, 2)}`
-    : '';
+  // Make previous tool results VERY prominent so agent sees them
+  let resultsSection = '';
+  if (previousResults.length > 0) {
+    const formattedResults = previousResults.map(r => {
+      const resultStr = JSON.stringify(r.result, null, 2);
+      // Show full results up to 8KB per tool
+      const display = resultStr.length > 8000 
+        ? resultStr.slice(0, 8000) + '\n...[truncated - save to scratchpad NOW]'
+        : resultStr;
+      return `### Tool: ${r.tool}\n\`\`\`json\n${display}\n\`\`\``;
+    }).join('\n\n');
+    
+    resultsSection = `
+
+## ⚠️ PREVIOUS ITERATION TOOL RESULTS - READ THIS FIRST! ⚠️
+These results will DISAPPEAR next iteration! You MUST save important data to scratchpad NOW.
+
+${formattedResults}
+
+ACTION REQUIRED: If you see search/read results above, call write_scratchpad with the actual data.
+DO NOT call the same tool again - the results are RIGHT HERE.
+`;
+  }
 
   // Include user's assistance response if provided
   let assistanceSection = '';
@@ -105,49 +125,41 @@ ${resultsSection}${assistanceSection}
 
 Current Iteration: ${iteration}
 
-## MEMORY ARCHITECTURE - CRITICAL DISTINCTION:
+## MEMORY ARCHITECTURE - UNDERSTAND THIS:
 
-### BLACKBOARD = Your Planning Journal (READ EVERY iteration, WRITE EVERY iteration)
-Purpose: Track your PLAN, PROGRESS, and COMPLETED ITEMS. This is your continuity between iterations.
-MUST CONTAIN:
-- Current step in your plan
-- List of items already processed (files read, searches done)
-- Next action to take
-Example blackboard entry:
-{
-  "category": "plan",
-  "content": "Step 2/3: Reading controller files. COMPLETED: configs.js, healthcheck.js. NEXT: accounts.js, apiActions.js"
-}
+### BLACKBOARD (shown above) = Your Planning Journal
+- AUTOMATICALLY included every iteration - you see it above
+- Track: current step, COMPLETED items list, NEXT action
+- Write EVERY iteration using write_blackboard
 
-### SCRATCHPAD = Data Storage (WRITE actual data, only read at end)
-Purpose: Store ACTUAL DATA content - file contents, search results, extracted information.
-The scratchpad is NOT re-read every iteration (to save context). Write data here and move on.
-CORRECT scratchpad content:
-  "## accounts.js Controller\\n- POST /signup - Creates user\\n- GET /profile/:id - Fetches profile\\n\\n## apiActions.js Controller\\n- GET /status - Health check"
-WRONG scratchpad content (this is blackboard material):
-  "Reading controller file: accounts.js"
-  "Now analyzing the controllers"
+### SCRATCHPAD = Data Storage (use read_scratchpad when ready to summarize)
+- Store ACTUAL DATA: search results, file contents, analysis
+- Only read when you need to compile final report
 
-## CRITICAL: DO NOT REPEAT WORK
-Before calling ANY read/fetch tool:
-1. CHECK YOUR BLACKBOARD - does it say you already processed this item?
-2. If yes, SKIP IT and move to the next item
-3. Your blackboard MUST maintain a cumulative "COMPLETED" list
+## ⚠️ THE LOOP PROBLEM - CRITICAL ⚠️
+Tool results only stay visible for ONE iteration. If you search and don't save:
+- Iteration 5: brave_search returns results - you see them in PREVIOUS ITERATION RESULTS
+- Iteration 6: Results are GONE - you can't see them anymore
+- You think "I should search again" - WRONG! You already did!
 
-## CRITICAL DATA COPYING RULES:
-When writing to scratchpad, COPY the ACTUAL DATA, not labels:
+### CORRECT WORKFLOW FOR SEARCH TASKS:
 
-WRONG: write_scratchpad({ content: "file_tree:" })
-WRONG: write_scratchpad({ content: "Saved the search results" })
-RIGHT: write_scratchpad({ content: "file_tree:\\n├── src/\\n│   ├── index.js\\n│   └── controllers/\\n└── package.json" })
-RIGHT: write_scratchpad({ content: "## accounts.js\\nfunction signup(req, res) {...}\\n\\n## apiActions.js\\nfunction getStatus..." })
+Iteration 1:
+- tool_calls: [{ tool: "brave_search", params: { query: "CES 2025" } }]
+- blackboard_entry: { category: "plan", content: "Step 1: Searching for CES 2025" }
 
-## WORKFLOW EACH ITERATION:
-1. READ your blackboard to see what you've ALREADY DONE
-2. SKIP items already in your COMPLETED list
-3. Execute tools for NEW items only
-4. WRITE actual data to scratchpad (not status messages)
-5. UPDATE blackboard with: what you just completed + cumulative completed list + next action
+Iteration 2 (YOU WILL SEE search results in PREVIOUS ITERATION RESULTS above):
+- READ the results shown above
+- tool_calls: [{ tool: "write_scratchpad", params: { content: "## CES 2025 Search Results\n\n1. [actual result data]\n2. [actual result data]..." } }]
+- blackboard_entry: { category: "plan", content: "COMPLETED: Search. Data SAVED to scratchpad. NEXT: Send email." }
+
+Iteration 3:
+- Now scratchpad has the data, proceed to next task (email, summarize, etc.)
+
+## ANTI-LOOP RULES:
+1. Check PREVIOUS ITERATION RESULTS first - if you see data, SAVE IT, don't re-search
+2. Check your blackboard COMPLETED list - don't redo completed steps
+3. Never call the same search/read tool twice with the same parameters
 
 ## Response Format
 You MUST respond with valid JSON only. No markdown outside JSON:
