@@ -10,6 +10,7 @@ import ReactFlow, {
   useNodesState,
   useEdgesState,
   ConnectionLineType,
+  ReactFlowProvider,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { FreeAgentNode } from "./FreeAgentNode";
@@ -201,40 +202,42 @@ export function FreeAgentCanvas({
 
   return (
     <div className="w-full h-full">
-      <ReactFlow
-        nodes={nodes}
-        edges={edges}
-        onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
-        onNodeClick={handleNodeClick}
-        nodeTypes={nodeTypes}
-        connectionLineType={ConnectionLineType.SmoothStep}
-        fitView
-        attributionPosition="bottom-left"
-      >
-        <Background color="#374151" gap={20} size={1} />
-        <Controls />
-        <MiniMap
-          nodeColor={(node) => {
-            if (node.data?.status === "active" || node.data?.status === "thinking") return "#f59e0b";
-            if (node.data?.status === "success") return "#10b981";
-            if (node.data?.status === "error") return "#ef4444";
-            return "#6b7280";
-          }}
-          maskColor="rgba(0, 0, 0, 0.8)"
-        />
-        <Panel position="top-left" className="bg-background/80 backdrop-blur-sm p-2 rounded-lg border">
-          <div className="text-sm font-medium">
-            {session ? (
-              <span>
-                Iteration {session.currentIteration} / {session.maxIterations}
-              </span>
-            ) : (
-              <span>No active session</span>
-            )}
-          </div>
-        </Panel>
-      </ReactFlow>
+      <ReactFlowProvider>
+        <ReactFlow
+          nodes={nodes}
+          edges={edges}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onNodeClick={handleNodeClick}
+          nodeTypes={nodeTypes}
+          connectionLineType={ConnectionLineType.SmoothStep}
+          fitView
+          attributionPosition="bottom-left"
+        >
+          <Background color="#374151" gap={20} size={1} />
+          <Controls />
+          <MiniMap
+            nodeColor={(node) => {
+              if (node.data?.status === "active" || node.data?.status === "thinking") return "#f59e0b";
+              if (node.data?.status === "success") return "#10b981";
+              if (node.data?.status === "error") return "#ef4444";
+              return "#6b7280";
+            }}
+            maskColor="rgba(0, 0, 0, 0.8)"
+          />
+          <Panel position="top-left" className="bg-background/80 backdrop-blur-sm p-2 rounded-lg border">
+            <div className="text-sm font-medium">
+              {session ? (
+                <span>
+                  Iteration {session.currentIteration} / {session.maxIterations}
+                </span>
+              ) : (
+                <span>No active session</span>
+              )}
+            </div>
+          </Panel>
+        </ReactFlow>
+      </ReactFlowProvider>
     </div>
   );
 }
