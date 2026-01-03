@@ -305,6 +305,23 @@ async function callLLM(
   }
 }
 
+// Sanitize JSON string by escaping control characters that break parsing
+function sanitizeJsonString(text: string): string {
+  // Replace unescaped control characters inside strings
+  // This handles the "Bad control character in string literal" error
+  return text.replace(/[\x00-\x1F]/g, (char) => {
+    // Map common control characters to their escaped versions
+    const escapeMap: Record<string, string> = {
+      '\n': '\\n',
+      '\r': '\\r',
+      '\t': '\\t',
+      '\b': '\\b',
+      '\f': '\\f',
+    };
+    return escapeMap[char] || `\\u${char.charCodeAt(0).toString(16).padStart(4, '0')}`;
+  });
+}
+
 // Parse agent response with better error handling
 function parseAgentResponse(text: string): unknown {
   console.log("Raw LLM response length:", text.length);
@@ -316,19 +333,44 @@ function parseAgentResponse(text: string): unknown {
     console.warn("Direct JSON parse failed:", directError instanceof Error ? directError.message : "Unknown");
   }
   
+  // Try sanitizing control characters and parsing again
+  try {
+    const sanitized = sanitizeJsonString(text.trim());
+    return JSON.parse(sanitized);
+  } catch (sanitizeError) {
+    console.warn("Sanitized JSON parse failed:", sanitizeError instanceof Error ? sanitizeError.message : "Unknown");
+  }
+  
   // Try to extract JSON object
   const match = text.match(/\{[\s\S]*\}/);
   if (match) {
     try {
       return JSON.parse(match[0]);
-    } catch (extractError) {
-      console.error("JSON extraction also failed. Response end:", text.slice(-300));
+    } catch {
+      // Try sanitized version of extracted JSON
+      try {
+        const sanitizedMatch = sanitizeJsonString(match[0]);
+        return JSON.parse(sanitizedMatch);
+      } catch (extractError) {
+        console.error("JSON extraction also failed. Response end:", text.slice(-300));
+      }
     }
   }
   
   // Log details for debugging truncation
   console.error("Failed to parse LLM response. Preview:", text.slice(0, 500));
   console.error("Response ends with:", text.slice(-200));
+  
+  // Try to salvage at least the reasoning for user feedback
+  const reasoningMatch = text.match(/"reasoning"\s*:\s*"([^"]+)"/);
+  if (reasoningMatch) {
+    console.log("Salvaged reasoning:", reasoningMatch[1].slice(0, 200));
+    return {
+      reasoning: reasoningMatch[1],
+      status: "error",
+      message_to_user: "Response parsing failed, but I was thinking: " + reasoningMatch[1].slice(0, 200),
+    };
+  }
   
   return null;
 }
