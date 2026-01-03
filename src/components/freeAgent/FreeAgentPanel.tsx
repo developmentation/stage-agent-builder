@@ -27,6 +27,7 @@ interface FreeAgentPanelProps {
   onStop: () => void;
   onReset: () => void;
   onContinue: () => void;
+  cacheSize?: number;
 }
 
 export function FreeAgentPanel({
@@ -36,6 +37,7 @@ export function FreeAgentPanel({
   onStop,
   onReset,
   onContinue,
+  cacheSize = 0,
 }: FreeAgentPanelProps) {
   const [prompt, setPrompt] = useState("");
   const [files, setFiles] = useState<SessionFile[]>([]);
@@ -277,6 +279,10 @@ export function FreeAgentPanel({
                   <span className="font-medium">
                     {session.scratchpad ? `${session.scratchpad.length} chars` : 'Empty'}
                   </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Tool cache:</span>
+                  <span className="font-medium">{cacheSize} items</span>
                 </div>
                 {session.blackboard.length > 0 && (
                   <div className="mt-2 pt-2 border-t">

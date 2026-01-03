@@ -33,6 +33,7 @@ export function FreeAgentView({ model, maxIterations }: FreeAgentViewProps) {
     resetSession,
     continueSession,
     updateScratchpad,
+    getCacheSize,
   } = useFreeAgentSession({ model, maxIterations });
 
   // Load tools manifest
@@ -132,6 +133,7 @@ export function FreeAgentView({ model, maxIterations }: FreeAgentViewProps) {
                 onStop={stopSession}
                 onReset={resetSession}
                 onContinue={continueSession}
+                cacheSize={getCacheSize()}
               />
             </div>
           )}
@@ -188,6 +190,7 @@ export function FreeAgentView({ model, maxIterations }: FreeAgentViewProps) {
                   onStop={stopSession}
                   onReset={resetSession}
                   onContinue={continueSession}
+                  cacheSize={getCacheSize()}
                 />
               </div>
             </div>
