@@ -34,6 +34,7 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
     retrySession,
     updateScratchpad,
     getCacheSize,
+    interjectSession,
   } = useFreeAgentSession({ maxIterations });
 
   // Load tools manifest
@@ -60,8 +61,8 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
   }, [session?.status, session?.finalReport]);
 
   const handleStart = useCallback(
-    async (prompt: string, files: SessionFile[], model: string, existingSession?: FreeAgentSession | null) => {
-      await startSession(prompt, files, model, existingSession);
+    async (prompt: string, files: SessionFile[], model: string, maxIterations: number, existingSession?: FreeAgentSession | null) => {
+      await startSession(prompt, files, model, maxIterations, existingSession);
     },
     [startSession]
   );
@@ -79,6 +80,10 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
     setFinalReportModalOpen(false);
     resetSession();
   }, [resetSession]);
+
+  const handleInterject = useCallback((message: string) => {
+    interjectSession(message);
+  }, [interjectSession]);
 
   const [mobileTab, setMobileTab] = useState<"panel" | "canvas" | "data">("panel");
 
@@ -134,6 +139,7 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
                 onReset={resetSession}
                 onContinue={continueSession}
                 onRetry={retrySession}
+                onInterject={handleInterject}
                 cacheSize={getCacheSize()}
               />
             </div>
@@ -193,6 +199,7 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
                   onReset={resetSession}
                   onContinue={continueSession}
                   onRetry={retrySession}
+                  onInterject={handleInterject}
                   cacheSize={getCacheSize()}
                 />
               </div>

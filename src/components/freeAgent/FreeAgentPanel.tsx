@@ -25,8 +25,10 @@ import {
   AlertCircle,
   Pause,
   RotateCcw,
+  MessageSquarePlus,
 } from "lucide-react";
 import type { FreeAgentSession, SessionFile } from "@/types/freeAgent";
+import { InterjectModal } from "./InterjectModal";
 
 // Available models - same as workflow tool
 const MODEL_OPTIONS = [
@@ -45,11 +47,12 @@ const MODEL_OPTIONS = [
 interface FreeAgentPanelProps {
   session: FreeAgentSession | null;
   isRunning: boolean;
-  onStart: (prompt: string, files: SessionFile[], model: string, existingSession?: FreeAgentSession | null) => void;
+  onStart: (prompt: string, files: SessionFile[], model: string, maxIterations: number, existingSession?: FreeAgentSession | null) => void;
   onStop: () => void;
   onReset: () => void;
   onContinue: () => void;
   onRetry: () => void;
+  onInterject: (message: string) => void;
   cacheSize?: number;
 }
 
@@ -61,18 +64,22 @@ export function FreeAgentPanel({
   onReset,
   onContinue,
   onRetry,
+  onInterject,
   cacheSize = 0,
 }: FreeAgentPanelProps) {
   const [prompt, setPrompt] = useState("");
   const [files, setFiles] = useState<SessionFile[]>([]);
   // Preserve model selection - use session model if available, otherwise keep last selection
   const [selectedModel, setSelectedModel] = useState(() => session?.model || "gemini-2.5-flash");
+  const [maxIterations, setMaxIterations] = useState(() => session?.maxIterations || 50);
+  const [interjectModalOpen, setInterjectModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // Sync model from session when transitioning to idle (Continue) but not resetting user's choice
+  // Sync model and maxIterations from session when transitioning to idle (Continue)
   React.useEffect(() => {
-    if (session?.model && session.status === "idle") {
-      setSelectedModel(session.model);
+    if (session?.status === "idle") {
+      if (session.model) setSelectedModel(session.model);
+      if (session.maxIterations) setMaxIterations(session.maxIterations);
     }
   }, [session?.status]);
 
@@ -127,8 +134,12 @@ export function FreeAgentPanel({
   const handleStart = () => {
     if (!prompt.trim()) return;
     // Pass existing session if in "idle" state (after Continue) to preserve memory
-    onStart(prompt, files, selectedModel, session?.status === "idle" ? session : null);
+    onStart(prompt, files, selectedModel, maxIterations, session?.status === "idle" ? session : null);
     // Keep prompt and files so user can re-run
+  };
+
+  const handleInterject = (message: string) => {
+    onInterject(message);
   };
 
   const getStatusBadge = () => {
@@ -238,6 +249,23 @@ export function FreeAgentPanel({
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Max Iterations */}
+            <div className="space-y-2">
+              <Label htmlFor="max-iterations">Max Iterations</Label>
+              <Input
+                id="max-iterations"
+                type="number"
+                min={1}
+                max={200}
+                value={maxIterations}
+                onChange={(e) => setMaxIterations(Math.max(1, Math.min(200, parseInt(e.target.value) || 50)))}
+                className="w-full"
+              />
+              <p className="text-xs text-muted-foreground">
+                Maximum number of autonomous iterations (1-200)
+              </p>
             </div>
 
             {/* File uploads */}
@@ -372,34 +400,53 @@ export function FreeAgentPanel({
             </div>
 
             {/* Control buttons */}
-            <div className="flex gap-2">
-              {isRunning ? (
-                <Button variant="destructive" onClick={onStop} className="flex-1">
-                  <Square className="w-4 h-4 mr-2" />
-                  Stop
-                </Button>
-              ) : (
-                <>
-                  <Button variant="outline" onClick={onReset} className="flex-1">
-                    Reset
-                  </Button>
-                  {(session.status === "paused" || session.status === "error") && (
-                    <Button onClick={onRetry} className="flex-1 bg-orange-500 hover:bg-orange-600">
-                      <RotateCcw className="w-4 h-4 mr-2" />
-                      Retry
+            <div className="flex flex-col gap-2">
+              <div className="flex gap-2">
+                {isRunning ? (
+                  <>
+                    <Button variant="destructive" onClick={onStop} className="flex-1">
+                      <Square className="w-4 h-4 mr-2" />
+                      Stop
                     </Button>
-                  )}
-                  {session.status === "completed" && (
-                    <Button onClick={onContinue} className="flex-1">
-                      <Play className="w-4 h-4 mr-2" />
-                      Continue
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setInterjectModalOpen(true)}
+                      className="flex-1"
+                    >
+                      <MessageSquarePlus className="w-4 h-4 mr-2" />
+                      Interject
                     </Button>
-                  )}
-                </>
-              )}
+                  </>
+                ) : (
+                  <>
+                    <Button variant="outline" onClick={onReset} className="flex-1">
+                      Reset
+                    </Button>
+                    {(session.status === "paused" || session.status === "error") && (
+                      <Button onClick={onRetry} className="flex-1 bg-orange-500 hover:bg-orange-600">
+                        <RotateCcw className="w-4 h-4 mr-2" />
+                        Retry
+                      </Button>
+                    )}
+                    {session.status === "completed" && (
+                      <Button onClick={onContinue} className="flex-1">
+                        <Play className="w-4 h-4 mr-2" />
+                        Continue
+                      </Button>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
           </>
         )}
+
+        {/* Interject Modal */}
+        <InterjectModal
+          open={interjectModalOpen}
+          onClose={() => setInterjectModalOpen(false)}
+          onSubmit={handleInterject}
+        />
       </CardContent>
     </Card>
   );
