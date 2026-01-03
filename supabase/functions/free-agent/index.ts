@@ -275,8 +275,11 @@ This is the most efficient way to store data without wasting tokens on large res
     filesSection = `\nSession Files Available:\n${filesList}\n\nUse read_file with the exact fileId to read file contents.`;
   }
 
+  // Check if there are any user interjections in the blackboard
+  const hasUserInterjections = safeBlackboard.some(e => e.category === 'user_interjection');
+  
   const blackboardSection = safeBlackboard.length > 0
-    ? `\n## YOUR BLACKBOARD (Planning Journal - Read this EVERY iteration!):\n${safeBlackboard.map(e => `[${e.category}] ${e.content}`).join('\n')}`
+    ? `\n## YOUR BLACKBOARD (Planning Journal - Read this EVERY iteration!):\n${safeBlackboard.map(e => `[${e.category}] ${e.content}`).join('\n')}${hasUserInterjections ? '\n\n⚠️ Pay special attention to any recent User Interjections (within the last 1-5 blackboard entries) and ensure your next actions are aligned with the user\'s further direction.' : ''}`
     : '\n## BLACKBOARD: Empty. Track your plan and completed items here.';
 
   // Scratchpad - only show preview if small, otherwise just size (saves context)
@@ -388,6 +391,22 @@ Tool results only stay visible for ONE iteration. If you don't save:
 2. Check your blackboard - have you already done this step?
 3. Never call the same tool twice with same parameters
 4. After read_attribute, ALWAYS write a summary - don't keep re-reading raw data
+
+## 🔄 LOOP SELF-REFLECTION (MANDATORY BEFORE EACH ACTION)
+
+Before proceeding with tool calls, ask yourself:
+"Based on my blackboard entries and scratchpad, what is the likelihood I am stuck in a loop that I am unlikely to break free from?"
+
+Signs you may be looping:
+- Calling the same tool with identical or very similar parameters multiple times
+- Blackboard entries show repetitive patterns (e.g., same step description appearing repeatedly)
+- You keep re-reading the same data without making progress
+- Previous iterations show the same reasoning pattern
+
+If you detect a high likelihood of being stuck:
+1. STOP and acknowledge it in your reasoning
+2. Try a COMPLETELY DIFFERENT approach or tool
+3. If truly stuck, set status to "needs_assistance" and ask the user for guidance
 
 ## TOOL EXECUTION TIMING (CRITICAL!)
 All tools in your tool_calls array execute IN PARALLEL - they run at the same time!
