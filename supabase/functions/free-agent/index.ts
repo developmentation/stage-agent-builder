@@ -70,13 +70,19 @@ Available Tools:
   }
 
   const blackboardSection = blackboard.length > 0
-    ? `\nYour Blackboard (Planning & Tracking):\n${blackboard.map(e => `[${e.category}] ${e.content}`).join('\n')}`
-    : '\nBlackboard is empty. Use it to track your plan and progress.';
+    ? `\n## YOUR BLACKBOARD (Planning Journal - Read this EVERY iteration!):\n${blackboard.map(e => `[${e.category}] ${e.content}`).join('\n')}`
+    : '\n## BLACKBOARD: Empty. Track your plan and completed items here.';
 
-  // Scratchpad is the PERSISTENT memory - show it prominently (no truncation)
-  const scratchpadSection = scratchpad && scratchpad.trim()
-    ? `\n## YOUR SCRATCHPAD (Persistent Memory - Contains Your Accumulated Findings):\n\`\`\`\n${scratchpad}\n\`\`\``
-    : '\n## YOUR SCRATCHPAD: Empty. Write your findings here to persist them!';
+  // Scratchpad - only show preview if small, otherwise just size (saves context)
+  let scratchpadSection: string;
+  if (!scratchpad || !scratchpad.trim()) {
+    scratchpadSection = '\n## YOUR SCRATCHPAD (Data Storage): Empty. Write actual DATA here (file contents, search results, analysis).';
+  } else if (scratchpad.length < 500) {
+    scratchpadSection = `\n## YOUR SCRATCHPAD (Data Storage - ${scratchpad.length} chars):\n\`\`\`\n${scratchpad}\n\`\`\``;
+  } else {
+    // Only show preview to save context - agent can use read_scratchpad for full content
+    scratchpadSection = `\n## YOUR SCRATCHPAD: Contains ${scratchpad.length} chars of saved data. Use read_scratchpad to view full content.`;
+  }
 
   const resultsSection = previousResults.length > 0
     ? `\n## PREVIOUS ITERATION'S TOOL RESULTS (Only available THIS iteration - save important data to scratchpad!):\n${JSON.stringify(previousResults, null, 2)}`
@@ -99,27 +105,49 @@ ${resultsSection}${assistanceSection}
 
 Current Iteration: ${iteration}
 
-## CRITICAL MEMORY RULES - MANDATORY:
-1. **Tool results are EPHEMERAL** - they only exist for ONE iteration then disappear FOREVER
-2. **EVERY tool call that returns data MUST be followed by write_scratchpad IN THE SAME RESPONSE**
-   - Pattern: [tool_call, write_scratchpad] - both in the same tool_calls array
-   - Do NOT say "I will save to scratchpad next iteration" - data will be LOST
-3. **Before re-reading a file or re-fetching data**, CHECK your scratchpad first - it may already be there
-4. **Scratchpad is your PERSISTENT memory** - anything you want to remember MUST be written there
-5. **Blackboard is for PLANNING ONLY** - use it to track what you've done and what's next
-6. If you find yourself reading the same file twice, STOP and check your scratchpad
-7. **ALL tool calls requested in a single response will be executed** - do not deprioritize or defer any
+## MEMORY ARCHITECTURE - CRITICAL DISTINCTION:
 
-## CRITICAL DATA COPYING RULES (READ THIS CAREFULLY):
-When writing to scratchpad, you MUST COPY the actual data content, not just reference it:
+### BLACKBOARD = Your Planning Journal (READ EVERY iteration, WRITE EVERY iteration)
+Purpose: Track your PLAN, PROGRESS, and COMPLETED ITEMS. This is your continuity between iterations.
+MUST CONTAIN:
+- Current step in your plan
+- List of items already processed (files read, searches done)
+- Next action to take
+Example blackboard entry:
+{
+  "category": "plan",
+  "content": "Step 2/3: Reading controller files. COMPLETED: configs.js, healthcheck.js. NEXT: accounts.js, apiActions.js"
+}
 
-WRONG: write_scratchpad({ content: "repo_file_tree:" })
+### SCRATCHPAD = Data Storage (WRITE actual data, only read at end)
+Purpose: Store ACTUAL DATA content - file contents, search results, extracted information.
+The scratchpad is NOT re-read every iteration (to save context). Write data here and move on.
+CORRECT scratchpad content:
+  "## accounts.js Controller\\n- POST /signup - Creates user\\n- GET /profile/:id - Fetches profile\\n\\n## apiActions.js Controller\\n- GET /status - Health check"
+WRONG scratchpad content (this is blackboard material):
+  "Reading controller file: accounts.js"
+  "Now analyzing the controllers"
+
+## CRITICAL: DO NOT REPEAT WORK
+Before calling ANY read/fetch tool:
+1. CHECK YOUR BLACKBOARD - does it say you already processed this item?
+2. If yes, SKIP IT and move to the next item
+3. Your blackboard MUST maintain a cumulative "COMPLETED" list
+
+## CRITICAL DATA COPYING RULES:
+When writing to scratchpad, COPY the ACTUAL DATA, not labels:
+
+WRONG: write_scratchpad({ content: "file_tree:" })
 WRONG: write_scratchpad({ content: "Saved the search results" })
-RIGHT: write_scratchpad({ content: "repo_file_tree:\\n├── src/\\n│   ├── index.js\\n│   └── controllers/\\n│       └── auth.js\\n└── package.json" })
-RIGHT: write_scratchpad({ content: "Search Results for 'React hooks':\\n1. Title: Understanding Hooks...\\n2. Title: Custom Hooks Guide..." })
+RIGHT: write_scratchpad({ content: "file_tree:\\n├── src/\\n│   ├── index.js\\n│   └── controllers/\\n└── package.json" })
+RIGHT: write_scratchpad({ content: "## accounts.js\\nfunction signup(req, res) {...}\\n\\n## apiActions.js\\nfunction getStatus..." })
 
-Tool results are NOT automatically saved. YOU must COPY the actual content into your write_scratchpad call.
-If you don't include the actual data in the content field, it will be LOST forever.
+## WORKFLOW EACH ITERATION:
+1. READ your blackboard to see what you've ALREADY DONE
+2. SKIP items already in your COMPLETED list
+3. Execute tools for NEW items only
+4. WRITE actual data to scratchpad (not status messages)
+5. UPDATE blackboard with: what you just completed + cumulative completed list + next action
 
 ## Response Format
 You MUST respond with valid JSON only. No markdown outside JSON:

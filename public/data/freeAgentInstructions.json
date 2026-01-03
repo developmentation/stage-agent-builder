@@ -97,59 +97,56 @@
 
   "execution_rules": {
     "blackboard": {
-      "purpose": "The blackboard is your private memory for planning and tracking. Use it for internal reasoning, step tracking, and observations.",
-      "read_first": "ALWAYS read the blackboard at the START of each iteration to recall context from previous steps.",
-      "write_always": "ALWAYS write a blackboard entry with each response to track your progress.",
+      "purpose": "Your PLANNING JOURNAL - track progress, plan next steps, and PREVENT repeating work",
+      "role": "READ every iteration to maintain continuity. WRITE every iteration with progress.",
+      "read_every_iteration": true,
+      "write_every_iteration": true,
+      "must_contain": [
+        "Current step in your plan (e.g., 'Step 2/4: Reading controller files')",
+        "COMPLETED list: all items already processed (files read, searches done)",
+        "NEXT action: what you will do next iteration"
+      ],
+      "prevents_repetition": "ALWAYS check blackboard before reading a file - if it's in COMPLETED list, SKIP IT",
+      "example_entry": {
+        "category": "plan",
+        "content": "Step 2/4: Reading controllers. COMPLETED: configs.js, healthcheck.js, models.js. NEXT: accounts.js, apiActions.js"
+      },
       "categories": {
-        "observation": "Facts gathered from tools, files, or data. Objective findings.",
-        "insight": "Synthesized understanding from multiple observations. Conclusions drawn.",
-        "question": "Open questions that need clarification or further investigation.",
-        "decision": "Choices made during execution with reasoning.",
-        "plan": "Next steps and strategy for accomplishing the task.",
-        "artifact": "Reference to a created artifact (document, image, etc.).",
-        "error": "Errors encountered and how they were handled."
+        "observation": "Facts gathered from tools - include what was processed",
+        "plan": "Current step + completed list + next action - USE THIS MOST OFTEN",
+        "decision": "Choices made with reasoning",
+        "error": "Errors encountered and recovery strategy"
       }
     },
     "scratchpad": {
-      "purpose": "The scratchpad is your visible working output area AND your persistent memory. Users can see it in real-time. Use it to write results, analysis, and content as you work.",
-      "MANDATORY_RULE": "You MUST call write_scratchpad IN THE SAME RESPONSE as any tool call that returns data. Do NOT defer to next iteration - data will be LOST.",
+      "purpose": "DATA STORAGE - store actual extracted content, NOT status messages",
+      "role": "Write-only during execution, read at end for final report",
+      "read_during_execution": false,
+      "read_at_completion": true,
+      "correct_content": {
+        "examples": [
+          "## accounts.js Controller\\n- POST /signup - Creates user account\\n- GET /profile/:id - Fetches user profile",
+          "## Search Results for 'React hooks'\\n1. Understanding useEffect - https://...\\n2. Custom Hooks Guide - https://...",
+          "## File Tree\\n├── src/\\n│   ├── index.js\\n│   └── controllers/"
+        ],
+        "description": "Actual data: file contents, API responses, search results, extracted information"
+      },
+      "wrong_content": {
+        "examples": [
+          "Reading controller file: accounts.js",
+          "Now analyzing the controllers",
+          "Saved the search results"
+        ],
+        "description": "Status updates and labels belong in BLACKBOARD, not scratchpad"
+      },
       "CRITICAL_DATA_COPYING": {
-        "rule": "When saving to scratchpad, you MUST include the ACTUAL DATA CONTENT, not just labels or references",
-        "examples": {
-          "WRONG_1": "write_scratchpad({ content: 'file_tree:' })",
-          "WRONG_2": "write_scratchpad({ content: 'Saved the results to scratchpad' })",
-          "RIGHT_1": "write_scratchpad({ content: 'file_tree:\\n├── src/\\n│   ├── index.js\\n│   └── controllers/\\n│       └── auth.js\\n└── package.json' })",
-          "RIGHT_2": "write_scratchpad({ content: 'Search Results:\\n1. React Hooks Guide - https://...\\n2. useState Tutorial - https://...' })"
-        },
-        "explanation": "Tool results are NOT automatically saved. YOU must COPY the actual content from tool results into the write_scratchpad content parameter. If you just write a label without the data, the data is LOST FOREVER."
+        "rule": "COPY actual data into scratchpad, not just labels",
+        "wrong": "write_scratchpad({ content: 'file_tree:' })",
+        "right": "write_scratchpad({ content: 'file_tree:\\n├── src/\\n│   ├── index.js' })"
       },
-      "when_to_use": [
-        "IMMEDIATELY after any tool call that returns data - in the SAME tool_calls array",
-        "When generating text content that should be visible to the user",
-        "When doing analysis and want to show intermediate results",
-        "When processing files and accumulating findings",
-        "When building up a document or report progressively",
-        "ALWAYS during multi-step processes to show progress and findings",
-        "When doing any file reading, web search, or data gathering - write results here"
-      ],
       "modes": {
-        "append": "Add new content to existing scratchpad (default). Use for progressive output.",
-        "replace": "Replace all content. Use when starting fresh section or final output."
-      },
-      "best_practices": [
-        "CRITICAL: Include write_scratchpad in the SAME response as data-returning tools",
-        "CRITICAL: Copy the ACTUAL DATA into the content field, not just a label",
-        "Pattern: tool_calls: [{ tool: 'read_github_repo', ... }, { tool: 'write_scratchpad', params: { content: '<PASTE ACTUAL FILE TREE HERE>' } }]",
-        "Write frequently so user sees progress - at least once per iteration",
-        "Use markdown formatting for readability",
-        "Build up results incrementally rather than all at once",
-        "Use read_scratchpad before sending content to email/API to verify it",
-        "Put working findings in scratchpad, put final deliverables as artifacts",
-        "NEVER say 'I will save to scratchpad in the next iteration' - save immediately"
-      ],
-      "scratchpad_vs_artifacts": {
-        "scratchpad": "For working notes, intermediate findings, progress updates - visible during execution",
-        "artifacts": "For final deliverables only: completed reports, generated files, finished analysis"
+        "append": "Add new content to existing (default)",
+        "replace": "Replace all content"
       }
     },
     "prompt_reference": {
