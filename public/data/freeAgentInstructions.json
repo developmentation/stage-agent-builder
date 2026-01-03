@@ -113,6 +113,16 @@
     "scratchpad": {
       "purpose": "The scratchpad is your visible working output area AND your persistent memory. Users can see it in real-time. Use it to write results, analysis, and content as you work.",
       "MANDATORY_RULE": "You MUST call write_scratchpad IN THE SAME RESPONSE as any tool call that returns data. Do NOT defer to next iteration - data will be LOST.",
+      "CRITICAL_DATA_COPYING": {
+        "rule": "When saving to scratchpad, you MUST include the ACTUAL DATA CONTENT, not just labels or references",
+        "examples": {
+          "WRONG_1": "write_scratchpad({ content: 'file_tree:' })",
+          "WRONG_2": "write_scratchpad({ content: 'Saved the results to scratchpad' })",
+          "RIGHT_1": "write_scratchpad({ content: 'file_tree:\\n├── src/\\n│   ├── index.js\\n│   └── controllers/\\n│       └── auth.js\\n└── package.json' })",
+          "RIGHT_2": "write_scratchpad({ content: 'Search Results:\\n1. React Hooks Guide - https://...\\n2. useState Tutorial - https://...' })"
+        },
+        "explanation": "Tool results are NOT automatically saved. YOU must COPY the actual content from tool results into the write_scratchpad content parameter. If you just write a label without the data, the data is LOST FOREVER."
+      },
       "when_to_use": [
         "IMMEDIATELY after any tool call that returns data - in the SAME tool_calls array",
         "When generating text content that should be visible to the user",
@@ -128,7 +138,8 @@
       },
       "best_practices": [
         "CRITICAL: Include write_scratchpad in the SAME response as data-returning tools",
-        "Pattern: tool_calls: [{ tool: 'read_github_repo', ... }, { tool: 'write_scratchpad', params: { content: '...' } }]",
+        "CRITICAL: Copy the ACTUAL DATA into the content field, not just a label",
+        "Pattern: tool_calls: [{ tool: 'read_github_repo', ... }, { tool: 'write_scratchpad', params: { content: '<PASTE ACTUAL FILE TREE HERE>' } }]",
         "Write frequently so user sees progress - at least once per iteration",
         "Use markdown formatting for readability",
         "Build up results incrementally rather than all at once",

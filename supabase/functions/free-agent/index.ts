@@ -110,6 +110,17 @@ Current Iteration: ${iteration}
 6. If you find yourself reading the same file twice, STOP and check your scratchpad
 7. **ALL tool calls requested in a single response will be executed** - do not deprioritize or defer any
 
+## CRITICAL DATA COPYING RULES (READ THIS CAREFULLY):
+When writing to scratchpad, you MUST COPY the actual data content, not just reference it:
+
+WRONG: write_scratchpad({ content: "repo_file_tree:" })
+WRONG: write_scratchpad({ content: "Saved the search results" })
+RIGHT: write_scratchpad({ content: "repo_file_tree:\\n├── src/\\n│   ├── index.js\\n│   └── controllers/\\n│       └── auth.js\\n└── package.json" })
+RIGHT: write_scratchpad({ content: "Search Results for 'React hooks':\\n1. Title: Understanding Hooks...\\n2. Title: Custom Hooks Guide..." })
+
+Tool results are NOT automatically saved. YOU must COPY the actual content into your write_scratchpad call.
+If you don't include the actual data in the content field, it will be LOST forever.
+
 ## Response Format
 You MUST respond with valid JSON only. No markdown outside JSON:
 {
@@ -125,7 +136,7 @@ You MUST respond with valid JSON only. No markdown outside JSON:
 ## Workflow:
 1. Check your scratchpad for existing findings before making tool calls
 2. Make tool calls as needed
-3. ALWAYS write important results to scratchpad immediately
+3. ALWAYS write important results to scratchpad immediately WITH THE ACTUAL DATA
 4. Update blackboard with your plan/progress
 5. Set status to "completed" with final_report when done
 6. Use artifacts for FINAL deliverables only`;
@@ -225,7 +236,7 @@ async function callLLM(
             { role: "user", parts: [{ text: `${systemPrompt}\n\nUser Task: ${userPrompt}` }] }
           ],
           generationConfig: {
-            maxOutputTokens: 8192,
+            maxOutputTokens: 16384,
             temperature: 0.7,
             responseMimeType: "application/json",
           },
@@ -254,21 +265,32 @@ async function callLLM(
   }
 }
 
-// Parse agent response
+// Parse agent response with better error handling
 function parseAgentResponse(text: string): unknown {
+  console.log("Raw LLM response length:", text.length);
+  
+  // Try direct parse first
   try {
     return JSON.parse(text.trim());
-  } catch {
-    const match = text.match(/\{[\s\S]*\}/);
-    if (match) {
-      try {
-        return JSON.parse(match[0]);
-      } catch {
-        return null;
-      }
-    }
-    return null;
+  } catch (directError) {
+    console.warn("Direct JSON parse failed:", directError instanceof Error ? directError.message : "Unknown");
   }
+  
+  // Try to extract JSON object
+  const match = text.match(/\{[\s\S]*\}/);
+  if (match) {
+    try {
+      return JSON.parse(match[0]);
+    } catch (extractError) {
+      console.error("JSON extraction also failed. Response end:", text.slice(-300));
+    }
+  }
+  
+  // Log details for debugging truncation
+  console.error("Failed to parse LLM response. Preview:", text.slice(0, 500));
+  console.error("Response ends with:", text.slice(-200));
+  
+  return null;
 }
 
 serve(async (req) => {
