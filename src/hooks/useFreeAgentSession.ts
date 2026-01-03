@@ -45,6 +45,21 @@ function loadSessionFromLocal(sessionId: string): FreeAgentSession | null {
   }
 }
 
+// Cache-enabled tools (expensive operations) - only cache exact duplicate requests
+const CACHEABLE_TOOLS = ['read_github_repo', 'read_github_file', 'web_scrape'];
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+// Helper to generate cache key from tool + params
+function getToolCacheKey(tool: string, params: Record<string, unknown>): string {
+  return `${tool}:${JSON.stringify(params, Object.keys(params).sort())}`;
+}
+
+interface CacheEntry {
+  result: unknown;
+  timestamp: number;
+  params: Record<string, unknown>;
+}
+
 export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
   const { model = "gemini-2.5-flash", maxIterations = 50 } = options;
 
@@ -54,6 +69,13 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
   const abortControllerRef = useRef<AbortController | null>(null);
   const iterationRef = useRef(0);
   const shouldStopRef = useRef(false); // Flag to stop execution loop
+  
+  // Refs for synchronous tracking between iterations (bypass async React state)
+  const blackboardRef = useRef<BlackboardEntry[]>([]);
+  const scratchpadRef = useRef<string>("");
+  
+  // Tool cache for expensive operations - caches EXACT duplicate requests only
+  const toolCacheRef = useRef<Map<string, CacheEntry>>(new Map());
   
   // Update session and persist to localStorage
   const updateSession = useCallback((updater: (prev: FreeAgentSession | null) => FreeAgentSession | null) => {
@@ -78,8 +100,12 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
     );
   }, [updateSession]);
 
-  // Handle blackboard update
+  // Handle blackboard update - update ref immediately for sync access
   const handleBlackboardUpdate = useCallback((entry: BlackboardEntry) => {
+    // Update ref IMMEDIATELY (synchronous) for next iteration
+    blackboardRef.current = [...blackboardRef.current, entry];
+    
+    // Also update React state (async, for UI)
     updateSession((prev) =>
       prev
         ? {
@@ -90,8 +116,12 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
     );
   }, [updateSession]);
 
-  // Handle scratchpad update
+  // Handle scratchpad update - update ref immediately for sync access
   const handleScratchpadUpdate = useCallback((content: string) => {
+    // Update ref IMMEDIATELY (synchronous) for next iteration
+    scratchpadRef.current = content;
+    
+    // Also update React state (async, for UI)
     updateSession((prev) =>
       prev
         ? {
@@ -141,12 +171,16 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
 
         console.log(`[Iteration ${iterationRef.current}] Passing ${previousIterationResults.length} previous tool results`);
 
+        // Use refs for blackboard/scratchpad to ensure latest data (bypass async state)
+        const currentBlackboard = blackboardRef.current.length > 0 ? blackboardRef.current : currentSession.blackboard;
+        const currentScratchpad = scratchpadRef.current || currentSession.scratchpad || "";
+
         // Call edge function with current state - pass tool results directly
         const { data, error } = await supabase.functions.invoke("free-agent", {
           body: {
             prompt: currentSession.prompt,
             model: currentSession.model,
-            blackboard: currentSession.blackboard.map((b) => ({
+            blackboard: currentBlackboard.map((b) => ({
               category: b.category,
               content: b.content,
               data: b.data,
@@ -162,7 +196,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
             previousToolResults: previousIterationResults,
             iteration: iterationRef.current,
             // Pass scratchpad as persistent memory
-            scratchpad: currentSession.scratchpad || "",
+            scratchpad: currentScratchpad,
             assistanceResponse,
           },
         });
@@ -191,7 +225,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
         // Collect tool results for this iteration
         const iterationToolResults: ToolResult[] = [];
 
-        // Process edge function results
+        // Process edge function results and cache successful expensive tool calls
         for (const result of data.toolResults || []) {
           const toolCall = newToolCalls.find((t) => t.tool === result.tool && t.status === "executing");
           if (toolCall) {
@@ -199,6 +233,17 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
             toolCall.result = result.result;
             toolCall.error = result.error;
             toolCall.endTime = new Date().toISOString();
+            
+            // Cache successful results for expensive tools (exact params match only)
+            if (result.success && CACHEABLE_TOOLS.includes(result.tool)) {
+              const cacheKey = getToolCacheKey(result.tool, toolCall.params || {});
+              console.log(`[Cache SET] ${result.tool}`, cacheKey);
+              toolCacheRef.current.set(cacheKey, {
+                result: result.result,
+                timestamp: Date.now(),
+                params: toolCall.params || {},
+              });
+            }
           }
           // Add to iteration results
           iterationToolResults.push({
@@ -417,6 +462,15 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
           rawData: existingSession?.rawData || [],
         };
 
+        // Initialize refs with session memory
+        blackboardRef.current = newSession.blackboard;
+        scratchpadRef.current = newSession.scratchpad;
+        
+        // Clear tool cache only for fresh sessions (not continuations)
+        if (!existingSession) {
+          toolCacheRef.current.clear();
+        }
+
         setSession(newSession);
         saveSessionToLocal(newSession);
 
@@ -544,6 +598,10 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
     setIsRunning(false);
     setActiveToolIds(new Set());
     iterationRef.current = 0;
+    // Clear all refs
+    blackboardRef.current = [];
+    scratchpadRef.current = "";
+    toolCacheRef.current.clear();
   }, []);
 
   // Continue session - preserve blackboard, scratchpad, artifacts but allow new prompt
@@ -596,6 +654,9 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
     handleScratchpadUpdate(content);
   }, [handleScratchpadUpdate]);
 
+  // Get current cache size for UI display
+  const getCacheSize = useCallback(() => toolCacheRef.current.size, []);
+
   return {
     session,
     isRunning,
@@ -607,5 +668,6 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
     continueSession,
     setToolActive,
     updateScratchpad,
+    getCacheSize,
   };
 }
