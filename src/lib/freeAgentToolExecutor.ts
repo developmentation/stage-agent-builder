@@ -6,15 +6,17 @@ import type {
   BlackboardEntry, 
   FreeAgentArtifact, 
   SessionFile,
-  AssistanceRequest 
+  AssistanceRequest,
+  ToolResultAttribute
 } from "@/types/freeAgent";
 
-interface ToolExecutionContext {
+export interface ToolExecutionContext {
   sessionId: string;
   prompt: string;
   scratchpad: string;
   blackboard: BlackboardEntry[];
   sessionFiles: SessionFile[];
+  toolResultAttributes?: Record<string, ToolResultAttribute>;
   onArtifactCreated: (artifact: FreeAgentArtifact) => void;
   onBlackboardUpdate: (entry: BlackboardEntry) => void;
   onScratchpadUpdate: (content: string) => void;
@@ -54,6 +56,8 @@ export async function executeFrontendTool(
       return executeReadPrompt(context);
     case "read_prompt_files":
       return executeReadPromptFiles(context);
+    case "read_attribute":
+      return executeReadAttribute(params, context);
     default:
       return { success: false, error: `Unknown frontend tool: ${tool}` };
   }
@@ -161,12 +165,24 @@ async function executeRequestAssistance(
   };
 }
 
-// Read scratchpad content
+// Read scratchpad content with handlebar substitution for attributes
 async function executeReadScratchpad(
   context: ToolExecutionContext
 ): Promise<ToolResult> {
-  const content = context.scratchpad || "";
-  console.log(`[Scratchpad Read] Content length: ${content.length} chars`);
+  let content = context.scratchpad || "";
+  
+  // Substitute {{attributeName}} with actual content from attributes
+  const attributes = context.toolResultAttributes || {};
+  for (const [name, attr] of Object.entries(attributes)) {
+    const placeholder = `{{${name}}}`;
+    if (content.includes(placeholder)) {
+      // Use a regex that properly escapes the braces
+      const regex = new RegExp(placeholder.replace(/[{}]/g, '\\$&'), 'g');
+      content = content.replace(regex, attr.resultString);
+    }
+  }
+  
+  console.log(`[Scratchpad Read] Content length: ${content.length} chars (after substitution)`);
   return {
     success: true,
     result: content,
@@ -225,6 +241,40 @@ async function executeReadPromptFiles(
       size: f.size,
     })),
   };
+}
+
+// Read tool result attributes
+async function executeReadAttribute(
+  params: Record<string, unknown>,
+  context: ToolExecutionContext
+): Promise<ToolResult> {
+  const names = (params.names as string[]) || [];
+  const attributes = context.toolResultAttributes || {};
+  
+  if (names.length === 0) {
+    // Return metadata for all attributes
+    const metadata = Object.entries(attributes).map(([name, attr]) => ({
+      name,
+      tool: attr.tool,
+      size: attr.size,
+      iteration: attr.iteration,
+      createdAt: attr.createdAt,
+    }));
+    console.log(`[Read Attribute] Returning metadata for ${metadata.length} attributes`);
+    return { success: true, result: { attributes: metadata, count: metadata.length } };
+  }
+  
+  // Return full content for requested attributes
+  const results: Record<string, unknown> = {};
+  for (const name of names) {
+    if (attributes[name]) {
+      results[name] = attributes[name].result;
+    } else {
+      results[name] = `Attribute '${name}' not found`;
+    }
+  }
+  console.log(`[Read Attribute] Retrieved ${names.length} attributes`);
+  return { success: true, result: results };
 }
 
 // Export to Word document

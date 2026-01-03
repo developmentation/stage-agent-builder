@@ -29,6 +29,19 @@ export type ArtifactType =
   | 'image' 
   | 'data';
 
+// Tool result attribute - stored data from tool execution (auto-saved)
+export interface ToolResultAttribute {
+  id: string;
+  name: string;           // User-provided saveAs name (e.g., "london_weather")
+  tool: string;           // Source tool (e.g., "web_scrape")
+  params: Record<string, unknown>;  // Original params for reference
+  result: unknown;        // Full tool result (no truncation)
+  resultString: string;   // Stringified version for display
+  size: number;           // Character count
+  createdAt: string;
+  iteration: number;
+}
+
 export type AssistanceInputType = 
   | 'text' 
   | 'file' 
@@ -174,6 +187,9 @@ export interface FreeAgentSession {
   artifacts: FreeAgentArtifact[];
   messages: FreeAgentMessage[];
   
+  // Named tool result attributes (auto-saved from data-fetching tools)
+  toolResultAttributes: Record<string, ToolResultAttribute>;
+  
   // User input
   sessionFiles: SessionFile[];
   assistanceRequest?: AssistanceRequest;
@@ -263,7 +279,7 @@ export interface AgentResponse {
 
 // Canvas node types for visualization
 export interface FreeAgentNodeData {
-  type: 'agent' | 'tool' | 'artifact' | 'file' | 'scratchpad' | 'prompt' | 'promptFile';
+  type: 'agent' | 'tool' | 'artifact' | 'file' | 'scratchpad' | 'prompt' | 'promptFile' | 'attribute';
   label: string;
   status: 'idle' | 'thinking' | 'active' | 'success' | 'error' | 'reading';
   icon?: string;
@@ -277,9 +293,11 @@ export interface FreeAgentNodeData {
   mimeType?: string;
   content?: string; // For scratchpad/prompt content
   filename?: string; // For promptFile nodes
-  size?: number; // For promptFile nodes
+  size?: number; // For promptFile/attribute nodes
   isWriting?: boolean; // For scratchpad animation
   onContentChange?: (content: string) => void; // For scratchpad updates
+  attributeName?: string; // For attribute nodes
+  attributeTool?: string; // Source tool for attribute nodes
 }
 
 // Canvas edge for connections

@@ -15,8 +15,9 @@ import type {
   RawIterationData,
   ToolResult,
   ArtifactType,
+  ToolResultAttribute,
 } from "@/types/freeAgent";
-import { executeFrontendTool } from "@/lib/freeAgentToolExecutor";
+import { executeFrontendTool, ToolExecutionContext } from "@/lib/freeAgentToolExecutor";
 
 interface UseFreeAgentSessionOptions {
   maxIterations?: number;
@@ -49,6 +50,9 @@ function loadSessionFromLocal(sessionId: string): FreeAgentSession | null {
 const CACHEABLE_TOOLS = ['read_github_repo', 'read_github_file', 'web_scrape'];
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
+// Tools that support saveAs parameter for auto-saving results to attributes
+const AUTO_SAVE_TOOLS = ['brave_search', 'google_search', 'web_scrape', 'read_github_repo', 'read_github_file', 'get_call_api', 'post_call_api'];
+
 // Helper to generate cache key from tool + params
 function getToolCacheKey(tool: string, params: Record<string, unknown>): string {
   return `${tool}:${JSON.stringify(params, Object.keys(params).sort())}`;
@@ -73,6 +77,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
   // Refs for synchronous tracking between iterations (bypass async React state)
   const blackboardRef = useRef<BlackboardEntry[]>([]);
   const scratchpadRef = useRef<string>("");
+  const toolResultAttributesRef = useRef<Record<string, ToolResultAttribute>>({});
   
   // Tool cache for expensive operations - caches EXACT duplicate requests only
   const toolCacheRef = useRef<Map<string, CacheEntry>>(new Map());
@@ -130,6 +135,30 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
           }
         : null
     );
+  }, [updateSession]);
+
+  // Handle tool result attribute creation - update ref immediately for sync access
+  const handleAttributeCreated = useCallback((attribute: ToolResultAttribute) => {
+    // Update ref IMMEDIATELY (synchronous) for next iteration
+    toolResultAttributesRef.current = {
+      ...toolResultAttributesRef.current,
+      [attribute.name]: attribute,
+    };
+    
+    // Also update React state (async, for UI)
+    updateSession((prev) =>
+      prev
+        ? {
+            ...prev,
+            toolResultAttributes: {
+              ...prev.toolResultAttributes,
+              [attribute.name]: attribute,
+            },
+          }
+        : null
+    );
+    
+    console.log(`[Attribute Created] ${attribute.name} (${attribute.size} chars) from ${attribute.tool}`);
   }, [updateSession]);
 
   // Handle assistance request
@@ -283,8 +312,41 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
                 params: toolCall.params || {},
               });
             }
+            
+            // Check for saveAs parameter and create attribute if present
+            const saveAsName = toolCall.params?.saveAs as string | undefined;
+            if (result.success && saveAsName && AUTO_SAVE_TOOLS.includes(result.tool)) {
+              const resultString = JSON.stringify(result.result, null, 2);
+              const attribute: ToolResultAttribute = {
+                id: crypto.randomUUID(),
+                name: saveAsName,
+                tool: result.tool,
+                params: toolCall.params || {},
+                result: result.result,
+                resultString,
+                size: resultString.length,
+                createdAt: new Date().toISOString(),
+                iteration: iterationRef.current,
+              };
+              handleAttributeCreated(attribute);
+              
+              // Replace the full result with a summary message for the LLM
+              const summaryResult = {
+                _savedAsAttribute: saveAsName,
+                _message: `Result saved to attribute '${saveAsName}' (${resultString.length} chars). Use {{${saveAsName}}} in scratchpad or read_attribute(["${saveAsName}"]) to retrieve.`,
+              };
+              
+              // Add to iteration results with summary instead of full result
+              iterationToolResults.push({
+                tool: result.tool,
+                success: result.success,
+                result: summaryResult,
+                error: result.error,
+              });
+              continue; // Skip normal push below
+            }
           }
-          // Add to iteration results
+          // Add to iteration results (normal case without saveAs)
           iterationToolResults.push({
             tool: result.tool,
             success: result.success,
@@ -299,17 +361,19 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
           
           // Use synchronous refs to avoid race conditions - scratchpadRef/blackboardRef are updated immediately
           // while currentSession state is async and may be stale within the same iteration
-          const result = await executeFrontendTool(handler.tool, handler.params, {
+          const context: ToolExecutionContext = {
             sessionId: currentSession.id,
             prompt: currentSession.prompt,
             scratchpad: scratchpadRef.current || currentSession.scratchpad || "",
             blackboard: blackboardRef.current.length > 0 ? blackboardRef.current : currentSession.blackboard,
             sessionFiles: currentSession.sessionFiles,
+            toolResultAttributes: toolResultAttributesRef.current,
             onArtifactCreated: handleArtifactCreated,
             onBlackboardUpdate: handleBlackboardUpdate,
             onScratchpadUpdate: handleScratchpadUpdate,
             onAssistanceNeeded: handleAssistanceNeeded,
-          });
+          };
+          const result = await executeFrontendTool(handler.tool, handler.params, context);
 
           if (toolCall) {
             toolCall.status = result.success ? "completed" : "error";
@@ -500,7 +564,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
         return { continue: false, toolResults: [] };
       }
     },
-    [maxIterations, handleArtifactCreated, handleBlackboardUpdate, handleScratchpadUpdate, handleAssistanceNeeded, updateSession]
+    [maxIterations, handleArtifactCreated, handleBlackboardUpdate, handleScratchpadUpdate, handleAssistanceNeeded, handleAttributeCreated, updateSession]
   );
 
   // Start a new session (or resume with preserved memory if existingSession provided)
@@ -531,6 +595,8 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
               timestamp: new Date().toISOString(),
             },
           ],
+          // Preserve tool result attributes from existing session
+          toolResultAttributes: existingSession?.toolResultAttributes || {},
           sessionFiles: files,
           startTime: new Date().toISOString(),
           lastActivityTime: new Date().toISOString(),
@@ -540,6 +606,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
         // Initialize refs with session memory
         blackboardRef.current = newSession.blackboard;
         scratchpadRef.current = newSession.scratchpad;
+        toolResultAttributesRef.current = newSession.toolResultAttributes;
         
         // Clear tool cache only for fresh sessions (not continuations)
         if (!existingSession) {
@@ -687,6 +754,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
     iterationRef.current = 0;
     blackboardRef.current = [];
     scratchpadRef.current = "";
+    toolResultAttributesRef.current = {};
     toolCacheRef.current.clear();
   }, []);
 
