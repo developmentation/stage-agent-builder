@@ -126,7 +126,7 @@ export function ArtifactsPanel({ artifacts, onArtifactClick }: ArtifactsPanelPro
                   {artifact.type === "text" && (
                     <div className="text-xs bg-muted/50 p-2 rounded overflow-y-auto prose prose-sm prose-invert dark:prose-invert max-w-none break-words">
                       <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {artifact.content}
+                        {typeof artifact.content === 'string' ? artifact.content : JSON.stringify(artifact.content, null, 2)}
                       </ReactMarkdown>
                     </div>
                   )}

@@ -6,6 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Code, ArrowRight, ArrowLeft, Copy, Check, Wrench, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { RawIterationData } from "@/types/freeAgent";
+import { safeStringify } from "@/lib/safeRender";
 
 interface RawViewerProps {
   rawData: RawIterationData[];
@@ -218,8 +219,8 @@ export function RawViewer({ rawData }: RawViewerProps) {
                           </div>
                           <pre className="text-xs p-3 whitespace-pre-wrap font-mono leading-relaxed bg-background/50 max-h-[300px] overflow-auto">
                             {tr.error 
-                              ? `Error: ${tr.error}` 
-                              : JSON.stringify(tr.result, null, 2) || "(no result)"}
+                              ? `Error: ${safeStringify(tr.error)}` 
+                              : safeStringify(tr.result) || "(no result)"}
                           </pre>
                         </div>
                       ))}
