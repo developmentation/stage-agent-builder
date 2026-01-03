@@ -154,19 +154,19 @@ function getClaudeResponseTool() {
 // Map UI model names to actual API model identifiers
 function getApiModelName(uiModel: string): string {
   const modelMap: Record<string, string> = {
-    // Gemini models
-    "gemini-2.5-flash": "gemini-2.5-flash-preview-05-20",
-    "gemini-2.5-flash-lite": "gemini-2.0-flash-lite",
-    "gemini-3-pro-preview": "gemini-2.5-pro-preview-05-06",
-    "gemini-3-flash-preview": "gemini-2.5-flash-preview-05-20",
-    // Claude models - use correct API model names
-    "claude-sonnet-4-5": "claude-sonnet-4-20250514",
-    "claude-haiku-4-5": "claude-3-5-haiku-20241022",
-    "claude-opus-4-5": "claude-opus-4-20250514",
-    // Grok models
-    "grok-4-1-fast-reasoning": "grok-3-fast",
-    "grok-4-1-fast-non-reasoning": "grok-3-fast",
-    "grok-code-fast-1": "grok-3-fast",
+    // Gemini models - exact names
+    "gemini-2.5-flash": "gemini-2.5-flash",
+    "gemini-2.5-flash-lite": "gemini-2.5-flash-lite",
+    "gemini-3-pro-preview": "gemini-3-pro-preview",
+    "gemini-3-flash-preview": "gemini-3-flash-preview",
+    // Claude models - exact names
+    "claude-sonnet-4-5": "claude-sonnet-4-5",
+    "claude-haiku-4-5": "claude-haiku-4-5",
+    "claude-opus-4-5": "claude-opus-4-5",
+    // Grok models - exact names
+    "grok-4-1-fast-reasoning": "grok-4-1-fast-reasoning",
+    "grok-4-1-fast-non-reasoning": "grok-4-1-fast-non-reasoning",
+    "grok-code-fast-1": "grok-code-fast-1",
   };
   return modelMap[uiModel] || uiModel;
 }
