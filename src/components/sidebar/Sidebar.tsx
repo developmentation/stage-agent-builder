@@ -97,8 +97,8 @@ interface SidebarProps {
   onWorkflowNameChange: (value: string) => void;
   customAgents: any[];
   onCustomAgentsChange: (agents: any[]) => void;
-  selectedModel: "gemini-2.5-flash" | "gemini-2.5-pro" | "gemini-3-pro-preview" | "gemini-2.5-flash-lite" | "claude-sonnet-4-5" | "claude-haiku-4-5" | "claude-opus-4-5" | "grok-4-1-fast-reasoning" | "grok-4-1-fast-non-reasoning";
-  onSelectedModelChange: (model: "gemini-2.5-flash" | "gemini-2.5-pro" | "gemini-3-pro-preview" | "gemini-2.5-flash-lite" | "claude-sonnet-4-5" | "claude-haiku-4-5" | "claude-opus-4-5" | "grok-4-1-fast-reasoning" | "grok-4-1-fast-non-reasoning") => void;
+  selectedModel: "gemini-2.5-flash" | "gemini-2.5-pro" | "gemini-3-pro-preview" | "gemini-2.5-flash-lite" | "claude-sonnet-4-5" | "claude-3-5-haiku" | "claude-opus-4-5" | "grok-4-1-fast-reasoning" | "grok-4-1-fast-non-reasoning";
+  onSelectedModelChange: (model: "gemini-2.5-flash" | "gemini-2.5-pro" | "gemini-3-pro-preview" | "gemini-2.5-flash-lite" | "claude-sonnet-4-5" | "claude-3-5-haiku" | "claude-opus-4-5" | "grok-4-1-fast-reasoning" | "grok-4-1-fast-non-reasoning") => void;
   responseLength: number;
   onResponseLengthChange: (length: number) => void;
   thinkingEnabled: boolean;
@@ -521,7 +521,7 @@ export const Sidebar = ({
                 <SelectItem value="gemini-3-pro-preview">Gemini 3 Pro Preview (Next-Gen)</SelectItem>
                 <SelectItem value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite (Fast)</SelectItem>
                 <SelectItem value="claude-sonnet-4-5">Claude Sonnet 4.5</SelectItem>
-                <SelectItem value="claude-haiku-4-5">Claude Haiku 4.5</SelectItem>
+                <SelectItem value="claude-3-5-haiku">Claude 3.5 Haiku</SelectItem>
                 <SelectItem value="claude-opus-4-5">Claude Opus 4.5</SelectItem>
                 <SelectItem value="grok-4-1-fast-reasoning">Grok 4.1 Fast Reasoning</SelectItem>
                 <SelectItem value="grok-4-1-fast-non-reasoning">Grok 4.1 Fast Non-Reasoning</SelectItem>

@@ -49,7 +49,7 @@ const nodeTypes = {
 };
 
 // Read tools - gather/retrieve information (displayed ABOVE agent)
-// Limited to most important tools to fit in space
+// Only include tools that exist in toolsManifest.json
 const READ_TOOLS = [
   // Web & Search
   "brave_search", "google_search", "web_scrape",
@@ -57,7 +57,9 @@ const READ_TOOLS = [
   "read_github_repo", "read_github_file",
   // Memory reads
   "read_blackboard", "read_scratchpad", "read_prompt", "read_prompt_files",
-  // Documents & Files
+  // File operations
+  "read_file", "read_zip_contents", "read_zip_file", "extract_zip_files",
+  // Documents
   "pdf_info", "pdf_extract_text", "ocr_image",
   // API reads
   "get_call_api", "get_time", "get_weather",
@@ -73,10 +75,6 @@ const WRITE_TOOLS = [
   "post_call_api", "execute_sql",
   // Export/Generation
   "export_word", "export_pdf", "image_generation", "elevenlabs_tts",
-  // Reasoning tools (they produce output)
-  "think", "summarize", "analyze",
-  // File operations that create output
-  "read_file", "read_zip_contents", "read_zip_file", "extract_zip_files",
 ];
 
 // Layout dimensions
