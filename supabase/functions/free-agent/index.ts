@@ -156,16 +156,17 @@ function getApiModelName(uiModel: string): string {
   const modelMap: Record<string, string> = {
     // Gemini models
     "gemini-2.5-flash": "gemini-2.5-flash-preview-05-20",
-    "gemini-2.5-pro": "gemini-2.5-pro-preview-05-06",
-    "gemini-3-pro-preview": "gemini-2.5-pro-preview-05-06", // Use latest available
     "gemini-2.5-flash-lite": "gemini-2.0-flash-lite",
+    "gemini-3-pro-preview": "gemini-2.5-pro-preview-05-06",
+    "gemini-3-flash-preview": "gemini-2.5-flash-preview-05-20",
     // Claude models
     "claude-sonnet-4-5": "claude-sonnet-4-20250514",
-    "claude-3-5-haiku": "claude-3-5-haiku-20241022",
+    "claude-haiku-4-5": "claude-haiku-4-20250514",
     "claude-opus-4-5": "claude-opus-4-20250514",
     // Grok models
     "grok-4-1-fast-reasoning": "grok-3-fast",
     "grok-4-1-fast-non-reasoning": "grok-3-fast",
+    "grok-code-fast-1": "grok-3-fast",
   };
   return modelMap[uiModel] || uiModel;
 }

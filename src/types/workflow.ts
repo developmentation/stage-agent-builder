@@ -29,7 +29,7 @@ export interface AgentNode extends BaseNode {
   tools: ToolInstance[];
   // Per-agent model configuration (optional - defaults to global workflow settings)
   useSpecificModel?: boolean;
-  model?: "gemini-2.5-flash" | "gemini-2.5-pro" | "gemini-3-pro-preview" | "gemini-2.5-flash-lite" | "claude-sonnet-4-5" | "claude-3-5-haiku" | "claude-opus-4-5" | "grok-4-1-fast-reasoning" | "grok-4-1-fast-non-reasoning";
+  model?: "gemini-2.5-flash" | "gemini-2.5-flash-lite" | "gemini-3-pro-preview" | "gemini-3-flash-preview" | "claude-sonnet-4-5" | "claude-haiku-4-5" | "claude-opus-4-5" | "grok-4-1-fast-reasoning" | "grok-4-1-fast-non-reasoning" | "grok-code-fast-1";
   responseLength?: number;
   thinkingEnabled?: boolean;
   thinkingBudget?: number;
