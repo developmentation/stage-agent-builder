@@ -124,6 +124,15 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
       iterationRef.current++;
 
       try {
+        // Get assistance response if we're resuming after user input
+        const assistanceResponse = currentSession.assistanceRequest?.respondedAt
+          ? {
+              response: currentSession.assistanceRequest.response,
+              fileId: currentSession.assistanceRequest.fileId,
+              selectedChoice: currentSession.assistanceRequest.selectedChoice,
+            }
+          : undefined;
+
         // Call edge function with current state
         const { data, error } = await supabase.functions.invoke("free-agent", {
           body: {
@@ -150,6 +159,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
                 error: t.error,
               })),
             iteration: iterationRef.current,
+            assistanceResponse,
           },
         });
 
@@ -252,7 +262,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
           iteration: iterationRef.current,
         }));
 
-        // Update session
+        // Update session - clear assistance request after it's been processed
         updateSession((prev) =>
           prev
             ? {
@@ -262,6 +272,8 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
                 messages: [...prev.messages, assistantMessage],
                 artifacts: [...prev.artifacts, ...newArtifacts],
                 lastActivityTime: new Date().toISOString(),
+                // Clear the assistance request once the response has been used
+                assistanceRequest: assistanceResponse ? undefined : prev.assistanceRequest,
               }
             : null
         );

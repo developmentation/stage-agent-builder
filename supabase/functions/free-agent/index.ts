@@ -23,9 +23,10 @@ interface FreeAgentRequest {
 // Build system prompt for agent
 function buildSystemPrompt(
   blackboard: Array<{ category: string; content: string }>,
-  sessionFiles: Array<{ id: string; filename: string; mimeType: string; size: number }>,
+  sessionFiles: Array<{ id: string; filename: string; mimeType: string; size: number; content?: string }>,
   previousResults: Array<{ tool: string; result?: unknown }>,
-  iteration: number
+  iteration: number,
+  assistanceResponse?: { response?: string; fileId?: string; selectedChoice?: string }
 ) {
   const toolsList = `
 Available Tools:
@@ -41,7 +42,11 @@ Available Tools:
 - post_call_api: Make POST request (params: url, headers?, body)
 - read_blackboard: Read your memory entries (params: filter?)
 - write_blackboard: Write to your memory (params: category, content, data?)
-- read_file: Read session file (params: fileId)
+- read_file: Read session file content (params: fileId) - IMPORTANT: Use the exact fileId from the list below
+- read_prompt: Read the original user prompt
+- read_prompt_files: Get list of available files with metadata
+- read_scratchpad: Read your working scratchpad content
+- write_scratchpad: Write to your scratchpad (params: content, mode?)
 - request_assistance: Ask user for input (params: question, context?, inputType?, choices?)
 - export_word: Create Word document (params: content, filename?)
 - export_pdf: Create PDF document (params: content, filename?)
@@ -49,9 +54,19 @@ Available Tools:
 - elevenlabs_tts: Text to speech (params: text, voiceId?, modelId?)
 `;
 
-  const filesSection = sessionFiles.length > 0
-    ? `\nSession Files Available (use read_file with fileId):\n${sessionFiles.map(f => `- ${f.filename} (id: ${f.id}, type: ${f.mimeType}, size: ${f.size})`).join('\n')}`
-    : '\nNo session files provided.';
+  // Include file content if available (for small text files)
+  let filesSection = '\nNo session files provided.';
+  if (sessionFiles.length > 0) {
+    const filesList = sessionFiles.map(f => {
+      let fileInfo = `- ${f.filename} (fileId: "${f.id}", type: ${f.mimeType}, size: ${f.size} bytes)`;
+      // For small text files, include content directly
+      if (f.content && f.size < 50000 && (f.mimeType.startsWith('text/') || f.mimeType.includes('json') || f.mimeType.includes('xml') || f.mimeType.includes('javascript') || f.mimeType.includes('typescript'))) {
+        fileInfo += `\n  Content:\n\`\`\`\n${f.content.slice(0, 10000)}\n\`\`\``;
+      }
+      return fileInfo;
+    }).join('\n');
+    filesSection = `\nSession Files Available:\n${filesList}\n\nNOTE: Use read_file with the exact fileId shown above (e.g., read_file with fileId: "abc-123-def") to read file contents.`;
+  }
 
   const blackboardSection = blackboard.length > 0
     ? `\nYour Blackboard Memory:\n${blackboard.map(e => `[${e.category}] ${e.content}`).join('\n')}`
@@ -61,12 +76,19 @@ Available Tools:
     ? `\nPrevious Tool Results:\n${JSON.stringify(previousResults, null, 2)}`
     : '';
 
+  // Include user's assistance response if provided
+  let assistanceSection = '';
+  if (assistanceResponse && (assistanceResponse.response || assistanceResponse.selectedChoice)) {
+    const userAnswer = assistanceResponse.response || assistanceResponse.selectedChoice;
+    assistanceSection = `\n\n## User Response to Your Previous Question\nThe user has provided the following answer: "${userAnswer}"\nYou MUST incorporate this answer into your next action. Do NOT ask the same question again.`;
+  }
+
   return `You are FreeAgent, an autonomous AI assistant. You accomplish tasks by using tools and tracking your progress on a blackboard.
 
 ${toolsList}
 ${filesSection}
 ${blackboardSection}
-${resultsSection}
+${resultsSection}${assistanceSection}
 
 Current Iteration: ${iteration}
 
@@ -87,7 +109,8 @@ Rules:
 2. Set status to "completed" when task is done, include final_report
 3. Use request_assistance when you need user input
 4. Can call up to 5 tools per iteration
-5. Artifacts appear on the user's canvas`;
+5. Artifacts appear on the user's canvas
+6. When using read_file, use the EXACT fileId string shown in the session files list above`;
 }
 
 // Execute a single tool call against edge functions
@@ -247,16 +270,21 @@ serve(async (req) => {
       sessionFiles = [],
       previousToolResults = [],
       iteration = 1,
+      assistanceResponse,
     } = request;
 
     console.log(`Free Agent iteration ${iteration}, prompt: ${prompt.slice(0, 100)}...`);
+    if (assistanceResponse) {
+      console.log(`User assistance response: ${JSON.stringify(assistanceResponse)}`);
+    }
 
     // Build prompt and call LLM
     const systemPrompt = buildSystemPrompt(
       blackboard,
       sessionFiles,
       previousToolResults.map(t => ({ tool: t.tool, result: t.result })),
-      iteration
+      iteration,
+      assistanceResponse
     );
 
     const llmResult = await callLLM(systemPrompt, prompt, model);
