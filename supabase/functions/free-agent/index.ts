@@ -333,9 +333,21 @@ Iteration 1:
 
 Iteration 2:
 - You receive: "Result saved to attribute 'ces_results' (2847 chars)"
-- NO need to call write_scratchpad - data is already saved!
+- Data is now stored in the 'ces_results' attribute (visible as a node on canvas)
 - Proceed directly to next task
-- When you need the data: use read_attribute(["ces_results"]) or {{ces_results}} in scratchpad
+
+### 🔑 HOW TO ACCESS ATTRIBUTE DATA:
+
+When you need to use data from a saved attribute, you have TWO options:
+
+**Option A - Direct read (recommended for immediate use):**
+- tool_calls: [{ tool: "read_attribute", params: { names: ["ces_results"] } }]
+- This returns the FULL content of the attribute in your next iteration's PREVIOUS ITERATION RESULTS
+
+**Option B - Handlebar syntax (for combining multiple attributes):**
+- Write {{ces_results}} to scratchpad: write_scratchpad({ content: "Using: {{ces_results}}" })
+- When you call read_scratchpad, {{ces_results}} is automatically replaced with the full attribute content
+- Useful for composing reports that reference multiple saved attributes
 
 ### FALLBACK WORKFLOW (if not using saveAs):
 
@@ -407,11 +419,20 @@ REMEMBER: Your goal is to give yourself just enough information to complete the 
 
 ## Workflow:
 1. Check your scratchpad for existing findings before making tool calls
-2. Make tool calls as needed
-3. ALWAYS write important results to scratchpad immediately - SUMMARIZED, not raw
-4. ALWAYS include blackboard_entry to track your progress
-5. Set status to "completed" with final_report when done
-6. Use artifacts for FINAL deliverables only`;
+2. Make tool calls as needed - USE saveAs TO AUTO-SAVE DATA
+3. If you used saveAs, call read_attribute(["attribute_name"]) when you need to see the data
+4. If you didn't use saveAs, write results to scratchpad immediately - SUMMARIZED, not raw
+5. ALWAYS include blackboard_entry to track your progress
+6. Set status to "completed" with final_report when done
+7. Use artifacts for FINAL deliverables only
+
+## ⚠️ IMPORTANT: ACCESSING SAVED ATTRIBUTES
+
+If you called a tool with saveAs (e.g., brave_search with saveAs: "weather_data"):
+- The data is stored but you DON'T see it yet
+- To access it: call read_attribute({ names: ["weather_data"] })
+- The NEXT iteration will show you the full data in PREVIOUS ITERATION RESULTS
+- THEN you can analyze it and proceed with your task`;
 }
 
 // Execute a single tool call against edge functions
