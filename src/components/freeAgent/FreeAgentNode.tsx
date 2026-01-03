@@ -53,25 +53,29 @@ export function FreeAgentNode({ data }: NodeProps<FreeAgentNodeData>) {
         data.status === "thinking" && "animate-pulse"
       )}
     >
-      {/* Handles for connections */}
+      {/* Handles for connections - Left for inputs, Right for outputs */}
       <Handle
         type="target"
-        position={Position.Top}
-        className="!bg-primary !w-3 !h-3 !border-2 !border-background"
-      />
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        className="!bg-primary !w-3 !h-3 !border-2 !border-background"
-      />
-      <Handle
-        type="source"
         position={Position.Left}
-        className="!bg-primary !w-3 !h-3 !border-2 !border-background"
+        id="left"
+        className="!bg-blue-500 !w-3 !h-3 !border-2 !border-background"
       />
       <Handle
         type="source"
         position={Position.Right}
+        id="right"
+        className="!bg-amber-500 !w-3 !h-3 !border-2 !border-background"
+      />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="bottom"
+        className="!bg-primary !w-3 !h-3 !border-2 !border-background"
+      />
+      <Handle
+        type="target"
+        position={Position.Top}
+        id="top"
         className="!bg-primary !w-3 !h-3 !border-2 !border-background"
       />
 

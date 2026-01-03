@@ -158,11 +158,12 @@ export function FreeAgentCanvas({
         },
       });
 
-      // Edge from prompt to agent
+      // Edge from prompt to agent LEFT side
       newEdges.push({
         id: "edge-prompt-agent",
         source: "prompt",
         target: "agent",
+        targetHandle: "left",
         style: { stroke: "#3b82f6", strokeWidth: 1.5, strokeDasharray: "5,5" },
       });
     }
@@ -188,11 +189,12 @@ export function FreeAgentCanvas({
         },
       });
 
-      // Edge from file to agent
+      // Edge from file to agent LEFT side
       newEdges.push({
         id: `edge-promptFile-agent-${file.id}`,
         source: fileId,
         target: "agent",
+        targetHandle: "left",
         style: { stroke: "#10b981", strokeWidth: 1, strokeDasharray: "3,3" },
       });
     });
@@ -342,10 +344,11 @@ export function FreeAgentCanvas({
       },
     });
 
-    // Edge from agent to scratchpad
+    // Edge from agent RIGHT side to scratchpad
     newEdges.push({
       id: "edge-agent-scratchpad",
       source: "agent",
+      sourceHandle: "right",
       target: "scratchpad",
       animated: isWritingToScratchpad,
       style: { 

@@ -30,6 +30,7 @@ export function FreeAgentView({ model, maxIterations }: FreeAgentViewProps) {
     respondToAssistance,
     stopSession,
     resetSession,
+    continueSession,
     updateScratchpad,
   } = useFreeAgentSession({ model, maxIterations });
 
@@ -129,6 +130,7 @@ export function FreeAgentView({ model, maxIterations }: FreeAgentViewProps) {
                 onStart={handleStart}
                 onStop={stopSession}
                 onReset={resetSession}
+                onContinue={continueSession}
               />
             </div>
           )}
@@ -178,6 +180,7 @@ export function FreeAgentView({ model, maxIterations }: FreeAgentViewProps) {
                   onStart={handleStart}
                   onStop={stopSession}
                   onReset={resetSession}
+                  onContinue={continueSession}
                 />
               </div>
             </div>

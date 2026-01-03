@@ -488,13 +488,44 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
     toast.info("Free Agent stopped");
   }, [updateSession]);
 
-  // Reset session
+  // Reset session completely
   const resetSession = useCallback(() => {
     setSession(null);
     setIsRunning(false);
     setActiveToolIds(new Set());
     iterationRef.current = 0;
   }, []);
+
+  // Continue session - preserve blackboard, scratchpad, artifacts but allow new prompt
+  const continueSession = useCallback(() => {
+    if (!session) return;
+    
+    // Clear the prompt input and session files but keep memory
+    updateSession((prev) => 
+      prev
+        ? {
+            ...prev,
+            status: "idle",
+            prompt: "",
+            currentIteration: 0,
+            toolCalls: [],
+            messages: [],
+            sessionFiles: [],
+            finalReport: undefined,
+            error: undefined,
+            startTime: new Date().toISOString(),
+            lastActivityTime: new Date().toISOString(),
+            // Keep these for continuity:
+            // - blackboard (planning history)
+            // - scratchpad (accumulated data)
+            // - artifacts (created outputs)
+          }
+        : null
+    );
+    
+    setIsRunning(false);
+    iterationRef.current = 0;
+  }, [session, updateSession]);
 
   // Set tool as active (for animation)
   const setToolActive = useCallback((toolId: string, active: boolean) => {
@@ -522,6 +553,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
     respondToAssistance,
     stopSession,
     resetSession,
+    continueSession,
     setToolActive,
     updateScratchpad,
   };
