@@ -330,10 +330,15 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
               };
               handleAttributeCreated(attribute);
               
+              // AUTO-ADD to scratchpad with handlebar reference so read_scratchpad expands it
+              const scratchpadEntry = `\n\n## ${saveAsName} (from ${result.tool})\n{{${saveAsName}}}`;
+              const newScratchpad = (scratchpadRef.current || "") + scratchpadEntry;
+              handleScratchpadUpdate(newScratchpad);
+              
               // Replace the full result with a summary message for the LLM
               const summaryResult = {
                 _savedAsAttribute: saveAsName,
-                _message: `Result saved to attribute '${saveAsName}' (${resultString.length} chars). Use {{${saveAsName}}} in scratchpad or read_attribute(["${saveAsName}"]) to retrieve.`,
+                _message: `Result saved to attribute '${saveAsName}' (${resultString.length} chars). Auto-added to scratchpad - use read_scratchpad to see expanded content.`,
               };
               
               // Add to iteration results with summary instead of full result
