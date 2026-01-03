@@ -30,6 +30,12 @@ function buildSystemPrompt(
   scratchpad: string,
   assistanceResponse?: { response?: string; fileId?: string; selectedChoice?: string }
 ) {
+  // Add null safety for all parameters
+  const safeBlackboard = blackboard || [];
+  const safeSessionFiles = sessionFiles || [];
+  const safePreviousResults = previousResults || [];
+  const safeScratchpad = scratchpad || "";
+
   const toolsList = `
 Available Tools:
 - get_time: Get current date/time (params: timezone?)
@@ -58,8 +64,8 @@ Available Tools:
 
   // Include file content if available (for small text files)
   let filesSection = '\nNo session files provided.';
-  if (sessionFiles.length > 0) {
-    const filesList = sessionFiles.map(f => {
+  if (safeSessionFiles.length > 0) {
+    const filesList = safeSessionFiles.map(f => {
       let fileInfo = `- ${f.filename} (fileId: "${f.id}", type: ${f.mimeType}, size: ${f.size} bytes)`;
       if (f.content && f.size < 50000 && (f.mimeType.startsWith('text/') || f.mimeType.includes('json') || f.mimeType.includes('xml') || f.mimeType.includes('javascript') || f.mimeType.includes('typescript'))) {
         fileInfo += `\n  Content:\n\`\`\`\n${f.content}\n\`\`\``;
@@ -69,25 +75,25 @@ Available Tools:
     filesSection = `\nSession Files Available:\n${filesList}\n\nUse read_file with the exact fileId to read file contents.`;
   }
 
-  const blackboardSection = blackboard.length > 0
-    ? `\n## YOUR BLACKBOARD (Planning Journal - Read this EVERY iteration!):\n${blackboard.map(e => `[${e.category}] ${e.content}`).join('\n')}`
+  const blackboardSection = safeBlackboard.length > 0
+    ? `\n## YOUR BLACKBOARD (Planning Journal - Read this EVERY iteration!):\n${safeBlackboard.map(e => `[${e.category}] ${e.content}`).join('\n')}`
     : '\n## BLACKBOARD: Empty. Track your plan and completed items here.';
 
   // Scratchpad - only show preview if small, otherwise just size (saves context)
   let scratchpadSection: string;
-  if (!scratchpad || !scratchpad.trim()) {
+  if (!safeScratchpad || !safeScratchpad.trim()) {
     scratchpadSection = '\n## YOUR SCRATCHPAD (Data Storage): Empty. Write actual DATA here (file contents, search results, analysis).';
-  } else if (scratchpad.length < 500) {
-    scratchpadSection = `\n## YOUR SCRATCHPAD (Data Storage - ${scratchpad.length} chars):\n\`\`\`\n${scratchpad}\n\`\`\``;
+  } else if (safeScratchpad.length < 500) {
+    scratchpadSection = `\n## YOUR SCRATCHPAD (Data Storage - ${safeScratchpad.length} chars):\n\`\`\`\n${safeScratchpad}\n\`\`\``;
   } else {
     // Only show preview to save context - agent can use read_scratchpad for full content
-    scratchpadSection = `\n## YOUR SCRATCHPAD: Contains ${scratchpad.length} chars of saved data. Use read_scratchpad to view full content.`;
+    scratchpadSection = `\n## YOUR SCRATCHPAD: Contains ${safeScratchpad.length} chars of saved data. Use read_scratchpad to view full content.`;
   }
 
   // Make previous tool results VERY prominent so agent sees them
   let resultsSection = '';
-  if (previousResults.length > 0) {
-    const formattedResults = previousResults.map(r => {
+  if (safePreviousResults.length > 0) {
+    const formattedResults = safePreviousResults.map(r => {
       const resultStr = JSON.stringify(r.result, null, 2);
       // Show full results up to 8KB per tool
       const display = resultStr.length > 8000 
@@ -384,9 +390,9 @@ serve(async (req) => {
   const supabaseKey = Deno.env.get("SUPABASE_ANON_KEY")!;
 
   try {
-    const request: FreeAgentRequest = await req.json();
+    const request: FreeAgentRequest = await req.json() || {};
     const {
-      prompt,
+      prompt = "",
       model = "gemini-2.5-flash",
       blackboard = [],
       sessionFiles = [],
@@ -394,10 +400,10 @@ serve(async (req) => {
       iteration = 1,
       scratchpad = "",
       assistanceResponse,
-    } = request;
+    } = request || {};
 
-    console.log(`Free Agent iteration ${iteration}, prompt: ${prompt.slice(0, 100)}...`);
-    console.log(`Scratchpad length: ${scratchpad.length} chars`);
+    console.log(`Free Agent iteration ${iteration}, prompt: ${(prompt || "").slice(0, 100)}...`);
+    console.log(`Scratchpad length: ${(scratchpad || "").length} chars`);
     if (assistanceResponse) {
       console.log(`User assistance response: ${JSON.stringify(assistanceResponse)}`);
     }
@@ -415,7 +421,25 @@ serve(async (req) => {
     const llmResult = await callLLM(systemPrompt, prompt, model);
 
     if (!llmResult.success) {
-      throw new Error(llmResult.error);
+      // Return error with debug info - HTTP 200 so frontend can read the body
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: llmResult.error,
+          debug: {
+            systemPrompt,
+            userPrompt: prompt,
+            fullPromptSent: `${systemPrompt}\n\nUser Task: ${prompt}`,
+            rawLLMResponse: "",
+            model,
+            scratchpadLength: (scratchpad || "").length,
+            blackboardEntries: (blackboard || []).length,
+            previousResultsCount: (previousToolResults || []).length,
+          },
+          parseError: null,
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const agentResponse = parseAgentResponse(llmResult.response!) as {
@@ -429,7 +453,30 @@ serve(async (req) => {
     };
 
     if (!agentResponse) {
-      throw new Error("Failed to parse agent response");
+      // PARSING FAILED - return the raw response for debugging with HTTP 200
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "Failed to parse agent response",
+          parseError: {
+            rawResponse: llmResult.response,
+            responseLength: llmResult.response?.length || 0,
+            preview: llmResult.response?.slice(0, 500),
+            ending: llmResult.response?.slice(-300),
+          },
+          debug: {
+            systemPrompt,
+            userPrompt: prompt,
+            fullPromptSent: `${systemPrompt}\n\nUser Task: ${prompt}`,
+            rawLLMResponse: llmResult.response || "",
+            model,
+            scratchpadLength: (scratchpad || "").length,
+            blackboardEntries: (blackboard || []).length,
+            previousResultsCount: (previousToolResults || []).length,
+          },
+        }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Execute tool calls
@@ -469,12 +516,14 @@ serve(async (req) => {
         status: agentResponse.status,
         // Debug data for Raw viewer
         debug: {
-          systemPrompt: systemPrompt,
+          systemPrompt,
+          userPrompt: prompt,
+          fullPromptSent: `${systemPrompt}\n\nUser Task: ${prompt}`,
           rawLLMResponse: llmResult.response || "",
-          model: model,
-          scratchpadLength: scratchpad.length,
-          blackboardEntries: blackboard.length,
-          previousResultsCount: previousToolResults.length,
+          model,
+          scratchpadLength: (scratchpad || "").length,
+          blackboardEntries: (blackboard || []).length,
+          previousResultsCount: (previousToolResults || []).length,
         },
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
