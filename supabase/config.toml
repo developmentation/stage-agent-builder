@@ -44,3 +44,6 @@ verify_jwt = false
 
 [functions.pronghorn-post]
 verify_jwt = false
+
+[functions.free-agent]
+verify_jwt = false
