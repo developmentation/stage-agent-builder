@@ -18,7 +18,6 @@ import type {
 import { executeFrontendTool } from "@/lib/freeAgentToolExecutor";
 
 interface UseFreeAgentSessionOptions {
-  model?: string;
   maxIterations?: number;
 }
 
@@ -61,7 +60,7 @@ interface CacheEntry {
 }
 
 export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
-  const { model = "gemini-2.5-flash", maxIterations = 50 } = options;
+  const { maxIterations = 50 } = options;
 
   const [session, setSession] = useState<FreeAgentSession | null>(null);
   const [isRunning, setIsRunning] = useState(false);
@@ -471,7 +470,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
 
   // Start a new session (or resume with preserved memory if existingSession provided)
   const startSession = useCallback(
-    async (prompt: string, files: SessionFile[] = [], existingSession?: FreeAgentSession | null) => {
+    async (prompt: string, files: SessionFile[] = [], model: string = "gemini-2.5-flash", existingSession?: FreeAgentSession | null) => {
       try {
         setIsRunning(true);
         iterationRef.current = 0;
@@ -547,7 +546,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
         throw error;
       }
     },
-    [model, maxIterations, executeIteration]
+    [maxIterations, executeIteration]
   );
 
   // Respond to assistance request
@@ -608,95 +607,75 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
         setIsRunning(false);
       } catch (error) {
         console.error("Failed to respond to assistance:", error);
-        toast.error("Failed to send response");
+        toast.error("Failed to continue after assistance");
         setIsRunning(false);
       }
     },
     [session, maxIterations, executeIteration, updateSession]
   );
 
-  // Stop session - set flag to break out of while loop
+  // Stop the current session
   const stopSession = useCallback(() => {
-    console.log("Stop session called - setting shouldStopRef to true");
-    shouldStopRef.current = true; // Signal to stop the while loop
-    abortControllerRef.current?.abort();
+    console.log("Stop session requested");
+    shouldStopRef.current = true;
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
     setIsRunning(false);
     updateSession((prev) =>
       prev
         ? {
             ...prev,
-            status: "completed",
-            endTime: new Date().toISOString(),
+            status: "idle",
           }
         : null
     );
-    toast.info("Free Agent stopped");
   }, [updateSession]);
 
   // Reset session completely
   const resetSession = useCallback(() => {
+    shouldStopRef.current = true;
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
     setSession(null);
     setIsRunning(false);
     setActiveToolIds(new Set());
     iterationRef.current = 0;
-    // Clear all refs
     blackboardRef.current = [];
     scratchpadRef.current = "";
     toolCacheRef.current.clear();
   }, []);
 
-  // Continue session - preserve blackboard, scratchpad, artifacts but allow new prompt
+  // Continue with new prompt while preserving memory
   const continueSession = useCallback(() => {
     if (!session) return;
     
-    // Clear the prompt input and session files but keep memory
-    updateSession((prev) => 
+    // Reset to idle so user can enter new prompt, but memory is preserved
+    updateSession((prev) =>
       prev
         ? {
             ...prev,
             status: "idle",
-            prompt: "",
-            currentIteration: 0,
-            toolCalls: [],
-            messages: [],
-            sessionFiles: [],
-            finalReport: undefined,
-            error: undefined,
-            startTime: new Date().toISOString(),
-            lastActivityTime: new Date().toISOString(),
-            // Keep these for continuity:
-            // - blackboard (planning history)
-            // - scratchpad (accumulated data)
-            // - artifacts (created outputs)
-            // - rawData (debug history)
+            // Keep blackboard, scratchpad, artifacts, rawData
+            toolCalls: [], // Clear tool calls for new task
+            messages: [], // Clear messages for new task
           }
         : null
     );
     
-    setIsRunning(false);
     iterationRef.current = 0;
   }, [session, updateSession]);
-
-  // Set tool as active (for animation)
-  const setToolActive = useCallback((toolId: string, active: boolean) => {
-    setActiveToolIds((prev) => {
-      const next = new Set(prev);
-      if (active) {
-        next.add(toolId);
-      } else {
-        next.delete(toolId);
-      }
-      return next;
-    });
-  }, []);
 
   // Update scratchpad from UI
   const updateScratchpad = useCallback((content: string) => {
     handleScratchpadUpdate(content);
   }, [handleScratchpadUpdate]);
 
-  // Get current cache size for UI display
-  const getCacheSize = useCallback(() => toolCacheRef.current.size, []);
+  // Get cache size
+  const getCacheSize = useCallback(() => {
+    return toolCacheRef.current.size;
+  }, []);
 
   return {
     session,
@@ -707,7 +686,6 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
     stopSession,
     resetSession,
     continueSession,
-    setToolActive,
     updateScratchpad,
     getCacheSize,
   };
