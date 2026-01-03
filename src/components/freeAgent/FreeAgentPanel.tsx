@@ -62,8 +62,16 @@ export function FreeAgentPanel({
 }: FreeAgentPanelProps) {
   const [prompt, setPrompt] = useState("");
   const [files, setFiles] = useState<SessionFile[]>([]);
-  const [selectedModel, setSelectedModel] = useState("gemini-2.5-flash");
+  // Preserve model selection - use session model if available, otherwise keep last selection
+  const [selectedModel, setSelectedModel] = useState(() => session?.model || "gemini-2.5-flash");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Sync model from session when transitioning to idle (Continue) but not resetting user's choice
+  React.useEffect(() => {
+    if (session?.model && session.status === "idle") {
+      setSelectedModel(session.model);
+    }
+  }, [session?.status]);
 
   const handleClear = () => {
     setPrompt("");
