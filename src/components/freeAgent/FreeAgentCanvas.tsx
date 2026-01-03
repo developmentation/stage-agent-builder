@@ -38,6 +38,7 @@ interface FreeAgentCanvasProps {
   onFileClick?: (fileId: string) => void;
   onScratchpadChange?: (content: string) => void;
   onAttributeClick?: (attributeName: string) => void;
+  onRetry?: () => void;
 }
 
 const nodeTypes = {
@@ -153,6 +154,7 @@ export function FreeAgentCanvas({
   onFileClick,
   onScratchpadChange,
   onAttributeClick,
+  onRetry,
 }: FreeAgentCanvasProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -323,7 +325,9 @@ export function FreeAgentCanvas({
         ? "success" 
         : session?.status === "error" 
           ? "error" 
-          : "idle";
+          : session?.status === "paused"
+            ? "paused"
+            : "idle";
 
     const agentId = "agent";
     newNodeIds.add(agentId);
@@ -337,6 +341,8 @@ export function FreeAgentCanvas({
         status: agentStatus,
         iteration: session?.currentIteration || 0,
         reasoning: session?.messages[session.messages.length - 1]?.content,
+        retryCount: session?.retryCount,
+        onRetry: (agentStatus === "error" || agentStatus === "paused") ? onRetry : undefined,
       },
     });
 

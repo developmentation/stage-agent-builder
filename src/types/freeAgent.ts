@@ -204,6 +204,8 @@ export interface FreeAgentSession {
   
   // Error tracking
   error?: string;
+  retryCount?: number;        // Number of retry attempts for current error
+  lastErrorIteration?: number; // Iteration where last error occurred
   
   // Debug data for Raw viewer
   rawData: RawIterationData[];
@@ -281,7 +283,7 @@ export interface AgentResponse {
 export interface FreeAgentNodeData {
   type: 'agent' | 'tool' | 'artifact' | 'file' | 'scratchpad' | 'prompt' | 'promptFile' | 'attribute';
   label: string;
-  status: 'idle' | 'thinking' | 'active' | 'success' | 'error' | 'reading';
+  status: 'idle' | 'thinking' | 'active' | 'success' | 'error' | 'reading' | 'paused';
   icon?: string;
   category?: string;
   toolId?: string;
@@ -298,6 +300,8 @@ export interface FreeAgentNodeData {
   onContentChange?: (content: string) => void; // For scratchpad updates
   attributeName?: string; // For attribute nodes
   attributeTool?: string; // Source tool for attribute nodes
+  retryCount?: number; // For agent node retry count display
+  onRetry?: () => void; // Callback when retry button clicked on agent node
 }
 
 // Canvas edge for connections

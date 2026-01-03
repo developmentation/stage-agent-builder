@@ -24,6 +24,7 @@ import {
   CheckCircle,
   AlertCircle,
   Pause,
+  RotateCcw,
 } from "lucide-react";
 import type { FreeAgentSession, SessionFile } from "@/types/freeAgent";
 
@@ -48,6 +49,7 @@ interface FreeAgentPanelProps {
   onStop: () => void;
   onReset: () => void;
   onContinue: () => void;
+  onRetry: () => void;
   cacheSize?: number;
 }
 
@@ -58,6 +60,7 @@ export function FreeAgentPanel({
   onStop,
   onReset,
   onContinue,
+  onRetry,
   cacheSize = 0,
 }: FreeAgentPanelProps) {
   const [prompt, setPrompt] = useState("");
@@ -151,6 +154,13 @@ export function FreeAgentPanel({
           <Badge variant="destructive">
             <AlertCircle className="w-3 h-3 mr-1" />
             Error
+          </Badge>
+        );
+      case "paused":
+        return (
+          <Badge variant="secondary" className="bg-orange-500 text-white">
+            <Pause className="w-3 h-3 mr-1" />
+            Paused{session.retryCount ? ` (${session.retryCount} retries)` : ""}
           </Badge>
         );
       case "needs_assistance":
@@ -373,6 +383,12 @@ export function FreeAgentPanel({
                   <Button variant="outline" onClick={onReset} className="flex-1">
                     Reset
                   </Button>
+                  {(session.status === "paused" || session.status === "error") && (
+                    <Button onClick={onRetry} className="flex-1 bg-orange-500 hover:bg-orange-600">
+                      <RotateCcw className="w-4 h-4 mr-2" />
+                      Retry
+                    </Button>
+                  )}
                   {session.status === "completed" && (
                     <Button onClick={onContinue} className="flex-1">
                       <Play className="w-4 h-4 mr-2" />

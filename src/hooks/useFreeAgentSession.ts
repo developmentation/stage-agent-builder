@@ -64,6 +64,8 @@ interface CacheEntry {
   params: Record<string, unknown>;
 }
 
+const MAX_RETRY_ATTEMPTS = 3;
+
 export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
   const { maxIterations = 50 } = options;
 
@@ -81,6 +83,10 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
   
   // Tool cache for expensive operations - caches EXACT duplicate requests only
   const toolCacheRef = useRef<Map<string, CacheEntry>>(new Map());
+  
+  // Retry tracking refs for synchronous access during iteration loop
+  const retryCountRef = useRef(0);
+  const lastErrorIterationRef = useRef(0);
   
   // Update session and persist to localStorage
   const updateSession = useCallback((updater: (prev: FreeAgentSession | null) => FreeAgentSession | null) => {
@@ -176,11 +182,12 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
   }, [updateSession]);
 
   // Execute a single iteration - now accepts previousIterationResults directly
+  // Returns: continue (keep iterating), toolResults, and error info for retry logic
   const executeIteration = useCallback(
     async (
       currentSession: FreeAgentSession,
       previousIterationResults: ToolResult[]
-    ): Promise<{ continue: boolean; toolResults: ToolResult[] }> => {
+    ): Promise<{ continue: boolean; toolResults: ToolResult[]; hadError?: boolean; errorMessage?: string }> => {
       if (iterationRef.current >= maxIterations) {
         toast.warning("Max iterations reached");
         return { continue: false, toolResults: [] };
@@ -263,12 +270,13 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
                   status: "error",
                   error: data.error,
                   rawData: [...(prev.rawData || []), errorRawData],
+                  lastErrorIteration: iterationRef.current,
                 }
               : null
           );
 
-          toast.error("Free Agent error: " + data.error);
-          return { continue: false, toolResults: [] };
+          // Return error info for retry logic - don't show toast here, let loop handle it
+          return { continue: false, toolResults: [], hadError: true, errorMessage: data.error };
         }
 
         const response = data.response as AgentResponse;
@@ -556,20 +564,99 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
         return { continue: true, toolResults: iterationToolResults }; // Continue running
       } catch (error) {
         console.error("Iteration failed:", error);
+        const errorMessage = error instanceof Error ? error.message : "Unknown error";
         updateSession((prev) =>
           prev
             ? {
                 ...prev,
                 status: "error",
-                error: error instanceof Error ? error.message : "Unknown error",
+                error: errorMessage,
+                lastErrorIteration: iterationRef.current,
               }
             : null
         );
-        toast.error("Free Agent error: " + (error instanceof Error ? error.message : "Unknown error"));
-        return { continue: false, toolResults: [] };
+        // Return error info for retry logic - don't show toast here, let loop handle it
+        return { continue: false, toolResults: [], hadError: true, errorMessage };
       }
     },
     [maxIterations, handleArtifactCreated, handleBlackboardUpdate, handleScratchpadUpdate, handleAssistanceNeeded, handleAttributeCreated, updateSession]
+  );
+
+  // Run the iteration loop with retry logic
+  const runIterationLoop = useCallback(
+    async (sessionId: string, initialSession: FreeAgentSession, initialToolResults: ToolResult[] = []) => {
+      let shouldContinue = true;
+      let lastToolResults = initialToolResults;
+      
+      while (shouldContinue && !shouldStopRef.current && iterationRef.current < maxIterations) {
+        // Check stop flag at start of each iteration
+        if (shouldStopRef.current) {
+          console.log("Stop requested, breaking loop");
+          break;
+        }
+        
+        const currentSession = loadSessionFromLocal(sessionId) || initialSession;
+        const result = await executeIteration(currentSession, lastToolResults);
+        
+        // Handle error with auto-retry logic
+        if (result.hadError) {
+          retryCountRef.current++;
+          lastErrorIterationRef.current = iterationRef.current;
+          
+          console.log(`[Retry ${retryCountRef.current}/${MAX_RETRY_ATTEMPTS}] Error at iteration ${iterationRef.current}: ${result.errorMessage}`);
+          
+          if (retryCountRef.current < MAX_RETRY_ATTEMPTS) {
+            // Auto-retry: rollback iteration counter and try again
+            iterationRef.current--;
+            toast.warning(`Retrying iteration (attempt ${retryCountRef.current + 1}/${MAX_RETRY_ATTEMPTS})...`);
+            
+            // Update session to show retry status
+            updateSession((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    status: "running",
+                    retryCount: retryCountRef.current,
+                    lastErrorIteration: lastErrorIterationRef.current,
+                  }
+                : null
+            );
+            
+            // Brief delay before retry
+            await new Promise((resolve) => setTimeout(resolve, 1000));
+            continue; // Retry the iteration
+          } else {
+            // Max retries reached - pause for manual intervention
+            toast.error(`Failed after ${MAX_RETRY_ATTEMPTS} attempts. Click Retry to try again.`);
+            updateSession((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    status: "paused",
+                    error: result.errorMessage,
+                    retryCount: retryCountRef.current,
+                    lastErrorIteration: lastErrorIterationRef.current,
+                  }
+                : null
+            );
+            shouldContinue = false;
+            break;
+          }
+        } else {
+          // Success - reset retry counter
+          retryCountRef.current = 0;
+        }
+        
+        shouldContinue = result.continue;
+        lastToolResults = result.toolResults;
+        
+        // Small delay between iterations
+        if (shouldContinue && !shouldStopRef.current) {
+          await new Promise((resolve) => setTimeout(resolve, 500));
+        }
+      }
+    },
+    [maxIterations, executeIteration, updateSession]
   );
 
   // Start a new session (or resume with preserved memory if existingSession provided)
@@ -578,6 +665,8 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
       try {
         setIsRunning(true);
         iterationRef.current = 0;
+        retryCountRef.current = 0;
+        lastErrorIterationRef.current = 0;
 
         // If continuing from an existing session, preserve memory (blackboard, scratchpad, artifacts)
         const newSession: FreeAgentSession = {
@@ -606,6 +695,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
           startTime: new Date().toISOString(),
           lastActivityTime: new Date().toISOString(),
           rawData: existingSession?.rawData || [],
+          retryCount: 0,
         };
 
         // Initialize refs with session memory
@@ -621,28 +711,9 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
         setSession(newSession);
         saveSessionToLocal(newSession);
 
-        // Run iterations - pass tool results directly between iterations
+        // Run iterations with retry logic
         shouldStopRef.current = false;
-        let shouldContinue = true;
-        let lastToolResults: ToolResult[] = []; // Track tool results between iterations
-        
-        while (shouldContinue && !shouldStopRef.current && iterationRef.current < maxIterations) {
-          // Check stop flag at start of each iteration
-          if (shouldStopRef.current) {
-            console.log("Stop requested, breaking loop");
-            break;
-          }
-          
-          const currentSession = loadSessionFromLocal(newSession.id) || newSession;
-          const result = await executeIteration(currentSession, lastToolResults);
-          shouldContinue = result.continue;
-          lastToolResults = result.toolResults; // Pass results to next iteration
-          
-          // Small delay between iterations
-          if (shouldContinue && !shouldStopRef.current) {
-            await new Promise((resolve) => setTimeout(resolve, 500));
-          }
-        }
+        await runIterationLoop(newSession.id, newSession);
 
         setIsRunning(false);
         return newSession.id;
@@ -653,7 +724,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
         throw error;
       }
     },
-    [maxIterations, executeIteration]
+    [maxIterations, runIterationLoop]
   );
 
   // Respond to assistance request
@@ -663,6 +734,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
 
       try {
         setIsRunning(true);
+        retryCountRef.current = 0; // Reset retry count
 
         // Add user response as message
         const userMessage: FreeAgentMessage = {
@@ -687,6 +759,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
                 respondedAt: new Date().toISOString(),
               }
             : undefined,
+          retryCount: 0,
         };
 
         // Save to localStorage IMMEDIATELY (synchronous) so executeIteration can read it
@@ -700,24 +773,9 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
         // Also update React state for UI
         setSession(updatedSession);
 
-        // Continue iterations - pass tool results directly between iterations
+        // Continue iterations with retry logic
         shouldStopRef.current = false;
-        let shouldContinue = true;
-        let lastToolResults: ToolResult[] = [];
-        
-        while (shouldContinue && !shouldStopRef.current && iterationRef.current < maxIterations) {
-          if (shouldStopRef.current) break;
-          
-          const currentSession = loadSessionFromLocal(session.id);
-          if (!currentSession) break;
-          const result = await executeIteration(currentSession, lastToolResults);
-          shouldContinue = result.continue;
-          lastToolResults = result.toolResults;
-          
-          if (shouldContinue && !shouldStopRef.current) {
-            await new Promise((resolve) => setTimeout(resolve, 500));
-          }
-        }
+        await runIterationLoop(session.id, updatedSession);
 
         setIsRunning(false);
       } catch (error) {
@@ -726,8 +784,46 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
         setIsRunning(false);
       }
     },
-    [session, maxIterations, executeIteration]
+    [session, runIterationLoop]
   );
+
+  // Retry from failed iteration (when paused after max retries)
+  const retrySession = useCallback(async () => {
+    if (!session) return;
+
+    try {
+      setIsRunning(true);
+      retryCountRef.current = 0; // Reset retry count for fresh attempt
+      
+      // Rollback iteration to retry the failed one
+      if (session.lastErrorIteration && session.lastErrorIteration > 0) {
+        iterationRef.current = session.lastErrorIteration - 1;
+      }
+
+      const updatedSession: FreeAgentSession = {
+        ...session,
+        status: "running",
+        error: undefined,
+        retryCount: 0,
+      };
+
+      saveSessionToLocal(updatedSession);
+      setSession(updatedSession);
+
+      console.log(`[Retry] Resuming from iteration ${iterationRef.current + 1}`);
+      toast.info("Retrying from last failed iteration...");
+
+      // Continue iterations with retry logic
+      shouldStopRef.current = false;
+      await runIterationLoop(session.id, updatedSession);
+
+      setIsRunning(false);
+    } catch (error) {
+      console.error("Failed to retry session:", error);
+      toast.error("Failed to retry session");
+      setIsRunning(false);
+    }
+  }, [session, runIterationLoop]);
 
   // Stop the current session
   const stopSession = useCallback(() => {
@@ -760,6 +856,8 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
     blackboardRef.current = [];
     scratchpadRef.current = "";
     toolResultAttributesRef.current = {};
+    retryCountRef.current = 0;
+    lastErrorIterationRef.current = 0;
     toolCacheRef.current.clear();
   }, []);
 
@@ -802,6 +900,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
     stopSession,
     resetSession,
     continueSession,
+    retrySession,
     updateScratchpad,
     getCacheSize,
   };
