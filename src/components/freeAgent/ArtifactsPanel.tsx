@@ -1,0 +1,176 @@
+// Artifacts Panel - Display created artifacts
+import React from "react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  FileText,
+  Image,
+  Database,
+  File,
+  Download,
+  Copy,
+  Package,
+} from "lucide-react";
+import { toast } from "sonner";
+import type { FreeAgentArtifact } from "@/types/freeAgent";
+
+interface ArtifactsPanelProps {
+  artifacts: FreeAgentArtifact[];
+  onArtifactClick?: (artifact: FreeAgentArtifact) => void;
+}
+
+export function ArtifactsPanel({ artifacts, onArtifactClick }: ArtifactsPanelProps) {
+  const getIcon = (type: FreeAgentArtifact["type"]) => {
+    switch (type) {
+      case "image":
+        return <Image className="w-4 h-4" />;
+      case "data":
+        return <Database className="w-4 h-4" />;
+      case "file":
+        return <File className="w-4 h-4" />;
+      default:
+        return <FileText className="w-4 h-4" />;
+    }
+  };
+
+  const handleDownload = (artifact: FreeAgentArtifact) => {
+    try {
+      // Create blob from content
+      let blob: Blob;
+      
+      if (artifact.type === "file" && artifact.mimeType) {
+        // Base64 encoded file
+        const byteCharacters = atob(artifact.content);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        blob = new Blob([byteArray], { type: artifact.mimeType });
+      } else {
+        // Text content
+        blob = new Blob([artifact.content], { type: "text/plain" });
+      }
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = artifact.title;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      toast.success(`Downloaded ${artifact.title}`);
+    } catch (error) {
+      toast.error("Failed to download artifact");
+    }
+  };
+
+  const handleCopy = async (artifact: FreeAgentArtifact) => {
+    try {
+      await navigator.clipboard.writeText(artifact.content);
+      toast.success("Copied to clipboard");
+    } catch {
+      toast.error("Failed to copy");
+    }
+  };
+
+  return (
+    <Card className="h-full flex flex-col">
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Package className="w-4 h-4" />
+          Artifacts
+          <Badge variant="secondary" className="ml-auto">
+            {artifacts.length}
+          </Badge>
+        </CardTitle>
+      </CardHeader>
+
+      <CardContent className="flex-1 overflow-hidden p-0">
+        {artifacts.length === 0 ? (
+          <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+            No artifacts created yet
+          </div>
+        ) : (
+          <ScrollArea className="h-full px-4 pb-4">
+            <div className="space-y-2">
+              {artifacts.map((artifact) => (
+                <div
+                  key={artifact.id}
+                  className="p-3 rounded-md border bg-card hover:bg-muted/50 transition-colors cursor-pointer"
+                  onClick={() => onArtifactClick?.(artifact)}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="text-primary">{getIcon(artifact.type)}</div>
+                    <span className="text-sm font-medium flex-1 truncate">
+                      {artifact.title}
+                    </span>
+                    <Badge variant="outline" className="text-[10px]">
+                      {artifact.type}
+                    </Badge>
+                  </div>
+
+                  {artifact.description && (
+                    <p className="text-xs text-muted-foreground mb-2 line-clamp-2">
+                      {artifact.description}
+                    </p>
+                  )}
+
+                  {/* Preview for text/image */}
+                  {artifact.type === "text" && (
+                    <pre className="text-[10px] bg-muted/50 p-2 rounded overflow-x-auto max-h-[60px]">
+                      {artifact.content.slice(0, 200)}
+                      {artifact.content.length > 200 && "..."}
+                    </pre>
+                  )}
+
+                  {artifact.type === "image" && (
+                    <img
+                      src={artifact.content.startsWith("data:") ? artifact.content : `data:image/png;base64,${artifact.content}`}
+                      alt={artifact.title}
+                      className="max-h-[80px] rounded object-cover"
+                    />
+                  )}
+
+                  {/* Actions */}
+                  <div className="flex gap-1 mt-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-xs"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDownload(artifact);
+                      }}
+                    >
+                      <Download className="w-3 h-3 mr-1" />
+                      Download
+                    </Button>
+                    {artifact.type === "text" && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCopy(artifact);
+                        }}
+                      >
+                        <Copy className="w-3 h-3 mr-1" />
+                        Copy
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </ScrollArea>
+        )}
+      </CardContent>
+    </Card>
+  );
+}

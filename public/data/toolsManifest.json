@@ -1,0 +1,674 @@
+{
+  "version": "1.0.0",
+  "description": "Tools manifest for Free Agent autonomous operations",
+  "tools": {
+    "get_time": {
+      "name": "Get Time",
+      "description": "Get the current date and time in a specified timezone",
+      "edge_function": "time",
+      "icon": "Clock",
+      "category": "utility",
+      "parameters": {
+        "timezone": {
+          "type": "string",
+          "required": false,
+          "default": "UTC",
+          "description": "IANA timezone name (e.g., America/New_York)"
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": ["utc", "timestamp", "date", "time", "timezone", "year", "month", "day", "hours", "minutes", "seconds"]
+      }
+    },
+    "brave_search": {
+      "name": "Web Search",
+      "description": "Search the web using Brave Search API. Returns titles, URLs, and descriptions.",
+      "edge_function": "brave-search",
+      "icon": "Search",
+      "category": "web",
+      "parameters": {
+        "query": {
+          "type": "string",
+          "required": true,
+          "description": "Search query"
+        },
+        "numResults": {
+          "type": "number",
+          "required": false,
+          "default": 10,
+          "description": "Number of results to return (1-200)"
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "title": "string",
+              "url": "string",
+              "description": "string"
+            }
+          }
+        }
+      }
+    },
+    "web_scrape": {
+      "name": "Web Scrape",
+      "description": "Fetch and extract content from a web page. Handles HTML, PDF, and DOCX files. Returns cleaned text content.",
+      "edge_function": "web-scrape",
+      "icon": "Globe",
+      "category": "web",
+      "parameters": {
+        "url": {
+          "type": "string",
+          "required": true,
+          "description": "URL to scrape"
+        },
+        "maxCharacters": {
+          "type": "number",
+          "required": false,
+          "default": 50000,
+          "description": "Maximum content length to return"
+        },
+        "returnHtml": {
+          "type": "boolean",
+          "required": false,
+          "default": false,
+          "description": "Return raw HTML instead of extracted text"
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": ["url", "title", "content", "contentLength", "accessedAt"]
+      }
+    },
+    "read_github_repo": {
+      "name": "Read GitHub Repository",
+      "description": "Get the file tree structure of a GitHub repository. Returns a tree with paths, sizes, and types.",
+      "edge_function": "github-fetch",
+      "icon": "Github",
+      "category": "code",
+      "parameters": {
+        "repoUrl": {
+          "type": "string",
+          "required": true,
+          "description": "GitHub repository URL (e.g., github.com/owner/repo)"
+        },
+        "branch": {
+          "type": "string",
+          "required": false,
+          "description": "Branch name (defaults to main/master)"
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": ["success", "mode", "repository", "treeData", "totalFiles"]
+      }
+    },
+    "read_github_file": {
+      "name": "Read GitHub File",
+      "description": "Read the contents of specific files from a GitHub repository. Can fetch multiple files at once.",
+      "edge_function": "github-fetch",
+      "icon": "FileCode",
+      "category": "code",
+      "parameters": {
+        "repoUrl": {
+          "type": "string",
+          "required": true,
+          "description": "GitHub repository URL"
+        },
+        "selectedPaths": {
+          "type": "array",
+          "items": "string",
+          "required": true,
+          "description": "Array of file paths within the repository to read"
+        },
+        "branch": {
+          "type": "string",
+          "required": false,
+          "description": "Branch name"
+        },
+        "outputMode": {
+          "type": "string",
+          "required": false,
+          "default": "combined",
+          "enum": ["combined", "separate"],
+          "description": "combined returns all files in one string, separate returns each file separately"
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": ["success", "mode", "repository", "output", "outputs", "totalFiles"]
+      }
+    },
+    "read_blackboard": {
+      "name": "Read Blackboard",
+      "description": "Read all entries from the agent's blackboard memory. The blackboard persists thoughts, observations, and progress across iterations.",
+      "frontend_handler": true,
+      "icon": "ClipboardList",
+      "category": "memory",
+      "parameters": {
+        "filter": {
+          "type": "string",
+          "required": false,
+          "enum": ["observation", "insight", "question", "decision", "plan", "artifact", "error"],
+          "description": "Filter entries by category"
+        }
+      },
+      "returns": {
+        "type": "array",
+        "items": {
+          "id": "string",
+          "timestamp": "string",
+          "category": "string",
+          "content": "string",
+          "data": "object"
+        }
+      }
+    },
+    "write_blackboard": {
+      "name": "Write Blackboard",
+      "description": "Write an entry to the agent's blackboard memory. Use to track observations, insights, decisions, and progress.",
+      "frontend_handler": true,
+      "icon": "Edit3",
+      "category": "memory",
+      "parameters": {
+        "category": {
+          "type": "string",
+          "required": true,
+          "enum": ["observation", "insight", "question", "decision", "plan", "artifact", "error"],
+          "description": "Type of entry"
+        },
+        "content": {
+          "type": "string",
+          "required": true,
+          "description": "Content of the blackboard entry"
+        },
+        "data": {
+          "type": "object",
+          "required": false,
+          "description": "Optional structured data to attach"
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": ["id", "timestamp", "success"]
+      }
+    },
+    "read_file": {
+      "name": "Read File",
+      "description": "Read content from a user-provided file in the current session. Files are provided by the user at session start.",
+      "frontend_handler": true,
+      "icon": "FileText",
+      "category": "file",
+      "parameters": {
+        "fileId": {
+          "type": "string",
+          "required": true,
+          "description": "ID of the file to read (from session files)"
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": ["filename", "content", "mimeType", "size"]
+      }
+    },
+    "read_zip_contents": {
+      "name": "Read ZIP Contents",
+      "description": "List all files and directories inside a ZIP archive without extracting.",
+      "edge_function": "zip-handler",
+      "icon": "Archive",
+      "category": "file",
+      "parameters": {
+        "fileId": {
+          "type": "string",
+          "required": true,
+          "description": "ID of the ZIP file from session"
+        }
+      },
+      "returns": {
+        "type": "array",
+        "items": {
+          "path": "string",
+          "size": "number",
+          "isDirectory": "boolean",
+          "compressedSize": "number"
+        }
+      }
+    },
+    "read_zip_file": {
+      "name": "Read ZIP File Entry",
+      "description": "Extract and read a specific file from a ZIP archive.",
+      "edge_function": "zip-handler",
+      "icon": "FileArchive",
+      "category": "file",
+      "parameters": {
+        "fileId": {
+          "type": "string",
+          "required": true,
+          "description": "ID of the ZIP file"
+        },
+        "entryPath": {
+          "type": "string",
+          "required": true,
+          "description": "Path to file within the ZIP archive"
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": ["path", "content", "size", "mimeType"]
+      }
+    },
+    "extract_zip_files": {
+      "name": "Extract ZIP Files",
+      "description": "Extract all or selected files from a ZIP archive to session storage.",
+      "edge_function": "zip-handler",
+      "icon": "FolderOutput",
+      "category": "file",
+      "parameters": {
+        "fileId": {
+          "type": "string",
+          "required": true,
+          "description": "ID of the ZIP file"
+        },
+        "paths": {
+          "type": "array",
+          "items": "string",
+          "required": false,
+          "description": "Specific paths to extract (extracts all if empty)"
+        }
+      },
+      "returns": {
+        "type": "array",
+        "items": {
+          "path": "string",
+          "fileId": "string",
+          "size": "number"
+        }
+      }
+    },
+    "rasterize_pdf": {
+      "name": "Rasterize PDF",
+      "description": "Convert PDF pages to images for visual inspection or OCR.",
+      "edge_function": "pdf-handler",
+      "icon": "FileImage",
+      "category": "document",
+      "parameters": {
+        "fileId": {
+          "type": "string",
+          "required": true,
+          "description": "ID of the PDF file from session"
+        },
+        "pages": {
+          "type": "array",
+          "items": "number",
+          "required": false,
+          "description": "Page numbers to convert (1-indexed, all if empty)"
+        },
+        "dpi": {
+          "type": "number",
+          "required": false,
+          "default": 150,
+          "description": "Resolution in DPI"
+        }
+      },
+      "returns": {
+        "type": "array",
+        "items": {
+          "page": "number",
+          "imageData": "string",
+          "width": "number",
+          "height": "number"
+        }
+      }
+    },
+    "ocr_image": {
+      "name": "OCR Image",
+      "description": "Extract text from an image using optical character recognition.",
+      "edge_function": "ocr-handler",
+      "icon": "ScanText",
+      "category": "document",
+      "parameters": {
+        "imageSource": {
+          "type": "string",
+          "required": true,
+          "description": "File ID, image URL, or base64 data URI"
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": ["text", "confidence", "language"]
+      }
+    },
+    "send_email": {
+      "name": "Send Email",
+      "description": "Send an email using Resend. Supports plain text or HTML content.",
+      "edge_function": "send-email",
+      "icon": "Mail",
+      "category": "communication",
+      "parameters": {
+        "to": {
+          "type": "string",
+          "required": true,
+          "description": "Recipient email address"
+        },
+        "subject": {
+          "type": "string",
+          "required": true,
+          "description": "Email subject line"
+        },
+        "body": {
+          "type": "string",
+          "required": true,
+          "description": "Email body content"
+        },
+        "useHtml": {
+          "type": "boolean",
+          "required": false,
+          "default": false,
+          "description": "Send body as HTML"
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": ["success", "messageId", "message"]
+      }
+    },
+    "request_assistance": {
+      "name": "Request Assistance",
+      "description": "Pause execution and request input, clarification, or files from the user. Execution resumes when user responds.",
+      "frontend_handler": true,
+      "icon": "HelpCircle",
+      "category": "interaction",
+      "parameters": {
+        "question": {
+          "type": "string",
+          "required": true,
+          "description": "Question or request to show the user"
+        },
+        "context": {
+          "type": "string",
+          "required": false,
+          "description": "Additional context explaining why assistance is needed"
+        },
+        "inputType": {
+          "type": "string",
+          "required": false,
+          "default": "text",
+          "enum": ["text", "file", "choice"],
+          "description": "Type of input expected from user"
+        },
+        "choices": {
+          "type": "array",
+          "items": "string",
+          "required": false,
+          "description": "Options if inputType is 'choice'"
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": ["response", "fileId", "selectedChoice"]
+      }
+    },
+    "image_generation": {
+      "name": "Generate Image",
+      "description": "Generate an image from a text prompt using Gemini's image generation model.",
+      "edge_function": "run-nano",
+      "icon": "Image",
+      "category": "generation",
+      "parameters": {
+        "prompt": {
+          "type": "string",
+          "required": true,
+          "description": "Detailed description of the image to generate"
+        },
+        "model": {
+          "type": "string",
+          "required": false,
+          "default": "gemini-2.5-flash-image",
+          "enum": ["gemini-2.5-flash-image", "gemini-3-pro-image-preview"],
+          "description": "Image generation model to use"
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": ["imageUrl", "mimeType", "model"]
+      }
+    },
+    "export_word": {
+      "name": "Export Word Document",
+      "description": "Create a Word (.docx) document from markdown content and save as artifact.",
+      "frontend_handler": true,
+      "icon": "FileText",
+      "category": "export",
+      "parameters": {
+        "content": {
+          "type": "string",
+          "required": true,
+          "description": "Markdown content to convert"
+        },
+        "filename": {
+          "type": "string",
+          "required": false,
+          "default": "document.docx",
+          "description": "Output filename"
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": ["filename", "artifactId", "size"]
+      }
+    },
+    "export_pdf": {
+      "name": "Export PDF",
+      "description": "Create a PDF document from markdown content and save as artifact.",
+      "frontend_handler": true,
+      "icon": "FileText",
+      "category": "export",
+      "parameters": {
+        "content": {
+          "type": "string",
+          "required": true,
+          "description": "Markdown content to convert"
+        },
+        "filename": {
+          "type": "string",
+          "required": false,
+          "default": "document.pdf",
+          "description": "Output filename"
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": ["filename", "artifactId", "size"]
+      }
+    },
+    "get_call_api": {
+      "name": "GET API Call",
+      "description": "Make a GET request to an external API endpoint. Use for fetching data from REST APIs.",
+      "edge_function": "api-call",
+      "icon": "Download",
+      "category": "api",
+      "parameters": {
+        "url": {
+          "type": "string",
+          "required": true,
+          "description": "Full API endpoint URL"
+        },
+        "headers": {
+          "type": "object",
+          "required": false,
+          "description": "Request headers (e.g., Authorization, API keys)"
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": ["status", "statusText", "data"]
+      }
+    },
+    "post_call_api": {
+      "name": "POST API Call",
+      "description": "Make a POST request to an external API endpoint. Use for sending data to REST APIs.",
+      "edge_function": "api-call",
+      "icon": "Upload",
+      "category": "api",
+      "parameters": {
+        "url": {
+          "type": "string",
+          "required": true,
+          "description": "Full API endpoint URL"
+        },
+        "headers": {
+          "type": "object",
+          "required": false,
+          "description": "Request headers"
+        },
+        "body": {
+          "type": "object",
+          "required": true,
+          "description": "Request body (will be JSON stringified)"
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": ["status", "statusText", "data"]
+      }
+    },
+    "read_database_schema": {
+      "name": "Read Database Schema",
+      "description": "Get the schema of all tables in the agent's session database.",
+      "edge_function": "free-agent-db",
+      "icon": "Database",
+      "category": "database",
+      "parameters": {},
+      "returns": {
+        "type": "object",
+        "properties": ["tables", "relationships"]
+      }
+    },
+    "read_database_table": {
+      "name": "Read Database Table",
+      "description": "Get structure and sample data from a specific table.",
+      "edge_function": "free-agent-db",
+      "icon": "Table",
+      "category": "database",
+      "parameters": {
+        "tableName": {
+          "type": "string",
+          "required": true,
+          "description": "Name of the table to read"
+        },
+        "limit": {
+          "type": "number",
+          "required": false,
+          "default": 100,
+          "description": "Maximum rows to return"
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": ["columns", "rows", "totalCount"]
+      }
+    },
+    "read_database_table_contents": {
+      "name": "Query Database",
+      "description": "Execute a SELECT query on the session database.",
+      "edge_function": "free-agent-db",
+      "icon": "Search",
+      "category": "database",
+      "parameters": {
+        "query": {
+          "type": "string",
+          "required": true,
+          "description": "SQL SELECT query to execute"
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": ["rows", "rowCount"]
+      }
+    },
+    "write_database_table_contents": {
+      "name": "Write to Database",
+      "description": "Execute an INSERT, UPDATE, or DELETE query on the session database.",
+      "edge_function": "free-agent-db",
+      "icon": "Edit",
+      "category": "database",
+      "parameters": {
+        "query": {
+          "type": "string",
+          "required": true,
+          "description": "SQL INSERT/UPDATE/DELETE query to execute"
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": ["affectedRows", "success"]
+      }
+    }
+  },
+  "categories": {
+    "utility": {
+      "name": "Utility",
+      "description": "General utility tools",
+      "color": "#6B7280"
+    },
+    "web": {
+      "name": "Web",
+      "description": "Web search and scraping",
+      "color": "#3B82F6"
+    },
+    "code": {
+      "name": "Code",
+      "description": "GitHub and code analysis",
+      "color": "#8B5CF6"
+    },
+    "memory": {
+      "name": "Memory",
+      "description": "Blackboard and persistent memory",
+      "color": "#F59E0B"
+    },
+    "file": {
+      "name": "File",
+      "description": "File reading and extraction",
+      "color": "#10B981"
+    },
+    "document": {
+      "name": "Document",
+      "description": "PDF and OCR processing",
+      "color": "#EC4899"
+    },
+    "communication": {
+      "name": "Communication",
+      "description": "Email and messaging",
+      "color": "#EF4444"
+    },
+    "interaction": {
+      "name": "Interaction",
+      "description": "User interaction",
+      "color": "#14B8A6"
+    },
+    "generation": {
+      "name": "Generation",
+      "description": "AI content generation",
+      "color": "#F97316"
+    },
+    "export": {
+      "name": "Export",
+      "description": "Document export",
+      "color": "#06B6D4"
+    },
+    "api": {
+      "name": "API",
+      "description": "External API calls",
+      "color": "#84CC16"
+    },
+    "database": {
+      "name": "Database",
+      "description": "Database operations",
+      "color": "#A855F7"
+    }
+  }
+}
