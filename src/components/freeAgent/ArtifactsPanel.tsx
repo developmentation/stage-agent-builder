@@ -1,5 +1,7 @@
 // Artifacts Panel - Display created artifacts
 import React from "react";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -120,11 +122,12 @@ export function ArtifactsPanel({ artifacts, onArtifactClick }: ArtifactsPanelPro
                     </p>
                   )}
 
-                  {/* Preview for text/image - render as markdown */}
+                  {/* Preview for text - render as markdown, full content */}
                   {artifact.type === "text" && (
-                    <div className="text-xs bg-muted/50 p-2 rounded max-h-[120px] overflow-y-auto prose prose-sm prose-invert dark:prose-invert max-w-none break-words whitespace-pre-wrap">
-                      {artifact.content.slice(0, 500)}
-                      {artifact.content.length > 500 && "..."}
+                    <div className="text-xs bg-muted/50 p-2 rounded overflow-y-auto prose prose-sm prose-invert dark:prose-invert max-w-none break-words">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {artifact.content}
+                      </ReactMarkdown>
                     </div>
                   )}
 
