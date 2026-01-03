@@ -26,6 +26,7 @@ interface FreeAgentPanelProps {
   onStart: (prompt: string, files: SessionFile[]) => void;
   onStop: () => void;
   onReset: () => void;
+  onContinue: () => void;
 }
 
 export function FreeAgentPanel({
@@ -34,6 +35,7 @@ export function FreeAgentPanel({
   onStart,
   onStop,
   onReset,
+  onContinue,
 }: FreeAgentPanelProps) {
   const [prompt, setPrompt] = useState("");
   const [files, setFiles] = useState<SessionFile[]>([]);
@@ -148,7 +150,8 @@ export function FreeAgentPanel({
       </CardHeader>
 
       <CardContent className="flex-1 flex flex-col gap-4 overflow-hidden">
-        {!session ? (
+        {/* Show input form when no session OR when session is idle (after Continue) */}
+        {(!session || session.status === "idle") ? (
           <>
             {/* Prompt input */}
             <div className="space-y-2">
@@ -294,9 +297,17 @@ export function FreeAgentPanel({
                   Stop
                 </Button>
               ) : (
-                <Button variant="outline" onClick={onReset} className="flex-1">
-                  Reset
-                </Button>
+                <>
+                  <Button variant="outline" onClick={onReset} className="flex-1">
+                    Reset
+                  </Button>
+                  {session.status === "completed" && (
+                    <Button onClick={onContinue} className="flex-1">
+                      <Play className="w-4 h-4 mr-2" />
+                      Continue
+                    </Button>
+                  )}
+                </>
               )}
             </div>
           </>
