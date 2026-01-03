@@ -23,7 +23,7 @@ import type { FreeAgentSession, SessionFile } from "@/types/freeAgent";
 interface FreeAgentPanelProps {
   session: FreeAgentSession | null;
   isRunning: boolean;
-  onStart: (prompt: string, files: SessionFile[]) => void;
+  onStart: (prompt: string, files: SessionFile[], existingSession?: FreeAgentSession | null) => void;
   onStop: () => void;
   onReset: () => void;
   onContinue: () => void;
@@ -91,7 +91,8 @@ export function FreeAgentPanel({
 
   const handleStart = () => {
     if (!prompt.trim()) return;
-    onStart(prompt, files);
+    // Pass existing session if in "idle" state (after Continue) to preserve memory
+    onStart(prompt, files, session?.status === "idle" ? session : null);
     // Keep prompt and files so user can re-run
   };
 

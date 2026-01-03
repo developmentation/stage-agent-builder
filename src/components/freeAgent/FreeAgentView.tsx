@@ -8,7 +8,7 @@ import { RawViewer } from "./RawViewer";
 import { AssistanceModal } from "./AssistanceModal";
 import { FinalReportModal } from "./FinalReportModal";
 import { useFreeAgentSession } from "@/hooks/useFreeAgentSession";
-import type { ToolsManifest, SessionFile, AssistanceRequest } from "@/types/freeAgent";
+import type { ToolsManifest, SessionFile, AssistanceRequest, FreeAgentSession } from "@/types/freeAgent";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -59,8 +59,8 @@ export function FreeAgentView({ model, maxIterations }: FreeAgentViewProps) {
   }, [session?.status, session?.finalReport]);
 
   const handleStart = useCallback(
-    async (prompt: string, files: SessionFile[]) => {
-      await startSession(prompt, files);
+    async (prompt: string, files: SessionFile[], existingSession?: FreeAgentSession | null) => {
+      await startSession(prompt, files, existingSession);
     },
     [startSession]
   );
