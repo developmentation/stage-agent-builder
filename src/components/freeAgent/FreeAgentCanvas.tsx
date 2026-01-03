@@ -49,6 +49,7 @@ const nodeTypes = {
 };
 
 // Read tools - gather/retrieve information (displayed ABOVE agent)
+// Limited to most important tools to fit in space
 const READ_TOOLS = [
   // Web & Search
   "brave_search", "google_search", "web_scrape",
@@ -56,14 +57,10 @@ const READ_TOOLS = [
   "read_github_repo", "read_github_file",
   // Memory reads
   "read_blackboard", "read_scratchpad", "read_prompt", "read_prompt_files",
-  // File operations
-  "read_file", "read_zip_contents", "read_zip_file", "extract_zip_files",
-  // Documents
+  // Documents & Files
   "pdf_info", "pdf_extract_text", "ocr_image",
   // API reads
   "get_call_api", "get_time", "get_weather",
-  // Reasoning (read-like - they process and return info)
-  "think", "summarize", "analyze"
 ];
 
 // Write tools - create/send/modify (displayed BELOW agent)
@@ -75,27 +72,32 @@ const WRITE_TOOLS = [
   // API writes
   "post_call_api", "execute_sql",
   // Export/Generation
-  "export_word", "export_pdf", "image_generation", "elevenlabs_tts"
+  "export_word", "export_pdf", "image_generation", "elevenlabs_tts",
+  // Reasoning tools (they produce output)
+  "think", "summarize", "analyze",
+  // File operations that create output
+  "read_file", "read_zip_contents", "read_zip_file", "extract_zip_files",
 ];
 
 // Layout dimensions
 const LAYOUT = {
-  // Agent center position (in the middle of the canvas)
-  agentX: 500,
-  agentY: 400,
+  // Agent center position
+  agentX: 550,
+  agentY: 350,
   
-  // Left side - Prompt (same Y as scratchpad)
-  promptX: 60,
-  promptY: 200,
+  // Left side - Prompt
+  // Position so right edge of prompt aligns with left edge of tools area
+  promptX: 50,
+  promptY: 180,  // Same Y as scratchpad
   promptWidth: 280,
   promptHeight: 300,
   
   // User files - below prompt
   userFileGap: 75,
   
-  // Right side - Scratchpad (same Y as prompt)
-  scratchpadX: 900,
-  scratchpadY: 200,
+  // Right side - Scratchpad
+  scratchpadX: 850,
+  scratchpadY: 180,  // Same Y as prompt
   scratchpadWidth: 320,
   scratchpadHeight: 300,
   
@@ -103,19 +105,20 @@ const LAYOUT = {
   artifactGap: 75,
   
   // Tool grid settings
-  toolNodeWidth: 130,
-  toolNodeHeight: 55,
-  toolColumnGap: 20,
-  toolRowGap: 12,
+  toolNodeWidth: 120,
+  toolNodeHeight: 50,
+  toolColumnGap: 15,
+  toolRowGap: 8,
   toolColumns: 2,
   
-  // Read tools - ABOVE agent (centered above agent X)
-  readToolsStartX: 360,  // Will be centered with 2 columns
-  readToolsStartY: 40,   // At top
+  // Read tools - ABOVE agent
+  // Calculate: 2 columns of tools centered above agent
+  readToolsStartX: 420,
+  readToolsStartY: 30,
   
-  // Write tools - BELOW agent
-  writeToolsStartX: 360,
-  writeToolsStartY: 520, // Well below agent (agentY + ~120)
+  // Write tools - BELOW agent  
+  writeToolsStartX: 420,
+  writeToolsStartY: 480,
 };
 
 // Helper to lay out tools in 2 columns
@@ -190,13 +193,30 @@ export function FreeAgentCanvas({
       return defaultPos;
     };
 
-    // === LEFT SIDE: Prompt (always visible) ===
+    // Calculate dynamic positions based on tool counts
+    const availableReadTools = READ_TOOLS.filter(id => toolsManifest.tools[id]);
+    const availableWriteTools = WRITE_TOOLS.filter(id => toolsManifest.tools[id]);
+    
+    const readToolRows = Math.ceil(availableReadTools.length / LAYOUT.toolColumns);
+    const readToolsHeight = readToolRows * (LAYOUT.toolNodeHeight + LAYOUT.toolRowGap);
+    
+    // Agent positioned after read tools with gap
+    const agentY = LAYOUT.readToolsStartY + readToolsHeight + 40;
+    const agentX = LAYOUT.readToolsStartX + (LAYOUT.toolColumns * (LAYOUT.toolNodeWidth + LAYOUT.toolColumnGap)) / 2 - 60;
+    
+    // Write tools positioned after agent
+    const writeToolsStartY = agentY + 140;
+    
+    // Position prompt and scratchpad to be centered with agent Y
+    const sideNodesY = agentY - 80;
+
+    // === LEFT SIDE: Prompt (always visible, always connected) ===
     const promptId = "prompt";
     newNodeIds.add(promptId);
     newNodes.push({
       id: promptId,
       type: "prompt",
-      position: getPosition(promptId, { x: LAYOUT.promptX, y: LAYOUT.promptY }),
+      position: getPosition(promptId, { x: LAYOUT.promptX, y: sideNodesY }),
       data: {
         type: "prompt",
         label: "User Prompt",
@@ -205,20 +225,18 @@ export function FreeAgentCanvas({
       },
     });
 
-    // Edge from prompt to agent LEFT side (only if there's content)
-    if (session?.prompt) {
-      newEdges.push({
-        id: "edge-prompt-agent",
-        source: "prompt",
-        target: "agent",
-        targetHandle: "left",
-        style: { stroke: "#3b82f6", strokeWidth: 1.5, strokeDasharray: "5,5" },
-      });
-    }
+    // Edge from prompt to agent LEFT side (always connected)
+    newEdges.push({
+      id: "edge-prompt-agent",
+      source: "prompt",
+      target: "agent",
+      targetHandle: "left",
+      style: { stroke: "#3b82f6", strokeWidth: 1.5, strokeDasharray: session?.prompt ? undefined : "5,5" },
+    });
 
     // User files (stacked below prompt)
     session?.sessionFiles.forEach((file, index) => {
-      const fileY = LAYOUT.promptY + LAYOUT.promptHeight + 20 + (index * LAYOUT.userFileGap);
+      const fileY = sideNodesY + LAYOUT.promptHeight + 20 + (index * LAYOUT.userFileGap);
       const fileId = `promptFile-${file.id}`;
       newNodeIds.add(fileId);
       
@@ -248,7 +266,6 @@ export function FreeAgentCanvas({
     });
 
     // === READ TOOLS: Above agent in 2 columns ===
-    const availableReadTools = READ_TOOLS.filter(id => toolsManifest.tools[id]);
     const readToolPositions = layoutToolsInColumns(
       availableReadTools,
       LAYOUT.readToolsStartX,
@@ -307,7 +324,7 @@ export function FreeAgentCanvas({
     newNodes.push({
       id: agentId,
       type: "agent",
-      position: getPosition(agentId, { x: LAYOUT.agentX - 60, y: LAYOUT.agentY - 60 }),
+      position: getPosition(agentId, { x: agentX, y: agentY }),
       data: {
         type: "agent",
         label: "Free Agent",
@@ -318,11 +335,10 @@ export function FreeAgentCanvas({
     });
 
     // === WRITE TOOLS: Below agent in 2 columns ===
-    const availableWriteTools = WRITE_TOOLS.filter(id => toolsManifest.tools[id]);
     const writeToolPositions = layoutToolsInColumns(
       availableWriteTools,
       LAYOUT.writeToolsStartX,
-      LAYOUT.writeToolsStartY,
+      writeToolsStartY,
       LAYOUT.toolColumns
     );
 
@@ -376,7 +392,7 @@ export function FreeAgentCanvas({
     newNodes.push({
       id: scratchpadId,
       type: "scratchpad",
-      position: getPosition(scratchpadId, { x: LAYOUT.scratchpadX, y: LAYOUT.scratchpadY }),
+      position: getPosition(scratchpadId, { x: LAYOUT.scratchpadX, y: sideNodesY }),
       style: scratchpadStyle,
       data: {
         type: "scratchpad",
@@ -404,7 +420,7 @@ export function FreeAgentCanvas({
 
     // === Artifacts: Below scratchpad (styled like user files) ===
     session?.artifacts.forEach((artifact, index) => {
-      const artifactY = LAYOUT.scratchpadY + LAYOUT.scratchpadHeight + 20 + (index * LAYOUT.artifactGap);
+      const artifactY = sideNodesY + LAYOUT.scratchpadHeight + 20 + (index * LAYOUT.artifactGap);
       
       const nodeId = `artifact-${artifact.id}`;
       newNodeIds.add(nodeId);
