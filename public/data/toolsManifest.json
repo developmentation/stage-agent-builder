@@ -273,6 +273,72 @@
         "properties": ["filename", "content", "mimeType", "size"]
       }
     },
+    "read_scratchpad": {
+      "name": "Read Scratchpad",
+      "description": "Read the current contents of the scratchpad. The scratchpad is your working output area visible to the user. Use to review results before sending to output or API.",
+      "frontend_handler": true,
+      "icon": "ClipboardCopy",
+      "category": "memory",
+      "parameters": {},
+      "returns": {
+        "type": "string",
+        "description": "Current scratchpad content"
+      }
+    },
+    "write_scratchpad": {
+      "name": "Write Scratchpad",
+      "description": "Write or append content to the scratchpad. The scratchpad is visible to the user in real-time. Use to store working results, analysis outputs, or temporary data.",
+      "frontend_handler": true,
+      "icon": "ClipboardEdit",
+      "category": "memory",
+      "parameters": {
+        "content": {
+          "type": "string",
+          "required": true,
+          "description": "Content to write to scratchpad"
+        },
+        "mode": {
+          "type": "string",
+          "required": false,
+          "default": "append",
+          "enum": ["replace", "append"],
+          "description": "Whether to replace all content or append to existing"
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": ["success", "length"]
+      }
+    },
+    "read_prompt": {
+      "name": "Read Prompt",
+      "description": "Read the original user prompt/instructions. Use to reference back to the task requirements at any time.",
+      "frontend_handler": true,
+      "icon": "MessageSquare",
+      "category": "memory",
+      "parameters": {},
+      "returns": {
+        "type": "string",
+        "description": "The original user prompt"
+      }
+    },
+    "read_prompt_files": {
+      "name": "Read Prompt Files",
+      "description": "Get list of files provided by the user with metadata (id, name, type, size). Use to understand available file inputs before reading them.",
+      "frontend_handler": true,
+      "icon": "Files",
+      "category": "memory",
+      "parameters": {},
+      "returns": {
+        "type": "array",
+        "items": {
+          "id": "string",
+          "filename": "string",
+          "mimeType": "string",
+          "size": "number"
+        }
+      }
+    },
     "read_zip_contents": {
       "name": "Read ZIP Contents",
       "description": "List all files and directories inside a ZIP archive without extracting.",

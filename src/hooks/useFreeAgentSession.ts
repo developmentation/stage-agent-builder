@@ -87,6 +87,18 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
     );
   }, [updateSession]);
 
+  // Handle scratchpad update
+  const handleScratchpadUpdate = useCallback((content: string) => {
+    updateSession((prev) =>
+      prev
+        ? {
+            ...prev,
+            scratchpad: content,
+          }
+        : null
+    );
+  }, [updateSession]);
+
   // Handle assistance request
   const handleAssistanceNeeded = useCallback((request: AssistanceRequest) => {
     updateSession((prev) =>
@@ -179,10 +191,13 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
           
           const result = await executeFrontendTool(handler.tool, handler.params, {
             sessionId: currentSession.id,
+            prompt: currentSession.prompt,
+            scratchpad: currentSession.scratchpad,
             blackboard: currentSession.blackboard,
             sessionFiles: currentSession.sessionFiles,
             onArtifactCreated: handleArtifactCreated,
             onBlackboardUpdate: handleBlackboardUpdate,
+            onScratchpadUpdate: handleScratchpadUpdate,
             onAssistanceNeeded: handleAssistanceNeeded,
           });
 
@@ -311,7 +326,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
         return false;
       }
     },
-    [maxIterations, handleArtifactCreated, handleBlackboardUpdate, handleAssistanceNeeded, updateSession]
+    [maxIterations, handleArtifactCreated, handleBlackboardUpdate, handleScratchpadUpdate, handleAssistanceNeeded, updateSession]
   );
 
   // Start a new session
@@ -329,6 +344,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
           maxIterations,
           currentIteration: 0,
           blackboard: [],
+          scratchpad: "",
           toolCalls: [],
           artifacts: [],
           messages: [
@@ -466,6 +482,11 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
     });
   }, []);
 
+  // Update scratchpad from UI
+  const updateScratchpad = useCallback((content: string) => {
+    handleScratchpadUpdate(content);
+  }, [handleScratchpadUpdate]);
+
   return {
     session,
     isRunning,
@@ -475,5 +496,6 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
     stopSession,
     resetSession,
     setToolActive,
+    updateScratchpad,
   };
 }

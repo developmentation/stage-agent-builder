@@ -131,6 +131,7 @@ export interface FreeAgentSession {
   
   // Memory
   blackboard: BlackboardEntry[];
+  scratchpad: string; // Agent's working output area
   
   // Execution tracking
   toolCalls: ToolCall[];
@@ -223,9 +224,9 @@ export interface AgentResponse {
 
 // Canvas node types for visualization
 export interface FreeAgentNodeData {
-  type: 'agent' | 'tool' | 'artifact' | 'file';
+  type: 'agent' | 'tool' | 'artifact' | 'file' | 'scratchpad' | 'prompt' | 'promptFile';
   label: string;
-  status: 'idle' | 'thinking' | 'active' | 'success' | 'error';
+  status: 'idle' | 'thinking' | 'active' | 'success' | 'error' | 'reading';
   icon?: string;
   category?: string;
   toolId?: string;
@@ -235,6 +236,11 @@ export interface FreeAgentNodeData {
   reasoning?: string;
   artifactType?: ArtifactType;
   mimeType?: string;
+  content?: string; // For scratchpad/prompt content
+  filename?: string; // For promptFile nodes
+  size?: number; // For promptFile nodes
+  isWriting?: boolean; // For scratchpad animation
+  onContentChange?: (content: string) => void; // For scratchpad updates
 }
 
 // Canvas edge for connections

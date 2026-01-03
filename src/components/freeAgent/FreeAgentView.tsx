@@ -30,6 +30,7 @@ export function FreeAgentView({ model, maxIterations }: FreeAgentViewProps) {
     respondToAssistance,
     stopSession,
     resetSession,
+    updateScratchpad,
   } = useFreeAgentSession({ model, maxIterations });
 
   // Load tools manifest
@@ -137,6 +138,7 @@ export function FreeAgentView({ model, maxIterations }: FreeAgentViewProps) {
                 session={session}
                 toolsManifest={toolsManifest}
                 activeToolIds={activeToolIds}
+                onScratchpadChange={updateScratchpad}
               />
             </div>
           )}
@@ -190,6 +192,7 @@ export function FreeAgentView({ model, maxIterations }: FreeAgentViewProps) {
                 session={session}
                 toolsManifest={toolsManifest}
                 activeToolIds={activeToolIds}
+                onScratchpadChange={updateScratchpad}
               />
             </div>
           </ResizablePanel>

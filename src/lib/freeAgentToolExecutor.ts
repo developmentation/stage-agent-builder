@@ -11,10 +11,13 @@ import type {
 
 interface ToolExecutionContext {
   sessionId: string;
+  prompt: string;
+  scratchpad: string;
   blackboard: BlackboardEntry[];
   sessionFiles: SessionFile[];
   onArtifactCreated: (artifact: FreeAgentArtifact) => void;
   onBlackboardUpdate: (entry: BlackboardEntry) => void;
+  onScratchpadUpdate: (content: string) => void;
   onAssistanceNeeded: (request: AssistanceRequest) => void;
 }
 
@@ -43,6 +46,14 @@ export async function executeFrontendTool(
       return executeExportWord(params, context);
     case "export_pdf":
       return executeExportPdf(params, context);
+    case "read_scratchpad":
+      return executeReadScratchpad(context);
+    case "write_scratchpad":
+      return executeWriteScratchpad(params, context);
+    case "read_prompt":
+      return executeReadPrompt(context);
+    case "read_prompt_files":
+      return executeReadPromptFiles(context);
     default:
       return { success: false, error: `Unknown frontend tool: ${tool}` };
   }
@@ -147,6 +158,65 @@ async function executeRequestAssistance(
   return {
     success: true,
     result: { awaiting_response: true, request_id: request.id },
+  };
+}
+
+// Read scratchpad content
+async function executeReadScratchpad(
+  context: ToolExecutionContext
+): Promise<ToolResult> {
+  return {
+    success: true,
+    result: context.scratchpad || "",
+  };
+}
+
+// Write to scratchpad
+async function executeWriteScratchpad(
+  params: Record<string, unknown>,
+  context: ToolExecutionContext
+): Promise<ToolResult> {
+  try {
+    const content = params.content as string;
+    const mode = (params.mode as string) || "append";
+    
+    const newContent = mode === "append" 
+      ? (context.scratchpad || "") + (context.scratchpad ? "\n\n" : "") + content 
+      : content;
+    
+    context.onScratchpadUpdate(newContent);
+
+    return {
+      success: true,
+      result: { success: true, length: newContent.length },
+    };
+  } catch (error) {
+    return { success: false, error: error instanceof Error ? error.message : "Failed to write scratchpad" };
+  }
+}
+
+// Read original prompt
+async function executeReadPrompt(
+  context: ToolExecutionContext
+): Promise<ToolResult> {
+  return {
+    success: true,
+    result: context.prompt,
+  };
+}
+
+// Read prompt files metadata
+async function executeReadPromptFiles(
+  context: ToolExecutionContext
+): Promise<ToolResult> {
+  return {
+    success: true,
+    result: context.sessionFiles.map((f) => ({
+      id: f.id,
+      filename: f.filename,
+      mimeType: f.mimeType,
+      size: f.size,
+    })),
   };
 }
 

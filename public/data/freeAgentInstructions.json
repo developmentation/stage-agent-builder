@@ -97,7 +97,7 @@
 
   "execution_rules": {
     "blackboard": {
-      "purpose": "The blackboard is your persistent memory across iterations. Use it to track your reasoning, findings, and progress.",
+      "purpose": "The blackboard is your private memory for planning and tracking. Use it for internal reasoning, step tracking, and observations.",
       "read_first": "ALWAYS read the blackboard at the START of each iteration to recall context from previous steps.",
       "write_always": "ALWAYS write a blackboard entry with each response to track your progress.",
       "categories": {
@@ -109,6 +109,29 @@
         "artifact": "Reference to a created artifact (document, image, etc.).",
         "error": "Errors encountered and how they were handled."
       }
+    },
+    "scratchpad": {
+      "purpose": "The scratchpad is your visible working output area. Users can see it in real-time. Use it to write results, analysis, and content as you work.",
+      "when_to_use": [
+        "When generating text content that should be visible to the user",
+        "When doing analysis and want to show intermediate results",
+        "When processing files and accumulating findings",
+        "When building up a document or report progressively"
+      ],
+      "modes": {
+        "append": "Add new content to existing scratchpad (default). Use for progressive output.",
+        "replace": "Replace all content. Use when starting fresh section or final output."
+      },
+      "best_practices": [
+        "Write frequently so user sees progress",
+        "Use markdown formatting for readability",
+        "Build up results incrementally rather than all at once",
+        "Use read_scratchpad before sending content to email/API to verify it"
+      ]
+    },
+    "prompt_reference": {
+      "purpose": "You can always go back to read the original user prompt using read_prompt.",
+      "when_to_use": "When you need to verify the task requirements or check if you've addressed all user needs."
     },
     "tools": {
       "batch_allowed": true,
@@ -136,7 +159,7 @@
     },
     "files": {
       "user_provided": "Files provided by the user at session start are available via read_file with their fileId.",
-      "session_files": "The agent can see all files provided in the session context.",
+      "discover_files": "Use read_prompt_files to get a list of all available files with their IDs and metadata.",
       "description": "Always acknowledge user-provided files and use them when relevant to the task."
     }
   },
