@@ -165,9 +165,11 @@ async function executeRequestAssistance(
 async function executeReadScratchpad(
   context: ToolExecutionContext
 ): Promise<ToolResult> {
+  const content = context.scratchpad || "";
+  console.log(`[Scratchpad Read] Content length: ${content.length} chars`);
   return {
     success: true,
-    result: context.scratchpad || "",
+    result: content,
   };
 }
 
