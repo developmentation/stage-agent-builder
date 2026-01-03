@@ -178,6 +178,11 @@ async function executeWriteScratchpad(
 ): Promise<ToolResult> {
   try {
     const content = params.content as string;
+    const contentLength = content?.length || 0;
+    const preview = content?.slice(0, 100) || '';
+    console.log(`[Scratchpad Write] Content length: ${contentLength} chars`);
+    console.log(`[Scratchpad Write] Preview: ${preview}...`);
+    
     const mode = (params.mode as string) || "append";
     
     const newContent = mode === "append" 
