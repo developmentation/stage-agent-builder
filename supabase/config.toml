@@ -50,3 +50,24 @@ verify_jwt = false
 
 [functions.external-db]
 verify_jwt = false
+
+[functions.tool_zip-handler]
+verify_jwt = false
+
+[functions.tool_pdf-handler]
+verify_jwt = false
+
+[functions.tool_ocr-handler]
+verify_jwt = false
+
+[functions.tool_weather]
+verify_jwt = false
+
+[functions.tool_think]
+verify_jwt = false
+
+[functions.tool_summarize]
+verify_jwt = false
+
+[functions.tool_analyze]
+verify_jwt = false

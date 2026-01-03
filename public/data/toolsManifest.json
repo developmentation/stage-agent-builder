@@ -21,6 +21,31 @@
         "properties": ["utc", "timestamp", "date", "time", "timezone", "year", "month", "day", "hours", "minutes", "seconds"]
       }
     },
+    "get_weather": {
+      "name": "Get Weather",
+      "description": "Get current weather and forecast for a location",
+      "edge_function": "tool_weather",
+      "icon": "Cloud",
+      "category": "utility",
+      "parameters": {
+        "location": {
+          "type": "string",
+          "required": true,
+          "description": "City name or location (e.g., 'London', 'New York, NY')"
+        },
+        "units": {
+          "type": "string",
+          "required": false,
+          "default": "metric",
+          "enum": ["metric", "imperial"],
+          "description": "Temperature units"
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": ["location", "current", "forecast", "units"]
+      }
+    },
     "brave_search": {
       "name": "Web Search",
       "description": "Search the web using Brave Search API. Returns titles, URLs, and descriptions.",
@@ -49,6 +74,39 @@
               "title": "string",
               "url": "string",
               "description": "string"
+            }
+          }
+        }
+      }
+    },
+    "google_search": {
+      "name": "Google Search",
+      "description": "Search the web using Google Custom Search API.",
+      "edge_function": "google-search",
+      "icon": "Search",
+      "category": "web",
+      "parameters": {
+        "query": {
+          "type": "string",
+          "required": true,
+          "description": "Search query"
+        },
+        "numResults": {
+          "type": "number",
+          "required": false,
+          "default": 10,
+          "description": "Number of results to return"
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "title": "string",
+              "url": "string",
+              "snippet": "string"
             }
           }
         }
@@ -218,14 +276,20 @@
     "read_zip_contents": {
       "name": "Read ZIP Contents",
       "description": "List all files and directories inside a ZIP archive without extracting.",
-      "edge_function": "zip-handler",
+      "edge_function": "tool_zip-handler",
       "icon": "Archive",
       "category": "file",
       "parameters": {
-        "fileId": {
+        "fileData": {
           "type": "string",
           "required": true,
-          "description": "ID of the ZIP file from session"
+          "description": "Base64 encoded ZIP file data"
+        },
+        "action": {
+          "type": "string",
+          "required": true,
+          "default": "list",
+          "description": "Action to perform (always 'list' for this tool)"
         }
       },
       "returns": {
@@ -241,14 +305,20 @@
     "read_zip_file": {
       "name": "Read ZIP File Entry",
       "description": "Extract and read a specific file from a ZIP archive.",
-      "edge_function": "zip-handler",
+      "edge_function": "tool_zip-handler",
       "icon": "FileArchive",
       "category": "file",
       "parameters": {
-        "fileId": {
+        "fileData": {
           "type": "string",
           "required": true,
-          "description": "ID of the ZIP file"
+          "description": "Base64 encoded ZIP file data"
+        },
+        "action": {
+          "type": "string",
+          "required": true,
+          "default": "read",
+          "description": "Action to perform (always 'read' for this tool)"
         },
         "entryPath": {
           "type": "string",
@@ -263,15 +333,21 @@
     },
     "extract_zip_files": {
       "name": "Extract ZIP Files",
-      "description": "Extract all or selected files from a ZIP archive to session storage.",
-      "edge_function": "zip-handler",
+      "description": "Extract all or selected files from a ZIP archive.",
+      "edge_function": "tool_zip-handler",
       "icon": "FolderOutput",
       "category": "file",
       "parameters": {
-        "fileId": {
+        "fileData": {
           "type": "string",
           "required": true,
-          "description": "ID of the ZIP file"
+          "description": "Base64 encoded ZIP file data"
+        },
+        "action": {
+          "type": "string",
+          "required": true,
+          "default": "extract",
+          "description": "Action to perform (always 'extract' for this tool)"
         },
         "paths": {
           "type": "array",
@@ -284,62 +360,183 @@
         "type": "array",
         "items": {
           "path": "string",
-          "fileId": "string",
-          "size": "number"
+          "data": "string",
+          "size": "number",
+          "mimeType": "string"
         }
       }
     },
-    "rasterize_pdf": {
-      "name": "Rasterize PDF",
-      "description": "Convert PDF pages to images for visual inspection or OCR.",
-      "edge_function": "pdf-handler",
-      "icon": "FileImage",
+    "pdf_info": {
+      "name": "Get PDF Info",
+      "description": "Get information about a PDF file including page count and metadata.",
+      "edge_function": "tool_pdf-handler",
+      "icon": "FileText",
       "category": "document",
       "parameters": {
-        "fileId": {
+        "fileData": {
           "type": "string",
           "required": true,
-          "description": "ID of the PDF file from session"
+          "description": "Base64 encoded PDF file data"
+        },
+        "action": {
+          "type": "string",
+          "required": true,
+          "default": "info",
+          "description": "Action to perform"
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": ["version", "estimatedPageCount", "sizeBytes", "hasEncryption"]
+      }
+    },
+    "pdf_extract_text": {
+      "name": "Extract PDF Text",
+      "description": "Extract text content from a PDF file.",
+      "edge_function": "tool_pdf-handler",
+      "icon": "FileSearch",
+      "category": "document",
+      "parameters": {
+        "fileData": {
+          "type": "string",
+          "required": true,
+          "description": "Base64 encoded PDF file data"
+        },
+        "action": {
+          "type": "string",
+          "required": true,
+          "default": "extract_text",
+          "description": "Action to perform"
         },
         "pages": {
           "type": "array",
           "items": "number",
           "required": false,
-          "description": "Page numbers to convert (1-indexed, all if empty)"
-        },
-        "dpi": {
-          "type": "number",
-          "required": false,
-          "default": 150,
-          "description": "Resolution in DPI"
+          "description": "Page numbers to extract (1-indexed, all if empty)"
         }
       },
       "returns": {
-        "type": "array",
-        "items": {
-          "page": "number",
-          "imageData": "string",
-          "width": "number",
-          "height": "number"
-        }
+        "type": "object",
+        "properties": ["extractedText", "textLength"]
       }
     },
     "ocr_image": {
       "name": "OCR Image",
       "description": "Extract text from an image using optical character recognition.",
-      "edge_function": "ocr-handler",
+      "edge_function": "tool_ocr-handler",
       "icon": "ScanText",
       "category": "document",
       "parameters": {
         "imageSource": {
           "type": "string",
           "required": true,
-          "description": "File ID, image URL, or base64 data URI"
+          "description": "Base64 data, data URI, or image URL"
+        },
+        "language": {
+          "type": "string",
+          "required": false,
+          "default": "en",
+          "description": "Language hint for OCR"
         }
       },
       "returns": {
         "type": "object",
         "properties": ["text", "confidence", "language"]
+      }
+    },
+    "think": {
+      "name": "Think",
+      "description": "Use AI to reason through a problem, analyze options, or think step-by-step about a complex task.",
+      "edge_function": "tool_think",
+      "icon": "Brain",
+      "category": "reasoning",
+      "parameters": {
+        "prompt": {
+          "type": "string",
+          "required": true,
+          "description": "The problem or question to think through"
+        },
+        "context": {
+          "type": "string",
+          "required": false,
+          "description": "Additional context to consider"
+        },
+        "task": {
+          "type": "string",
+          "required": false,
+          "enum": ["analyze", "plan", "decide", "compare", "troubleshoot"],
+          "description": "Type of thinking task"
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": ["thinking", "model"]
+      }
+    },
+    "summarize": {
+      "name": "Summarize",
+      "description": "Create a summary of content using AI. Supports various summary styles.",
+      "edge_function": "tool_summarize",
+      "icon": "FileText",
+      "category": "reasoning",
+      "parameters": {
+        "content": {
+          "type": "string",
+          "required": true,
+          "description": "Content to summarize"
+        },
+        "style": {
+          "type": "string",
+          "required": false,
+          "default": "concise",
+          "enum": ["concise", "detailed", "bullets", "executive", "technical"],
+          "description": "Summary style"
+        },
+        "maxLength": {
+          "type": "number",
+          "required": false,
+          "description": "Target word count"
+        },
+        "focus": {
+          "type": "string",
+          "required": false,
+          "description": "Specific area to focus on"
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": ["summary", "style", "wordCount", "compressionRatio"]
+      }
+    },
+    "analyze": {
+      "name": "Analyze",
+      "description": "Perform structured analysis on content using AI.",
+      "edge_function": "tool_analyze",
+      "icon": "BarChart2",
+      "category": "reasoning",
+      "parameters": {
+        "content": {
+          "type": "string",
+          "required": true,
+          "description": "Content to analyze"
+        },
+        "analysisType": {
+          "type": "string",
+          "required": false,
+          "default": "general",
+          "enum": ["general", "sentiment", "structure", "argument", "comparison", "swot", "stakeholder"],
+          "description": "Type of analysis"
+        },
+        "questions": {
+          "type": "array",
+          "items": "string",
+          "required": false,
+          "description": "Specific questions to address"
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": ["analysis", "analysisType"]
       }
     },
     "send_email": {
@@ -435,6 +632,35 @@
       "returns": {
         "type": "object",
         "properties": ["imageUrl", "mimeType", "model"]
+      }
+    },
+    "elevenlabs_tts": {
+      "name": "Text to Speech",
+      "description": "Convert text to speech using ElevenLabs API.",
+      "edge_function": "elevenlabs-tts",
+      "icon": "Volume2",
+      "category": "generation",
+      "parameters": {
+        "text": {
+          "type": "string",
+          "required": true,
+          "description": "Text to convert to speech"
+        },
+        "voiceId": {
+          "type": "string",
+          "required": false,
+          "description": "ElevenLabs voice ID"
+        },
+        "modelId": {
+          "type": "string",
+          "required": false,
+          "default": "eleven_turbo_v2_5",
+          "description": "ElevenLabs model ID"
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": ["audioData", "contentType"]
       }
     },
     "export_word": {
@@ -569,68 +795,6 @@
         "type": "object",
         "properties": ["success", "columns", "rows", "rowCount", "command"]
       }
-    },
-    "google_search": {
-      "name": "Google Search",
-      "description": "Search the web using Google Custom Search API.",
-      "edge_function": "google-search",
-      "icon": "Search",
-      "category": "web",
-      "parameters": {
-        "query": {
-          "type": "string",
-          "required": true,
-          "description": "Search query"
-        },
-        "numResults": {
-          "type": "number",
-          "required": false,
-          "default": 10,
-          "description": "Number of results to return"
-        }
-      },
-      "returns": {
-        "type": "object",
-        "properties": {
-          "results": {
-            "type": "array",
-            "items": {
-              "title": "string",
-              "url": "string",
-              "snippet": "string"
-            }
-          }
-        }
-      }
-    },
-    "elevenlabs_tts": {
-      "name": "Text to Speech",
-      "description": "Convert text to speech using ElevenLabs API.",
-      "edge_function": "elevenlabs-tts",
-      "icon": "Volume2",
-      "category": "generation",
-      "parameters": {
-        "text": {
-          "type": "string",
-          "required": true,
-          "description": "Text to convert to speech"
-        },
-        "voiceId": {
-          "type": "string",
-          "required": false,
-          "description": "ElevenLabs voice ID"
-        },
-        "modelId": {
-          "type": "string",
-          "required": false,
-          "default": "eleven_turbo_v2_5",
-          "description": "ElevenLabs model ID"
-        }
-      },
-      "returns": {
-        "type": "object",
-        "properties": ["audioData", "contentType"]
-      }
     }
   },
   "categories": {
@@ -663,6 +827,11 @@
       "name": "Document",
       "description": "PDF and OCR processing",
       "color": "#EC4899"
+    },
+    "reasoning": {
+      "name": "Reasoning",
+      "description": "AI-powered thinking and analysis",
+      "color": "#6366F1"
     },
     "communication": {
       "name": "Communication",
