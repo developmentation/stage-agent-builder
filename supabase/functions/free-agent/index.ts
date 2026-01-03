@@ -17,6 +17,7 @@ interface FreeAgentRequest {
   sessionFiles: Array<{ id: string; filename: string; mimeType: string; size: number; content?: string }>;
   previousToolResults?: Array<{ tool: string; success: boolean; result?: unknown; error?: string }>;
   iteration: number;
+  scratchpad?: string;
   assistanceResponse?: { response?: string; fileId?: string; selectedChoice?: string };
 }
 
@@ -26,6 +27,7 @@ function buildSystemPrompt(
   sessionFiles: Array<{ id: string; filename: string; mimeType: string; size: number; content?: string }>,
   previousResults: Array<{ tool: string; result?: unknown }>,
   iteration: number,
+  scratchpad: string,
   assistanceResponse?: { response?: string; fileId?: string; selectedChoice?: string }
 ) {
   const toolsList = `
@@ -39,14 +41,14 @@ Available Tools:
 - send_email: Send email via Resend (params: to, subject, body, useHtml?)
 - image_generation: Generate image from prompt (params: prompt)
 - get_call_api: Make GET request (params: url, headers?)
-- post_call_api: Make POST request (params: url, headers?, body)
+- post_call_api: Make POST request (params: url, headers?)
 - read_blackboard: Read your memory entries (params: filter?)
 - write_blackboard: Write to your memory (params: category, content, data?)
-- read_file: Read session file content (params: fileId) - IMPORTANT: Use the exact fileId from the list below
+- read_file: Read session file content (params: fileId)
 - read_prompt: Read the original user prompt
 - read_prompt_files: Get list of available files with metadata
 - read_scratchpad: Read your working scratchpad content
-- write_scratchpad: Write to your scratchpad (params: content, mode?)
+- write_scratchpad: Write to your scratchpad (params: content, mode?) - USE THIS TO SAVE DATA!
 - request_assistance: Ask user for input (params: question, context?, inputType?, choices?)
 - export_word: Create Word document (params: content, filename?)
 - export_pdf: Create PDF document (params: content, filename?)
@@ -59,58 +61,71 @@ Available Tools:
   if (sessionFiles.length > 0) {
     const filesList = sessionFiles.map(f => {
       let fileInfo = `- ${f.filename} (fileId: "${f.id}", type: ${f.mimeType}, size: ${f.size} bytes)`;
-      // For small text files, include content directly
       if (f.content && f.size < 50000 && (f.mimeType.startsWith('text/') || f.mimeType.includes('json') || f.mimeType.includes('xml') || f.mimeType.includes('javascript') || f.mimeType.includes('typescript'))) {
         fileInfo += `\n  Content:\n\`\`\`\n${f.content.slice(0, 10000)}\n\`\`\``;
       }
       return fileInfo;
     }).join('\n');
-    filesSection = `\nSession Files Available:\n${filesList}\n\nNOTE: Use read_file with the exact fileId shown above (e.g., read_file with fileId: "abc-123-def") to read file contents.`;
+    filesSection = `\nSession Files Available:\n${filesList}\n\nUse read_file with the exact fileId to read file contents.`;
   }
 
   const blackboardSection = blackboard.length > 0
-    ? `\nYour Blackboard Memory:\n${blackboard.map(e => `[${e.category}] ${e.content}`).join('\n')}`
-    : '\nBlackboard is empty. This is the first iteration.';
+    ? `\nYour Blackboard (Planning & Tracking):\n${blackboard.map(e => `[${e.category}] ${e.content}`).join('\n')}`
+    : '\nBlackboard is empty. Use it to track your plan and progress.';
+
+  // Scratchpad is the PERSISTENT memory - show it prominently
+  const scratchpadSection = scratchpad && scratchpad.trim()
+    ? `\n## YOUR SCRATCHPAD (Persistent Memory - Contains Your Accumulated Findings):\n\`\`\`\n${scratchpad.slice(0, 30000)}\n\`\`\``
+    : '\n## YOUR SCRATCHPAD: Empty. Write your findings here to persist them!';
 
   const resultsSection = previousResults.length > 0
-    ? `\nPrevious Tool Results:\n${JSON.stringify(previousResults, null, 2)}`
+    ? `\n## PREVIOUS ITERATION'S TOOL RESULTS (Only available THIS iteration - save important data to scratchpad!):\n${JSON.stringify(previousResults, null, 2)}`
     : '';
 
   // Include user's assistance response if provided
   let assistanceSection = '';
   if (assistanceResponse && (assistanceResponse.response || assistanceResponse.selectedChoice)) {
     const userAnswer = assistanceResponse.response || assistanceResponse.selectedChoice;
-    assistanceSection = `\n\n## User Response to Your Previous Question\nThe user has provided the following answer: "${userAnswer}"\nYou MUST incorporate this answer into your next action. Do NOT ask the same question again.`;
+    assistanceSection = `\n\n## User Response to Your Previous Question\nThe user answered: "${userAnswer}"\nYou MUST incorporate this answer. Do NOT ask the same question again.`;
   }
 
-  return `You are FreeAgent, an autonomous AI assistant. You accomplish tasks by using tools and tracking your progress on a blackboard.
+  return `You are FreeAgent, an autonomous AI assistant. You accomplish tasks by using tools and tracking your progress.
 
 ${toolsList}
 ${filesSection}
 ${blackboardSection}
+${scratchpadSection}
 ${resultsSection}${assistanceSection}
 
 Current Iteration: ${iteration}
 
+## CRITICAL MEMORY RULES:
+1. **Tool results are EPHEMERAL** - they only exist for ONE iteration then disappear forever
+2. **IMMEDIATELY after ANY tool returns data**, you MUST call write_scratchpad to save the results
+3. **Before re-reading a file or re-fetching data**, CHECK your scratchpad first - it may already be there
+4. **Scratchpad is your PERSISTENT memory** - anything you want to remember MUST be written there
+5. **Blackboard is for PLANNING** - use it to track what you've done and what's next
+6. If you find yourself reading the same file twice, STOP and check your scratchpad
+
 ## Response Format
-You MUST respond with valid JSON only. No markdown, no explanation outside JSON:
+You MUST respond with valid JSON only. No markdown outside JSON:
 {
-  "reasoning": "Your chain-of-thought about what to do next",
+  "reasoning": "Your thought process",
   "tool_calls": [{ "tool": "tool_name", "params": { ... } }],
-  "blackboard_entry": { "category": "observation|insight|question|decision|plan|artifact|error", "content": "What you learned" },
+  "blackboard_entry": { "category": "observation|insight|plan|decision|error", "content": "What you did/learned" },
   "status": "in_progress|completed|needs_assistance|error",
   "message_to_user": "Optional progress message",
   "artifacts": [{ "type": "text|file|image|data", "title": "Title", "content": "Content", "description": "Description" }],
   "final_report": { "summary": "...", "tools_used": [...], "artifacts_created": [...], "key_findings": [...] }
 }
 
-Rules:
-1. ALWAYS write a blackboard_entry each iteration to track your progress
-2. Set status to "completed" when task is done, include final_report
-3. Use request_assistance when you need user input
-4. Can call up to 5 tools per iteration
-5. Artifacts appear on the user's canvas
-6. When using read_file, use the EXACT fileId string shown in the session files list above`;
+## Workflow:
+1. Check your scratchpad for existing findings before making tool calls
+2. Make tool calls as needed
+3. ALWAYS write important results to scratchpad immediately
+4. Update blackboard with your plan/progress
+5. Set status to "completed" with final_report when done
+6. Use artifacts for FINAL deliverables only`;
 }
 
 // Execute a single tool call against edge functions
@@ -270,20 +285,23 @@ serve(async (req) => {
       sessionFiles = [],
       previousToolResults = [],
       iteration = 1,
+      scratchpad = "",
       assistanceResponse,
     } = request;
 
     console.log(`Free Agent iteration ${iteration}, prompt: ${prompt.slice(0, 100)}...`);
+    console.log(`Scratchpad length: ${scratchpad.length} chars`);
     if (assistanceResponse) {
       console.log(`User assistance response: ${JSON.stringify(assistanceResponse)}`);
     }
 
-    // Build prompt and call LLM
+    // Build prompt and call LLM - include scratchpad for persistent memory
     const systemPrompt = buildSystemPrompt(
       blackboard,
       sessionFiles,
       previousToolResults.map(t => ({ tool: t.tool, result: t.result })),
       iteration,
+      scratchpad,
       assistanceResponse
     );
 
