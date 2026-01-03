@@ -15,6 +15,7 @@ import {
   ClipboardList,
   Copy,
   MessageSquarePlus,
+  CircleDot,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { BlackboardEntry } from "@/types/freeAgent";
@@ -70,6 +71,18 @@ const categoryConfig: Record<
   },
 };
 
+// Fallback for unknown categories
+const defaultConfig = {
+  icon: <CircleDot className="w-3 h-3" />,
+  color: "bg-gray-500/20 text-gray-500 border-gray-500/30",
+  label: "Unknown",
+};
+
+// Safe getter for category config
+function getCategoryConfig(category: string) {
+  return categoryConfig[category as BlackboardEntry["category"]] || defaultConfig;
+}
+
 export function BlackboardViewer({ entries }: BlackboardViewerProps) {
   const copyAllToClipboard = () => {
     if (entries.length === 0) {
@@ -79,7 +92,7 @@ export function BlackboardViewer({ entries }: BlackboardViewerProps) {
     
     const text = entries
       .map((entry) => {
-        const config = categoryConfig[entry.category];
+        const config = getCategoryConfig(entry.category);
         return `[${config.label} #${entry.iteration}]\n${safeStringify(entry.content)}${
           entry.data ? `\nData: ${JSON.stringify(entry.data, null, 2)}` : ""
         }`;
@@ -120,7 +133,7 @@ export function BlackboardViewer({ entries }: BlackboardViewerProps) {
           <ScrollArea className="h-full px-4 pb-4">
             <div className="space-y-2">
               {entries.map((entry) => {
-                const config = categoryConfig[entry.category];
+                const config = getCategoryConfig(entry.category);
                 return (
                   <div
                     key={entry.id}
