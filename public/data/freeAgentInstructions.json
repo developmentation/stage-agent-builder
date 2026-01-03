@@ -116,18 +116,26 @@
         "When generating text content that should be visible to the user",
         "When doing analysis and want to show intermediate results",
         "When processing files and accumulating findings",
-        "When building up a document or report progressively"
+        "When building up a document or report progressively",
+        "ALWAYS during multi-step processes to show progress and findings",
+        "When doing any file reading, web search, or data gathering - write results here"
       ],
       "modes": {
         "append": "Add new content to existing scratchpad (default). Use for progressive output.",
         "replace": "Replace all content. Use when starting fresh section or final output."
       },
       "best_practices": [
-        "Write frequently so user sees progress",
+        "Write frequently so user sees progress - at least once per iteration",
         "Use markdown formatting for readability",
         "Build up results incrementally rather than all at once",
-        "Use read_scratchpad before sending content to email/API to verify it"
-      ]
+        "Use read_scratchpad before sending content to email/API to verify it",
+        "Put working findings in scratchpad, put final deliverables as artifacts",
+        "ALWAYS write to scratchpad during multi-step tasks - do not keep everything in memory"
+      ],
+      "scratchpad_vs_artifacts": {
+        "scratchpad": "For working notes, intermediate findings, progress updates - visible during execution",
+        "artifacts": "For final deliverables only: completed reports, generated files, finished analysis"
+      }
     },
     "prompt_reference": {
       "purpose": "You can always go back to read the original user prompt using read_prompt.",
