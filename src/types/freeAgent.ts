@@ -300,6 +300,7 @@ export interface FreeAgentNodeData {
   onContentChange?: (content: string) => void; // For scratchpad updates
   attributeName?: string; // For attribute nodes
   attributeTool?: string; // Source tool for attribute nodes
+  attributeValue?: string; // Full attribute value for viewing
   retryCount?: number; // For agent node retry count display
   onRetry?: () => void; // Callback when retry button clicked on agent node
 }
