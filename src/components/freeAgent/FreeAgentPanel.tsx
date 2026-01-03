@@ -86,6 +86,8 @@ export function FreeAgentPanel({
   const handleClear = () => {
     setPrompt("");
     setFiles([]);
+    // Also reset session to clear blackboard, scratchpad, and attributes
+    onReset();
   };
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const uploadedFiles = e.target.files;
