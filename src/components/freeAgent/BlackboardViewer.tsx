@@ -14,6 +14,7 @@ import {
   AlertTriangle,
   ClipboardList,
   Copy,
+  MessageSquarePlus,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { BlackboardEntry } from "@/types/freeAgent";
@@ -60,6 +61,11 @@ const categoryConfig: Record<
     icon: <AlertTriangle className="w-3 h-3" />,
     color: "bg-red-500/20 text-red-500 border-red-500/30",
     label: "Error",
+  },
+  user_interjection: {
+    icon: <MessageSquarePlus className="w-3 h-3" />,
+    color: "bg-orange-500/20 text-orange-500 border-orange-500/30",
+    label: "User Interjection",
   },
 };
 

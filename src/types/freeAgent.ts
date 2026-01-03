@@ -7,7 +7,8 @@ export type BlackboardCategory =
   | 'decision' 
   | 'plan' 
   | 'artifact' 
-  | 'error';
+  | 'error'
+  | 'user_interjection';
 
 export type FreeAgentStatus = 
   | 'idle' 

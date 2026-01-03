@@ -67,7 +67,7 @@ interface CacheEntry {
 const MAX_RETRY_ATTEMPTS = 3;
 
 export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
-  const { maxIterations = 50 } = options;
+  const { maxIterations: defaultMaxIterations = 50 } = options;
 
   const [session, setSession] = useState<FreeAgentSession | null>(null);
   const [isRunning, setIsRunning] = useState(false);
@@ -84,9 +84,14 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
   // Tool cache for expensive operations - caches EXACT duplicate requests only
   const toolCacheRef = useRef<Map<string, CacheEntry>>(new Map());
   
-  // Retry tracking refs for synchronous access during iteration loop
+  // Retry and iteration tracking refs for synchronous access during iteration loop
   const retryCountRef = useRef(0);
   const lastErrorIterationRef = useRef(0);
+  const maxIterationsRef = useRef(defaultMaxIterations);
+  
+  // Interject handling refs
+  const pendingInterjectRef = useRef<string | null>(null);
+  const interjectResolverRef = useRef<(() => void) | null>(null);
   
   // Update session and persist to localStorage
   const updateSession = useCallback((updater: (prev: FreeAgentSession | null) => FreeAgentSession | null) => {
@@ -188,7 +193,8 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
       currentSession: FreeAgentSession,
       previousIterationResults: ToolResult[]
     ): Promise<{ continue: boolean; toolResults: ToolResult[]; hadError?: boolean; errorMessage?: string }> => {
-      if (iterationRef.current >= maxIterations) {
+      const maxIter = maxIterationsRef.current;
+      if (iterationRef.current >= maxIter) {
         toast.warning("Max iterations reached");
         return { continue: false, toolResults: [] };
       }
@@ -579,7 +585,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
         return { continue: false, toolResults: [], hadError: true, errorMessage };
       }
     },
-    [maxIterations, handleArtifactCreated, handleBlackboardUpdate, handleScratchpadUpdate, handleAssistanceNeeded, handleAttributeCreated, updateSession]
+    [handleArtifactCreated, handleBlackboardUpdate, handleScratchpadUpdate, handleAssistanceNeeded, handleAttributeCreated, updateSession]
   );
 
   // Run the iteration loop with retry logic
@@ -587,8 +593,19 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
     async (sessionId: string, initialSession: FreeAgentSession, initialToolResults: ToolResult[] = []) => {
       let shouldContinue = true;
       let lastToolResults = initialToolResults;
+      const maxIter = maxIterationsRef.current;
       
-      while (shouldContinue && !shouldStopRef.current && iterationRef.current < maxIterations) {
+      while (shouldContinue && !shouldStopRef.current && iterationRef.current < maxIter) {
+        // Check for pending interject - if so, wait for user input
+        if (pendingInterjectRef.current !== null) {
+          console.log("[Interject] Waiting for user input...");
+          // Wait for interject to be processed
+          await new Promise<void>((resolve) => {
+            interjectResolverRef.current = resolve;
+          });
+          interjectResolverRef.current = null;
+          console.log("[Interject] Resuming after user input");
+        }
         // Check stop flag at start of each iteration
         if (shouldStopRef.current) {
           console.log("Stop requested, breaking loop");
@@ -656,17 +673,19 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
         }
       }
     },
-    [maxIterations, executeIteration, updateSession]
+    [executeIteration, updateSession]
   );
 
   // Start a new session (or resume with preserved memory if existingSession provided)
   const startSession = useCallback(
-    async (prompt: string, files: SessionFile[] = [], model: string = "gemini-2.5-flash", existingSession?: FreeAgentSession | null) => {
+    async (prompt: string, files: SessionFile[] = [], model: string = "gemini-2.5-flash", maxIterations: number = defaultMaxIterations, existingSession?: FreeAgentSession | null) => {
       try {
         setIsRunning(true);
         iterationRef.current = 0;
         retryCountRef.current = 0;
         lastErrorIterationRef.current = 0;
+        maxIterationsRef.current = maxIterations;
+        pendingInterjectRef.current = null;
 
         // If continuing from an existing session, preserve memory (blackboard, scratchpad, artifacts)
         const newSession: FreeAgentSession = {
@@ -724,7 +743,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
         throw error;
       }
     },
-    [maxIterations, runIterationLoop]
+    [defaultMaxIterations, runIterationLoop]
   );
 
   // Respond to assistance request
@@ -891,6 +910,45 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
     return toolCacheRef.current.size;
   }, []);
 
+  // Interject - add user message to blackboard and re-run current iteration
+  const interjectSession = useCallback((message: string) => {
+    if (!session || !isRunning) return;
+    
+    console.log("[Interject] User interjecting with:", message);
+    
+    // Add user interjection to blackboard
+    const entry: BlackboardEntry = {
+      id: crypto.randomUUID(),
+      timestamp: new Date().toISOString(),
+      category: "user_interjection",
+      content: `[USER INTERJECTION] ${message}`,
+      iteration: iterationRef.current,
+    };
+    
+    handleBlackboardUpdate(entry);
+    
+    // Rollback iteration counter so current iteration is re-executed with new info
+    if (iterationRef.current > 0) {
+      iterationRef.current--;
+    }
+    
+    toast.success("Interjection added. Agent will re-run current iteration with your input.");
+    
+    // Clear the pending interject and resolve the waiting promise
+    pendingInterjectRef.current = null;
+    if (interjectResolverRef.current) {
+      interjectResolverRef.current();
+    }
+  }, [session, isRunning, handleBlackboardUpdate]);
+
+  // Request interject - pauses the loop and waits for user input
+  const requestInterject = useCallback((message: string) => {
+    if (!isRunning) return;
+    
+    // Set the pending message and add to blackboard + resume
+    interjectSession(message);
+  }, [isRunning, interjectSession]);
+
   return {
     session,
     isRunning,
@@ -903,5 +961,6 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
     retrySession,
     updateScratchpad,
     getCacheSize,
+    interjectSession,
   };
 }
