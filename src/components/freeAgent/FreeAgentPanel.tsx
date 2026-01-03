@@ -263,30 +263,29 @@ export function FreeAgentPanel({
               </div>
             </div>
 
-            {/* Messages */}
+            {/* Memory Stats - shows what's being tracked */}
             <div className="flex-1 overflow-hidden">
-              <Label className="mb-2 block">Activity</Label>
-              <ScrollArea className="h-[200px] border rounded-md p-2">
-                <div className="space-y-2">
-                  {session.messages.slice(-10).map((msg) => (
-                    <div
-                      key={msg.id}
-                      className={`text-xs p-2 rounded ${
-                        msg.role === "user"
-                          ? "bg-primary/10 border-l-2 border-primary"
-                          : msg.role === "assistant"
-                          ? "bg-muted/50"
-                          : "bg-blue-500/10"
-                      }`}
-                    >
-                      <div className="font-medium text-muted-foreground capitalize mb-1">
-                        {msg.role}
-                      </div>
-                      <div className="line-clamp-3">{msg.content}</div>
-                    </div>
-                  ))}
+              <Label className="mb-2 block">Memory</Label>
+              <div className="space-y-2 text-sm border rounded-md p-3">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Blackboard entries:</span>
+                  <span className="font-medium">{session.blackboard.length}</span>
                 </div>
-              </ScrollArea>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Scratchpad:</span>
+                  <span className="font-medium">
+                    {session.scratchpad ? `${session.scratchpad.length} chars` : 'Empty'}
+                  </span>
+                </div>
+                {session.blackboard.length > 0 && (
+                  <div className="mt-2 pt-2 border-t">
+                    <div className="text-xs text-muted-foreground mb-1">Latest entry:</div>
+                    <div className="text-xs bg-muted/50 p-2 rounded line-clamp-3">
+                      [{session.blackboard[session.blackboard.length - 1]?.category}] {session.blackboard[session.blackboard.length - 1]?.content}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Control buttons */}

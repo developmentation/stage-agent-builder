@@ -97,57 +97,38 @@
 
   "execution_rules": {
     "blackboard": {
-      "purpose": "Your PLANNING JOURNAL - track progress, plan next steps, and PREVENT repeating work",
-      "role": "READ every iteration to maintain continuity. WRITE every iteration with progress.",
-      "read_every_iteration": true,
+      "purpose": "Your PLANNING JOURNAL - track progress and PREVENT repeating work",
+      "automatically_included": true,
+      "no_read_tool_needed": "Blackboard is ALWAYS shown in system prompt - no need to call read_blackboard",
       "write_every_iteration": true,
       "must_contain": [
-        "Current step in your plan (e.g., 'Step 2/4: Reading controller files')",
-        "COMPLETED list: all items already processed (files read, searches done)",
+        "Current step in your plan",
+        "COMPLETED list: all items already processed",
         "NEXT action: what you will do next iteration"
       ],
-      "prevents_repetition": "ALWAYS check blackboard before reading a file - if it's in COMPLETED list, SKIP IT",
       "example_entry": {
         "category": "plan",
-        "content": "Step 2/4: Reading controllers. COMPLETED: configs.js, healthcheck.js, models.js. NEXT: accounts.js, apiActions.js"
-      },
-      "categories": {
-        "observation": "Facts gathered from tools - include what was processed",
-        "plan": "Current step + completed list + next action - USE THIS MOST OFTEN",
-        "decision": "Choices made with reasoning",
-        "error": "Errors encountered and recovery strategy"
+        "content": "Step 2/3: COMPLETED search. Data saved. NEXT: Send email summary."
       }
     },
     "scratchpad": {
-      "purpose": "DATA STORAGE - store actual extracted content, NOT status messages",
-      "role": "Write-only during execution, read at end for final report",
-      "read_during_execution": false,
-      "read_at_completion": true,
-      "correct_content": {
-        "examples": [
-          "## accounts.js Controller\\n- POST /signup - Creates user account\\n- GET /profile/:id - Fetches user profile",
-          "## Search Results for 'React hooks'\\n1. Understanding useEffect - https://...\\n2. Custom Hooks Guide - https://...",
-          "## File Tree\\n├── src/\\n│   ├── index.js\\n│   └── controllers/"
-        ],
-        "description": "Actual data: file contents, API responses, search results, extracted information"
-      },
-      "wrong_content": {
-        "examples": [
-          "Reading controller file: accounts.js",
-          "Now analyzing the controllers",
-          "Saved the search results"
-        ],
-        "description": "Status updates and labels belong in BLACKBOARD, not scratchpad"
-      },
-      "CRITICAL_DATA_COPYING": {
-        "rule": "COPY actual data into scratchpad, not just labels",
-        "wrong": "write_scratchpad({ content: 'file_tree:' })",
-        "right": "write_scratchpad({ content: 'file_tree:\\n├── src/\\n│   ├── index.js' })"
-      },
-      "modes": {
-        "append": "Add new content to existing (default)",
-        "replace": "Replace all content"
-      }
+      "purpose": "DATA STORAGE - save actual content from tool results IMMEDIATELY",
+      "critical_rule": "Tool results DISAPPEAR after one iteration! ALWAYS save to scratchpad right after a successful search/read.",
+      "when_to_read": "Only when you need to compile final report or create artifacts",
+      "correct_workflow": [
+        "Iteration 1: Call brave_search",
+        "Iteration 2: SEE results in PREVIOUS ITERATION RESULTS, call write_scratchpad with actual data",
+        "Iteration 3: Data is safe in scratchpad, proceed with next task"
+      ]
+    },
+    "anti_loop_rules": {
+      "description": "CRITICAL: Prevent infinite loops by following these rules",
+      "rules": [
+        "CHECK PREVIOUS ITERATION RESULTS first - if you see data there, SAVE IT, don't re-search",
+        "CHECK blackboard COMPLETED list - don't redo completed steps",
+        "NEVER call the same search/read tool twice with same parameters",
+        "If a tool failed, log to blackboard and move on - don't retry endlessly"
+      ]
     },
     "prompt_reference": {
       "purpose": "You can always go back to read the original user prompt using read_prompt.",
