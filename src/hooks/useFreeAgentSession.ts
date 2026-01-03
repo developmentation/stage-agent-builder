@@ -14,6 +14,7 @@ import type {
   FinalReport,
   RawIterationData,
   ToolResult,
+  ArtifactType,
 } from "@/types/freeAgent";
 import { executeFrontendTool } from "@/lib/freeAgentToolExecutor";
 
@@ -386,6 +387,38 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
           createdAt: new Date().toISOString(),
           iteration: iterationRef.current,
         }));
+
+        // AUTO-CREATE ARTIFACT if completed with no artifacts but has summary content
+        if (response.status === "completed" && newArtifacts.length === 0) {
+          const summaryParts: string[] = [];
+          
+          if (response.final_report?.summary) {
+            summaryParts.push(`## Summary\n\n${response.final_report.summary}`);
+          }
+          
+          if (response.final_report?.key_findings?.length) {
+            summaryParts.push(`\n\n## Key Findings\n\n${response.final_report.key_findings.map((f: string) => `- ${f}`).join('\n')}`);
+          }
+          
+          if (response.message_to_user) {
+            summaryParts.push(`\n\n## Agent Response\n\n${response.message_to_user}`);
+          }
+          
+          const autoContent = summaryParts.join('') || response.reasoning || "Task completed successfully.";
+          
+          if (autoContent.length > 20) {
+            newArtifacts.push({
+              id: crypto.randomUUID(),
+              type: "text" as ArtifactType,
+              title: "Task Summary",
+              content: autoContent,
+              description: "Auto-generated summary from agent completion",
+              createdAt: new Date().toISOString(),
+              iteration: iterationRef.current,
+            });
+            console.log("Auto-created summary artifact from final report");
+          }
+        }
 
         // Update session - clear assistance request after it's been processed
         updateSession((prev) =>
