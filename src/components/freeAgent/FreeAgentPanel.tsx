@@ -30,13 +30,15 @@ import type { FreeAgentSession, SessionFile } from "@/types/freeAgent";
 // Available models - same as workflow tool
 const MODEL_OPTIONS = [
   { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash", provider: "gemini" },
-  { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro", provider: "gemini" },
   { value: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite", provider: "gemini" },
+  { value: "gemini-3-pro-preview", label: "Gemini 3 Pro Preview", provider: "gemini" },
+  { value: "gemini-3-flash-preview", label: "Gemini 3 Flash Preview", provider: "gemini" },
   { value: "claude-sonnet-4-5", label: "Claude Sonnet 4.5", provider: "claude" },
-  { value: "claude-3-5-haiku", label: "Claude 3.5 Haiku", provider: "claude" },
+  { value: "claude-haiku-4-5", label: "Claude Haiku 4.5", provider: "claude" },
   { value: "claude-opus-4-5", label: "Claude Opus 4.5", provider: "claude" },
   { value: "grok-4-1-fast-reasoning", label: "Grok 4.1 Fast Reasoning", provider: "grok" },
-  { value: "grok-4-1-fast-non-reasoning", label: "Grok 4.1 Fast", provider: "grok" },
+  { value: "grok-4-1-fast-non-reasoning", label: "Grok 4.1 Fast Non-Reasoning", provider: "grok" },
+  { value: "grok-code-fast-1", label: "Grok Code Fast 1", provider: "grok" },
 ];
 
 interface FreeAgentPanelProps {

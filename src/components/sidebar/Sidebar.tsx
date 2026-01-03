@@ -516,15 +516,16 @@ export const Sidebar = ({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="gemini-2.5-flash">Gemini 2.5 Flash (Default)</SelectItem>
-                <SelectItem value="gemini-2.5-pro">Gemini 2.5 Pro (Advanced)</SelectItem>
-                <SelectItem value="gemini-3-pro-preview">Gemini 3 Pro Preview (Next-Gen)</SelectItem>
-                <SelectItem value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite (Fast)</SelectItem>
+                <SelectItem value="gemini-2.5-flash">Gemini 2.5 Flash</SelectItem>
+                <SelectItem value="gemini-2.5-flash-lite">Gemini 2.5 Flash Lite</SelectItem>
+                <SelectItem value="gemini-3-pro-preview">Gemini 3 Pro Preview</SelectItem>
+                <SelectItem value="gemini-3-flash-preview">Gemini 3 Flash Preview</SelectItem>
                 <SelectItem value="claude-sonnet-4-5">Claude Sonnet 4.5</SelectItem>
-                <SelectItem value="claude-3-5-haiku">Claude 3.5 Haiku</SelectItem>
+                <SelectItem value="claude-haiku-4-5">Claude Haiku 4.5</SelectItem>
                 <SelectItem value="claude-opus-4-5">Claude Opus 4.5</SelectItem>
                 <SelectItem value="grok-4-1-fast-reasoning">Grok 4.1 Fast Reasoning</SelectItem>
                 <SelectItem value="grok-4-1-fast-non-reasoning">Grok 4.1 Fast Non-Reasoning</SelectItem>
+                <SelectItem value="grok-code-fast-1">Grok Code Fast 1</SelectItem>
               </SelectContent>
             </Select>
             <p className="text-xs text-muted-foreground">
