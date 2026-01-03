@@ -479,6 +479,7 @@ export function FreeAgentCanvas({
           status: "success",
           attributeName: name,
           attributeTool: attribute.tool,
+          attributeValue: attribute.resultString,
           size: attribute.size,
           iteration: attribute.iteration,
         },
