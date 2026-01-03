@@ -1,7 +1,7 @@
-// Artifact Node - Created artifact visualization
+// Artifact Node - Created artifact visualization (styled like PromptFileNode)
 import React from "react";
 import { Handle, Position, NodeProps } from "reactflow";
-import { FileText, Image, Database, File } from "lucide-react";
+import { FileText, Image, Database, File, CheckCircle2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ArtifactNodeData {
@@ -26,39 +26,40 @@ export function ArtifactNode({ data }: NodeProps<ArtifactNodeData>) {
     }
   };
 
+  const getTypeLabel = () => {
+    switch (data.artifactType) {
+      case "image":
+        return "Generated Image";
+      case "data":
+        return "Data Output";
+      case "file":
+        return "Generated File";
+      default:
+        return "Text Content";
+    }
+  };
+
   return (
-    <div
-      className={cn(
-        "flex flex-col items-center justify-center",
-        "w-[80px] h-[50px] rounded-md border",
-        "bg-green-500/10 border-green-500/50",
-        "shadow-sm cursor-pointer hover:shadow-md transition-all"
-      )}
-    >
+    <div className="w-48 rounded-lg border-2 border-green-300 dark:border-green-700 bg-green-50/90 dark:bg-green-950/40 shadow-md overflow-hidden">
       {/* Handle for connections */}
       <Handle
         type="target"
-        position={Position.Top}
-        className="!bg-green-500 !w-2 !h-2"
+        position={Position.Left}
+        className="!bg-green-500 !w-3 !h-3"
       />
 
-      {/* Icon */}
-      <div className="text-green-500 mb-0.5">{getIcon()}</div>
-
-      {/* Label */}
-      <div className="text-[9px] font-medium text-foreground text-center px-1 truncate w-full">
-        {data.label}
+      {/* Header */}
+      <div className="px-2 py-1.5 bg-green-200/80 dark:bg-green-900/60 border-b border-green-300 dark:border-green-700 flex items-center gap-2">
+        <div className="text-green-600 dark:text-green-400">{getIcon()}</div>
+        <span className="font-medium text-xs text-green-800 dark:text-green-200 truncate flex-1">
+          {data.label}
+        </span>
+        <CheckCircle2 className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
       </div>
 
-      {/* Checkmark badge */}
-      <div className="absolute -top-1 -right-1 bg-green-500 rounded-full w-3 h-3 flex items-center justify-center">
-        <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
-          <path
-            fillRule="evenodd"
-            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-            clipRule="evenodd"
-          />
-        </svg>
+      {/* Metadata row */}
+      <div className="px-2 py-1.5 flex items-center justify-between text-[10px] text-green-700/70 dark:text-green-300/70">
+        <span>{getTypeLabel()}</span>
       </div>
     </div>
   );
