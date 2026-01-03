@@ -74,15 +74,25 @@ export function FreeAgentCanvas({
   // Track user-moved node positions to preserve them across layout updates
   const userPositionsRef = useRef<Map<string, XYPosition>>(new Map());
   
+  // Track user-resized node dimensions (for scratchpad)
+  const userSizesRef = useRef<Map<string, { width: number; height: number }>>(new Map());
+  
   // Track which nodes exist to detect new ones
   const existingNodeIdsRef = useRef<Set<string>>(new Set());
 
-  // Handle node position changes - save user-moved positions
+  // Handle node position and size changes - save user adjustments
   const handleNodesChange = useCallback((changes: NodeChange[]) => {
     changes.forEach(change => {
       if (change.type === 'position' && change.position && change.dragging === false) {
         // User finished dragging - save their position
         userPositionsRef.current.set(change.id, change.position);
+      }
+      // Track dimension changes (from NodeResizer)
+      if (change.type === 'dimensions' && change.dimensions && change.resizing === false) {
+        userSizesRef.current.set(change.id, {
+          width: change.dimensions.width,
+          height: change.dimensions.height,
+        });
       }
     });
     onNodesChange(changes);
@@ -311,11 +321,17 @@ export function FreeAgentCanvas({
     const scratchpadId = "scratchpad";
     newNodeIds.add(scratchpadId);
     
+    // Get user-saved size or use defaults
+    const userScratchpadSize = userSizesRef.current.get(scratchpadId);
+    const scratchpadStyle = userScratchpadSize 
+      ? { width: userScratchpadSize.width, height: userScratchpadSize.height }
+      : { width: 320, height: 380 };
+    
     newNodes.push({
       id: scratchpadId,
       type: "scratchpad",
       position: getPosition(scratchpadId, { x: scratchpadX, y: scratchpadY }),
-      style: { width: 320, height: 380 },
+      style: scratchpadStyle,
       data: {
         type: "scratchpad",
         label: "Scratchpad",
