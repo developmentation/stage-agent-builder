@@ -338,15 +338,15 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
               };
               handleAttributeCreated(attribute);
               
-              // AUTO-ADD to scratchpad with handlebar reference so read_scratchpad expands it
-              const scratchpadEntry = `\n\n## ${saveAsName} (from ${result.tool})\n{{${saveAsName}}}`;
+              // AUTO-ADD to scratchpad with guidance on how to access
+              const scratchpadEntry = `\n\n## ${saveAsName} (from ${result.tool})\nData stored in attribute (${resultString.length} chars).\nAccess via: read_attribute({ names: ['${saveAsName}'] })\nPlaceholder: {{${saveAsName}}}\n\n**TODO: After reading, summarize key findings here.**`;
               const newScratchpad = (scratchpadRef.current || "") + scratchpadEntry;
               handleScratchpadUpdate(newScratchpad);
               
-              // Replace the full result with a summary message for the LLM
+              // Replace the full result with a summary message guiding the agent
               const summaryResult = {
                 _savedAsAttribute: saveAsName,
-                _message: `Result saved to attribute '${saveAsName}' (${resultString.length} chars). Auto-added to scratchpad - use read_scratchpad to see expanded content.`,
+                _message: `Result saved to attribute '${saveAsName}' (${resultString.length} chars). NEXT STEP: Call read_attribute({ names: ['${saveAsName}'] }) ONCE, extract key data, then write YOUR SUMMARY to scratchpad. Don't re-read raw data!`,
               };
               
               // Add to iteration results with summary instead of full result
