@@ -85,12 +85,17 @@ Free Agent uses a three-tier memory architecture:
 
 ### 2. Scratchpad (Data Storage)
 
-**Purpose**: Store actual data for later retrieval
+**Purpose**: Store YOUR SUMMARIES and notes, not raw data dumps
 
-- Contains search results, file contents, analysis summaries
-- Supports handlebar substitution: `{{attribute_name}}` expands to full content
+- Contains your summaries, analysis, and extracted insights
+- May contain `{{attribute_name}}` references (placeholders, NOT auto-expanded)
+- Handlebars are just placeholders - use `read_attribute` to fetch full data
 - Read on-demand to preserve context window
 - Persists across iterations
+
+**Important**: `read_scratchpad` does NOT auto-expand handlebar references. It returns:
+- Your scratchpad content as-is
+- List of available attributes for `read_attribute`
 
 ### 3. Named Attributes (Tool Result Storage)
 
@@ -103,8 +108,17 @@ When a tool uses `saveAs` parameter:
 
 - Result is stored as independent attribute
 - Agent receives small confirmation (not full data)
-- Reference `{{weather_data}}` auto-added to scratchpad
-- Use `read_attribute(["weather_data"])` to retrieve
+- Reference `{{weather_data}}` auto-added to scratchpad as placeholder
+- Use `read_attribute(["weather_data"])` to retrieve full content
+- **After reading, agent must SUMMARIZE key findings to scratchpad**
+
+### Correct Workflow for Data Retrieval
+
+1. Fetch with saveAs: `{ "tool": "brave_search", "params": { "query": "...", "saveAs": "search_results" } }`
+2. Receive confirmation: "Saved to 'search_results'. Use read_attribute..."
+3. Read attribute: `{ "tool": "read_attribute", "params": { "names": ["search_results"] } }`
+4. **SUMMARIZE** to scratchpad: `{ "tool": "write_scratchpad", "params": { "content": "## Search Summary\\n- Key finding 1\\n- Key finding 2" } }`
+5. Continue working from your summary - don't re-read raw data!
 
 ---
 
@@ -115,7 +129,7 @@ When a tool uses `saveAs` parameter:
 |------|-------------|
 | `read_blackboard` | Read planning journal entries |
 | `write_blackboard` | Add entry to planning journal |
-| `read_scratchpad` | Read data storage (with handlebar substitution) |
+| `read_scratchpad` | Read data storage (NO handlebar expansion - use read_attribute) |
 | `write_scratchpad` | Save data to persistent storage |
 | `read_file` | Read content of session file |
 | `read_prompt` | Get original user prompt |
@@ -270,9 +284,10 @@ Without safeguards, the agent might:
 
 ### Solutions Implemented
 
-1. **Blackboard Mandatory**: Every response MUST include `blackboard_entry`
-   - Tracks completed steps
+1. **Blackboard Mandatory & Verbose**: Every response MUST include detailed `blackboard_entry`
+   - Tracks completed steps AND key findings/extracted data
    - Agent reads this every iteration
+   - Must include: COMPLETED, EXTRACTED/FOUND, NEXT
    
 2. **Tool Results Visibility**: Results only visible for ONE iteration
    - Must save to scratchpad or use `saveAs`

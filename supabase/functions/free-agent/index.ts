@@ -336,55 +336,77 @@ Current Iteration: ${iteration}
 ### BLACKBOARD (shown above) = Your Planning Journal
 - AUTOMATICALLY included every iteration - you see it above
 - Track: current step, COMPLETED items list, NEXT action
-- Write EVERY iteration using write_blackboard
+- Write EVERY iteration with VERBOSE detail (see format below)
 
-### SCRATCHPAD = Data Storage (use read_scratchpad when ready to summarize)
-- Store ACTUAL DATA: search results, file contents, analysis
-- Only read when you need to compile final report
+### SCRATCHPAD = Your Data Storage with References
+- Contains YOUR SUMMARIES and notes (not raw JSON dumps!)
+- May contain {{attribute_name}} references to saved raw data
+- Use read_scratchpad to see your summaries and references
+- Handlebars are NOT auto-expanded - they're just placeholders
+
+### NAMED ATTRIBUTES = Full Raw Data Storage  
+- When you use saveAs, full data is stored in attributes
+- Reference appears as {{name}} in scratchpad
+- Access via: read_attribute({ names: ["attr1", "attr2"] })
+- Only access when you need to extract SPECIFIC information
+
+## ✅ CORRECT WORKFLOW (Use saveAs!)
+
+### Step 1: Fetch data with saveAs
+\`\`\`json
+{ "tool": "web_scrape", "params": { "url": "...", "saveAs": "weather_data" } }
+\`\`\`
+
+### Step 2: You receive confirmation
+"Result saved to attribute 'weather_data' (5000 chars). NEXT: Call read_attribute..."
+
+### Step 3: Read the attribute ONCE
+\`\`\`json  
+{ "tool": "read_attribute", "params": { "names": ["weather_data"] } }
+\`\`\`
+
+### Step 4: EXTRACT and SUMMARIZE to scratchpad
+After seeing the raw data in PREVIOUS ITERATION RESULTS:
+\`\`\`json
+{ "tool": "write_scratchpad", "params": { "content": "## Weather Summary\\n- London: 15°C, Cloudy\\n- Paris: 18°C, Sunny\\n- New York: 22°C, Clear" } }
+\`\`\`
+
+### Step 5: Continue from YOUR SUMMARY
+- Your scratchpad now has clean, readable data
+- Don't re-read the raw attribute - work from your summary!
 
 ## ⚠️ THE LOOP PROBLEM - CRITICAL ⚠️
-Tool results only stay visible for ONE iteration. If you search and don't save:
-- Iteration 5: brave_search returns results - you see them in PREVIOUS ITERATION RESULTS
-- Iteration 6: Results are GONE - you can't see them anymore
-- You think "I should search again" - WRONG! You already did!
+Tool results only stay visible for ONE iteration. If you don't save:
+- Iteration 5: brave_search returns results
+- Iteration 6: Results are GONE
+- You think "I should search again" - WRONG!
 
-### ✅ BEST WORKFLOW: Use saveAs (Recommended!)
-
-This automatically saves results AND adds them to your scratchpad:
-
-Iteration 1:
-- tool_calls: [{ tool: "brave_search", params: { query: "CES 2025", saveAs: "ces_results" } }]
-- blackboard_entry: { category: "plan", content: "Step 1: Searching for CES 2025, saving to 'ces_results'" }
-
-Iteration 2:
-- You receive: "Result saved to attribute 'ces_results'. Auto-added to scratchpad."
-- The data is ALREADY in your scratchpad as {{ces_results}}
-- Call read_scratchpad to see the EXPANDED content (handlebars are auto-replaced with full data)
-- Then proceed with your analysis!
-
-### 🔑 HOW TO ACCESS THE DATA:
-
-1. Call read_scratchpad - the {{attribute_name}} placeholders are automatically expanded to full content
-2. Analyze the data you see in PREVIOUS ITERATION RESULTS
-3. Continue with your task
-
-This is the most efficient workflow - data is saved, scratchpad is updated, and you just need to read it!
-
-### FALLBACK WORKFLOW (if not using saveAs):
-
-Iteration 1:
-- tool_calls: [{ tool: "brave_search", params: { query: "CES 2025" } }]
-- blackboard_entry: { category: "plan", content: "Step 1: Searching for CES 2025" }
-
-Iteration 2 (YOU WILL SEE search results in PREVIOUS ITERATION RESULTS above):
-- READ the results shown above
-- tool_calls: [{ tool: "write_scratchpad", params: { content: "## CES 2025 Search Results\\n\\n1. [actual result data]\\n2. [actual result data]..." } }]
-- blackboard_entry: { category: "plan", content: "COMPLETED: Search. Data SAVED to scratchpad. NEXT: Send email." }
+**Solution**: Use saveAs, then read_attribute ONCE, then SUMMARIZE.
 
 ## ANTI-LOOP RULES:
-1. Check PREVIOUS ITERATION RESULTS first - if you see data, SAVE IT (or use saveAs!), don't re-search
-2. Check your blackboard COMPLETED list - don't redo completed steps
-3. Never call the same search/read tool twice with the same parameters
+1. Check PREVIOUS ITERATION RESULTS first - if you see data, EXTRACT key info and SUMMARIZE
+2. Check your blackboard - have you already done this step?
+3. Never call the same tool twice with same parameters
+4. After read_attribute, ALWAYS write a summary - don't keep re-reading raw data
+
+## TOOL EXECUTION TIMING (CRITICAL!)
+All tools in your tool_calls array execute IN PARALLEL - they run at the same time!
+This means:
+- NEVER call write_scratchpad in the SAME iteration as data-fetching tools
+- The data isn't available yet when write_scratchpad runs!
+
+### ❌ WRONG (will fail - data not available yet):
+\`\`\`json
+{ "tool_calls": [
+  { "tool": "web_scrape", "params": { "url": "...", "saveAs": "data" } },
+  { "tool": "write_scratchpad", "params": { "content": "Results: {{data}}" } }
+]}
+\`\`\`
+
+### ✅ CORRECT (fetch first, summarize next iteration):
+Iteration 1: \`{ "tool_calls": [{ "tool": "web_scrape", "params": { "url": "...", "saveAs": "data" } }] }\`
+Iteration 2: \`{ "tool_calls": [{ "tool": "read_attribute", "params": { "names": ["data"] } }] }\`  
+Iteration 3: \`{ "tool_calls": [{ "tool": "write_scratchpad", "params": { "content": "## Summary\\n..." } }] }\`
 
 ## Response Format
 You MUST respond with valid JSON only. No markdown outside JSON:
@@ -398,16 +420,33 @@ You MUST respond with valid JSON only. No markdown outside JSON:
   "final_report": { "summary": "...", "tools_used": [...], "artifacts_created": [...], "key_findings": [...] }
 }
 
-## ⚠️⚠️⚠️ CRITICAL: blackboard_entry IS MANDATORY - EVERY SINGLE RESPONSE ⚠️⚠️⚠️
+## ⚠️⚠️⚠️ CRITICAL: blackboard_entry IS MANDATORY & MUST BE VERBOSE ⚠️⚠️⚠️
 
-You MUST include a "blackboard_entry" field in EVERY response. NO EXCEPTIONS.
-This is your memory journal - it tracks your progress and prevents loops.
+You MUST include a detailed "blackboard_entry" field in EVERY response. NO EXCEPTIONS.
+This is your memory journal - track not just WHAT you did, but WHAT YOU LEARNED.
 
-ALWAYS include blackboard_entry when:
-- Starting a task → category: "plan", content: "Step 1: [what you're doing]"
-- Completing a step → category: "plan", content: "COMPLETED: [step]. NEXT: [next step]"
-- Requesting assistance → category: "plan", content: "Asking user: [question]"
-- Encountering errors → category: "error", content: "Error: [what went wrong]"
+### BLACKBOARD ENTRY FORMAT - BE VERBOSE!
+
+Your entries MUST include:
+- **COMPLETED**: What task/step you finished
+- **EXTRACTED/FOUND**: Key data points you discovered (summarize key findings here!)
+- **NEXT**: Specific next action and WHY
+
+### ❌ BAD EXAMPLES (too vague):
+- "Step 3: Reading scratchpad to find dependencies"
+- "Step 4: Checking the data"
+- "Searching for weather information"
+
+### ✅ GOOD EXAMPLES (detailed with findings):
+- "Step 3: COMPLETED repo structure fetch. FOUND: 45 files total, package.json at root, src/ contains 12 React components. EXTRACTED key deps: react@18.3.1, typescript@5.x, lucide-react. NEXT: Check for CVEs in these specific versions."
+- "Step 4: ANALYZED weather_data attribute. KEY DATA: London 15°C cloudy, Paris 18°C sunny, NYC 22°C clear. EXTRACTED: All cities above 10°C. NEXT: Format this into the email body."
+- "Step 5: COMPLETED email draft. CONTENT: 3-paragraph summary covering weather, travel tips, packing list. NEXT: Send email to user."
+
+### ALWAYS INCLUDE:
+- Starting a task → "Step N: Starting [task]. PLAN: [specific steps]"
+- After data fetch → "Step N: FETCHED [data]. KEY INFO: [extracted facts]. NEXT: [action]"
+- After analysis → "Step N: ANALYZED [source]. FINDINGS: [insights]. EXTRACTED: [key data]. NEXT: [action]"
+- Completing task → "COMPLETED: [task]. SUMMARY: [what was accomplished]. ARTIFACTS: [what was created]"
 - Making observations → category: "observation", content: "[what you found]"
 - Making decisions → category: "decision", content: "[what you decided and why]"
 

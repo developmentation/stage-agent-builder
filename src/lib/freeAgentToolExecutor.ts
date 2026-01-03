@@ -165,27 +165,30 @@ async function executeRequestAssistance(
   };
 }
 
-// Read scratchpad content with handlebar substitution for attributes
+// Read scratchpad content - NO handlebar expansion (use read_attribute for full data)
 async function executeReadScratchpad(
   context: ToolExecutionContext
 ): Promise<ToolResult> {
-  let content = context.scratchpad || "";
+  const content = context.scratchpad || "";
   
-  // Substitute {{attributeName}} with actual content from attributes
+  // List available attributes so agent knows what it can access via read_attribute
   const attributes = context.toolResultAttributes || {};
-  for (const [name, attr] of Object.entries(attributes)) {
-    const placeholder = `{{${name}}}`;
-    if (content.includes(placeholder)) {
-      // Use a regex that properly escapes the braces
-      const regex = new RegExp(placeholder.replace(/[{}]/g, '\\$&'), 'g');
-      content = content.replace(regex, attr.resultString);
-    }
-  }
+  const availableAttributes = Object.keys(attributes).map(name => ({
+    name,
+    tool: attributes[name].tool,
+    size: attributes[name].size,
+  }));
   
-  console.log(`[Scratchpad Read] Content length: ${content.length} chars (after substitution)`);
+  console.log(`[Scratchpad Read] Content length: ${content.length} chars (no expansion)`);
+  console.log(`[Scratchpad Read] Available attributes for read_attribute: ${availableAttributes.map(a => a.name).join(', ') || 'none'}`);
+  
   return {
     success: true,
-    result: content,
+    result: {
+      content: content,
+      note: "Handlebar references like {{name}} are attribute placeholders. Use read_attribute({ names: ['name'] }) to fetch full data, then SUMMARIZE findings in scratchpad.",
+      available_attributes: availableAttributes,
+    },
   };
 }
 
