@@ -536,76 +536,100 @@
         "properties": ["status", "statusText", "data"]
       }
     },
-    "read_database_schema": {
-      "name": "Read Database Schema",
-      "description": "Get the schema of all tables in the agent's session database.",
-      "edge_function": "free-agent-db",
+    "execute_sql": {
+      "name": "Execute SQL",
+      "description": "Execute SQL queries on an external PostgreSQL database. User must provide connection string. Supports both read (SELECT) and write (INSERT/UPDATE/DELETE) operations.",
+      "edge_function": "external-db",
       "icon": "Database",
       "category": "database",
-      "parameters": {},
-      "returns": {
-        "type": "object",
-        "properties": ["tables", "relationships"]
-      }
-    },
-    "read_database_table": {
-      "name": "Read Database Table",
-      "description": "Get structure and sample data from a specific table.",
-      "edge_function": "free-agent-db",
-      "icon": "Table",
-      "category": "database",
       "parameters": {
-        "tableName": {
+        "connectionString": {
           "type": "string",
           "required": true,
-          "description": "Name of the table to read"
+          "description": "PostgreSQL connection string (e.g., postgres://user:pass@host:port/database)"
         },
-        "limit": {
+        "query": {
+          "type": "string",
+          "required": true,
+          "description": "SQL query to execute"
+        },
+        "isWrite": {
+          "type": "boolean",
+          "required": false,
+          "default": false,
+          "description": "Set to true for INSERT/UPDATE/DELETE operations"
+        },
+        "params": {
+          "type": "array",
+          "required": false,
+          "description": "Parameterized query values for security"
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": ["success", "columns", "rows", "rowCount", "command"]
+      }
+    },
+    "google_search": {
+      "name": "Google Search",
+      "description": "Search the web using Google Custom Search API.",
+      "edge_function": "google-search",
+      "icon": "Search",
+      "category": "web",
+      "parameters": {
+        "query": {
+          "type": "string",
+          "required": true,
+          "description": "Search query"
+        },
+        "numResults": {
           "type": "number",
           "required": false,
-          "default": 100,
-          "description": "Maximum rows to return"
+          "default": 10,
+          "description": "Number of results to return"
         }
       },
       "returns": {
         "type": "object",
-        "properties": ["columns", "rows", "totalCount"]
+        "properties": {
+          "results": {
+            "type": "array",
+            "items": {
+              "title": "string",
+              "url": "string",
+              "snippet": "string"
+            }
+          }
+        }
       }
     },
-    "read_database_table_contents": {
-      "name": "Query Database",
-      "description": "Execute a SELECT query on the session database.",
-      "edge_function": "free-agent-db",
-      "icon": "Search",
-      "category": "database",
+    "elevenlabs_tts": {
+      "name": "Text to Speech",
+      "description": "Convert text to speech using ElevenLabs API.",
+      "edge_function": "elevenlabs-tts",
+      "icon": "Volume2",
+      "category": "generation",
       "parameters": {
-        "query": {
+        "text": {
           "type": "string",
           "required": true,
-          "description": "SQL SELECT query to execute"
+          "description": "Text to convert to speech"
+        },
+        "voiceId": {
+          "type": "string",
+          "required": false,
+          "description": "ElevenLabs voice ID"
+        },
+        "modelId": {
+          "type": "string",
+          "required": false,
+          "default": "eleven_turbo_v2_5",
+          "description": "ElevenLabs model ID"
         }
       },
       "returns": {
         "type": "object",
-        "properties": ["rows", "rowCount"]
-      }
-    },
-    "write_database_table_contents": {
-      "name": "Write to Database",
-      "description": "Execute an INSERT, UPDATE, or DELETE query on the session database.",
-      "edge_function": "free-agent-db",
-      "icon": "Edit",
-      "category": "database",
-      "parameters": {
-        "query": {
-          "type": "string",
-          "required": true,
-          "description": "SQL INSERT/UPDATE/DELETE query to execute"
-        }
-      },
-      "returns": {
-        "type": "object",
-        "properties": ["affectedRows", "success"]
+        "properties": ["audioData", "contentType"]
       }
     }
   },

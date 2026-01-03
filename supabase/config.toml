@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.free-agent]
 verify_jwt = false
+
+[functions.external-db]
+verify_jwt = false

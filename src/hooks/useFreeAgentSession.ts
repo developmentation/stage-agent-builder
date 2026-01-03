@@ -1,5 +1,5 @@
-// Free Agent Session Hook - Manages state and execution
-import { useState, useCallback, useEffect, useRef } from "react";
+// Free Agent Session Hook - Manages local state and execution
+import { useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type {
@@ -13,11 +13,34 @@ import type {
   AgentResponse,
   FinalReport,
 } from "@/types/freeAgent";
-import { executeFrontendTool, executeEdgeFunctionTool } from "@/lib/freeAgentToolExecutor";
+import { executeFrontendTool } from "@/lib/freeAgentToolExecutor";
 
 interface UseFreeAgentSessionOptions {
   model?: string;
   maxIterations?: number;
+}
+
+const LOCAL_STORAGE_KEY = "free_agent_sessions";
+
+// Save session to localStorage
+function saveSessionToLocal(session: FreeAgentSession) {
+  try {
+    const sessions = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || "{}");
+    sessions[session.id] = session;
+    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(sessions));
+  } catch (e) {
+    console.warn("Failed to save session to localStorage:", e);
+  }
+}
+
+// Load session from localStorage
+function loadSessionFromLocal(sessionId: string): FreeAgentSession | null {
+  try {
+    const sessions = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || "{}");
+    return sessions[sessionId] || null;
+  } catch {
+    return null;
+  }
 }
 
 export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
@@ -27,12 +50,276 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
   const [isRunning, setIsRunning] = useState(false);
   const [activeToolIds, setActiveToolIds] = useState<Set<string>>(new Set());
   const abortControllerRef = useRef<AbortController | null>(null);
+  const iterationRef = useRef(0);
+
+  // Update session and persist to localStorage
+  const updateSession = useCallback((updater: (prev: FreeAgentSession | null) => FreeAgentSession | null) => {
+    setSession((prev) => {
+      const updated = updater(prev);
+      if (updated) {
+        saveSessionToLocal(updated);
+      }
+      return updated;
+    });
+  }, []);
+
+  // Handle artifact creation
+  const handleArtifactCreated = useCallback((artifact: FreeAgentArtifact) => {
+    updateSession((prev) =>
+      prev
+        ? {
+            ...prev,
+            artifacts: [...prev.artifacts, artifact],
+          }
+        : null
+    );
+  }, [updateSession]);
+
+  // Handle blackboard update
+  const handleBlackboardUpdate = useCallback((entry: BlackboardEntry) => {
+    updateSession((prev) =>
+      prev
+        ? {
+            ...prev,
+            blackboard: [...prev.blackboard, entry],
+          }
+        : null
+    );
+  }, [updateSession]);
+
+  // Handle assistance request
+  const handleAssistanceNeeded = useCallback((request: AssistanceRequest) => {
+    updateSession((prev) =>
+      prev
+        ? {
+            ...prev,
+            status: "needs_assistance",
+            assistanceRequest: request,
+          }
+        : null
+    );
+    setIsRunning(false);
+  }, [updateSession]);
+
+  // Execute a single iteration
+  const executeIteration = useCallback(
+    async (currentSession: FreeAgentSession): Promise<boolean> => {
+      if (iterationRef.current >= maxIterations) {
+        toast.warning("Max iterations reached");
+        return false;
+      }
+
+      iterationRef.current++;
+
+      try {
+        // Call edge function with current state
+        const { data, error } = await supabase.functions.invoke("free-agent", {
+          body: {
+            prompt: currentSession.prompt,
+            model: currentSession.model,
+            blackboard: currentSession.blackboard.map((b) => ({
+              category: b.category,
+              content: b.content,
+              data: b.data,
+            })),
+            sessionFiles: currentSession.sessionFiles.map((f) => ({
+              id: f.id,
+              filename: f.filename,
+              mimeType: f.mimeType,
+              size: f.size,
+              content: f.content,
+            })),
+            previousToolResults: currentSession.toolCalls
+              .filter((t) => t.iteration === iterationRef.current - 1)
+              .map((t) => ({
+                tool: t.tool,
+                success: t.status === "completed",
+                result: t.result,
+                error: t.error,
+              })),
+            iteration: iterationRef.current,
+          },
+        });
+
+        if (error) throw error;
+
+        const response = data.response as AgentResponse;
+
+        // Record tool calls
+        const newToolCalls: ToolCall[] = [];
+        
+        // Set tools as active for animation
+        for (const tc of response.tool_calls || []) {
+          setActiveToolIds((prev) => new Set([...prev, tc.tool]));
+          
+          newToolCalls.push({
+            id: crypto.randomUUID(),
+            tool: tc.tool,
+            params: tc.params,
+            status: "executing",
+            startTime: new Date().toISOString(),
+            iteration: iterationRef.current,
+          });
+        }
+
+        // Process edge function results
+        for (const result of data.toolResults || []) {
+          const toolCall = newToolCalls.find((t) => t.tool === result.tool && t.status === "executing");
+          if (toolCall) {
+            toolCall.status = result.success ? "completed" : "error";
+            toolCall.result = result.result;
+            toolCall.error = result.error;
+            toolCall.endTime = new Date().toISOString();
+          }
+        }
+
+        // Handle frontend tools
+        for (const handler of data.frontendHandlers || []) {
+          const toolCall = newToolCalls.find((t) => t.tool === handler.tool && t.status === "executing");
+          
+          const result = await executeFrontendTool(handler.tool, handler.params, {
+            sessionId: currentSession.id,
+            blackboard: currentSession.blackboard,
+            sessionFiles: currentSession.sessionFiles,
+            onArtifactCreated: handleArtifactCreated,
+            onBlackboardUpdate: handleBlackboardUpdate,
+            onAssistanceNeeded: handleAssistanceNeeded,
+          });
+
+          if (toolCall) {
+            toolCall.status = result.success ? "completed" : "error";
+            toolCall.result = result.result;
+            toolCall.error = result.error;
+            toolCall.endTime = new Date().toISOString();
+          }
+
+          // If assistance needed, stop here
+          if (handler.tool === "request_assistance") {
+            return false;
+          }
+        }
+
+        // Clear active tools after brief delay
+        setTimeout(() => {
+          setActiveToolIds(new Set());
+        }, 1000);
+
+        // Add blackboard entry from response
+        if (response.blackboard_entry) {
+          const entry: BlackboardEntry = {
+            id: crypto.randomUUID(),
+            timestamp: new Date().toISOString(),
+            category: response.blackboard_entry.category,
+            content: response.blackboard_entry.content,
+            data: response.blackboard_entry.data,
+            iteration: iterationRef.current,
+          };
+          handleBlackboardUpdate(entry);
+        }
+
+        // Add assistant message
+        const assistantMessage: FreeAgentMessage = {
+          id: crypto.randomUUID(),
+          role: "assistant",
+          content: response.reasoning || response.message_to_user || "",
+          timestamp: new Date().toISOString(),
+          iteration: iterationRef.current,
+        };
+
+        // Add artifacts from response
+        const newArtifacts: FreeAgentArtifact[] = (response.artifacts || []).map((a) => ({
+          id: crypto.randomUUID(),
+          type: a.type,
+          title: a.title,
+          content: a.content,
+          description: a.description,
+          createdAt: new Date().toISOString(),
+          iteration: iterationRef.current,
+        }));
+
+        // Update session
+        updateSession((prev) =>
+          prev
+            ? {
+                ...prev,
+                currentIteration: iterationRef.current,
+                toolCalls: [...prev.toolCalls, ...newToolCalls],
+                messages: [...prev.messages, assistantMessage],
+                artifacts: [...prev.artifacts, ...newArtifacts],
+                lastActivityTime: new Date().toISOString(),
+              }
+            : null
+        );
+
+        // Check status
+        if (response.status === "completed") {
+          const finalReport: FinalReport = {
+            summary: response.final_report?.summary || "Task completed",
+            toolsUsed: response.final_report?.tools_used || [],
+            artifactsCreated: (response.final_report?.artifacts_created || []).map((a) => ({
+              title: a.title,
+              description: a.description,
+              artifactId: "",
+            })),
+            keyFindings: response.final_report?.key_findings || [],
+            totalIterations: iterationRef.current,
+            totalTime: Date.now() - new Date(currentSession.startTime).getTime(),
+          };
+
+          updateSession((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  status: "completed",
+                  finalReport,
+                  endTime: new Date().toISOString(),
+                }
+              : null
+          );
+          
+          toast.success("Free Agent completed the task!");
+          return false;
+        } else if (response.status === "needs_assistance") {
+          return false;
+        } else if (response.status === "error") {
+          updateSession((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  status: "error",
+                  error: response.reasoning,
+                }
+              : null
+          );
+          toast.error("Free Agent encountered an error");
+          return false;
+        }
+
+        return true; // Continue running
+      } catch (error) {
+        console.error("Iteration failed:", error);
+        updateSession((prev) =>
+          prev
+            ? {
+                ...prev,
+                status: "error",
+                error: error instanceof Error ? error.message : "Unknown error",
+              }
+            : null
+        );
+        toast.error("Free Agent error: " + (error instanceof Error ? error.message : "Unknown error"));
+        return false;
+      }
+    },
+    [maxIterations, handleArtifactCreated, handleBlackboardUpdate, handleAssistanceNeeded, updateSession]
+  );
 
   // Start a new session
   const startSession = useCallback(
     async (prompt: string, files: SessionFile[] = []) => {
       try {
         setIsRunning(true);
+        iterationRef.current = 0;
 
         const newSession: FreeAgentSession = {
           id: crypto.randomUUID(),
@@ -58,40 +345,22 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
         };
 
         setSession(newSession);
+        saveSessionToLocal(newSession);
 
-        // Call edge function to start
-        const { data, error } = await supabase.functions.invoke("free-agent", {
-          body: {
-            prompt,
-            model,
-            maxIterations,
-            sessionFiles: files.map((f) => ({
-              id: f.id,
-              filename: f.filename,
-              mimeType: f.mimeType,
-              size: f.size,
-              content: f.content,
-            })),
-          },
-        });
+        // Run iterations
+        let shouldContinue = true;
+        while (shouldContinue && iterationRef.current < maxIterations) {
+          const currentSession = loadSessionFromLocal(newSession.id) || newSession;
+          shouldContinue = await executeIteration(currentSession);
+          
+          // Small delay between iterations
+          if (shouldContinue) {
+            await new Promise((resolve) => setTimeout(resolve, 500));
+          }
+        }
 
-        if (error) throw error;
-
-        // Update session with server response
-        setSession((prev) =>
-          prev
-            ? {
-                ...prev,
-                id: data.sessionId,
-                currentIteration: data.iteration,
-              }
-            : null
-        );
-
-        // Process initial response
-        await processAgentResponse(data.sessionId, data.response, data.toolResults);
-
-        return data.sessionId;
+        setIsRunning(false);
+        return newSession.id;
       } catch (error) {
         console.error("Failed to start session:", error);
         toast.error("Failed to start Free Agent session");
@@ -99,175 +368,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
         throw error;
       }
     },
-    [model, maxIterations]
-  );
-
-  // Process agent response and execute frontend tools
-  const processAgentResponse = async (
-    sessionId: string,
-    response: AgentResponse,
-    toolResults: any[]
-  ) => {
-    // Add blackboard entry
-    if (response.blackboard_entry) {
-      const entry: BlackboardEntry = {
-        id: crypto.randomUUID(),
-        timestamp: new Date().toISOString(),
-        category: response.blackboard_entry.category,
-        content: response.blackboard_entry.content,
-        data: response.blackboard_entry.data,
-        iteration: session?.currentIteration || 0,
-      };
-
-      setSession((prev) =>
-        prev
-          ? {
-              ...prev,
-              blackboard: [...prev.blackboard, entry],
-            }
-          : null
-      );
-    }
-
-    // Add assistant message
-    const assistantMessage: FreeAgentMessage = {
-      id: crypto.randomUUID(),
-      role: "assistant",
-      content: response.reasoning || "",
-      timestamp: new Date().toISOString(),
-      iteration: session?.currentIteration,
-    };
-
-    setSession((prev) =>
-      prev
-        ? {
-            ...prev,
-            messages: [...prev.messages, assistantMessage],
-            lastActivityTime: new Date().toISOString(),
-          }
-        : null
-    );
-
-    // Add artifacts
-    if (response.artifacts) {
-      const newArtifacts: FreeAgentArtifact[] = response.artifacts.map((a) => ({
-        id: crypto.randomUUID(),
-        type: a.type,
-        title: a.title,
-        content: a.content,
-        description: a.description,
-        createdAt: new Date().toISOString(),
-        iteration: session?.currentIteration || 0,
-      }));
-
-      setSession((prev) =>
-        prev
-          ? {
-              ...prev,
-              artifacts: [...prev.artifacts, ...newArtifacts],
-            }
-          : null
-      );
-    }
-
-    // Handle status changes
-    if (response.status === "completed") {
-      const finalReport: FinalReport = {
-        summary: response.final_report?.summary || "Task completed",
-        toolsUsed: response.final_report?.tools_used || [],
-        artifactsCreated: (response.final_report?.artifacts_created || []).map((a) => ({
-          title: a.title,
-          description: a.description,
-          artifactId: "",
-        })),
-        keyFindings: response.final_report?.key_findings || [],
-        totalIterations: session?.currentIteration || 0,
-        totalTime: Date.now() - new Date(session?.startTime || Date.now()).getTime(),
-      };
-
-      setSession((prev) =>
-        prev
-          ? {
-              ...prev,
-              status: "completed",
-              finalReport,
-              endTime: new Date().toISOString(),
-            }
-          : null
-      );
-
-      setIsRunning(false);
-      toast.success("Free Agent completed the task!");
-    } else if (response.status === "needs_assistance") {
-      setSession((prev) =>
-        prev
-          ? {
-              ...prev,
-              status: "needs_assistance",
-            }
-          : null
-      );
-
-      setIsRunning(false);
-    } else if (response.status === "error") {
-      setSession((prev) =>
-        prev
-          ? {
-              ...prev,
-              status: "error",
-              error: response.reasoning,
-            }
-          : null
-      );
-
-      setIsRunning(false);
-      toast.error("Free Agent encountered an error");
-    } else {
-      // Continue running - iterate again
-      await continueSession(sessionId);
-    }
-  };
-
-  // Continue running session
-  const continueSession = useCallback(
-    async (sessionId: string) => {
-      if (!session || session.currentIteration >= maxIterations) {
-        setIsRunning(false);
-        return;
-      }
-
-      try {
-        const { data, error } = await supabase.functions.invoke("free-agent", {
-          body: { sessionId },
-        });
-
-        if (error) throw error;
-
-        setSession((prev) =>
-          prev
-            ? {
-                ...prev,
-                currentIteration: data.iteration,
-              }
-            : null
-        );
-
-        await processAgentResponse(sessionId, data.response, data.toolResults);
-      } catch (error) {
-        console.error("Failed to continue session:", error);
-        setSession((prev) =>
-          prev
-            ? {
-                ...prev,
-                status: "error",
-                error: error instanceof Error ? error.message : "Unknown error",
-              }
-            : null
-        );
-        setIsRunning(false);
-      }
-    },
-    [session, maxIterations]
+    [model, maxIterations, executeIteration]
   );
 
   // Respond to assistance request
@@ -278,11 +379,21 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
       try {
         setIsRunning(true);
 
-        setSession((prev) =>
+        // Add user response as message
+        const userMessage: FreeAgentMessage = {
+          id: crypto.randomUUID(),
+          role: "user",
+          content: response.response || response.selectedChoice || "[File provided]",
+          timestamp: new Date().toISOString(),
+          iteration: iterationRef.current,
+        };
+
+        updateSession((prev) =>
           prev
             ? {
                 ...prev,
                 status: "running",
+                messages: [...prev.messages, userMessage],
                 assistanceRequest: prev.assistanceRequest
                   ? {
                       ...prev.assistanceRequest,
@@ -296,39 +407,33 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
             : null
         );
 
-        const { data, error } = await supabase.functions.invoke("free-agent", {
-          body: {
-            sessionId: session.id,
-            assistanceResponse: response,
-          },
-        });
+        // Continue iterations
+        let shouldContinue = true;
+        while (shouldContinue && iterationRef.current < maxIterations) {
+          const currentSession = loadSessionFromLocal(session.id);
+          if (!currentSession) break;
+          shouldContinue = await executeIteration(currentSession);
+          
+          if (shouldContinue) {
+            await new Promise((resolve) => setTimeout(resolve, 500));
+          }
+        }
 
-        if (error) throw error;
-
-        setSession((prev) =>
-          prev
-            ? {
-                ...prev,
-                currentIteration: data.iteration,
-              }
-            : null
-        );
-
-        await processAgentResponse(session.id, data.response, data.toolResults);
+        setIsRunning(false);
       } catch (error) {
         console.error("Failed to respond to assistance:", error);
         toast.error("Failed to send response");
         setIsRunning(false);
       }
     },
-    [session]
+    [session, maxIterations, executeIteration, updateSession]
   );
 
   // Stop session
   const stopSession = useCallback(() => {
     abortControllerRef.current?.abort();
     setIsRunning(false);
-    setSession((prev) =>
+    updateSession((prev) =>
       prev
         ? {
             ...prev,
@@ -338,13 +443,14 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
         : null
     );
     toast.info("Free Agent stopped");
-  }, []);
+  }, [updateSession]);
 
   // Reset session
   const resetSession = useCallback(() => {
     setSession(null);
     setIsRunning(false);
     setActiveToolIds(new Set());
+    iterationRef.current = 0;
   }, []);
 
   // Set tool as active (for animation)
@@ -365,7 +471,6 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
     isRunning,
     activeToolIds,
     startSession,
-    continueSession,
     respondToAssistance,
     stopSession,
     resetSession,
