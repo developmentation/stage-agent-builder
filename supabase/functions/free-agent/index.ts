@@ -425,6 +425,15 @@ serve(async (req) => {
         toolResults,
         frontendHandlers,
         status: agentResponse.status,
+        // Debug data for Raw viewer
+        debug: {
+          systemPrompt: systemPrompt,
+          rawLLMResponse: llmResult.response || "",
+          model: model,
+          scratchpadLength: scratchpad.length,
+          blackboardEntries: blackboard.length,
+          previousResultsCount: previousToolResults.length,
+        },
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

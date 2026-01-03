@@ -105,6 +105,23 @@ export interface FreeAgentMessage {
   iteration?: number;
 }
 
+// Raw iteration data for debugging
+export interface RawIterationData {
+  iteration: number;
+  timestamp: string;
+  input: {
+    systemPrompt: string;
+    model: string;
+    scratchpadLength: number;
+    blackboardEntries: number;
+    previousResultsCount: number;
+  };
+  output: {
+    rawLLMResponse: string;
+    parsedResponse: unknown;
+  };
+}
+
 // Final report when task completes
 export interface FinalReport {
   summary: string;
@@ -152,6 +169,9 @@ export interface FreeAgentSession {
   
   // Error tracking
   error?: string;
+  
+  // Debug data for Raw viewer
+  rawData: RawIterationData[];
 }
 
 // Tool definition from manifest

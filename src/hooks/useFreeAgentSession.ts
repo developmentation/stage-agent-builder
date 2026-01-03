@@ -12,6 +12,7 @@ import type {
   FreeAgentMessage,
   AgentResponse,
   FinalReport,
+  RawIterationData,
 } from "@/types/freeAgent";
 import { executeFrontendTool } from "@/lib/freeAgentToolExecutor";
 
@@ -168,6 +169,23 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
 
         if (error) throw error;
 
+        // Store raw debug data for the Raw viewer
+        const rawIterationData: RawIterationData = {
+          iteration: iterationRef.current,
+          timestamp: new Date().toISOString(),
+          input: {
+            systemPrompt: data.debug?.systemPrompt || "",
+            model: currentSession.model,
+            scratchpadLength: data.debug?.scratchpadLength || 0,
+            blackboardEntries: data.debug?.blackboardEntries || 0,
+            previousResultsCount: data.debug?.previousResultsCount || 0,
+          },
+          output: {
+            rawLLMResponse: data.debug?.rawLLMResponse || "",
+            parsedResponse: data.response,
+          },
+        };
+
         const response = data.response as AgentResponse;
 
         // Record tool calls
@@ -277,6 +295,8 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
                 lastActivityTime: new Date().toISOString(),
                 // Clear the assistance request once the response has been used
                 assistanceRequest: assistanceResponse ? undefined : prev.assistanceRequest,
+                // Store raw data for debugging
+                rawData: [...(prev.rawData || []), rawIterationData],
               }
             : null
         );
@@ -373,6 +393,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
           sessionFiles: files,
           startTime: new Date().toISOString(),
           lastActivityTime: new Date().toISOString(),
+          rawData: [],
         };
 
         setSession(newSession);
