@@ -8,6 +8,13 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Play,
   Square,
   Upload,
@@ -20,10 +27,22 @@ import {
 } from "lucide-react";
 import type { FreeAgentSession, SessionFile } from "@/types/freeAgent";
 
+// Available models - same as workflow tool
+const MODEL_OPTIONS = [
+  { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash", provider: "gemini" },
+  { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro", provider: "gemini" },
+  { value: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite", provider: "gemini" },
+  { value: "claude-sonnet-4-5", label: "Claude Sonnet 4.5", provider: "claude" },
+  { value: "claude-haiku-4-5", label: "Claude Haiku 4.5", provider: "claude" },
+  { value: "claude-opus-4-5", label: "Claude Opus 4.5", provider: "claude" },
+  { value: "grok-4-fast-reasoning", label: "Grok 4 Fast Reasoning", provider: "grok" },
+  { value: "grok-4-fast-non-reasoning", label: "Grok 4 Fast", provider: "grok" },
+];
+
 interface FreeAgentPanelProps {
   session: FreeAgentSession | null;
   isRunning: boolean;
-  onStart: (prompt: string, files: SessionFile[], existingSession?: FreeAgentSession | null) => void;
+  onStart: (prompt: string, files: SessionFile[], model: string, existingSession?: FreeAgentSession | null) => void;
   onStop: () => void;
   onReset: () => void;
   onContinue: () => void;
@@ -41,6 +60,7 @@ export function FreeAgentPanel({
 }: FreeAgentPanelProps) {
   const [prompt, setPrompt] = useState("");
   const [files, setFiles] = useState<SessionFile[]>([]);
+  const [selectedModel, setSelectedModel] = useState("gemini-2.5-flash");
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleClear = () => {
@@ -94,7 +114,7 @@ export function FreeAgentPanel({
   const handleStart = () => {
     if (!prompt.trim()) return;
     // Pass existing session if in "idle" state (after Continue) to preserve memory
-    onStart(prompt, files, session?.status === "idle" ? session : null);
+    onStart(prompt, files, selectedModel, session?.status === "idle" ? session : null);
     // Keep prompt and files so user can re-run
   };
 
@@ -140,6 +160,16 @@ export function FreeAgentPanel({
     }
   };
 
+  // Get provider badge color
+  const getProviderColor = (provider: string) => {
+    switch (provider) {
+      case "gemini": return "text-blue-500";
+      case "claude": return "text-orange-500";
+      case "grok": return "text-purple-500";
+      default: return "text-muted-foreground";
+    }
+  };
+
   return (
     <Card className="h-full flex flex-col">
       <CardHeader className="pb-3">
@@ -164,8 +194,30 @@ export function FreeAgentPanel({
                 placeholder="Describe what you want the agent to do..."
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                className="min-h-[120px] resize-none"
+                className="min-h-[100px] resize-none"
               />
+            </div>
+
+            {/* Model Selection */}
+            <div className="space-y-2">
+              <Label>Model</Label>
+              <Select value={selectedModel} onValueChange={setSelectedModel}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select model" />
+                </SelectTrigger>
+                <SelectContent>
+                  {MODEL_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs font-medium uppercase ${getProviderColor(opt.provider)}`}>
+                          {opt.provider}
+                        </span>
+                        <span>{opt.label}</span>
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             {/* File uploads */}
@@ -191,7 +243,7 @@ export function FreeAgentPanel({
               </div>
 
               {files.length > 0 && (
-                <ScrollArea className="h-[100px] border rounded-md p-2">
+                <ScrollArea className="h-[80px] border rounded-md p-2">
                   <div className="space-y-1">
                     {files.map((file) => (
                       <div
@@ -246,6 +298,10 @@ export function FreeAgentPanel({
               <div className="text-sm">
                 <span className="text-muted-foreground">Prompt: </span>
                 <span className="line-clamp-2">{session.prompt}</span>
+              </div>
+              <div className="text-sm">
+                <span className="text-muted-foreground">Model: </span>
+                <span className="font-medium">{session.model}</span>
               </div>
 
               <div className="flex gap-4 text-sm">

@@ -13,11 +13,10 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/componen
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface FreeAgentViewProps {
-  model?: string;
   maxIterations?: number;
 }
 
-export function FreeAgentView({ model, maxIterations }: FreeAgentViewProps) {
+export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
   const [toolsManifest, setToolsManifest] = useState<ToolsManifest | null>(null);
   const [assistanceModalOpen, setAssistanceModalOpen] = useState(false);
   const [finalReportModalOpen, setFinalReportModalOpen] = useState(false);
@@ -34,7 +33,7 @@ export function FreeAgentView({ model, maxIterations }: FreeAgentViewProps) {
     continueSession,
     updateScratchpad,
     getCacheSize,
-  } = useFreeAgentSession({ model, maxIterations });
+  } = useFreeAgentSession({ maxIterations });
 
   // Load tools manifest
   useEffect(() => {
@@ -60,8 +59,8 @@ export function FreeAgentView({ model, maxIterations }: FreeAgentViewProps) {
   }, [session?.status, session?.finalReport]);
 
   const handleStart = useCallback(
-    async (prompt: string, files: SessionFile[], existingSession?: FreeAgentSession | null) => {
-      await startSession(prompt, files, existingSession);
+    async (prompt: string, files: SessionFile[], model: string, existingSession?: FreeAgentSession | null) => {
+      await startSession(prompt, files, model, existingSession);
     },
     [startSession]
   );

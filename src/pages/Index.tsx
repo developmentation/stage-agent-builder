@@ -2959,7 +2959,7 @@ const Index = () => {
             </div>
           </div>
           <div className="flex-1 overflow-hidden">
-            <FreeAgentView model={selectedModel} maxIterations={50} />
+            <FreeAgentView maxIterations={50} />
           </div>
         </div>
       ) : (

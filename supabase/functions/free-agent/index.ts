@@ -21,6 +21,162 @@ interface FreeAgentRequest {
   assistanceResponse?: { response?: string; fileId?: string; selectedChoice?: string };
 }
 
+// ============================================================================
+// RESPONSE SCHEMA - Single Source of Truth for all providers
+// ============================================================================
+
+// Get JSON Schema for Grok's response_format
+function getGrokResponseSchema() {
+  return {
+    type: "json_schema",
+    json_schema: {
+      name: "free_agent_response",
+      strict: true,
+      schema: {
+        type: "object",
+        properties: {
+          reasoning: { type: "string", description: "Your thought process for this iteration" },
+          tool_calls: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                tool: { type: "string" },
+                params: { type: "object", additionalProperties: true }
+              },
+              required: ["tool", "params"],
+              additionalProperties: false
+            }
+          },
+          blackboard_entry: {
+            type: "object",
+            properties: {
+              category: { type: "string", enum: ["observation", "insight", "plan", "decision", "error"] },
+              content: { type: "string" }
+            },
+            required: ["category", "content"],
+            additionalProperties: false
+          },
+          status: { type: "string", enum: ["in_progress", "completed", "needs_assistance", "error"] },
+          message_to_user: { type: "string" },
+          artifacts: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                type: { type: "string", enum: ["text", "file", "image", "data"] },
+                title: { type: "string" },
+                content: { type: "string" },
+                description: { type: "string" }
+              },
+              required: ["type", "title", "content"],
+              additionalProperties: false
+            }
+          },
+          final_report: {
+            type: "object",
+            properties: {
+              summary: { type: "string" },
+              tools_used: { type: "array", items: { type: "string" } },
+              artifacts_created: { type: "array", items: { type: "string" } },
+              key_findings: { type: "array", items: { type: "string" } }
+            },
+            required: ["summary", "tools_used", "artifacts_created", "key_findings"],
+            additionalProperties: false
+          }
+        },
+        required: ["reasoning", "tool_calls", "blackboard_entry", "status"],
+        additionalProperties: false
+      }
+    }
+  };
+}
+
+// Get tool definition for Claude's tool_choice
+function getClaudeResponseTool() {
+  return {
+    name: "respond_with_actions",
+    description: "Return your reasoning, tool calls, blackboard entry, and status. You MUST use this tool to respond.",
+    input_schema: {
+      type: "object",
+      properties: {
+        reasoning: { type: "string", description: "Your thought process for this iteration" },
+        tool_calls: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              tool: { type: "string" },
+              params: { type: "object" }
+            },
+            required: ["tool", "params"]
+          }
+        },
+        blackboard_entry: {
+          type: "object",
+          properties: {
+            category: { type: "string", enum: ["observation", "insight", "plan", "decision", "error"] },
+            content: { type: "string" }
+          },
+          required: ["category", "content"]
+        },
+        status: { type: "string", enum: ["in_progress", "completed", "needs_assistance", "error"] },
+        message_to_user: { type: "string" },
+        artifacts: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              type: { type: "string", enum: ["text", "file", "image", "data"] },
+              title: { type: "string" },
+              content: { type: "string" },
+              description: { type: "string" }
+            },
+            required: ["type", "title", "content"]
+          }
+        },
+        final_report: {
+          type: "object",
+          properties: {
+            summary: { type: "string" },
+            tools_used: { type: "array", items: { type: "string" } },
+            artifacts_created: { type: "array", items: { type: "string" } },
+            key_findings: { type: "array", items: { type: "string" } }
+          },
+          required: ["summary", "tools_used", "artifacts_created", "key_findings"]
+        }
+      },
+      required: ["reasoning", "tool_calls", "blackboard_entry", "status"]
+    }
+  };
+}
+
+// Map UI model names to actual API model identifiers
+function getApiModelName(uiModel: string): string {
+  const modelMap: Record<string, string> = {
+    // Gemini models
+    "gemini-2.5-flash": "gemini-2.5-flash-preview-05-20",
+    "gemini-2.5-pro": "gemini-2.5-pro-preview-05-06",
+    "gemini-3-pro-preview": "gemini-2.5-pro-preview-05-06", // Use latest available
+    "gemini-2.5-flash-lite": "gemini-2.0-flash-lite",
+    // Claude models
+    "claude-sonnet-4-5": "claude-sonnet-4-20250514",
+    "claude-haiku-4-5": "claude-haiku-4-20250514",
+    "claude-opus-4-5": "claude-opus-4-20250514",
+    // Grok models
+    "grok-4-fast-reasoning": "grok-3-fast",
+    "grok-4-fast-non-reasoning": "grok-3-fast",
+  };
+  return modelMap[uiModel] || uiModel;
+}
+
+// Determine provider from model name
+function getProvider(model: string): "gemini" | "claude" | "grok" {
+  if (model.startsWith("claude") || model.includes("claude")) return "claude";
+  if (model.startsWith("grok") || model.includes("grok")) return "grok";
+  return "gemini"; // Default to Gemini
+}
+
 // Build system prompt for agent
 function buildSystemPrompt(
   blackboard: Array<{ category: string; content: string }>,
@@ -156,7 +312,7 @@ Iteration 1:
 
 Iteration 2 (YOU WILL SEE search results in PREVIOUS ITERATION RESULTS above):
 - READ the results shown above
-- tool_calls: [{ tool: "write_scratchpad", params: { content: "## CES 2025 Search Results\n\n1. [actual result data]\n2. [actual result data]..." } }]
+- tool_calls: [{ tool: "write_scratchpad", params: { content: "## CES 2025 Search Results\\n\\n1. [actual result data]\\n2. [actual result data]..." } }]
 - blackboard_entry: { category: "plan", content: "COMPLETED: Search. Data SAVED to scratchpad. NEXT: Send email." }
 
 Iteration 3:
@@ -282,54 +438,127 @@ async function executeTool(
   }
 }
 
-// Call the LLM
+// Call the LLM - Multi-provider support
 async function callLLM(
   systemPrompt: string,
   userPrompt: string,
   model: string
 ): Promise<{ success: boolean; response?: string; error?: string }> {
-  const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+  const provider = getProvider(model);
+  const apiModel = getApiModelName(model);
   
-  if (!GEMINI_API_KEY) {
-    return { success: false, error: "GEMINI_API_KEY not configured" };
-  }
+  console.log(`Calling LLM - Provider: ${provider}, UI Model: ${model}, API Model: ${apiModel}`);
 
   try {
-    console.log(`Calling LLM model: ${model}`);
+    let response: Response;
     
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [
-            { role: "user", parts: [{ text: `${systemPrompt}\n\nUser Task: ${userPrompt}` }] }
-          ],
-          generationConfig: {
-            maxOutputTokens: 16384,
-            temperature: 0.7,
-            responseMimeType: "application/json",
-          },
-        }),
+    if (provider === "gemini") {
+      const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+      if (!GEMINI_API_KEY) {
+        return { success: false, error: "GEMINI_API_KEY not configured" };
       }
-    );
+
+      response = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/${apiModel}:generateContent?key=${GEMINI_API_KEY}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [
+              { role: "user", parts: [{ text: `${systemPrompt}\n\nUser Task: ${userPrompt}` }] }
+            ],
+            generationConfig: {
+              maxOutputTokens: 16384,
+              temperature: 0.7,
+              responseMimeType: "application/json", // Gemini JSON mode
+            },
+          }),
+        }
+      );
+    } else if (provider === "claude") {
+      const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
+      if (!ANTHROPIC_API_KEY) {
+        return { success: false, error: "ANTHROPIC_API_KEY not configured" };
+      }
+
+      response = await fetch("https://api.anthropic.com/v1/messages", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": ANTHROPIC_API_KEY,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify({
+          model: apiModel,
+          max_tokens: 16384,
+          system: systemPrompt,
+          messages: [{ role: "user", content: `User Task: ${userPrompt}` }],
+          tools: [getClaudeResponseTool()],
+          tool_choice: { type: "tool", name: "respond_with_actions" },
+        }),
+      });
+    } else if (provider === "grok") {
+      const XAI_API_KEY = Deno.env.get("XAI_API_KEY");
+      if (!XAI_API_KEY) {
+        return { success: false, error: "XAI_API_KEY not configured" };
+      }
+
+      response = await fetch("https://api.x.ai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${XAI_API_KEY}`,
+        },
+        body: JSON.stringify({
+          model: apiModel,
+          messages: [
+            { role: "system", content: systemPrompt },
+            { role: "user", content: `User Task: ${userPrompt}` }
+          ],
+          max_tokens: 16384,
+          temperature: 0.7,
+          response_format: getGrokResponseSchema(),
+        }),
+      });
+    } else {
+      return { success: false, error: `Unknown provider for model: ${model}` };
+    }
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("LLM error:", errorText);
+      console.error(`LLM error (${provider}):`, errorText);
       return { success: false, error: `LLM Error ${response.status}: ${errorText}` };
     }
 
     const data = await response.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-    
-    if (!text) {
+    let responseText: string;
+
+    // Parse provider-specific response format
+    if (provider === "gemini") {
+      responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+    } else if (provider === "claude") {
+      // Claude with tool_choice returns structured data in tool_use block
+      const toolUseBlock = data.content?.find((block: { type: string }) => block.type === "tool_use");
+      if (toolUseBlock?.input) {
+        // Already structured - stringify for consistent handling downstream
+        responseText = JSON.stringify(toolUseBlock.input);
+      } else {
+        // Fallback to text content
+        const textBlock = data.content?.find((block: { type: string }) => block.type === "text");
+        responseText = textBlock?.text || "";
+      }
+    } else if (provider === "grok") {
+      responseText = data.choices?.[0]?.message?.content || "";
+    } else {
+      responseText = "";
+    }
+
+    if (!responseText) {
       return { success: false, error: "No response from LLM" };
     }
 
-    console.log("LLM response received:", text.slice(0, 500));
-    return { success: true, response: text };
+    console.log(`LLM response received (${provider}):`, responseText.slice(0, 500));
+    return { success: true, response: responseText };
   } catch (error) {
     console.error("LLM call failed:", error);
     return { success: false, error: error instanceof Error ? error.message : "LLM call failed" };
@@ -427,7 +656,7 @@ serve(async (req) => {
       assistanceResponse,
     } = request || {};
 
-    console.log(`Free Agent iteration ${iteration}, prompt: ${(prompt || "").slice(0, 100)}...`);
+    console.log(`Free Agent iteration ${iteration}, model: ${model}, prompt: ${(prompt || "").slice(0, 100)}...`);
     console.log(`Scratchpad length: ${(scratchpad || "").length} chars`);
     if (assistanceResponse) {
       console.log(`User assistance response: ${JSON.stringify(assistanceResponse)}`);
