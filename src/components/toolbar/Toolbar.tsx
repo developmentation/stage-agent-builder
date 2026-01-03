@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Play, Plus, Save, Upload, Trash2, HelpCircle, LayoutGrid, LayoutList, Eye, Eraser, Bot, Workflow } from "lucide-react";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { HelpModal } from "@/components/help/HelpModal";
 import {
   AlertDialog,
@@ -18,6 +18,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 interface ToolbarProps {
@@ -32,6 +37,7 @@ interface ToolbarProps {
   appMode?: "workflow" | "freeAgent";
   onSetAppMode?: (mode: "workflow" | "freeAgent") => void;
 }
+
 export const Toolbar = ({
   onAddStage,
   onSave,
@@ -47,6 +53,18 @@ export const Toolbar = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [helpOpen, setHelpOpen] = useState(false);
   const [clearDialogOpen, setClearDialogOpen] = useState(false);
+  const [isCompact, setIsCompact] = useState(false);
+
+  // Detect if toolbar is getting crowded
+  useEffect(() => {
+    const checkWidth = () => {
+      setIsCompact(window.innerWidth < 1400);
+    };
+    checkWidth();
+    window.addEventListener("resize", checkWidth);
+    return () => window.removeEventListener("resize", checkWidth);
+  }, []);
+
   const handleLoadClick = () => {
     fileInputRef.current?.click();
   };
@@ -63,39 +81,45 @@ export const Toolbar = ({
           <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
             <span className="font-bold text-primary-foreground text-lg">ABC</span>
           </div>
-          <div>
-            <h1 className="text-xl font-bold text-foreground">Agent Builder Console</h1>
-            <p className="text-xs text-muted-foreground">From the Alberta AI Academy</p>
-          </div>
         </div>
         
-        {/* Mode Toggle */}
+        {/* Mode Toggle - responsive icons-only when compact */}
         {onSetAppMode && (
-          <div className="flex items-center bg-muted rounded-lg p-1 ml-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              className={cn(
-                "gap-2 rounded-md transition-colors",
-                appMode === "workflow" && "bg-background shadow-sm"
-              )}
-              onClick={() => onSetAppMode("workflow")}
-            >
-              <Workflow className="h-4 w-4" />
-              Workflow
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className={cn(
-                "gap-2 rounded-md transition-colors",
-                appMode === "freeAgent" && "bg-background shadow-sm"
-              )}
-              onClick={() => onSetAppMode("freeAgent")}
-            >
-              <Bot className="h-4 w-4" />
-              Free Agent
-            </Button>
+          <div className="flex items-center bg-muted rounded-lg p-1 ml-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    "gap-2 rounded-md transition-colors",
+                    appMode === "workflow" && "bg-background shadow-sm"
+                  )}
+                  onClick={() => onSetAppMode("workflow")}
+                >
+                  <Workflow className="h-4 w-4" />
+                  {!isCompact && "Workflow"}
+                </Button>
+              </TooltipTrigger>
+              {isCompact && <TooltipContent>Workflow</TooltipContent>}
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className={cn(
+                    "gap-2 rounded-md transition-colors",
+                    appMode === "freeAgent" && "bg-background shadow-sm"
+                  )}
+                  onClick={() => onSetAppMode("freeAgent")}
+                >
+                  <Bot className="h-4 w-4" />
+                  {!isCompact && "Free Agent"}
+                </Button>
+              </TooltipTrigger>
+              {isCompact && <TooltipContent>Free Agent</TooltipContent>}
+            </Tooltip>
           </div>
         )}
       </div>
