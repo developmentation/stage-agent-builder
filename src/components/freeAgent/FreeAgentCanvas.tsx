@@ -48,15 +48,92 @@ const nodeTypes = {
   promptFile: PromptFileNode,
 };
 
-// Tool categories for grid layout
-const TOOL_CATEGORIES: Record<string, string[]> = {
-  "Web & Search": ["brave_search", "google_search", "web_scrape"],
-  "GitHub": ["read_github_repo", "read_github_file"],
-  "Files & Export": ["read_file", "export_word", "export_pdf"],
-  "Memory": ["read_blackboard", "write_blackboard", "read_scratchpad", "write_scratchpad", "read_prompt", "read_prompt_files"],
-  "Communication": ["send_email", "request_assistance"],
-  "API & Data": ["get_call_api", "post_call_api", "execute_sql", "get_time"],
-  "AI": ["image_generation", "elevenlabs_tts"],
+// Read tools - gather/retrieve information (displayed ABOVE agent)
+const READ_TOOLS = [
+  // Web & Search
+  "brave_search", "google_search", "web_scrape",
+  // GitHub  
+  "read_github_repo", "read_github_file",
+  // Memory reads
+  "read_blackboard", "read_scratchpad", "read_prompt", "read_prompt_files",
+  // File operations
+  "read_file", "read_zip_contents", "read_zip_file", "extract_zip_files",
+  // Documents
+  "pdf_info", "pdf_extract_text", "ocr_image",
+  // API reads
+  "get_call_api", "get_time", "get_weather",
+  // Reasoning (read-like - they process and return info)
+  "think", "summarize", "analyze"
+];
+
+// Write tools - create/send/modify (displayed BELOW agent)
+const WRITE_TOOLS = [
+  // Memory writes
+  "write_blackboard", "write_scratchpad",
+  // Communication
+  "send_email", "request_assistance",
+  // API writes
+  "post_call_api", "execute_sql",
+  // Export/Generation
+  "export_word", "export_pdf", "image_generation", "elevenlabs_tts"
+];
+
+// Layout dimensions
+const LAYOUT = {
+  // Agent center position
+  agentX: 450,
+  agentY: 380,
+  
+  // Left side - Prompt (same Y as scratchpad)
+  promptX: 60,
+  promptY: 160,
+  promptWidth: 280,
+  promptHeight: 300,
+  
+  // User files - below prompt
+  userFileGap: 75,
+  
+  // Right side - Scratchpad (same Y as prompt)
+  scratchpadX: 780,
+  scratchpadY: 160,
+  scratchpadWidth: 320,
+  scratchpadHeight: 300,
+  
+  // Artifacts - below scratchpad
+  artifactGap: 75,
+  
+  // Tool grid settings
+  toolNodeWidth: 130,
+  toolNodeHeight: 55,
+  toolColumnGap: 20,
+  toolRowGap: 12,
+  toolColumns: 2,
+  
+  // Read tools - ABOVE agent
+  readToolsStartX: 380,
+  readToolsStartY: 50,
+  
+  // Write tools - BELOW agent
+  writeToolsStartX: 380,
+  writeToolsStartY: 500,
+};
+
+// Helper to lay out tools in 2 columns
+const layoutToolsInColumns = (
+  toolIds: string[],
+  startX: number,
+  startY: number,
+  columns: number = 2
+): Array<{ id: string; x: number; y: number }> => {
+  return toolIds.map((toolId, index) => {
+    const col = index % columns;
+    const row = Math.floor(index / columns);
+    return {
+      id: toolId,
+      x: startX + col * (LAYOUT.toolNodeWidth + LAYOUT.toolColumnGap),
+      y: startY + row * (LAYOUT.toolNodeHeight + LAYOUT.toolRowGap),
+    };
+  });
 };
 
 export function FreeAgentCanvas({
@@ -84,10 +161,8 @@ export function FreeAgentCanvas({
   const handleNodesChange = useCallback((changes: NodeChange[]) => {
     changes.forEach(change => {
       if (change.type === 'position' && change.position && change.dragging === false) {
-        // User finished dragging - save their position
         userPositionsRef.current.set(change.id, change.position);
       }
-      // Track dimension changes (from NodeResizer)
       if (change.type === 'dimensions' && change.dimensions && change.resizing === false) {
         userSizesRef.current.set(change.id, {
           width: change.dimensions.width,
@@ -98,33 +173,9 @@ export function FreeAgentCanvas({
     onNodesChange(changes);
   }, [onNodesChange]);
 
-  // Calculate node positions with categorized grid layout
+  // Calculate node positions with new layout
   const generateLayout = useCallback(() => {
     if (!toolsManifest) return { nodes: [], edges: [] };
-
-    const tools = Object.entries(toolsManifest.tools);
-    
-    // Layout dimensions
-    const centerX = 450;
-    const centerY = 280;
-    const artifactRadius = 150;
-    
-    // Left side for prompt and files
-    const leftX = 60;
-    const promptY = 100;
-    
-    // Right side for scratchpad
-    const scratchpadX = 780;
-    const scratchpadY = 80;
-    
-    // Tool grid layout - below and around agent
-    const toolGridStartX = 100;
-    const toolGridStartY = 480;
-    const toolNodeWidth = 130;
-    const toolNodeHeight = 60;
-    const toolGapX = 20;
-    const toolGapY = 15;
-    const categoryGapY = 30;
 
     const newNodes: Node<FreeAgentNodeData>[] = [];
     const newEdges: Edge[] = [];
@@ -133,23 +184,20 @@ export function FreeAgentCanvas({
     // Helper to get position (use user position if exists, otherwise default)
     const getPosition = (nodeId: string, defaultPos: XYPosition): XYPosition => {
       const userPos = userPositionsRef.current.get(nodeId);
-      // Only use user position if this node already existed (not new)
       if (userPos && existingNodeIdsRef.current.has(nodeId)) {
         return userPos;
       }
       return defaultPos;
     };
 
-    // === LEFT SIDE: Prompt and Files ===
-    
-    // Prompt node
+    // === LEFT SIDE: Prompt ===
     if (session?.prompt) {
       const promptId = "prompt";
       newNodeIds.add(promptId);
       newNodes.push({
         id: promptId,
         type: "prompt",
-        position: getPosition(promptId, { x: leftX, y: promptY }),
+        position: getPosition(promptId, { x: LAYOUT.promptX, y: LAYOUT.promptY }),
         data: {
           type: "prompt",
           label: "User Prompt",
@@ -168,16 +216,16 @@ export function FreeAgentCanvas({
       });
     }
 
-    // Prompt file nodes (stacked below prompt)
+    // User files (stacked below prompt)
     session?.sessionFiles.forEach((file, index) => {
-      const fileY = promptY + 160 + (index * 70);
+      const fileY = LAYOUT.promptY + LAYOUT.promptHeight + 20 + (index * LAYOUT.userFileGap);
       const fileId = `promptFile-${file.id}`;
       newNodeIds.add(fileId);
       
       newNodes.push({
         id: fileId,
         type: "promptFile",
-        position: getPosition(fileId, { x: leftX, y: fileY }),
+        position: getPosition(fileId, { x: LAYOUT.promptX, y: fileY }),
         data: {
           type: "promptFile",
           label: file.filename,
@@ -199,8 +247,53 @@ export function FreeAgentCanvas({
       });
     });
 
+    // === READ TOOLS: Above agent in 2 columns ===
+    const availableReadTools = READ_TOOLS.filter(id => toolsManifest.tools[id]);
+    const readToolPositions = layoutToolsInColumns(
+      availableReadTools,
+      LAYOUT.readToolsStartX,
+      LAYOUT.readToolsStartY,
+      LAYOUT.toolColumns
+    );
+
+    readToolPositions.forEach(({ id: toolId, x, y }) => {
+      const tool = toolsManifest.tools[toolId];
+      if (!tool) return;
+
+      const nodeId = `tool-${toolId}`;
+      newNodeIds.add(nodeId);
+
+      const isActive = activeToolIds.has(toolId);
+      const wasUsed = session?.toolCalls.some((tc) => tc.tool === toolId && tc.status === "completed");
+
+      newNodes.push({
+        id: nodeId,
+        type: "tool",
+        position: getPosition(nodeId, { x, y }),
+        data: {
+          type: "tool",
+          label: tool.name,
+          status: isActive ? "active" : wasUsed ? "success" : "idle",
+          icon: tool.icon,
+          category: tool.category,
+          toolId,
+        },
+      });
+
+      // Edge from read tool to agent TOP (input)
+      if (isActive || wasUsed) {
+        newEdges.push({
+          id: `edge-tool-agent-${toolId}`,
+          source: nodeId,
+          target: "agent",
+          targetHandle: "top",
+          animated: isActive,
+          style: { stroke: "#3b82f6", strokeWidth: isActive ? 2 : 1 },
+        });
+      }
+    });
+
     // === CENTER: Agent ===
-    
     const agentStatus = session?.status === "running" 
       ? "thinking" 
       : session?.status === "completed" 
@@ -214,7 +307,7 @@ export function FreeAgentCanvas({
     newNodes.push({
       id: agentId,
       type: "agent",
-      position: getPosition(agentId, { x: centerX - 60, y: centerY - 60 }),
+      position: getPosition(agentId, { x: LAYOUT.agentX - 60, y: LAYOUT.agentY - 60 }),
       data: {
         type: "agent",
         label: "Free Agent",
@@ -224,115 +317,66 @@ export function FreeAgentCanvas({
       },
     });
 
-    // === TOOL GRID: Categorized layout below agent ===
-    let currentY = toolGridStartY;
-    
-    Object.entries(TOOL_CATEGORIES).forEach(([categoryName, categoryToolIds]) => {
-      // Filter to only tools that exist in manifest
-      const categoryTools = categoryToolIds.filter(id => toolsManifest.tools[id]);
-      if (categoryTools.length === 0) return;
-      
-      // Calculate grid for this category
-      const toolsPerRow = 5;
-      let currentX = toolGridStartX;
-      let rowIndex = 0;
-      
-      categoryTools.forEach((toolId, index) => {
-        const tool = toolsManifest.tools[toolId];
-        if (!tool) return;
-        
-        const colIndex = index % toolsPerRow;
-        if (index > 0 && colIndex === 0) {
-          rowIndex++;
-          currentX = toolGridStartX;
-        }
-        
-        const x = toolGridStartX + colIndex * (toolNodeWidth + toolGapX);
-        const y = currentY + rowIndex * (toolNodeHeight + toolGapY);
-        
-        const nodeId = `tool-${toolId}`;
-        newNodeIds.add(nodeId);
-        
-        const isActive = activeToolIds.has(toolId);
-        const wasUsed = session?.toolCalls.some((tc) => tc.tool === toolId && tc.status === "completed");
+    // === WRITE TOOLS: Below agent in 2 columns ===
+    const availableWriteTools = WRITE_TOOLS.filter(id => toolsManifest.tools[id]);
+    const writeToolPositions = layoutToolsInColumns(
+      availableWriteTools,
+      LAYOUT.writeToolsStartX,
+      LAYOUT.writeToolsStartY,
+      LAYOUT.toolColumns
+    );
 
-        newNodes.push({
-          id: nodeId,
-          type: "tool",
-          position: getPosition(nodeId, { x, y }),
-          data: {
-            type: "tool",
-            label: tool.name,
-            status: isActive ? "active" : wasUsed ? "success" : "idle",
-            icon: tool.icon,
-            category: tool.category,
-            toolId,
-          },
-        });
+    writeToolPositions.forEach(({ id: toolId, x, y }) => {
+      const tool = toolsManifest.tools[toolId];
+      if (!tool) return;
 
-        // Add edge from agent to active tools
-        if (isActive) {
-          newEdges.push({
-            id: `edge-agent-${toolId}`,
-            source: "agent",
-            target: nodeId,
-            animated: true,
-            style: { stroke: "#f59e0b", strokeWidth: 2 },
-          });
-        }
-      });
-      
-      // Move to next category section
-      const rowsUsed = Math.ceil(categoryTools.length / 5);
-      currentY += rowsUsed * (toolNodeHeight + toolGapY) + categoryGapY;
-    });
-
-    // Artifact nodes (between agent and scratchpad)
-    session?.artifacts.forEach((artifact, index) => {
-      const artifactX = centerX + 180 + (index % 2) * 100;
-      const artifactY = centerY - 80 + Math.floor(index / 2) * 80;
-      
-      const nodeId = `artifact-${artifact.id}`;
+      const nodeId = `tool-${toolId}`;
       newNodeIds.add(nodeId);
+
+      const isActive = activeToolIds.has(toolId);
+      const wasUsed = session?.toolCalls.some((tc) => tc.tool === toolId && tc.status === "completed");
 
       newNodes.push({
         id: nodeId,
-        type: "artifact",
-        position: getPosition(nodeId, { x: artifactX, y: artifactY }),
+        type: "tool",
+        position: getPosition(nodeId, { x, y }),
         data: {
-          type: "artifact",
-          label: artifact.title,
-          status: "success",
-          artifactId: artifact.id,
-          artifactType: artifact.type,
+          type: "tool",
+          label: tool.name,
+          status: isActive ? "active" : wasUsed ? "success" : "idle",
+          icon: tool.icon,
+          category: tool.category,
+          toolId,
         },
       });
 
-      // Edge from agent to artifact
-      newEdges.push({
-        id: `edge-agent-artifact-${artifact.id}`,
-        source: "agent",
-        target: nodeId,
-        style: { stroke: "#10b981", strokeWidth: 1.5, strokeDasharray: "5,5" },
-      });
+      // Edge from agent BOTTOM to write tool (output)
+      if (isActive || wasUsed) {
+        newEdges.push({
+          id: `edge-agent-tool-${toolId}`,
+          source: "agent",
+          sourceHandle: "bottom",
+          target: nodeId,
+          animated: isActive,
+          style: { stroke: "#f59e0b", strokeWidth: isActive ? 2 : 1 },
+        });
+      }
     });
 
     // === RIGHT SIDE: Scratchpad ===
-    
     const isWritingToScratchpad = activeToolIds.has("write_scratchpad");
     const scratchpadId = "scratchpad";
     newNodeIds.add(scratchpadId);
     
-    // Get user-saved size or use defaults
     const userScratchpadSize = userSizesRef.current.get(scratchpadId);
     const scratchpadStyle = userScratchpadSize 
       ? { width: userScratchpadSize.width, height: userScratchpadSize.height }
-      : { width: 320, height: 380 };
+      : { width: LAYOUT.scratchpadWidth, height: LAYOUT.scratchpadHeight };
     
     newNodes.push({
       id: scratchpadId,
       type: "scratchpad",
-      position: getPosition(scratchpadId, { x: scratchpadX, y: scratchpadY }),
+      position: getPosition(scratchpadId, { x: LAYOUT.scratchpadX, y: LAYOUT.scratchpadY }),
       style: scratchpadStyle,
       data: {
         type: "scratchpad",
@@ -356,6 +400,36 @@ export function FreeAgentCanvas({
         strokeWidth: isWritingToScratchpad ? 2 : 1,
         strokeDasharray: isWritingToScratchpad ? undefined : "5,5",
       },
+    });
+
+    // === Artifacts: Below scratchpad (styled like user files) ===
+    session?.artifacts.forEach((artifact, index) => {
+      const artifactY = LAYOUT.scratchpadY + LAYOUT.scratchpadHeight + 20 + (index * LAYOUT.artifactGap);
+      
+      const nodeId = `artifact-${artifact.id}`;
+      newNodeIds.add(nodeId);
+
+      newNodes.push({
+        id: nodeId,
+        type: "artifact",
+        position: getPosition(nodeId, { x: LAYOUT.scratchpadX, y: artifactY }),
+        data: {
+          type: "artifact",
+          label: artifact.title,
+          status: "success",
+          artifactId: artifact.id,
+          artifactType: artifact.type,
+        },
+      });
+
+      // Edge from agent to artifact
+      newEdges.push({
+        id: `edge-agent-artifact-${artifact.id}`,
+        source: "agent",
+        sourceHandle: "right",
+        target: nodeId,
+        style: { stroke: "#10b981", strokeWidth: 1.5, strokeDasharray: "5,5" },
+      });
     });
 
     // Update existing node IDs for next render

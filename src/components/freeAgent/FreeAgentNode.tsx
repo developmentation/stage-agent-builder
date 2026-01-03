@@ -53,30 +53,34 @@ export function FreeAgentNode({ data }: NodeProps<FreeAgentNodeData>) {
         data.status === "thinking" && "animate-pulse"
       )}
     >
-      {/* Handles for connections - Left for inputs, Right for outputs */}
+      {/* Handles for connections */}
+      {/* Left: User prompt and files input */}
       <Handle
         type="target"
         position={Position.Left}
         id="left"
         className="!bg-blue-500 !w-3 !h-3 !border-2 !border-background"
       />
+      {/* Right: Scratchpad and artifacts output */}
       <Handle
         type="source"
         position={Position.Right}
         id="right"
         className="!bg-amber-500 !w-3 !h-3 !border-2 !border-background"
       />
-      <Handle
-        type="source"
-        position={Position.Bottom}
-        id="bottom"
-        className="!bg-primary !w-3 !h-3 !border-2 !border-background"
-      />
+      {/* Top: Read tools input (blue) */}
       <Handle
         type="target"
         position={Position.Top}
         id="top"
-        className="!bg-primary !w-3 !h-3 !border-2 !border-background"
+        className="!bg-blue-500 !w-3 !h-3 !border-2 !border-background"
+      />
+      {/* Bottom: Write tools output (amber) */}
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="bottom"
+        className="!bg-amber-500 !w-3 !h-3 !border-2 !border-background"
       />
 
       {/* Icon */}
