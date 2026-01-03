@@ -4,6 +4,7 @@ import { FreeAgentCanvas } from "./FreeAgentCanvas";
 import { FreeAgentPanel } from "./FreeAgentPanel";
 import { BlackboardViewer } from "./BlackboardViewer";
 import { ArtifactsPanel } from "./ArtifactsPanel";
+import { RawViewer } from "./RawViewer";
 import { AssistanceModal } from "./AssistanceModal";
 import { FinalReportModal } from "./FinalReportModal";
 import { useFreeAgentSession } from "@/hooks/useFreeAgentSession";
@@ -154,12 +155,18 @@ export function FreeAgentView({ model, maxIterations }: FreeAgentViewProps) {
                   <TabsTrigger value="artifacts" className="flex-1">
                     Artifacts
                   </TabsTrigger>
+                  <TabsTrigger value="raw" className="flex-1">
+                    Raw
+                  </TabsTrigger>
                 </TabsList>
                 <TabsContent value="blackboard" className="flex-1 overflow-hidden m-0 p-0">
                   <BlackboardViewer entries={session?.blackboard || []} />
                 </TabsContent>
                 <TabsContent value="artifacts" className="flex-1 overflow-hidden m-0 p-0">
                   <ArtifactsPanel artifacts={session?.artifacts || []} />
+                </TabsContent>
+                <TabsContent value="raw" className="flex-1 overflow-hidden m-0 p-0">
+                  <RawViewer rawData={session?.rawData || []} />
                 </TabsContent>
               </Tabs>
             </div>
@@ -213,12 +220,18 @@ export function FreeAgentView({ model, maxIterations }: FreeAgentViewProps) {
                   <TabsTrigger value="artifacts" className="flex-1">
                     Artifacts
                   </TabsTrigger>
+                  <TabsTrigger value="raw" className="flex-1">
+                    Raw
+                  </TabsTrigger>
                 </TabsList>
                 <TabsContent value="blackboard" className="flex-1 overflow-hidden m-0 p-0">
                   <BlackboardViewer entries={session?.blackboard || []} />
                 </TabsContent>
                 <TabsContent value="artifacts" className="flex-1 overflow-hidden m-0 p-0">
                   <ArtifactsPanel artifacts={session?.artifacts || []} />
+                </TabsContent>
+                <TabsContent value="raw" className="flex-1 overflow-hidden m-0 p-0">
+                  <RawViewer rawData={session?.rawData || []} />
                 </TabsContent>
               </Tabs>
             </div>
