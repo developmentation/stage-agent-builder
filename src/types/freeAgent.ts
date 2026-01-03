@@ -119,6 +119,8 @@ export interface RawIterationData {
   timestamp: string;
   input: {
     systemPrompt: string;
+    userPrompt?: string;        // The user's task
+    fullPromptSent?: string;    // Complete prompt sent to LLM
     model: string;
     scratchpadLength: number;
     blackboardEntries: number;
@@ -127,6 +129,14 @@ export interface RawIterationData {
   output: {
     rawLLMResponse: string;
     parsedResponse: unknown;
+    // Error information when parsing fails
+    parseError?: {
+      rawResponse: string;
+      responseLength: number;
+      preview: string;
+      ending: string;
+    } | null;
+    errorMessage?: string;
   };
   toolResults: ToolResult[];
 }

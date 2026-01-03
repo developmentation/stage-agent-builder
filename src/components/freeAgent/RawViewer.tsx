@@ -3,7 +3,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Code, ArrowRight, ArrowLeft, Copy, Check, Wrench } from "lucide-react";
+import { Code, ArrowRight, ArrowLeft, Copy, Check, Wrench, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { RawIterationData } from "@/types/freeAgent";
 
@@ -108,7 +108,7 @@ export function RawViewer({ rawData }: RawViewerProps) {
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => handleCopy(currentData.input.systemPrompt || "", "input")}
+                    onClick={() => handleCopy(currentData.input.fullPromptSent || currentData.input.systemPrompt || "", "input")}
                     className="h-6 px-2"
                   >
                     {copiedInput ? (
@@ -119,6 +119,13 @@ export function RawViewer({ rawData }: RawViewerProps) {
                   </Button>
                 </div>
                 <ScrollArea className="flex-1">
+                  {/* Show user prompt prominently at the top */}
+                  {currentData.input.userPrompt && (
+                    <div className="mx-3 mt-3 mb-2 p-3 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-md">
+                      <div className="text-xs font-medium text-blue-700 dark:text-blue-300 mb-1">User Task:</div>
+                      <div className="text-sm font-mono">{currentData.input.userPrompt}</div>
+                    </div>
+                  )}
                   <pre className="text-xs p-3 whitespace-pre-wrap font-mono leading-relaxed">
                     {currentData.input.systemPrompt || "(not captured)"}
                   </pre>
@@ -131,13 +138,13 @@ export function RawViewer({ rawData }: RawViewerProps) {
                 <div className="flex items-center justify-between px-3 py-2 border-b border-border/50">
                   <div className="text-xs text-muted-foreground">
                     <span>
-                      Response length: {currentData.output.rawLLMResponse?.length || 0} chars
+                      Response length: {currentData.output.parseError?.responseLength || currentData.output.rawLLMResponse?.length || 0} chars
                     </span>
                   </div>
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => handleCopy(currentData.output.rawLLMResponse || "", "output")}
+                    onClick={() => handleCopy(currentData.output.rawLLMResponse || currentData.output.parseError?.rawResponse || "", "output")}
                     className="h-6 px-2"
                   >
                     {copiedOutput ? (
@@ -147,11 +154,32 @@ export function RawViewer({ rawData }: RawViewerProps) {
                     )}
                   </Button>
                 </div>
-                <ScrollArea className="flex-1">
-                  <pre className="text-xs p-3 whitespace-pre-wrap font-mono leading-relaxed">
-                    {currentData.output.rawLLMResponse || "(not captured)"}
-                  </pre>
-                </ScrollArea>
+                {currentData.output.parseError ? (
+                  // Show error state with full raw response
+                  <div className="flex-1 flex flex-col overflow-hidden">
+                    <div className="bg-destructive/10 border border-destructive/30 rounded-md p-3 mx-3 mt-3">
+                      <div className="text-sm font-medium text-destructive flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4" />
+                        Parse Error: {currentData.output.errorMessage || "Failed to parse LLM response"}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        Response length: {currentData.output.parseError.responseLength} chars
+                      </div>
+                    </div>
+                    <ScrollArea className="flex-1">
+                      <pre className="text-xs p-3 whitespace-pre-wrap font-mono leading-relaxed">
+                        {currentData.output.rawLLMResponse || currentData.output.parseError.rawResponse || "(no response captured)"}
+                      </pre>
+                    </ScrollArea>
+                  </div>
+                ) : (
+                  // Normal output display
+                  <ScrollArea className="flex-1">
+                    <pre className="text-xs p-3 whitespace-pre-wrap font-mono leading-relaxed">
+                      {currentData.output.rawLLMResponse || "(not captured)"}
+                    </pre>
+                  </ScrollArea>
+                )}
               </div>
             </TabsContent>
 

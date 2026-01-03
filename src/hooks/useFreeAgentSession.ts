@@ -203,6 +203,45 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
 
         if (error) throw error;
 
+        // Handle parsing/processing errors returned by edge function
+        if (!data.success) {
+          // Still record this in rawData for debugging!
+          const errorRawData: RawIterationData = {
+            iteration: iterationRef.current,
+            timestamp: new Date().toISOString(),
+            input: {
+              systemPrompt: data.debug?.systemPrompt || "",
+              userPrompt: data.debug?.userPrompt || currentSession.prompt,
+              fullPromptSent: data.debug?.fullPromptSent || "",
+              model: currentSession.model,
+              scratchpadLength: data.debug?.scratchpadLength || 0,
+              blackboardEntries: data.debug?.blackboardEntries || 0,
+              previousResultsCount: data.debug?.previousResultsCount || 0,
+            },
+            output: {
+              rawLLMResponse: data.debug?.rawLLMResponse || data.parseError?.rawResponse || "",
+              parsedResponse: null,
+              parseError: data.parseError || null,
+              errorMessage: data.error,
+            },
+            toolResults: [],
+          };
+
+          updateSession((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  status: "error",
+                  error: data.error,
+                  rawData: [...(prev.rawData || []), errorRawData],
+                }
+              : null
+          );
+
+          toast.error("Free Agent error: " + data.error);
+          return { continue: false, toolResults: [] };
+        }
+
         const response = data.response as AgentResponse;
 
         // Record tool calls
@@ -302,6 +341,8 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
           timestamp: new Date().toISOString(),
           input: {
             systemPrompt: data.debug?.systemPrompt || "",
+            userPrompt: data.debug?.userPrompt || currentSession.prompt,
+            fullPromptSent: data.debug?.fullPromptSent || "",
             model: currentSession.model,
             scratchpadLength: data.debug?.scratchpadLength || 0,
             blackboardEntries: data.debug?.blackboardEntries || 0,
