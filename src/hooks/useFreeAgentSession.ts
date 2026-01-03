@@ -51,7 +51,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
   const [activeToolIds, setActiveToolIds] = useState<Set<string>>(new Set());
   const abortControllerRef = useRef<AbortController | null>(null);
   const iterationRef = useRef(0);
-
+  const shouldStopRef = useRef(false); // Flag to stop execution loop
   // Update session and persist to localStorage
   const updateSession = useCallback((updater: (prev: FreeAgentSession | null) => FreeAgentSession | null) => {
     setSession((prev) => {
@@ -133,7 +133,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
             }
           : undefined;
 
-        // Call edge function with current state
+        // Call edge function with current state - pass scratchpad as persistent memory
         const { data, error } = await supabase.functions.invoke("free-agent", {
           body: {
             prompt: currentSession.prompt,
@@ -150,6 +150,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
               size: f.size,
               content: f.content,
             })),
+            // Only pass PREVIOUS iteration's results - agent must save important data to scratchpad
             previousToolResults: currentSession.toolCalls
               .filter((t) => t.iteration === iterationRef.current - 1)
               .map((t) => ({
@@ -159,6 +160,8 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
                 error: t.error,
               })),
             iteration: iterationRef.current,
+            // Pass scratchpad as persistent memory
+            scratchpad: currentSession.scratchpad || "",
             assistanceResponse,
           },
         });
@@ -375,14 +378,21 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
         setSession(newSession);
         saveSessionToLocal(newSession);
 
-        // Run iterations
+        // Run iterations - check shouldStopRef to allow stopping
+        shouldStopRef.current = false;
         let shouldContinue = true;
-        while (shouldContinue && iterationRef.current < maxIterations) {
+        while (shouldContinue && !shouldStopRef.current && iterationRef.current < maxIterations) {
+          // Check stop flag at start of each iteration
+          if (shouldStopRef.current) {
+            console.log("Stop requested, breaking loop");
+            break;
+          }
+          
           const currentSession = loadSessionFromLocal(newSession.id) || newSession;
           shouldContinue = await executeIteration(currentSession);
           
           // Small delay between iterations
-          if (shouldContinue) {
+          if (shouldContinue && !shouldStopRef.current) {
             await new Promise((resolve) => setTimeout(resolve, 500));
           }
         }
@@ -435,14 +445,17 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
             : null
         );
 
-        // Continue iterations
+        // Continue iterations - check shouldStopRef
+        shouldStopRef.current = false;
         let shouldContinue = true;
-        while (shouldContinue && iterationRef.current < maxIterations) {
+        while (shouldContinue && !shouldStopRef.current && iterationRef.current < maxIterations) {
+          if (shouldStopRef.current) break;
+          
           const currentSession = loadSessionFromLocal(session.id);
           if (!currentSession) break;
           shouldContinue = await executeIteration(currentSession);
           
-          if (shouldContinue) {
+          if (shouldContinue && !shouldStopRef.current) {
             await new Promise((resolve) => setTimeout(resolve, 500));
           }
         }
@@ -457,8 +470,10 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
     [session, maxIterations, executeIteration, updateSession]
   );
 
-  // Stop session
+  // Stop session - set flag to break out of while loop
   const stopSession = useCallback(() => {
+    console.log("Stop session called - setting shouldStopRef to true");
+    shouldStopRef.current = true; // Signal to stop the while loop
     abortControllerRef.current?.abort();
     setIsRunning(false);
     updateSession((prev) =>
