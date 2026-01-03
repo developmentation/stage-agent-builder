@@ -22,6 +22,7 @@ import { FileNode } from "./FileNode";
 import { ScratchpadNode } from "./ScratchpadNode";
 import { PromptNode } from "./PromptNode";
 import { PromptFileNode } from "./PromptFileNode";
+import { AttributeNode } from "./AttributeNode";
 import type {
   FreeAgentSession,
   ToolsManifest,
@@ -36,6 +37,7 @@ interface FreeAgentCanvasProps {
   onArtifactClick?: (artifactId: string) => void;
   onFileClick?: (fileId: string) => void;
   onScratchpadChange?: (content: string) => void;
+  onAttributeClick?: (attributeName: string) => void;
 }
 
 const nodeTypes = {
@@ -46,6 +48,7 @@ const nodeTypes = {
   scratchpad: ScratchpadNode,
   prompt: PromptNode,
   promptFile: PromptFileNode,
+  attribute: AttributeNode,
 };
 
 // Read tools - gather/retrieve information (displayed ABOVE agent)
@@ -145,6 +148,7 @@ export function FreeAgentCanvas({
   onArtifactClick,
   onFileClick,
   onScratchpadChange,
+  onAttributeClick,
 }: FreeAgentCanvasProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -446,6 +450,43 @@ export function FreeAgentCanvas({
       });
     });
 
+    // === Attributes: Below artifacts (styled like artifacts but cyan) ===
+    const attributeEntries = Object.entries(session?.toolResultAttributes || {});
+    const artifactCount = session?.artifacts.length || 0;
+    attributeEntries.forEach(([name, attribute], index) => {
+      // Position below artifacts
+      const attributeY = sideNodesY + LAYOUT.scratchpadHeight + 20 + 
+        (artifactCount * LAYOUT.artifactGap) + 
+        (index * LAYOUT.artifactGap);
+      
+      const nodeId = `attribute-${name}`;
+      newNodeIds.add(nodeId);
+
+      newNodes.push({
+        id: nodeId,
+        type: "attribute",
+        position: getPosition(nodeId, { x: LAYOUT.scratchpadX, y: attributeY }),
+        data: {
+          type: "attribute",
+          label: name,
+          status: "success",
+          attributeName: name,
+          attributeTool: attribute.tool,
+          size: attribute.size,
+          iteration: attribute.iteration,
+        },
+      });
+
+      // Edge from agent to attribute
+      newEdges.push({
+        id: `edge-agent-attribute-${name}`,
+        source: "agent",
+        sourceHandle: "right",
+        target: nodeId,
+        style: { stroke: "#06b6d4", strokeWidth: 1.5, strokeDasharray: "3,3" },
+      });
+    });
+
     // Update existing node IDs for next render
     existingNodeIdsRef.current = newNodeIds;
 
@@ -467,9 +508,11 @@ export function FreeAgentCanvas({
         onArtifactClick(node.data.artifactId);
       } else if ((node.type === "file" || node.type === "promptFile") && onFileClick) {
         onFileClick(node.data.fileId);
+      } else if (node.type === "attribute" && onAttributeClick) {
+        onAttributeClick(node.data.attributeName);
       }
     },
-    [onToolClick, onArtifactClick, onFileClick]
+    [onToolClick, onArtifactClick, onFileClick, onAttributeClick]
   );
 
   return (

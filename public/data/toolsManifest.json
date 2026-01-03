@@ -63,6 +63,11 @@
           "required": false,
           "default": 10,
           "description": "Number of results to return (1-200)"
+        },
+        "saveAs": {
+          "type": "string",
+          "required": false,
+          "description": "Save result to a named attribute (e.g., 'search_results'). Use {{name}} in scratchpad or read_attribute(['name']) to retrieve."
         }
       },
       "returns": {
@@ -96,6 +101,11 @@
           "required": false,
           "default": 10,
           "description": "Number of results to return"
+        },
+        "saveAs": {
+          "type": "string",
+          "required": false,
+          "description": "Save result to a named attribute. Use {{name}} in scratchpad or read_attribute(['name']) to retrieve."
         }
       },
       "returns": {
@@ -135,6 +145,11 @@
           "required": false,
           "default": false,
           "description": "Return raw HTML instead of extracted text"
+        },
+        "saveAs": {
+          "type": "string",
+          "required": false,
+          "description": "Save result to a named attribute. Use {{name}} in scratchpad or read_attribute(['name']) to retrieve."
         }
       },
       "returns": {
@@ -158,6 +173,11 @@
           "type": "string",
           "required": false,
           "description": "Branch name (defaults to main/master)"
+        },
+        "saveAs": {
+          "type": "string",
+          "required": false,
+          "description": "Save result to a named attribute. Use {{name}} in scratchpad or read_attribute(['name']) to retrieve."
         }
       },
       "returns": {
@@ -194,6 +214,11 @@
           "default": "combined",
           "enum": ["combined", "separate"],
           "description": "combined returns all files in one string, separate returns each file separately"
+        },
+        "saveAs": {
+          "type": "string",
+          "required": false,
+          "description": "Save result to a named attribute. Use {{name}} in scratchpad or read_attribute(['name']) to retrieve."
         }
       },
       "returns": {
@@ -273,16 +298,35 @@
         "properties": ["filename", "content", "mimeType", "size"]
       }
     },
+    "read_attribute": {
+      "name": "Read Attribute",
+      "description": "Retrieve saved tool result attributes. Call with empty names array to list all attributes, or with specific names to get their full content.",
+      "frontend_handler": true,
+      "icon": "Database",
+      "category": "memory",
+      "parameters": {
+        "names": {
+          "type": "array",
+          "items": "string",
+          "required": true,
+          "description": "Array of attribute names to retrieve. Empty array returns metadata for all available attributes."
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": ["attributes", "count"]
+      }
+    },
     "read_scratchpad": {
       "name": "Read Scratchpad",
-      "description": "Read the current contents of the scratchpad. The scratchpad is your working output area visible to the user. Use to review results before sending to output or API.",
+      "description": "Read the current contents of the scratchpad. The scratchpad is your working output area visible to the user. Use to review results before sending to output or API. Handlebar placeholders like {{attribute_name}} will be substituted with actual attribute content.",
       "frontend_handler": true,
       "icon": "ClipboardCopy",
       "category": "memory",
       "parameters": {},
       "returns": {
         "type": "string",
-        "description": "Current scratchpad content"
+        "description": "Current scratchpad content with attribute substitutions"
       }
     },
     "write_scratchpad": {
@@ -793,6 +837,11 @@
           "type": "object",
           "required": false,
           "description": "Request headers (e.g., Authorization, API keys)"
+        },
+        "saveAs": {
+          "type": "string",
+          "required": false,
+          "description": "Save result to a named attribute. Use {{name}} in scratchpad or read_attribute(['name']) to retrieve."
         }
       },
       "returns": {
@@ -821,6 +870,11 @@
           "type": "object",
           "required": true,
           "description": "Request body (will be JSON stringified)"
+        },
+        "saveAs": {
+          "type": "string",
+          "required": false,
+          "description": "Save result to a named attribute. Use {{name}} in scratchpad or read_attribute(['name']) to retrieve."
         }
       },
       "returns": {

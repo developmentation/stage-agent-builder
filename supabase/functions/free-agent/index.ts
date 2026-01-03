@@ -196,26 +196,44 @@ function buildSystemPrompt(
   const toolsList = `
 Available Tools:
 - get_time: Get current date/time (params: timezone?)
-- brave_search: Search the web (params: query, numResults?)
-- google_search: Search via Google (params: query, numResults?)
-- web_scrape: Scrape webpage content (params: url, maxCharacters?)
-- read_github_repo: Get repo file tree (params: repoUrl, branch?)
-- read_github_file: Read files from repo (params: repoUrl, selectedPaths, branch?)
+- brave_search: Search the web (params: query, numResults?, saveAs?)
+- google_search: Search via Google (params: query, numResults?, saveAs?)
+- web_scrape: Scrape webpage content (params: url, maxCharacters?, saveAs?)
+- read_github_repo: Get repo file tree (params: repoUrl, branch?, saveAs?)
+- read_github_file: Read files from repo (params: repoUrl, selectedPaths, branch?, saveAs?)
 - send_email: Send email via Resend (params: to, subject, body, useHtml?)
 - image_generation: Generate image from prompt (params: prompt)
-- get_call_api: Make GET request (params: url, headers?)
-- post_call_api: Make POST request (params: url, headers?)
+- get_call_api: Make GET request (params: url, headers?, saveAs?)
+- post_call_api: Make POST request (params: url, headers?, saveAs?)
 - write_blackboard: Write to your planning journal (params: category, content, data?)
 - read_file: Read session file content (params: fileId)
 - read_prompt: Read the original user prompt
 - read_prompt_files: Get list of available files with metadata
-- read_scratchpad: Read your data storage (for final summarization)
+- read_attribute: Read saved tool result attributes (params: names[] - empty array for list, specific names for content)
+- read_scratchpad: Read your data storage. Handlebar syntax {{attribute_name}} will be substituted with attribute content.
 - write_scratchpad: SAVE DATA HERE immediately after search/read (params: content, mode?)
 - request_assistance: Ask user for input (params: question, context?, inputType?, choices?)
 - export_word: Create Word document (params: content, filename?)
 - export_pdf: Create PDF document (params: content, filename?)
 - execute_sql: Execute SQL on external database (params: connectionString, query, isWrite?)
 - elevenlabs_tts: Text to speech (params: text, voiceId?, modelId?)
+
+## 🚀 NAMED TOOL RESULT ATTRIBUTES - USE saveAs TO SAVE TOKEN BUDGET!
+
+Data-fetching tools support a "saveAs" parameter that AUTOMATICALLY saves results to a named attribute:
+
+Example: { "tool": "web_scrape", "params": { "url": "...", "saveAs": "london_weather" } }
+
+Benefits of using saveAs:
+- Results are saved AUTOMATICALLY - no need to call write_scratchpad
+- You receive a small confirmation instead of the full data (saves tokens!)
+- Results appear as clickable nodes on the canvas
+- Use {{london_weather}} in scratchpad to reference the data
+- Call read_attribute(["london_weather"]) to retrieve specific attributes
+- Call read_attribute([]) to list all saved attributes
+
+RECOMMENDED: Use saveAs for ALL data-fetching operations (searches, scrapes, API calls, GitHub reads).
+This is the most efficient way to store data without wasting tokens on large responses!
 `;
 // NOTE: read_blackboard removed - blackboard is ALWAYS shown above automatically
 
@@ -305,7 +323,21 @@ Tool results only stay visible for ONE iteration. If you search and don't save:
 - Iteration 6: Results are GONE - you can't see them anymore
 - You think "I should search again" - WRONG! You already did!
 
-### CORRECT WORKFLOW FOR SEARCH TASKS:
+### ✅ BEST WORKFLOW: Use saveAs (Recommended!)
+
+This automatically saves results and you just see a confirmation:
+
+Iteration 1:
+- tool_calls: [{ tool: "brave_search", params: { query: "CES 2025", saveAs: "ces_results" } }]
+- blackboard_entry: { category: "plan", content: "Step 1: Searching for CES 2025, saving to 'ces_results'" }
+
+Iteration 2:
+- You receive: "Result saved to attribute 'ces_results' (2847 chars)"
+- NO need to call write_scratchpad - data is already saved!
+- Proceed directly to next task
+- When you need the data: use read_attribute(["ces_results"]) or {{ces_results}} in scratchpad
+
+### FALLBACK WORKFLOW (if not using saveAs):
 
 Iteration 1:
 - tool_calls: [{ tool: "brave_search", params: { query: "CES 2025" } }]
@@ -316,11 +348,8 @@ Iteration 2 (YOU WILL SEE search results in PREVIOUS ITERATION RESULTS above):
 - tool_calls: [{ tool: "write_scratchpad", params: { content: "## CES 2025 Search Results\\n\\n1. [actual result data]\\n2. [actual result data]..." } }]
 - blackboard_entry: { category: "plan", content: "COMPLETED: Search. Data SAVED to scratchpad. NEXT: Send email." }
 
-Iteration 3:
-- Now scratchpad has the data, proceed to next task (email, summarize, etc.)
-
 ## ANTI-LOOP RULES:
-1. Check PREVIOUS ITERATION RESULTS first - if you see data, SAVE IT, don't re-search
+1. Check PREVIOUS ITERATION RESULTS first - if you see data, SAVE IT (or use saveAs!), don't re-search
 2. Check your blackboard COMPLETED list - don't redo completed steps
 3. Never call the same search/read tool twice with the same parameters
 
