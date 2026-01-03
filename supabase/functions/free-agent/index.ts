@@ -325,29 +325,25 @@ Tool results only stay visible for ONE iteration. If you search and don't save:
 
 ### ✅ BEST WORKFLOW: Use saveAs (Recommended!)
 
-This automatically saves results and you just see a confirmation:
+This automatically saves results AND adds them to your scratchpad:
 
 Iteration 1:
 - tool_calls: [{ tool: "brave_search", params: { query: "CES 2025", saveAs: "ces_results" } }]
 - blackboard_entry: { category: "plan", content: "Step 1: Searching for CES 2025, saving to 'ces_results'" }
 
 Iteration 2:
-- You receive: "Result saved to attribute 'ces_results' (2847 chars)"
-- Data is now stored in the 'ces_results' attribute (visible as a node on canvas)
-- Proceed directly to next task
+- You receive: "Result saved to attribute 'ces_results'. Auto-added to scratchpad."
+- The data is ALREADY in your scratchpad as {{ces_results}}
+- Call read_scratchpad to see the EXPANDED content (handlebars are auto-replaced with full data)
+- Then proceed with your analysis!
 
-### 🔑 HOW TO ACCESS ATTRIBUTE DATA:
+### 🔑 HOW TO ACCESS THE DATA:
 
-When you need to use data from a saved attribute, you have TWO options:
+1. Call read_scratchpad - the {{attribute_name}} placeholders are automatically expanded to full content
+2. Analyze the data you see in PREVIOUS ITERATION RESULTS
+3. Continue with your task
 
-**Option A - Direct read (recommended for immediate use):**
-- tool_calls: [{ tool: "read_attribute", params: { names: ["ces_results"] } }]
-- This returns the FULL content of the attribute in your next iteration's PREVIOUS ITERATION RESULTS
-
-**Option B - Handlebar syntax (for combining multiple attributes):**
-- Write {{ces_results}} to scratchpad: write_scratchpad({ content: "Using: {{ces_results}}" })
-- When you call read_scratchpad, {{ces_results}} is automatically replaced with the full attribute content
-- Useful for composing reports that reference multiple saved attributes
+This is the most efficient workflow - data is saved, scratchpad is updated, and you just need to read it!
 
 ### FALLBACK WORKFLOW (if not using saveAs):
 
