@@ -31,6 +31,7 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
     stopSession,
     resetSession,
     continueSession,
+    retrySession,
     updateScratchpad,
     getCacheSize,
   } = useFreeAgentSession({ maxIterations });
@@ -132,6 +133,7 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
                 onStop={stopSession}
                 onReset={resetSession}
                 onContinue={continueSession}
+                onRetry={retrySession}
                 cacheSize={getCacheSize()}
               />
             </div>
@@ -143,6 +145,7 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
                 toolsManifest={toolsManifest}
                 activeToolIds={activeToolIds}
                 onScratchpadChange={updateScratchpad}
+                onRetry={retrySession}
               />
             </div>
           )}
@@ -189,6 +192,7 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
                   onStop={stopSession}
                   onReset={resetSession}
                   onContinue={continueSession}
+                  onRetry={retrySession}
                   cacheSize={getCacheSize()}
                 />
               </div>
@@ -205,6 +209,7 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
                 toolsManifest={toolsManifest}
                 activeToolIds={activeToolIds}
                 onScratchpadChange={updateScratchpad}
+                onRetry={retrySession}
               />
             </div>
           </ResizablePanel>
