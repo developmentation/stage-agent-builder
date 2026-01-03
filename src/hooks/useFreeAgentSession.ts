@@ -13,6 +13,7 @@ import type {
   AgentResponse,
   FinalReport,
   RawIterationData,
+  ToolResult,
 } from "@/types/freeAgent";
 import { executeFrontendTool } from "@/lib/freeAgentToolExecutor";
 
@@ -53,6 +54,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
   const abortControllerRef = useRef<AbortController | null>(null);
   const iterationRef = useRef(0);
   const shouldStopRef = useRef(false); // Flag to stop execution loop
+  
   // Update session and persist to localStorage
   const updateSession = useCallback((updater: (prev: FreeAgentSession | null) => FreeAgentSession | null) => {
     setSession((prev) => {
@@ -114,12 +116,15 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
     setIsRunning(false);
   }, [updateSession]);
 
-  // Execute a single iteration
+  // Execute a single iteration - now accepts previousIterationResults directly
   const executeIteration = useCallback(
-    async (currentSession: FreeAgentSession): Promise<boolean> => {
+    async (
+      currentSession: FreeAgentSession,
+      previousIterationResults: ToolResult[]
+    ): Promise<{ continue: boolean; toolResults: ToolResult[] }> => {
       if (iterationRef.current >= maxIterations) {
         toast.warning("Max iterations reached");
-        return false;
+        return { continue: false, toolResults: [] };
       }
 
       iterationRef.current++;
@@ -134,7 +139,9 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
             }
           : undefined;
 
-        // Call edge function with current state - pass scratchpad as persistent memory
+        console.log(`[Iteration ${iterationRef.current}] Passing ${previousIterationResults.length} previous tool results`);
+
+        // Call edge function with current state - pass tool results directly
         const { data, error } = await supabase.functions.invoke("free-agent", {
           body: {
             prompt: currentSession.prompt,
@@ -151,15 +158,8 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
               size: f.size,
               content: f.content,
             })),
-            // Only pass PREVIOUS iteration's results - agent must save important data to scratchpad
-            previousToolResults: currentSession.toolCalls
-              .filter((t) => t.iteration === iterationRef.current - 1)
-              .map((t) => ({
-                tool: t.tool,
-                success: t.status === "completed",
-                result: t.result,
-                error: t.error,
-              })),
+            // Pass PREVIOUS iteration's results directly (not from session state)
+            previousToolResults: previousIterationResults,
             iteration: iterationRef.current,
             // Pass scratchpad as persistent memory
             scratchpad: currentSession.scratchpad || "",
@@ -168,23 +168,6 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
         });
 
         if (error) throw error;
-
-        // Store raw debug data for the Raw viewer
-        const rawIterationData: RawIterationData = {
-          iteration: iterationRef.current,
-          timestamp: new Date().toISOString(),
-          input: {
-            systemPrompt: data.debug?.systemPrompt || "",
-            model: currentSession.model,
-            scratchpadLength: data.debug?.scratchpadLength || 0,
-            blackboardEntries: data.debug?.blackboardEntries || 0,
-            previousResultsCount: data.debug?.previousResultsCount || 0,
-          },
-          output: {
-            rawLLMResponse: data.debug?.rawLLMResponse || "",
-            parsedResponse: data.response,
-          },
-        };
 
         const response = data.response as AgentResponse;
 
@@ -205,6 +188,9 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
           });
         }
 
+        // Collect tool results for this iteration
+        const iterationToolResults: ToolResult[] = [];
+
         // Process edge function results
         for (const result of data.toolResults || []) {
           const toolCall = newToolCalls.find((t) => t.tool === result.tool && t.status === "executing");
@@ -214,6 +200,13 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
             toolCall.error = result.error;
             toolCall.endTime = new Date().toISOString();
           }
+          // Add to iteration results
+          iterationToolResults.push({
+            tool: result.tool,
+            success: result.success,
+            result: result.result,
+            error: result.error,
+          });
         }
 
         // Handle frontend tools
@@ -239,9 +232,17 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
             toolCall.endTime = new Date().toISOString();
           }
 
+          // Add frontend tool results
+          iterationToolResults.push({
+            tool: handler.tool,
+            success: result.success,
+            result: result.result,
+            error: result.error,
+          });
+
           // If assistance needed, stop here
           if (handler.tool === "request_assistance") {
-            return false;
+            return { continue: false, toolResults: iterationToolResults };
           }
         }
 
@@ -249,6 +250,24 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
         setTimeout(() => {
           setActiveToolIds(new Set());
         }, 1000);
+
+        // Store raw debug data for the Raw viewer (including tool results)
+        const rawIterationData: RawIterationData = {
+          iteration: iterationRef.current,
+          timestamp: new Date().toISOString(),
+          input: {
+            systemPrompt: data.debug?.systemPrompt || "",
+            model: currentSession.model,
+            scratchpadLength: data.debug?.scratchpadLength || 0,
+            blackboardEntries: data.debug?.blackboardEntries || 0,
+            previousResultsCount: data.debug?.previousResultsCount || 0,
+          },
+          output: {
+            rawLLMResponse: data.debug?.rawLLMResponse || "",
+            parsedResponse: data.response,
+          },
+          toolResults: iterationToolResults,
+        };
 
         // Add blackboard entry from response
         if (response.blackboard_entry) {
@@ -328,9 +347,9 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
           );
           
           toast.success("Free Agent completed the task!");
-          return false;
+          return { continue: false, toolResults: iterationToolResults };
         } else if (response.status === "needs_assistance") {
-          return false;
+          return { continue: false, toolResults: iterationToolResults };
         } else if (response.status === "error") {
           updateSession((prev) =>
             prev
@@ -342,10 +361,10 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
               : null
           );
           toast.error("Free Agent encountered an error");
-          return false;
+          return { continue: false, toolResults: iterationToolResults };
         }
 
-        return true; // Continue running
+        return { continue: true, toolResults: iterationToolResults }; // Continue running
       } catch (error) {
         console.error("Iteration failed:", error);
         updateSession((prev) =>
@@ -358,7 +377,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
             : null
         );
         toast.error("Free Agent error: " + (error instanceof Error ? error.message : "Unknown error"));
-        return false;
+        return { continue: false, toolResults: [] };
       }
     },
     [maxIterations, handleArtifactCreated, handleBlackboardUpdate, handleScratchpadUpdate, handleAssistanceNeeded, updateSession]
@@ -395,15 +414,17 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
           sessionFiles: files,
           startTime: new Date().toISOString(),
           lastActivityTime: new Date().toISOString(),
-          rawData: [],
+          rawData: existingSession?.rawData || [],
         };
 
         setSession(newSession);
         saveSessionToLocal(newSession);
 
-        // Run iterations - check shouldStopRef to allow stopping
+        // Run iterations - pass tool results directly between iterations
         shouldStopRef.current = false;
         let shouldContinue = true;
+        let lastToolResults: ToolResult[] = []; // Track tool results between iterations
+        
         while (shouldContinue && !shouldStopRef.current && iterationRef.current < maxIterations) {
           // Check stop flag at start of each iteration
           if (shouldStopRef.current) {
@@ -412,7 +433,9 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
           }
           
           const currentSession = loadSessionFromLocal(newSession.id) || newSession;
-          shouldContinue = await executeIteration(currentSession);
+          const result = await executeIteration(currentSession, lastToolResults);
+          shouldContinue = result.continue;
+          lastToolResults = result.toolResults; // Pass results to next iteration
           
           // Small delay between iterations
           if (shouldContinue && !shouldStopRef.current) {
@@ -468,15 +491,19 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
             : null
         );
 
-        // Continue iterations - check shouldStopRef
+        // Continue iterations - pass tool results directly between iterations
         shouldStopRef.current = false;
         let shouldContinue = true;
+        let lastToolResults: ToolResult[] = [];
+        
         while (shouldContinue && !shouldStopRef.current && iterationRef.current < maxIterations) {
           if (shouldStopRef.current) break;
           
           const currentSession = loadSessionFromLocal(session.id);
           if (!currentSession) break;
-          shouldContinue = await executeIteration(currentSession);
+          const result = await executeIteration(currentSession, lastToolResults);
+          shouldContinue = result.continue;
+          lastToolResults = result.toolResults;
           
           if (shouldContinue && !shouldStopRef.current) {
             await new Promise((resolve) => setTimeout(resolve, 500));
@@ -542,6 +569,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
             // - blackboard (planning history)
             // - scratchpad (accumulated data)
             // - artifacts (created outputs)
+            // - rawData (debug history)
           }
         : null
     );

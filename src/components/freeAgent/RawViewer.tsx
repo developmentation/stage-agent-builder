@@ -3,7 +3,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Code, ArrowRight, ArrowLeft, Copy, Check } from "lucide-react";
+import { Code, ArrowRight, ArrowLeft, Copy, Check, Wrench } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { RawIterationData } from "@/types/freeAgent";
 
@@ -17,6 +17,7 @@ export function RawViewer({ rawData }: RawViewerProps) {
   );
   const [copiedInput, setCopiedInput] = useState(false);
   const [copiedOutput, setCopiedOutput] = useState(false);
+  const [copiedTools, setCopiedTools] = useState(false);
 
   // Update selected iteration when new data comes in
   useEffect(() => {
@@ -27,14 +28,17 @@ export function RawViewer({ rawData }: RawViewerProps) {
 
   const currentData = rawData[selectedIteration - 1];
 
-  const handleCopy = async (text: string, type: "input" | "output") => {
+  const handleCopy = async (text: string, type: "input" | "output" | "tools") => {
     await navigator.clipboard.writeText(text);
     if (type === "input") {
       setCopiedInput(true);
       setTimeout(() => setCopiedInput(false), 2000);
-    } else {
+    } else if (type === "output") {
       setCopiedOutput(true);
       setTimeout(() => setCopiedOutput(false), 2000);
+    } else {
+      setCopiedTools(true);
+      setTimeout(() => setCopiedTools(false), 2000);
     }
   };
 
@@ -82,10 +86,13 @@ export function RawViewer({ rawData }: RawViewerProps) {
           <Tabs defaultValue="input" className="h-full flex flex-col">
             <TabsList className="mx-4 mb-2">
               <TabsTrigger value="input" className="flex-1 text-xs">
-                Input (System Prompt)
+                Input
               </TabsTrigger>
               <TabsTrigger value="output" className="flex-1 text-xs">
-                Output (LLM Response)
+                Output
+              </TabsTrigger>
+              <TabsTrigger value="tools" className="flex-1 text-xs">
+                Tools ({currentData.toolResults?.length || 0})
               </TabsTrigger>
             </TabsList>
 
@@ -144,6 +151,56 @@ export function RawViewer({ rawData }: RawViewerProps) {
                   <pre className="text-xs p-3 whitespace-pre-wrap font-mono leading-relaxed">
                     {currentData.output.rawLLMResponse || "(not captured)"}
                   </pre>
+                </ScrollArea>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="tools" className="flex-1 overflow-hidden m-0 px-4 pb-4">
+              <div className="h-full flex flex-col bg-muted/50 rounded-md">
+                <div className="flex items-center justify-between px-3 py-2 border-b border-border/50">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <Wrench className="w-3 h-3" />
+                    <span>{currentData.toolResults?.length || 0} tool calls this iteration</span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleCopy(JSON.stringify(currentData.toolResults, null, 2), "tools")}
+                    className="h-6 px-2"
+                  >
+                    {copiedTools ? (
+                      <Check className="w-3 h-3 text-green-500" />
+                    ) : (
+                      <Copy className="w-3 h-3" />
+                    )}
+                  </Button>
+                </div>
+                <ScrollArea className="flex-1">
+                  {currentData.toolResults && currentData.toolResults.length > 0 ? (
+                    <div className="p-3 space-y-3">
+                      {currentData.toolResults.map((tr, idx) => (
+                        <div key={idx} className="border border-border/50 rounded-md overflow-hidden">
+                          <div className={`px-3 py-1.5 text-xs font-medium flex items-center justify-between ${
+                            tr.success ? 'bg-green-500/10 text-green-700 dark:text-green-400' : 'bg-red-500/10 text-red-700 dark:text-red-400'
+                          }`}>
+                            <span className="font-mono">{tr.tool}</span>
+                            <Badge variant={tr.success ? "default" : "destructive"} className="text-[10px] h-4">
+                              {tr.success ? "SUCCESS" : "ERROR"}
+                            </Badge>
+                          </div>
+                          <pre className="text-xs p-3 whitespace-pre-wrap font-mono leading-relaxed bg-background/50 max-h-[300px] overflow-auto">
+                            {tr.error 
+                              ? `Error: ${tr.error}` 
+                              : JSON.stringify(tr.result, null, 2) || "(no result)"}
+                          </pre>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-muted-foreground text-xs p-4">
+                      No tool calls this iteration
+                    </div>
+                  )}
                 </ScrollArea>
               </div>
             </TabsContent>

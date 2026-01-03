@@ -105,6 +105,14 @@ export interface FreeAgentMessage {
   iteration?: number;
 }
 
+// Tool result from iteration
+export interface ToolResult {
+  tool: string;
+  success: boolean;
+  result?: unknown;
+  error?: string;
+}
+
 // Raw iteration data for debugging
 export interface RawIterationData {
   iteration: number;
@@ -120,6 +128,7 @@ export interface RawIterationData {
     rawLLMResponse: string;
     parsedResponse: unknown;
   };
+  toolResults: ToolResult[];
 }
 
 // Final report when task completes
