@@ -75,7 +75,7 @@ export function AssistanceModal({
             </div>
           )}
 
-          {request.inputType === "text" && (
+          {(request.inputType === "text" || (!request.inputType) || (request.inputType !== "choice" && request.inputType !== "file")) && (
             <div className="space-y-2">
               <Label htmlFor="response">Your Response</Label>
               <Textarea
