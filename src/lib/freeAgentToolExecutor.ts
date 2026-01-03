@@ -47,7 +47,12 @@ export async function executeFrontendTool(
     case "export_pdf":
       return executeExportPdf(params, context);
     case "read_scratchpad":
-      return executeReadScratchpad(context);
+      // Scratchpad is now always shown in full in the system prompt
+      // Return a message telling the agent to look at the prompt
+      return {
+        success: true,
+        result: "The scratchpad content is already shown in YOUR SCRATCHPAD section of the system prompt. Look above - you don't need to call this tool.",
+      };
     case "write_scratchpad":
       return executeWriteScratchpad(params, context);
     case "read_prompt":

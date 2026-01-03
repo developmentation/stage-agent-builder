@@ -46,15 +46,14 @@ Available Tools:
 - read_file: Read session file content (params: fileId)
 - read_prompt: Read the original user prompt
 - read_prompt_files: Get list of available files with metadata
-- read_scratchpad: Read your data storage (for final summarization)
-- write_scratchpad: SAVE DATA HERE immediately after search/read (params: content, mode?)
+- write_scratchpad: SAVE DATA HERE - your permanent data storage (params: content, mode?)
 - request_assistance: Ask user for input (params: question, context?, inputType?, choices?)
 - export_word: Create Word document (params: content, filename?)
 - export_pdf: Create PDF document (params: content, filename?)
 - execute_sql: Execute SQL on external database (params: connectionString, query, isWrite?)
 - elevenlabs_tts: Text to speech (params: text, voiceId?, modelId?)
 `;
-// NOTE: read_blackboard removed - blackboard is ALWAYS shown above automatically
+// NOTE: read_blackboard and read_scratchpad removed - both are ALWAYS shown in full above
 
   // Include file content if available (for small text files)
   let filesSection = '\nNo session files provided.';
@@ -73,15 +72,16 @@ Available Tools:
     ? `\n## YOUR BLACKBOARD (Planning Journal - Read this EVERY iteration!):\n${blackboard.map(e => `[${e.category}] ${e.content}`).join('\n')}`
     : '\n## BLACKBOARD: Empty. Track your plan and completed items here.';
 
-  // Scratchpad - only show preview if small, otherwise just size (saves context)
+  // Scratchpad - ALWAYS show full content, never truncate (agent needs this data)
   let scratchpadSection: string;
   if (!scratchpad || !scratchpad.trim()) {
-    scratchpadSection = '\n## YOUR SCRATCHPAD (Data Storage): Empty. Write actual DATA here (file contents, search results, analysis).';
-  } else if (scratchpad.length < 500) {
-    scratchpadSection = `\n## YOUR SCRATCHPAD (Data Storage - ${scratchpad.length} chars):\n\`\`\`\n${scratchpad}\n\`\`\``;
+    scratchpadSection = '\n## YOUR SCRATCHPAD (Data Storage): Empty. Use write_scratchpad to save important data here.';
   } else {
-    // Only show preview to save context - agent can use read_scratchpad for full content
-    scratchpadSection = `\n## YOUR SCRATCHPAD: Contains ${scratchpad.length} chars of saved data. Use read_scratchpad to view full content.`;
+    // Always show FULL scratchpad - max 50KB to stay within context limits
+    const displayContent = scratchpad.length > 50000 
+      ? scratchpad.slice(-50000) + "\n\n[...older content truncated, showing last 50KB...]"
+      : scratchpad;
+    scratchpadSection = `\n## YOUR SCRATCHPAD (Data Storage - ${scratchpad.length} chars):\n\`\`\`\n${displayContent}\n\`\`\`\nThis is YOUR saved data. You do NOT need to call any tool to read it - it's right here above.`;
   }
 
   // Make previous tool results VERY prominent so agent sees them
@@ -125,41 +125,41 @@ ${resultsSection}${assistanceSection}
 
 Current Iteration: ${iteration}
 
-## MEMORY ARCHITECTURE - UNDERSTAND THIS:
+## MEMORY ARCHITECTURE - READ THIS:
 
 ### BLACKBOARD (shown above) = Your Planning Journal
-- AUTOMATICALLY included every iteration - you see it above
-- Track: current step, COMPLETED items list, NEXT action
+- You can SEE it above - no tool needed to read it
+- Track: current step, what's COMPLETED, what's NEXT
 - Write EVERY iteration using write_blackboard
 
-### SCRATCHPAD = Data Storage (use read_scratchpad when ready to summarize)
-- Store ACTUAL DATA: search results, file contents, analysis
-- Only read when you need to compile final report
+### SCRATCHPAD (shown above) = Your Data Storage  
+- You can SEE it above - no tool needed to read it
+- Store ACTUAL DATA here: search results, file contents, analysis
+- Use write_scratchpad to save data
 
-## ⚠️ THE LOOP PROBLEM - CRITICAL ⚠️
-Tool results only stay visible for ONE iteration. If you search and don't save:
+## ⚠️ CRITICAL ANTI-LOOP RULES ⚠️
+Tool results only stay in PREVIOUS ITERATION RESULTS for ONE iteration. After that, they're gone.
+
+### THE LOOP PROBLEM:
 - Iteration 5: brave_search returns results - you see them in PREVIOUS ITERATION RESULTS
-- Iteration 6: Results are GONE - you can't see them anymore
+- Iteration 6: Results are GONE from that section
 - You think "I should search again" - WRONG! You already did!
 
-### CORRECT WORKFLOW FOR SEARCH TASKS:
+### HOW TO AVOID LOOPS:
+1. When you see data in PREVIOUS ITERATION RESULTS: SAVE IT to scratchpad using write_scratchpad
+2. Once saved, the data is in YOUR SCRATCHPAD section above - you can see it there
+3. Check YOUR SCRATCHPAD above before deciding to search/read again
+4. Check YOUR BLACKBOARD above - if a step is marked COMPLETED, don't redo it
 
-Iteration 1:
-- tool_calls: [{ tool: "brave_search", params: { query: "CES 2025" } }]
-- blackboard_entry: { category: "plan", content: "Step 1: Searching for CES 2025" }
+### CORRECT WORKFLOW:
+Iteration 1: Call brave_search → blackboard: "Searching for X"
+Iteration 2: See results in PREVIOUS ITERATION RESULTS → call write_scratchpad with the data → blackboard: "COMPLETED: Search. Data saved."
+Iteration 3: See data in YOUR SCRATCHPAD above → proceed to next task (email, summarize, etc.)
 
-Iteration 2 (YOU WILL SEE search results in PREVIOUS ITERATION RESULTS above):
-- READ the results shown above
-- tool_calls: [{ tool: "write_scratchpad", params: { content: "## CES 2025 Search Results\n\n1. [actual result data]\n2. [actual result data]..." } }]
-- blackboard_entry: { category: "plan", content: "COMPLETED: Search. Data SAVED to scratchpad. NEXT: Send email." }
-
-Iteration 3:
-- Now scratchpad has the data, proceed to next task (email, summarize, etc.)
-
-## ANTI-LOOP RULES:
-1. Check PREVIOUS ITERATION RESULTS first - if you see data, SAVE IT, don't re-search
-2. Check your blackboard COMPLETED list - don't redo completed steps
-3. Never call the same search/read tool twice with the same parameters
+### NEVER DO THIS:
+- Never call brave_search/google_search for the same query twice
+- Never loop calling the same tool repeatedly
+- Never ignore the COMPLETED entries in your blackboard
 
 ## Response Format
 You MUST respond with valid JSON only. No markdown outside JSON:
@@ -174,12 +174,12 @@ You MUST respond with valid JSON only. No markdown outside JSON:
 }
 
 ## Workflow:
-1. Check your scratchpad for existing findings before making tool calls
-2. Make tool calls as needed
-3. ALWAYS write important results to scratchpad immediately WITH THE ACTUAL DATA
-4. Update blackboard with your plan/progress
-5. Set status to "completed" with final_report when done
-6. Use artifacts for FINAL deliverables only`;
+1. Check YOUR SCRATCHPAD above for existing data before making any tool calls
+2. Check YOUR BLACKBOARD above for completed steps - don't repeat them
+3. If you need new data: make ONE tool call
+4. Next iteration: SAVE the results to scratchpad using write_scratchpad
+5. Update blackboard with "COMPLETED: [step]"
+6. When task is done: set status to "completed" with final_report`;
 }
 
 // Execute a single tool call against edge functions
