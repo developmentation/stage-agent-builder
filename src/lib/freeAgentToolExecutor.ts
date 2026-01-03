@@ -449,6 +449,17 @@ export async function executeEdgeFunctionTool(
     post_call_api: "api-call",
     execute_sql: "external-db",
     elevenlabs_tts: "elevenlabs-tts",
+    // Weather
+    get_weather: "tool_weather",
+    // ZIP tools
+    read_zip_contents: "tool_zip-handler",
+    read_zip_file: "tool_zip-handler",
+    extract_zip_files: "tool_zip-handler",
+    // PDF tools
+    pdf_info: "tool_pdf-handler",
+    pdf_extract_text: "tool_pdf-handler",
+    // OCR
+    ocr_image: "tool_ocr-handler",
   };
 
   const functionName = toolToFunction[tool];

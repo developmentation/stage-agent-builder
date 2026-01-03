@@ -195,16 +195,42 @@ function buildSystemPrompt(
 
   const toolsList = `
 Available Tools:
-- get_time: Get current date/time (params: timezone?)
+
+## Search & Web Tools
 - brave_search: Search the web (params: query, numResults?, saveAs?)
 - google_search: Search via Google (params: query, numResults?, saveAs?)
 - web_scrape: Scrape webpage content (params: url, maxCharacters?, saveAs?)
+
+## GitHub Tools
 - read_github_repo: Get repo file tree (params: repoUrl, branch?, saveAs?)
 - read_github_file: Read files from repo (params: repoUrl, selectedPaths, branch?, saveAs?)
+
+## Document Tools
+- pdf_info: Get PDF metadata and page count (params: fileData - base64 encoded PDF)
+- pdf_extract_text: Extract text from PDF (params: fileData - base64 encoded PDF, pages?)
+- ocr_image: Extract text from image via OCR (params: imageSource - base64, URL, or data URI)
+- read_zip_contents: List files in ZIP archive (params: fileData - base64 encoded ZIP)
+- read_zip_file: Read specific file from ZIP (params: fileData, entryPath)
+- extract_zip_files: Extract files from ZIP (params: fileData, paths? - empty for all)
+
+## Communication Tools
 - send_email: Send email via Resend (params: to, subject, body, useHtml?)
+- request_assistance: Ask user for input (params: question, context?, inputType?, choices?)
+
+## Generation Tools
 - image_generation: Generate image from prompt (params: prompt)
+- elevenlabs_tts: Text to speech (params: text, voiceId?, modelId?)
+
+## API Tools
 - get_call_api: Make GET request (params: url, headers?, saveAs?)
 - post_call_api: Make POST request (params: url, headers?, saveAs?)
+- execute_sql: Execute SQL on external database (params: connectionString, query, isWrite?)
+
+## Utility Tools
+- get_time: Get current date/time (params: timezone?)
+- get_weather: Get weather for a location (params: location, units? - "celsius" or "fahrenheit")
+
+## Memory Tools
 - write_blackboard: Write to your planning journal (params: category, content, data?)
 - read_file: Read session file content (params: fileId)
 - read_prompt: Read the original user prompt
@@ -212,11 +238,10 @@ Available Tools:
 - read_attribute: Read saved tool result attributes (params: names[] - empty array for list, specific names for content)
 - read_scratchpad: Read your data storage. Handlebar syntax {{attribute_name}} will be substituted with attribute content.
 - write_scratchpad: SAVE DATA HERE immediately after search/read (params: content, mode?)
-- request_assistance: Ask user for input (params: question, context?, inputType?, choices?)
+
+## Export Tools
 - export_word: Create Word document (params: content, filename?)
 - export_pdf: Create PDF document (params: content, filename?)
-- execute_sql: Execute SQL on external database (params: connectionString, query, isWrite?)
-- elevenlabs_tts: Text to speech (params: text, voiceId?, modelId?)
 
 ## 🚀 NAMED TOOL RESULT ATTRIBUTES - USE saveAs TO SAVE TOKEN BUDGET!
 
@@ -451,6 +476,17 @@ async function executeTool(
     post_call_api: "api-call",
     execute_sql: "external-db",
     elevenlabs_tts: "elevenlabs-tts",
+    // Weather
+    get_weather: "tool_weather",
+    // ZIP tools
+    read_zip_contents: "tool_zip-handler",
+    read_zip_file: "tool_zip-handler",
+    extract_zip_files: "tool_zip-handler",
+    // PDF tools
+    pdf_info: "tool_pdf-handler",
+    pdf_extract_text: "tool_pdf-handler",
+    // OCR
+    ocr_image: "tool_ocr-handler",
   };
 
   const edgeFunction = toolMap[toolName];
