@@ -281,6 +281,9 @@ export function FreeAgentCanvas({
       LAYOUT.toolColumns
     );
 
+    // Get current iteration for showing last-iteration connections
+    const currentIteration = session?.currentIteration || 0;
+
     readToolPositions.forEach(({ id: toolId, x, y }) => {
       const tool = toolsManifest.tools[toolId];
       if (!tool) return;
@@ -289,7 +292,10 @@ export function FreeAgentCanvas({
       newNodeIds.add(nodeId);
 
       const isActive = activeToolIds.has(toolId);
-      const wasUsed = session?.toolCalls.some((tc) => tc.tool === toolId && tc.status === "completed");
+      const wasUsedEver = session?.toolCalls.some((tc) => tc.tool === toolId && tc.status === "completed");
+      const wasUsedThisIteration = session?.toolCalls.some(
+        (tc) => tc.tool === toolId && tc.status === "completed" && tc.iteration === currentIteration
+      );
 
       newNodes.push({
         id: nodeId,
@@ -298,22 +304,22 @@ export function FreeAgentCanvas({
         data: {
           type: "tool",
           label: tool.name,
-          status: isActive ? "active" : wasUsed ? "success" : "idle",
+          status: isActive ? "active" : wasUsedEver ? "success" : "idle",
           icon: tool.icon,
           category: tool.category,
           toolId,
         },
       });
 
-      // Edge from read tool to agent TOP (input)
-      if (isActive || wasUsed) {
+      // Edge from read tool to agent TOP (input) - show for current iteration or active
+      if (isActive || wasUsedThisIteration) {
         newEdges.push({
           id: `edge-tool-agent-${toolId}`,
           source: nodeId,
           target: "agent",
           targetHandle: "top",
           animated: isActive,
-          style: { stroke: "#3b82f6", strokeWidth: isActive ? 2 : 1 },
+          style: { stroke: "#3b82f6", strokeWidth: isActive ? 2 : 1.5 },
         });
       }
     });
@@ -362,7 +368,10 @@ export function FreeAgentCanvas({
       newNodeIds.add(nodeId);
 
       const isActive = activeToolIds.has(toolId);
-      const wasUsed = session?.toolCalls.some((tc) => tc.tool === toolId && tc.status === "completed");
+      const wasUsedEver = session?.toolCalls.some((tc) => tc.tool === toolId && tc.status === "completed");
+      const wasUsedThisIteration = session?.toolCalls.some(
+        (tc) => tc.tool === toolId && tc.status === "completed" && tc.iteration === currentIteration
+      );
 
       newNodes.push({
         id: nodeId,
@@ -371,22 +380,22 @@ export function FreeAgentCanvas({
         data: {
           type: "tool",
           label: tool.name,
-          status: isActive ? "active" : wasUsed ? "success" : "idle",
+          status: isActive ? "active" : wasUsedEver ? "success" : "idle",
           icon: tool.icon,
           category: tool.category,
           toolId,
         },
       });
 
-      // Edge from agent BOTTOM to write tool (output)
-      if (isActive || wasUsed) {
+      // Edge from agent BOTTOM to write tool (output) - show for current iteration or active
+      if (isActive || wasUsedThisIteration) {
         newEdges.push({
           id: `edge-agent-tool-${toolId}`,
           source: "agent",
           sourceHandle: "bottom",
           target: nodeId,
           animated: isActive,
-          style: { stroke: "#f59e0b", strokeWidth: isActive ? 2 : 1 },
+          style: { stroke: "#f59e0b", strokeWidth: isActive ? 2 : 1.5 },
         });
       }
     });
