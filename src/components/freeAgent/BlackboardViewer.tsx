@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import type { BlackboardEntry } from "@/types/freeAgent";
+import { safeStringify } from "@/lib/safeRender";
 
 interface BlackboardViewerProps {
   entries: BlackboardEntry[];
@@ -79,7 +80,7 @@ export function BlackboardViewer({ entries }: BlackboardViewerProps) {
     const text = entries
       .map((entry) => {
         const config = categoryConfig[entry.category];
-        return `[${config.label} #${entry.iteration}]\n${entry.content}${
+        return `[${config.label} #${entry.iteration}]\n${safeStringify(entry.content)}${
           entry.data ? `\nData: ${JSON.stringify(entry.data, null, 2)}` : ""
         }`;
       })
@@ -132,7 +133,7 @@ export function BlackboardViewer({ entries }: BlackboardViewerProps) {
                         #{entry.iteration}
                       </span>
                     </div>
-                    <p className="text-xs leading-relaxed">{entry.content}</p>
+                    <p className="text-xs leading-relaxed">{safeStringify(entry.content)}</p>
                     {entry.data && (
                       <pre className="text-[10px] mt-1 p-1 bg-background/50 rounded overflow-x-auto">
                         {JSON.stringify(entry.data, null, 2)}

@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import type { FreeAgentSession, SessionFile } from "@/types/freeAgent";
 import { InterjectModal } from "./InterjectModal";
+import { safeStringify } from "@/lib/safeRender";
 
 // Available models - same as workflow tool
 const MODEL_OPTIONS = [
@@ -394,7 +395,7 @@ export function FreeAgentPanel({
                   <div className="mt-2 pt-2 border-t">
                     <div className="text-xs text-muted-foreground mb-1">Latest entry:</div>
                     <div className="text-xs bg-muted/50 p-2 rounded line-clamp-3">
-                      [{session.blackboard[session.blackboard.length - 1]?.category}] {session.blackboard[session.blackboard.length - 1]?.content}
+                      [{session.blackboard[session.blackboard.length - 1]?.category}] {safeStringify(session.blackboard[session.blackboard.length - 1]?.content)}
                     </div>
                   </div>
                 )}
