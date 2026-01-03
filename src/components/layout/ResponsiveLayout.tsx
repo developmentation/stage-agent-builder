@@ -21,6 +21,8 @@ interface ResponsiveLayoutProps {
   viewMode?: "stacked" | "canvas" | "simple";
   onToggleViewMode?: () => void;
   workflow?: Workflow;
+  appMode?: "workflow" | "freeAgent";
+  onSetAppMode?: (mode: "workflow" | "freeAgent") => void;
 }
 
 export const ResponsiveLayout = ({
@@ -38,6 +40,8 @@ export const ResponsiveLayout = ({
   viewMode,
   onToggleViewMode,
   workflow,
+  appMode,
+  onSetAppMode,
 }: ResponsiveLayoutProps) => {
   const [mobileTab, setMobileTab] = useState<"library" | "workflow" | "properties">("workflow");
 
@@ -57,6 +61,8 @@ export const ResponsiveLayout = ({
           hasSelectedAgent={hasSelectedAgent}
           viewMode={viewMode}
           onToggleViewMode={onToggleViewMode}
+          appMode={appMode}
+          onSetAppMode={onSetAppMode}
         />
         
         <div className="flex-1 overflow-hidden">

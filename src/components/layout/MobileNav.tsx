@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Library, Workflow, Settings, Plus, Play, Save, Upload, Trash2, HelpCircle, LayoutGrid, LayoutList, Eye, Eraser, Wrench } from "lucide-react";
+import { Library, Workflow, Settings, Plus, Play, Save, Upload, Trash2, HelpCircle, LayoutGrid, LayoutList, Eye, Eraser, Wrench, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useRef, useState } from "react";
 import { HelpModal } from "@/components/help/HelpModal";
@@ -32,6 +32,8 @@ interface MobileNavProps {
   hasSelectedAgent: boolean;
   viewMode?: "stacked" | "canvas" | "simple";
   onToggleViewMode?: () => void;
+  appMode?: "workflow" | "freeAgent";
+  onSetAppMode?: (mode: "workflow" | "freeAgent") => void;
 }
 
 export const MobileNav = ({ 
@@ -45,7 +47,9 @@ export const MobileNav = ({
   onClearOutputs,
   hasSelectedAgent,
   viewMode,
-  onToggleViewMode
+  onToggleViewMode,
+  appMode = "workflow",
+  onSetAppMode
 }: MobileNavProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -67,57 +71,91 @@ export const MobileNav = ({
     <div className="lg:hidden">
       {/* Top Action Bar */}
       <div className="h-14 border-b border-border bg-card flex items-center gap-2 px-4">
-        <Button
-          size="sm"
-          variant="outline"
-          className="gap-2"
-          onClick={onAddStage}
-        >
-          <Plus className="h-4 w-4" />
-          Stage
-        </Button>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
+        {/* Mode Toggle */}
+        {onSetAppMode && (
+          <div className="flex items-center bg-muted rounded-lg p-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn(
+                "gap-1.5 rounded-md transition-colors px-2 h-8",
+                appMode === "workflow" && "bg-background shadow-sm"
+              )}
+              onClick={() => onSetAppMode("workflow")}
+            >
+              <Workflow className="h-4 w-4" />
+              <span className="text-xs">Workflow</span>
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn(
+                "gap-1.5 rounded-md transition-colors px-2 h-8",
+                appMode === "freeAgent" && "bg-background shadow-sm"
+              )}
+              onClick={() => onSetAppMode("freeAgent")}
+            >
+              <Bot className="h-4 w-4" />
+              <span className="text-xs">Agent</span>
+            </Button>
+          </div>
+        )}
+
+        {appMode === "workflow" && (
+          <>
             <Button
               size="sm"
               variant="outline"
               className="gap-2"
+              onClick={onAddStage}
             >
-              <Wrench className="h-4 w-4" />
+              <Plus className="h-4 w-4" />
+              Stage
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuItem onClick={handleLoadClick}>
-              <Upload className="h-4 w-4 mr-2" />
-              Upload
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={onSave}>
-              <Save className="h-4 w-4 mr-2" />
-              Save
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={onClear}>
-              <Trash2 className="h-4 w-4 mr-2" />
-              Clear All
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setClearDialogOpen(true)}>
-              <Eraser className="h-4 w-4 mr-2 text-orange-500" />
-              Clear Outputs
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setHelpOpen(true)}>
-              <HelpCircle className="h-4 w-4 mr-2" />
-              Help
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleFileChange} />
-        <Button
-          size="sm"
-          className="gap-2 bg-gradient-to-r from-primary to-primary-hover ml-auto"
-          onClick={onRun}
-        >
-          <Play className="h-4 w-4" />
-          Run
-        </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-2"
+                >
+                  <Wrench className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="bg-popover z-50">
+                <DropdownMenuItem onClick={handleLoadClick}>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onSave}>
+                  <Save className="h-4 w-4 mr-2" />
+                  Save
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={onClear}>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Clear All
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setClearDialogOpen(true)}>
+                  <Eraser className="h-4 w-4 mr-2 text-orange-500" />
+                  Clear Outputs
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setHelpOpen(true)}>
+                  <HelpCircle className="h-4 w-4 mr-2" />
+                  Help
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleFileChange} />
+            <Button
+              size="sm"
+              className="gap-2 bg-gradient-to-r from-primary to-primary-hover ml-auto"
+              onClick={onRun}
+            >
+              <Play className="h-4 w-4" />
+              Run
+            </Button>
+          </>
+        )}
       </div>
       <HelpModal open={helpOpen} onOpenChange={setHelpOpen} />
       <AlertDialog open={clearDialogOpen} onOpenChange={setClearDialogOpen}>
@@ -143,50 +181,52 @@ export const MobileNav = ({
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Tab Navigation */}
-      <div className="h-14 border-b border-border bg-card flex items-center">
-        <button
-          onClick={() => onTabChange("library")}
-          className={cn(
-            "flex-1 h-full flex flex-col items-center justify-center gap-1 transition-colors",
-            activeTab === "library"
-              ? "text-primary border-b-2 border-primary"
-              : "text-muted-foreground"
-          )}
-        >
-          <Library className="h-5 w-5" />
-          <span className="text-xs font-medium">Library</span>
-        </button>
-        <button
-          onClick={() => onTabChange("workflow")}
-          className={cn(
-            "flex-1 h-full flex flex-col items-center justify-center gap-1 transition-colors",
-            activeTab === "workflow"
-              ? "text-primary border-b-2 border-primary"
-              : "text-muted-foreground"
-          )}
-        >
-          <Workflow className="h-5 w-5" />
-          <span className="text-xs font-medium">Workflow</span>
-        </button>
-        <button
-          onClick={() => onTabChange("properties")}
-          className={cn(
-            "flex-1 h-full flex flex-col items-center justify-center gap-1 transition-colors relative",
-            activeTab === "properties"
-              ? "text-primary border-b-2 border-primary"
-              : "text-muted-foreground",
-            !hasSelectedAgent && "opacity-50"
-          )}
-          disabled={!hasSelectedAgent}
-        >
-          <Settings className="h-5 w-5" />
-          <span className="text-xs font-medium">Properties</span>
-          {hasSelectedAgent && (
-            <div className="absolute top-2 right-1/4 w-2 h-2 bg-primary rounded-full" />
-          )}
-        </button>
-      </div>
+      {/* Tab Navigation - only show for workflow mode */}
+      {appMode === "workflow" && (
+        <div className="h-14 border-b border-border bg-card flex items-center">
+          <button
+            onClick={() => onTabChange("library")}
+            className={cn(
+              "flex-1 h-full flex flex-col items-center justify-center gap-1 transition-colors",
+              activeTab === "library"
+                ? "text-primary border-b-2 border-primary"
+                : "text-muted-foreground"
+            )}
+          >
+            <Library className="h-5 w-5" />
+            <span className="text-xs font-medium">Library</span>
+          </button>
+          <button
+            onClick={() => onTabChange("workflow")}
+            className={cn(
+              "flex-1 h-full flex flex-col items-center justify-center gap-1 transition-colors",
+              activeTab === "workflow"
+                ? "text-primary border-b-2 border-primary"
+                : "text-muted-foreground"
+            )}
+          >
+            <Workflow className="h-5 w-5" />
+            <span className="text-xs font-medium">Workflow</span>
+          </button>
+          <button
+            onClick={() => onTabChange("properties")}
+            className={cn(
+              "flex-1 h-full flex flex-col items-center justify-center gap-1 transition-colors relative",
+              activeTab === "properties"
+                ? "text-primary border-b-2 border-primary"
+                : "text-muted-foreground",
+              !hasSelectedAgent && "opacity-50"
+            )}
+            disabled={!hasSelectedAgent}
+          >
+            <Settings className="h-5 w-5" />
+            <span className="text-xs font-medium">Properties</span>
+            {hasSelectedAgent && (
+              <div className="absolute top-2 right-1/4 w-2 h-2 bg-primary rounded-full" />
+            )}
+          </button>
+        </div>
+      )}
     </div>
   );
 };
