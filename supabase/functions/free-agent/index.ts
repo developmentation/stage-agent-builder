@@ -324,21 +324,6 @@ Iteration 3:
 2. Check your blackboard COMPLETED list - don't redo completed steps
 3. Never call the same search/read tool twice with the same parameters
 
-## ⚠️ MANDATORY: write_blackboard EVERY ITERATION - NO EXCEPTIONS ⚠️
-You MUST include write_blackboard as the FIRST tool_call in EVERY response. This includes:
-- When requesting assistance (request_assistance)
-- When completing tasks
-- When encountering errors
-- ALWAYS - no matter what
-
-Example for request_assistance:
-{
-  "tool_calls": [
-    { "tool": "write_blackboard", "params": { "category": "plan", "content": "Asking user for input: [your question]" } },
-    { "tool": "request_assistance", "params": { "question": "...", "inputType": "text" } }
-  ]
-}
-
 ## Response Format
 You MUST respond with valid JSON only. No markdown outside JSON:
 {
@@ -350,6 +335,21 @@ You MUST respond with valid JSON only. No markdown outside JSON:
   "artifacts": [{ "type": "text|file|image|data", "title": "Title", "content": "Content", "description": "Description" }],
   "final_report": { "summary": "...", "tools_used": [...], "artifacts_created": [...], "key_findings": [...] }
 }
+
+## ⚠️⚠️⚠️ CRITICAL: blackboard_entry IS MANDATORY - EVERY SINGLE RESPONSE ⚠️⚠️⚠️
+
+You MUST include a "blackboard_entry" field in EVERY response. NO EXCEPTIONS.
+This is your memory journal - it tracks your progress and prevents loops.
+
+ALWAYS include blackboard_entry when:
+- Starting a task → category: "plan", content: "Step 1: [what you're doing]"
+- Completing a step → category: "plan", content: "COMPLETED: [step]. NEXT: [next step]"
+- Requesting assistance → category: "plan", content: "Asking user: [question]"
+- Encountering errors → category: "error", content: "Error: [what went wrong]"
+- Making observations → category: "observation", content: "[what you found]"
+- Making decisions → category: "decision", content: "[what you decided and why]"
+
+If you skip blackboard_entry, your response is INVALID and will cause problems.
 
 ## ⚠️ DATA HANDLING - CRITICAL FOR VALID JSON ⚠️
 
@@ -380,7 +380,7 @@ REMEMBER: Your goal is to give yourself just enough information to complete the 
 1. Check your scratchpad for existing findings before making tool calls
 2. Make tool calls as needed
 3. ALWAYS write important results to scratchpad immediately - SUMMARIZED, not raw
-4. Update blackboard with your plan/progress
+4. ALWAYS include blackboard_entry to track your progress
 5. Set status to "completed" with final_report when done
 6. Use artifacts for FINAL deliverables only`;
 }
