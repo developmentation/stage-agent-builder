@@ -161,11 +161,11 @@ function getApiModelName(uiModel: string): string {
     "gemini-2.5-flash-lite": "gemini-2.0-flash-lite",
     // Claude models
     "claude-sonnet-4-5": "claude-sonnet-4-20250514",
-    "claude-haiku-4-5": "claude-haiku-4-20250514",
+    "claude-3-5-haiku": "claude-3-5-haiku-20241022",
     "claude-opus-4-5": "claude-opus-4-20250514",
     // Grok models
-    "grok-4-fast-reasoning": "grok-3-fast",
-    "grok-4-fast-non-reasoning": "grok-3-fast",
+    "grok-4-1-fast-reasoning": "grok-3-fast",
+    "grok-4-1-fast-non-reasoning": "grok-3-fast",
   };
   return modelMap[uiModel] || uiModel;
 }
