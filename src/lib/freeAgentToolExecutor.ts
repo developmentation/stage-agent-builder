@@ -48,7 +48,7 @@ export async function executeFrontendTool(
   }
 }
 
-// Read blackboard entries
+// Read blackboard entries (from local state)
 async function executeReadBlackboard(
   params: Record<string, unknown>,
   context: ToolExecutionContext
@@ -75,7 +75,7 @@ async function executeReadBlackboard(
   }
 }
 
-// Write to blackboard
+// Write to blackboard (local state - callback updates React state)
 async function executeWriteBlackboard(
   params: Record<string, unknown>,
   context: ToolExecutionContext
@@ -87,20 +87,8 @@ async function executeWriteBlackboard(
       category: params.category as BlackboardEntry["category"],
       content: params.content as string,
       data: params.data as Record<string, unknown> | undefined,
-      iteration: 0, // Will be set by caller
+      iteration: 0,
     };
-
-    // Save to database using raw SQL to avoid type issues with new tables
-    const { error } = await supabase
-      .from("free_agent_blackboard" as any)
-      .insert({
-        session_id: context.sessionId,
-        category: entry.category,
-        content: entry.content,
-        data: entry.data as Record<string, unknown> | null,
-      } as any);
-
-    if (error) throw error;
 
     context.onBlackboardUpdate(entry);
 
@@ -113,7 +101,7 @@ async function executeWriteBlackboard(
   }
 }
 
-// Read session file
+// Read session file (from local state)
 async function executeReadFile(
   params: Record<string, unknown>,
   context: ToolExecutionContext
@@ -126,33 +114,11 @@ async function executeReadFile(
       return { success: false, error: `File not found: ${fileId}` };
     }
 
-    // If content is already loaded
-    if (file.content) {
-      return {
-        success: true,
-        result: {
-          filename: file.filename,
-          content: file.content,
-          mimeType: file.mimeType,
-          size: file.size,
-        },
-      };
-    }
-
-    // Fetch content from database
-    const { data, error } = await supabase
-      .from("free_agent_session_files" as any)
-      .select("content")
-      .eq("id", fileId)
-      .single();
-
-    if (error) throw error;
-
     return {
       success: true,
       result: {
         filename: file.filename,
-        content: (data as any)?.content,
+        content: file.content,
         mimeType: file.mimeType,
         size: file.size,
       },
@@ -247,17 +213,6 @@ async function executeExportWord(
       iteration: 0,
     };
 
-    // Save artifact
-    await supabase.from("free_agent_artifacts" as any).insert({
-      session_id: context.sessionId,
-      artifact_type: artifact.type,
-      title: artifact.title,
-      content: artifact.content,
-      description: artifact.description,
-      mime_type: artifact.mimeType,
-      size: artifact.size,
-    } as any);
-
     context.onArtifactCreated(artifact);
 
     return {
@@ -325,17 +280,6 @@ async function executeExportPdf(
       iteration: 0,
     };
 
-    // Save artifact
-    await supabase.from("free_agent_artifacts" as any).insert({
-      session_id: context.sessionId,
-      artifact_type: artifact.type,
-      title: artifact.title,
-      content: artifact.content,
-      description: artifact.description,
-      mime_type: artifact.mimeType,
-      size: artifact.size,
-    } as any);
-
     context.onArtifactCreated(artifact);
 
     return {
@@ -368,6 +312,7 @@ export async function executeEdgeFunctionTool(
   const toolToFunction: Record<string, string> = {
     get_time: "time",
     brave_search: "brave-search",
+    google_search: "google-search",
     web_scrape: "web-scrape",
     read_github_repo: "github-fetch",
     read_github_file: "github-fetch",
@@ -375,6 +320,8 @@ export async function executeEdgeFunctionTool(
     image_generation: "run-nano",
     get_call_api: "api-call",
     post_call_api: "api-call",
+    execute_sql: "external-db",
+    elevenlabs_tts: "elevenlabs-tts",
   };
 
   const functionName = toolToFunction[tool];
