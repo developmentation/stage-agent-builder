@@ -2941,8 +2941,26 @@ const Index = () => {
       />
       
       {appMode === "freeAgent" ? (
-        <div className="flex-1 overflow-hidden">
-          <FreeAgentView model={selectedModel} maxIterations={50} />
+        <div className="flex-1 overflow-hidden flex flex-col">
+          {/* Mobile header for Free Agent mode */}
+          <div className="lg:hidden h-14 border-b border-border bg-card flex items-center gap-2 px-4">
+            <div className="flex items-center bg-muted rounded-lg p-1">
+              <button
+                className="gap-1.5 rounded-md transition-colors px-2 h-8 text-sm flex items-center"
+                onClick={() => setAppMode("workflow")}
+              >
+                <span className="text-xs text-muted-foreground">← Workflow</span>
+              </button>
+              <button
+                className="gap-1.5 rounded-md transition-colors px-2 h-8 bg-background shadow-sm text-sm flex items-center"
+              >
+                <span className="text-xs font-medium">Free Agent</span>
+              </button>
+            </div>
+          </div>
+          <div className="flex-1 overflow-hidden">
+            <FreeAgentView model={selectedModel} maxIterations={50} />
+          </div>
         </div>
       ) : (
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -3159,6 +3177,8 @@ const Index = () => {
           viewMode={workflow.viewMode}
           onToggleViewMode={toggleViewMode}
           workflow={workflow}
+          appMode={appMode}
+          onSetAppMode={setAppMode}
         />
         
         <OutputLog logs={logs} />

@@ -76,13 +76,52 @@ export function FreeAgentView({ model, maxIterations }: FreeAgentViewProps) {
     resetSession();
   }, [resetSession]);
 
+  const [mobileTab, setMobileTab] = useState<"panel" | "canvas" | "data">("panel");
+
   return (
     <div className="h-full w-full bg-background">
-      <ResizablePanelGroup direction="horizontal">
-        {/* Left Panel - Control & Info */}
-        <ResizablePanel defaultSize={25} minSize={20} maxSize={35}>
-          <div className="h-full flex flex-col">
-            <div className="flex-1 overflow-hidden">
+      {/* Mobile Layout */}
+      <div className="lg:hidden h-full flex flex-col">
+        {/* Mobile Tabs */}
+        <div className="border-b border-border bg-card">
+          <div className="flex">
+            <button
+              onClick={() => setMobileTab("panel")}
+              className={`flex-1 py-3 text-sm font-medium transition-colors ${
+                mobileTab === "panel"
+                  ? "text-primary border-b-2 border-primary"
+                  : "text-muted-foreground"
+              }`}
+            >
+              Control
+            </button>
+            <button
+              onClick={() => setMobileTab("canvas")}
+              className={`flex-1 py-3 text-sm font-medium transition-colors ${
+                mobileTab === "canvas"
+                  ? "text-primary border-b-2 border-primary"
+                  : "text-muted-foreground"
+              }`}
+            >
+              Canvas
+            </button>
+            <button
+              onClick={() => setMobileTab("data")}
+              className={`flex-1 py-3 text-sm font-medium transition-colors ${
+                mobileTab === "data"
+                  ? "text-primary border-b-2 border-primary"
+                  : "text-muted-foreground"
+              }`}
+            >
+              Data
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile Content */}
+        <div className="flex-1 overflow-hidden">
+          {mobileTab === "panel" && (
+            <div className="h-full overflow-y-auto">
               <FreeAgentPanel
                 session={session}
                 isRunning={isRunning}
@@ -91,46 +130,95 @@ export function FreeAgentView({ model, maxIterations }: FreeAgentViewProps) {
                 onReset={resetSession}
               />
             </div>
-          </div>
-        </ResizablePanel>
+          )}
+          {mobileTab === "canvas" && (
+            <div className="h-full">
+              <FreeAgentCanvas
+                session={session}
+                toolsManifest={toolsManifest}
+                activeToolIds={activeToolIds}
+              />
+            </div>
+          )}
+          {mobileTab === "data" && (
+            <div className="h-full">
+              <Tabs defaultValue="blackboard" className="h-full flex flex-col">
+                <TabsList className="mx-2 mt-2">
+                  <TabsTrigger value="blackboard" className="flex-1">
+                    Blackboard
+                  </TabsTrigger>
+                  <TabsTrigger value="artifacts" className="flex-1">
+                    Artifacts
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="blackboard" className="flex-1 overflow-hidden m-0 p-0">
+                  <BlackboardViewer entries={session?.blackboard || []} />
+                </TabsContent>
+                <TabsContent value="artifacts" className="flex-1 overflow-hidden m-0 p-0">
+                  <ArtifactsPanel artifacts={session?.artifacts || []} />
+                </TabsContent>
+              </Tabs>
+            </div>
+          )}
+        </div>
+      </div>
 
-        <ResizableHandle withHandle />
+      {/* Desktop Layout */}
+      <div className="hidden lg:block h-full">
+        <ResizablePanelGroup direction="horizontal">
+          {/* Left Panel - Control & Info */}
+          <ResizablePanel defaultSize={25} minSize={20} maxSize={35}>
+            <div className="h-full flex flex-col">
+              <div className="flex-1 overflow-hidden">
+                <FreeAgentPanel
+                  session={session}
+                  isRunning={isRunning}
+                  onStart={handleStart}
+                  onStop={stopSession}
+                  onReset={resetSession}
+                />
+              </div>
+            </div>
+          </ResizablePanel>
 
-        {/* Center - Canvas */}
-        <ResizablePanel defaultSize={50} minSize={30}>
-          <div className="h-full bg-muted/20">
-            <FreeAgentCanvas
-              session={session}
-              toolsManifest={toolsManifest}
-              activeToolIds={activeToolIds}
-            />
-          </div>
-        </ResizablePanel>
+          <ResizableHandle withHandle />
 
-        <ResizableHandle withHandle />
+          {/* Center - Canvas */}
+          <ResizablePanel defaultSize={50} minSize={30}>
+            <div className="h-full bg-muted/20">
+              <FreeAgentCanvas
+                session={session}
+                toolsManifest={toolsManifest}
+                activeToolIds={activeToolIds}
+              />
+            </div>
+          </ResizablePanel>
 
-        {/* Right Panel - Blackboard & Artifacts */}
-        <ResizablePanel defaultSize={25} minSize={20} maxSize={35}>
-          <div className="h-full">
-            <Tabs defaultValue="blackboard" className="h-full flex flex-col">
-              <TabsList className="mx-2 mt-2">
-                <TabsTrigger value="blackboard" className="flex-1">
-                  Blackboard
-                </TabsTrigger>
-                <TabsTrigger value="artifacts" className="flex-1">
-                  Artifacts
-                </TabsTrigger>
-              </TabsList>
-              <TabsContent value="blackboard" className="flex-1 overflow-hidden m-0 p-0">
-                <BlackboardViewer entries={session?.blackboard || []} />
-              </TabsContent>
-              <TabsContent value="artifacts" className="flex-1 overflow-hidden m-0 p-0">
-                <ArtifactsPanel artifacts={session?.artifacts || []} />
-              </TabsContent>
-            </Tabs>
-          </div>
-        </ResizablePanel>
-      </ResizablePanelGroup>
+          <ResizableHandle withHandle />
+
+          {/* Right Panel - Blackboard & Artifacts */}
+          <ResizablePanel defaultSize={25} minSize={20} maxSize={35}>
+            <div className="h-full">
+              <Tabs defaultValue="blackboard" className="h-full flex flex-col">
+                <TabsList className="mx-2 mt-2">
+                  <TabsTrigger value="blackboard" className="flex-1">
+                    Blackboard
+                  </TabsTrigger>
+                  <TabsTrigger value="artifacts" className="flex-1">
+                    Artifacts
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="blackboard" className="flex-1 overflow-hidden m-0 p-0">
+                  <BlackboardViewer entries={session?.blackboard || []} />
+                </TabsContent>
+                <TabsContent value="artifacts" className="flex-1 overflow-hidden m-0 p-0">
+                  <ArtifactsPanel artifacts={session?.artifacts || []} />
+                </TabsContent>
+              </Tabs>
+            </div>
+          </ResizablePanel>
+        </ResizablePanelGroup>
+      </div>
 
       {/* Modals */}
       <AssistanceModal
