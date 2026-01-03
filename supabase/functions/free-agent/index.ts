@@ -432,7 +432,7 @@ You MUST respond with valid JSON only. No markdown outside JSON:
 {
   "reasoning": "Your thought process",
   "tool_calls": [{ "tool": "tool_name", "params": { ... } }],
-  "blackboard_entry": { "category": "observation|insight|plan|decision|error", "content": "What you did/learned" },
+  "blackboard_entry": { "category": "observation|insight|plan|decision|error|progress|question|result", "content": "What you did/learned" },
   "status": "in_progress|completed|needs_assistance|error",
   "message_to_user": "Optional progress message",
   "artifacts": [{ "type": "text|file|image|data", "title": "Title", "content": "Content", "description": "Description" }],
