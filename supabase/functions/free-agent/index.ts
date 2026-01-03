@@ -159,9 +159,9 @@ function getApiModelName(uiModel: string): string {
     "gemini-2.5-flash-lite": "gemini-2.0-flash-lite",
     "gemini-3-pro-preview": "gemini-2.5-pro-preview-05-06",
     "gemini-3-flash-preview": "gemini-2.5-flash-preview-05-20",
-    // Claude models
+    // Claude models - use correct API model names
     "claude-sonnet-4-5": "claude-sonnet-4-20250514",
-    "claude-haiku-4-5": "claude-haiku-4-20250514",
+    "claude-haiku-4-5": "claude-3-5-haiku-20241022",
     "claude-opus-4-5": "claude-opus-4-20250514",
     // Grok models
     "grok-4-1-fast-reasoning": "grok-3-fast",
@@ -587,35 +587,86 @@ function sanitizeJsonString(text: string): string {
 function parseAgentResponse(text: string): unknown {
   console.log("Raw LLM response length:", text.length);
   
+  let parsed: Record<string, unknown> | null = null;
+  
   // Try direct parse first
   try {
-    return JSON.parse(text.trim());
+    parsed = JSON.parse(text.trim());
   } catch (directError) {
     console.warn("Direct JSON parse failed:", directError instanceof Error ? directError.message : "Unknown");
   }
   
   // Try sanitizing control characters and parsing again
-  try {
-    const sanitized = sanitizeJsonString(text.trim());
-    return JSON.parse(sanitized);
-  } catch (sanitizeError) {
-    console.warn("Sanitized JSON parse failed:", sanitizeError instanceof Error ? sanitizeError.message : "Unknown");
+  if (!parsed) {
+    try {
+      const sanitized = sanitizeJsonString(text.trim());
+      parsed = JSON.parse(sanitized);
+    } catch (sanitizeError) {
+      console.warn("Sanitized JSON parse failed:", sanitizeError instanceof Error ? sanitizeError.message : "Unknown");
+    }
   }
   
   // Try to extract JSON object
-  const match = text.match(/\{[\s\S]*\}/);
-  if (match) {
-    try {
-      return JSON.parse(match[0]);
-    } catch {
-      // Try sanitized version of extracted JSON
+  if (!parsed) {
+    const match = text.match(/\{[\s\S]*\}/);
+    if (match) {
       try {
-        const sanitizedMatch = sanitizeJsonString(match[0]);
-        return JSON.parse(sanitizedMatch);
-      } catch (extractError) {
-        console.error("JSON extraction also failed. Response end:", text.slice(-300));
+        parsed = JSON.parse(match[0]);
+      } catch {
+        // Try sanitized version of extracted JSON
+        try {
+          const sanitizedMatch = sanitizeJsonString(match[0]);
+          parsed = JSON.parse(sanitizedMatch);
+        } catch (extractError) {
+          console.error("JSON extraction also failed. Response end:", text.slice(-300));
+        }
       }
     }
+  }
+  
+  // If we got a parsed object, fix any stringified fields
+  if (parsed) {
+    // Fix tool_calls if it's a string
+    if (typeof parsed.tool_calls === "string") {
+      try {
+        parsed.tool_calls = JSON.parse(parsed.tool_calls);
+      } catch {
+        console.warn("Failed to parse stringified tool_calls");
+        parsed.tool_calls = [];
+      }
+    }
+    
+    // Fix blackboard_entry if it's a string
+    if (typeof parsed.blackboard_entry === "string") {
+      try {
+        parsed.blackboard_entry = JSON.parse(parsed.blackboard_entry);
+      } catch {
+        console.warn("Failed to parse stringified blackboard_entry");
+        parsed.blackboard_entry = null;
+      }
+    }
+    
+    // Fix final_report if it's a string
+    if (typeof parsed.final_report === "string") {
+      try {
+        parsed.final_report = JSON.parse(parsed.final_report);
+      } catch {
+        console.warn("Failed to parse stringified final_report");
+        parsed.final_report = null;
+      }
+    }
+    
+    // Fix artifacts if it's a string
+    if (typeof parsed.artifacts === "string") {
+      try {
+        parsed.artifacts = JSON.parse(parsed.artifacts);
+      } catch {
+        console.warn("Failed to parse stringified artifacts");
+        parsed.artifacts = [];
+      }
+    }
+    
+    return parsed;
   }
   
   // Log details for debugging truncation
