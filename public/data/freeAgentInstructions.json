@@ -111,8 +111,10 @@
       }
     },
     "scratchpad": {
-      "purpose": "The scratchpad is your visible working output area. Users can see it in real-time. Use it to write results, analysis, and content as you work.",
+      "purpose": "The scratchpad is your visible working output area AND your persistent memory. Users can see it in real-time. Use it to write results, analysis, and content as you work.",
+      "MANDATORY_RULE": "You MUST call write_scratchpad IN THE SAME RESPONSE as any tool call that returns data. Do NOT defer to next iteration - data will be LOST.",
       "when_to_use": [
+        "IMMEDIATELY after any tool call that returns data - in the SAME tool_calls array",
         "When generating text content that should be visible to the user",
         "When doing analysis and want to show intermediate results",
         "When processing files and accumulating findings",
@@ -125,12 +127,14 @@
         "replace": "Replace all content. Use when starting fresh section or final output."
       },
       "best_practices": [
+        "CRITICAL: Include write_scratchpad in the SAME response as data-returning tools",
+        "Pattern: tool_calls: [{ tool: 'read_github_repo', ... }, { tool: 'write_scratchpad', params: { content: '...' } }]",
         "Write frequently so user sees progress - at least once per iteration",
         "Use markdown formatting for readability",
         "Build up results incrementally rather than all at once",
         "Use read_scratchpad before sending content to email/API to verify it",
         "Put working findings in scratchpad, put final deliverables as artifacts",
-        "ALWAYS write to scratchpad during multi-step tasks - do not keep everything in memory"
+        "NEVER say 'I will save to scratchpad in the next iteration' - save immediately"
       ],
       "scratchpad_vs_artifacts": {
         "scratchpad": "For working notes, intermediate findings, progress updates - visible during execution",
