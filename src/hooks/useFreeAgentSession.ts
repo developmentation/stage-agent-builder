@@ -297,11 +297,13 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
         for (const handler of data.frontendHandlers || []) {
           const toolCall = newToolCalls.find((t) => t.tool === handler.tool && t.status === "executing");
           
+          // Use synchronous refs to avoid race conditions - scratchpadRef/blackboardRef are updated immediately
+          // while currentSession state is async and may be stale within the same iteration
           const result = await executeFrontendTool(handler.tool, handler.params, {
             sessionId: currentSession.id,
             prompt: currentSession.prompt,
-            scratchpad: currentSession.scratchpad,
-            blackboard: currentSession.blackboard,
+            scratchpad: scratchpadRef.current || currentSession.scratchpad || "",
+            blackboard: blackboardRef.current.length > 0 ? blackboardRef.current : currentSession.blackboard,
             sessionFiles: currentSession.sessionFiles,
             onArtifactCreated: handleArtifactCreated,
             onBlackboardUpdate: handleBlackboardUpdate,
