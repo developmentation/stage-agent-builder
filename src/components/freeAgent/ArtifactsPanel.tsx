@@ -120,12 +120,12 @@ export function ArtifactsPanel({ artifacts, onArtifactClick }: ArtifactsPanelPro
                     </p>
                   )}
 
-                  {/* Preview for text/image */}
+                  {/* Preview for text/image - render as markdown */}
                   {artifact.type === "text" && (
-                    <pre className="text-[10px] bg-muted/50 p-2 rounded overflow-x-auto max-h-[60px]">
-                      {artifact.content.slice(0, 200)}
-                      {artifact.content.length > 200 && "..."}
-                    </pre>
+                    <div className="text-xs bg-muted/50 p-2 rounded max-h-[120px] overflow-y-auto prose prose-sm prose-invert dark:prose-invert max-w-none break-words whitespace-pre-wrap">
+                      {artifact.content.slice(0, 500)}
+                      {artifact.content.length > 500 && "..."}
+                    </div>
                   )}
 
                   {artifact.type === "image" && (

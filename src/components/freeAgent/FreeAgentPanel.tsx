@@ -39,6 +39,10 @@ export function FreeAgentPanel({
   const [files, setFiles] = useState<SessionFile[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const handleClear = () => {
+    setPrompt("");
+    setFiles([]);
+  };
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const uploadedFiles = e.target.files;
     if (!uploadedFiles) return;
@@ -86,8 +90,7 @@ export function FreeAgentPanel({
   const handleStart = () => {
     if (!prompt.trim()) return;
     onStart(prompt, files);
-    setPrompt("");
-    setFiles([]);
+    // Keep prompt and files so user can re-run
   };
 
   const getStatusBadge = () => {
@@ -217,6 +220,18 @@ export function FreeAgentPanel({
               <Play className="w-4 h-4 mr-2" />
               Start Agent
             </Button>
+
+            {/* Clear button */}
+            {(prompt.trim() || files.length > 0) && (
+              <Button
+                variant="outline"
+                onClick={handleClear}
+                className="w-full"
+              >
+                <X className="w-4 h-4 mr-2" />
+                Clear
+              </Button>
+            )}
           </>
         ) : (
           <>
