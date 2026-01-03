@@ -281,8 +281,9 @@ export function FreeAgentCanvas({
       LAYOUT.toolColumns
     );
 
-    // Get current iteration for showing last-iteration connections
+    // Get current iteration for showing recent connections (current or last iteration)
     const currentIteration = session?.currentIteration || 0;
+    const recentIterations = [currentIteration, currentIteration - 1].filter(i => i > 0);
 
     readToolPositions.forEach(({ id: toolId, x, y }) => {
       const tool = toolsManifest.tools[toolId];
@@ -293,8 +294,8 @@ export function FreeAgentCanvas({
 
       const isActive = activeToolIds.has(toolId);
       const wasUsedEver = session?.toolCalls.some((tc) => tc.tool === toolId && tc.status === "completed");
-      const wasUsedThisIteration = session?.toolCalls.some(
-        (tc) => tc.tool === toolId && tc.status === "completed" && tc.iteration === currentIteration
+      const wasUsedRecently = session?.toolCalls.some(
+        (tc) => tc.tool === toolId && tc.status === "completed" && recentIterations.includes(tc.iteration)
       );
 
       newNodes.push({
@@ -312,7 +313,7 @@ export function FreeAgentCanvas({
       });
 
       // Edge from read tool to agent TOP (input) - show for current iteration or active
-      if (isActive || wasUsedThisIteration) {
+      if (isActive || wasUsedRecently) {
         newEdges.push({
           id: `edge-tool-agent-${toolId}`,
           source: nodeId,
@@ -369,8 +370,8 @@ export function FreeAgentCanvas({
 
       const isActive = activeToolIds.has(toolId);
       const wasUsedEver = session?.toolCalls.some((tc) => tc.tool === toolId && tc.status === "completed");
-      const wasUsedThisIteration = session?.toolCalls.some(
-        (tc) => tc.tool === toolId && tc.status === "completed" && tc.iteration === currentIteration
+      const wasUsedRecently = session?.toolCalls.some(
+        (tc) => tc.tool === toolId && tc.status === "completed" && recentIterations.includes(tc.iteration)
       );
 
       newNodes.push({
@@ -388,7 +389,7 @@ export function FreeAgentCanvas({
       });
 
       // Edge from agent BOTTOM to write tool (output) - show for current iteration or active
-      if (isActive || wasUsedThisIteration) {
+      if (isActive || wasUsedRecently) {
         newEdges.push({
           id: `edge-agent-tool-${toolId}`,
           source: "agent",
