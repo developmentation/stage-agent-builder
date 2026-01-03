@@ -1,5 +1,5 @@
 // Free Agent Canvas - Main visualization component
-import React, { useMemo, useCallback, useState } from "react";
+import React, { useMemo, useCallback, useState, useRef } from "react";
 import ReactFlow, {
   Node,
   Edge,
@@ -11,6 +11,8 @@ import ReactFlow, {
   useEdgesState,
   ConnectionLineType,
   ReactFlowProvider,
+  NodeChange,
+  XYPosition,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { FreeAgentNode } from "./FreeAgentNode";
@@ -46,6 +48,17 @@ const nodeTypes = {
   promptFile: PromptFileNode,
 };
 
+// Tool categories for grid layout
+const TOOL_CATEGORIES: Record<string, string[]> = {
+  "Web & Search": ["brave_search", "google_search", "web_scrape"],
+  "GitHub": ["read_github_repo", "read_github_file"],
+  "Files & Export": ["read_file", "export_word", "export_pdf"],
+  "Memory": ["read_blackboard", "write_blackboard", "read_scratchpad", "write_scratchpad", "read_prompt", "read_prompt_files"],
+  "Communication": ["send_email", "request_assistance"],
+  "API & Data": ["get_call_api", "post_call_api", "execute_sql", "get_time"],
+  "AI": ["image_generation", "elevenlabs_tts"],
+};
+
 export function FreeAgentCanvas({
   session,
   toolsManifest,
@@ -57,38 +70,76 @@ export function FreeAgentCanvas({
 }: FreeAgentCanvasProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  
+  // Track user-moved node positions to preserve them across layout updates
+  const userPositionsRef = useRef<Map<string, XYPosition>>(new Map());
+  
+  // Track which nodes exist to detect new ones
+  const existingNodeIdsRef = useRef<Set<string>>(new Set());
 
-  // Calculate node positions with new layout
+  // Handle node position changes - save user-moved positions
+  const handleNodesChange = useCallback((changes: NodeChange[]) => {
+    changes.forEach(change => {
+      if (change.type === 'position' && change.position && change.dragging === false) {
+        // User finished dragging - save their position
+        userPositionsRef.current.set(change.id, change.position);
+      }
+    });
+    onNodesChange(changes);
+  }, [onNodesChange]);
+
+  // Calculate node positions with categorized grid layout
   const generateLayout = useCallback(() => {
     if (!toolsManifest) return { nodes: [], edges: [] };
 
     const tools = Object.entries(toolsManifest.tools);
     
-    // Layout dimensions - wider canvas for left-center-right layout
-    const centerX = 500;
-    const centerY = 350;
-    const toolRadius = 280;
-    const artifactRadius = 180;
+    // Layout dimensions
+    const centerX = 450;
+    const centerY = 280;
+    const artifactRadius = 150;
     
     // Left side for prompt and files
-    const leftX = 80;
-    const promptY = 150;
+    const leftX = 60;
+    const promptY = 100;
     
     // Right side for scratchpad
-    const scratchpadX = 850;
-    const scratchpadY = 150;
+    const scratchpadX = 780;
+    const scratchpadY = 80;
+    
+    // Tool grid layout - below and around agent
+    const toolGridStartX = 100;
+    const toolGridStartY = 480;
+    const toolNodeWidth = 130;
+    const toolNodeHeight = 60;
+    const toolGapX = 20;
+    const toolGapY = 15;
+    const categoryGapY = 30;
 
     const newNodes: Node<FreeAgentNodeData>[] = [];
     const newEdges: Edge[] = [];
+    const newNodeIds = new Set<string>();
+
+    // Helper to get position (use user position if exists, otherwise default)
+    const getPosition = (nodeId: string, defaultPos: XYPosition): XYPosition => {
+      const userPos = userPositionsRef.current.get(nodeId);
+      // Only use user position if this node already existed (not new)
+      if (userPos && existingNodeIdsRef.current.has(nodeId)) {
+        return userPos;
+      }
+      return defaultPos;
+    };
 
     // === LEFT SIDE: Prompt and Files ===
     
     // Prompt node
     if (session?.prompt) {
+      const promptId = "prompt";
+      newNodeIds.add(promptId);
       newNodes.push({
-        id: "prompt",
+        id: promptId,
         type: "prompt",
-        position: { x: leftX, y: promptY },
+        position: getPosition(promptId, { x: leftX, y: promptY }),
         data: {
           type: "prompt",
           label: "User Prompt",
@@ -108,12 +159,14 @@ export function FreeAgentCanvas({
 
     // Prompt file nodes (stacked below prompt)
     session?.sessionFiles.forEach((file, index) => {
-      const fileY = promptY + 180 + (index * 80);
+      const fileY = promptY + 160 + (index * 70);
+      const fileId = `promptFile-${file.id}`;
+      newNodeIds.add(fileId);
       
       newNodes.push({
-        id: `promptFile-${file.id}`,
+        id: fileId,
         type: "promptFile",
-        position: { x: leftX, y: fileY },
+        position: getPosition(fileId, { x: leftX, y: fileY }),
         data: {
           type: "promptFile",
           label: file.filename,
@@ -128,15 +181,14 @@ export function FreeAgentCanvas({
       // Edge from file to agent
       newEdges.push({
         id: `edge-promptFile-agent-${file.id}`,
-        source: `promptFile-${file.id}`,
+        source: fileId,
         target: "agent",
         style: { stroke: "#10b981", strokeWidth: 1, strokeDasharray: "3,3" },
       });
     });
 
-    // === CENTER: Agent and Tools ===
+    // === CENTER: Agent ===
     
-    // Agent node in center
     const agentStatus = session?.status === "running" 
       ? "thinking" 
       : session?.status === "completed" 
@@ -145,10 +197,12 @@ export function FreeAgentCanvas({
           ? "error" 
           : "idle";
 
+    const agentId = "agent";
+    newNodeIds.add(agentId);
     newNodes.push({
-      id: "agent",
+      id: agentId,
       type: "agent",
-      position: { x: centerX - 60, y: centerY - 60 },
+      position: getPosition(agentId, { x: centerX - 60, y: centerY - 60 }),
       data: {
         type: "agent",
         label: "Free Agent",
@@ -158,54 +212,81 @@ export function FreeAgentCanvas({
       },
     });
 
-    // Tool nodes in radial layout around agent (right semicircle only to leave space for scratchpad)
-    tools.forEach(([toolId, tool], index) => {
-      // Adjust angle to be on the right side (from -90 to +90 degrees)
-      const angleRange = Math.PI * 1.2; // Slightly more than semicircle
-      const startAngle = -Math.PI * 0.6;
-      const angle = startAngle + (angleRange * index) / tools.length;
-      const x = centerX + toolRadius * Math.cos(angle) - 50;
-      const y = centerY + toolRadius * Math.sin(angle) - 30;
+    // === TOOL GRID: Categorized layout below agent ===
+    let currentY = toolGridStartY;
+    
+    Object.entries(TOOL_CATEGORIES).forEach(([categoryName, categoryToolIds]) => {
+      // Filter to only tools that exist in manifest
+      const categoryTools = categoryToolIds.filter(id => toolsManifest.tools[id]);
+      if (categoryTools.length === 0) return;
+      
+      // Calculate grid for this category
+      const toolsPerRow = 5;
+      let currentX = toolGridStartX;
+      let rowIndex = 0;
+      
+      categoryTools.forEach((toolId, index) => {
+        const tool = toolsManifest.tools[toolId];
+        if (!tool) return;
+        
+        const colIndex = index % toolsPerRow;
+        if (index > 0 && colIndex === 0) {
+          rowIndex++;
+          currentX = toolGridStartX;
+        }
+        
+        const x = toolGridStartX + colIndex * (toolNodeWidth + toolGapX);
+        const y = currentY + rowIndex * (toolNodeHeight + toolGapY);
+        
+        const nodeId = `tool-${toolId}`;
+        newNodeIds.add(nodeId);
+        
+        const isActive = activeToolIds.has(toolId);
+        const wasUsed = session?.toolCalls.some((tc) => tc.tool === toolId && tc.status === "completed");
 
-      const isActive = activeToolIds.has(toolId);
-      const wasUsed = session?.toolCalls.some((tc) => tc.tool === toolId && tc.status === "completed");
-
-      newNodes.push({
-        id: `tool-${toolId}`,
-        type: "tool",
-        position: { x, y },
-        data: {
+        newNodes.push({
+          id: nodeId,
           type: "tool",
-          label: tool.name,
-          status: isActive ? "active" : wasUsed ? "success" : "idle",
-          icon: tool.icon,
-          category: tool.category,
-          toolId,
-        },
-      });
-
-      // Add edge from agent to active tools
-      if (isActive) {
-        newEdges.push({
-          id: `edge-agent-${toolId}`,
-          source: "agent",
-          target: `tool-${toolId}`,
-          animated: true,
-          style: { stroke: "#f59e0b", strokeWidth: 2 },
+          position: getPosition(nodeId, { x, y }),
+          data: {
+            type: "tool",
+            label: tool.name,
+            status: isActive ? "active" : wasUsed ? "success" : "idle",
+            icon: tool.icon,
+            category: tool.category,
+            toolId,
+          },
         });
-      }
+
+        // Add edge from agent to active tools
+        if (isActive) {
+          newEdges.push({
+            id: `edge-agent-${toolId}`,
+            source: "agent",
+            target: nodeId,
+            animated: true,
+            style: { stroke: "#f59e0b", strokeWidth: 2 },
+          });
+        }
+      });
+      
+      // Move to next category section
+      const rowsUsed = Math.ceil(categoryTools.length / 5);
+      currentY += rowsUsed * (toolNodeHeight + toolGapY) + categoryGapY;
     });
 
-    // Artifact nodes (near agent)
+    // Artifact nodes (between agent and scratchpad)
     session?.artifacts.forEach((artifact, index) => {
-      const angle = (2 * Math.PI * index) / Math.max(session.artifacts.length, 1) + Math.PI / 4;
-      const x = centerX + artifactRadius * Math.cos(angle) - 40;
-      const y = centerY + artifactRadius * Math.sin(angle) - 25;
+      const artifactX = centerX + 180 + (index % 2) * 100;
+      const artifactY = centerY - 80 + Math.floor(index / 2) * 80;
+      
+      const nodeId = `artifact-${artifact.id}`;
+      newNodeIds.add(nodeId);
 
       newNodes.push({
-        id: `artifact-${artifact.id}`,
+        id: nodeId,
         type: "artifact",
-        position: { x, y },
+        position: getPosition(nodeId, { x: artifactX, y: artifactY }),
         data: {
           type: "artifact",
           label: artifact.title,
@@ -219,7 +300,7 @@ export function FreeAgentCanvas({
       newEdges.push({
         id: `edge-agent-artifact-${artifact.id}`,
         source: "agent",
-        target: `artifact-${artifact.id}`,
+        target: nodeId,
         style: { stroke: "#10b981", strokeWidth: 1.5, strokeDasharray: "5,5" },
       });
     });
@@ -227,12 +308,14 @@ export function FreeAgentCanvas({
     // === RIGHT SIDE: Scratchpad ===
     
     const isWritingToScratchpad = activeToolIds.has("write_scratchpad");
+    const scratchpadId = "scratchpad";
+    newNodeIds.add(scratchpadId);
     
     newNodes.push({
-      id: "scratchpad",
+      id: scratchpadId,
       type: "scratchpad",
-      position: { x: scratchpadX, y: scratchpadY },
-      style: { width: 320, height: 400 },
+      position: getPosition(scratchpadId, { x: scratchpadX, y: scratchpadY }),
+      style: { width: 320, height: 380 },
       data: {
         type: "scratchpad",
         label: "Scratchpad",
@@ -255,6 +338,9 @@ export function FreeAgentCanvas({
         strokeDasharray: isWritingToScratchpad ? undefined : "5,5",
       },
     });
+
+    // Update existing node IDs for next render
+    existingNodeIdsRef.current = newNodeIds;
 
     return { nodes: newNodes, edges: newEdges };
   }, [toolsManifest, session, activeToolIds, onScratchpadChange]);
@@ -285,7 +371,7 @@ export function FreeAgentCanvas({
         <ReactFlow
           nodes={nodes}
           edges={edges}
-          onNodesChange={onNodesChange}
+          onNodesChange={handleNodesChange}
           onEdgesChange={onEdgesChange}
           onNodeClick={handleNodeClick}
           nodeTypes={nodeTypes}

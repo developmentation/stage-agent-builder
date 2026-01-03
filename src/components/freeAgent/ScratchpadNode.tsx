@@ -89,8 +89,12 @@ export const ScratchpadNode = memo(({ data, selected }: NodeProps<ScratchpadNode
           </Button>
         </div>
         
-        {/* Content */}
-        <div className="flex-1 overflow-hidden min-h-0">
+        {/* Content - nodrag class and event handlers prevent scroll from triggering node drag */}
+        <div 
+          className="flex-1 overflow-hidden min-h-0 nodrag"
+          onPointerDown={(e) => e.stopPropagation()}
+          onWheel={(e) => e.stopPropagation()}
+        >
           {isEditing ? (
             <Textarea
               autoFocus

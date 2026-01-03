@@ -62,7 +62,7 @@ Available Tools:
     const filesList = sessionFiles.map(f => {
       let fileInfo = `- ${f.filename} (fileId: "${f.id}", type: ${f.mimeType}, size: ${f.size} bytes)`;
       if (f.content && f.size < 50000 && (f.mimeType.startsWith('text/') || f.mimeType.includes('json') || f.mimeType.includes('xml') || f.mimeType.includes('javascript') || f.mimeType.includes('typescript'))) {
-        fileInfo += `\n  Content:\n\`\`\`\n${f.content.slice(0, 10000)}\n\`\`\``;
+        fileInfo += `\n  Content:\n\`\`\`\n${f.content}\n\`\`\``;
       }
       return fileInfo;
     }).join('\n');
@@ -73,9 +73,9 @@ Available Tools:
     ? `\nYour Blackboard (Planning & Tracking):\n${blackboard.map(e => `[${e.category}] ${e.content}`).join('\n')}`
     : '\nBlackboard is empty. Use it to track your plan and progress.';
 
-  // Scratchpad is the PERSISTENT memory - show it prominently
+  // Scratchpad is the PERSISTENT memory - show it prominently (no truncation)
   const scratchpadSection = scratchpad && scratchpad.trim()
-    ? `\n## YOUR SCRATCHPAD (Persistent Memory - Contains Your Accumulated Findings):\n\`\`\`\n${scratchpad.slice(0, 30000)}\n\`\`\``
+    ? `\n## YOUR SCRATCHPAD (Persistent Memory - Contains Your Accumulated Findings):\n\`\`\`\n${scratchpad}\n\`\`\``
     : '\n## YOUR SCRATCHPAD: Empty. Write your findings here to persist them!';
 
   const resultsSection = previousResults.length > 0
@@ -99,13 +99,16 @@ ${resultsSection}${assistanceSection}
 
 Current Iteration: ${iteration}
 
-## CRITICAL MEMORY RULES:
-1. **Tool results are EPHEMERAL** - they only exist for ONE iteration then disappear forever
-2. **IMMEDIATELY after ANY tool returns data**, you MUST call write_scratchpad to save the results
+## CRITICAL MEMORY RULES - MANDATORY:
+1. **Tool results are EPHEMERAL** - they only exist for ONE iteration then disappear FOREVER
+2. **EVERY tool call that returns data MUST be followed by write_scratchpad IN THE SAME RESPONSE**
+   - Pattern: [tool_call, write_scratchpad] - both in the same tool_calls array
+   - Do NOT say "I will save to scratchpad next iteration" - data will be LOST
 3. **Before re-reading a file or re-fetching data**, CHECK your scratchpad first - it may already be there
 4. **Scratchpad is your PERSISTENT memory** - anything you want to remember MUST be written there
-5. **Blackboard is for PLANNING** - use it to track what you've done and what's next
+5. **Blackboard is for PLANNING ONLY** - use it to track what you've done and what's next
 6. If you find yourself reading the same file twice, STOP and check your scratchpad
+7. **ALL tool calls requested in a single response will be executed** - do not deprioritize or defer any
 
 ## Response Format
 You MUST respond with valid JSON only. No markdown outside JSON:
@@ -189,7 +192,7 @@ async function executeTool(
     }
 
     const result = await response.json();
-    console.log(`Tool ${toolName} completed:`, JSON.stringify(result).slice(0, 500));
+    console.log(`Tool ${toolName} completed successfully`);
     return { success: true, result };
   } catch (error) {
     console.error(`Tool ${toolName} error:`, error);
