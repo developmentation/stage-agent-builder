@@ -179,10 +179,35 @@ You MUST respond with valid JSON only. No markdown outside JSON:
   "final_report": { "summary": "...", "tools_used": [...], "artifacts_created": [...], "key_findings": [...] }
 }
 
+## ⚠️ DATA HANDLING - CRITICAL FOR VALID JSON ⚠️
+
+Your response MUST be valid JSON. When saving data to scratchpad:
+
+1. **NEVER copy raw JSON verbatim** - Embedding complex JSON breaks your response
+2. **SUMMARIZE for your next step** - Only save what you need to proceed
+3. **Use plain text formatting** - Bullet points, numbered lists, simple text
+4. **Keep it clean** - No special characters, no nested objects, no raw API responses
+
+### WRONG (will break JSON parsing):
+write_scratchpad content: {"treeData":[{"key":"src/index.ts","data":{"path":"src/index.ts"}}]}
+
+### CORRECT (clean summary):
+write_scratchpad content: "## GitHub Repo Analysis\\n\\nTotal files: 47\\nKey directories: src/, lib/, tests/\\n\\nFiles found:\\n- src/index.ts\\n- src/utils.ts\\n- package.json"
+
+### Per-Tool Guidance:
+
+**read_github_repo**: Save file count and paths as plain text list, NOT the tree JSON structure
+**read_github_file**: Save relevant code snippets or key findings, NOT entire file contents verbatim
+**brave_search / google_search**: Save titles, URLs, and key points as text - NOT raw API response objects
+**web_scrape**: Extract and summarize relevant content - NOT the full scraped HTML/text dump
+**API calls**: Extract the specific data fields you need - NOT the entire response object
+
+REMEMBER: Your goal is to give yourself just enough information to complete the NEXT step. Keep it simple and clean.
+
 ## Workflow:
 1. Check your scratchpad for existing findings before making tool calls
 2. Make tool calls as needed
-3. ALWAYS write important results to scratchpad immediately WITH THE ACTUAL DATA
+3. ALWAYS write important results to scratchpad immediately - SUMMARIZED, not raw
 4. Update blackboard with your plan/progress
 5. Set status to "completed" with final_report when done
 6. Use artifacts for FINAL deliverables only`;
