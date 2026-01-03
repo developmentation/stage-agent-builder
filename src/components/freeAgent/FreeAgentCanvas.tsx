@@ -105,6 +105,10 @@ const LAYOUT = {
   // Artifacts - below scratchpad
   artifactGap: 75,
   
+  // Attributes - right of scratchpad
+  attributeX: 1220,  // Right of scratchpad
+  attributeGap: 70,
+  
   // Tool grid settings
   toolNodeWidth: 120,
   toolNodeHeight: 50,
@@ -450,14 +454,11 @@ export function FreeAgentCanvas({
       });
     });
 
-    // === Attributes: Below artifacts (styled like artifacts but cyan) ===
+    // === Attributes: Right of scratchpad, vertically ordered ===
     const attributeEntries = Object.entries(session?.toolResultAttributes || {});
-    const artifactCount = session?.artifacts.length || 0;
     attributeEntries.forEach(([name, attribute], index) => {
-      // Position below artifacts
-      const attributeY = sideNodesY + LAYOUT.scratchpadHeight + 20 + 
-        (artifactCount * LAYOUT.artifactGap) + 
-        (index * LAYOUT.artifactGap);
+      // Position to the right of scratchpad, stacked vertically
+      const attributeY = sideNodesY + (index * LAYOUT.attributeGap);
       
       const nodeId = `attribute-${name}`;
       newNodeIds.add(nodeId);
@@ -465,7 +466,7 @@ export function FreeAgentCanvas({
       newNodes.push({
         id: nodeId,
         type: "attribute",
-        position: getPosition(nodeId, { x: LAYOUT.scratchpadX, y: attributeY }),
+        position: getPosition(nodeId, { x: LAYOUT.attributeX, y: attributeY }),
         data: {
           type: "attribute",
           label: name,
@@ -477,13 +478,13 @@ export function FreeAgentCanvas({
         },
       });
 
-      // Edge from agent to attribute
+      // Edge from scratchpad right socket to attribute
       newEdges.push({
-        id: `edge-agent-attribute-${name}`,
-        source: "agent",
-        sourceHandle: "right",
+        id: `edge-scratchpad-attribute-${name}`,
+        source: "scratchpad",
+        sourceHandle: "attributes",
         target: nodeId,
-        style: { stroke: "#06b6d4", strokeWidth: 1.5, strokeDasharray: "3,3" },
+        style: { stroke: "#06b6d4", strokeWidth: 1.5 },
       });
     });
 

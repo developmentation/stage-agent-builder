@@ -62,6 +62,7 @@ export const ScratchpadNode = memo(({ data, selected }: NodeProps<ScratchpadNode
       />
       
       <Handle type="target" position={Position.Left} className="!w-3 !h-3 !bg-amber-500" />
+      <Handle type="source" position={Position.Right} id="attributes" className="!w-3 !h-3 !bg-cyan-500" />
       
       <div 
         className={`h-full w-full rounded-lg border-2 bg-amber-50/90 dark:bg-amber-950/40 shadow-lg overflow-hidden flex flex-col transition-colors ${
