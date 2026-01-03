@@ -80,13 +80,13 @@ const WRITE_TOOLS = [
 
 // Layout dimensions
 const LAYOUT = {
-  // Agent center position
-  agentX: 450,
-  agentY: 380,
+  // Agent center position (in the middle of the canvas)
+  agentX: 500,
+  agentY: 400,
   
   // Left side - Prompt (same Y as scratchpad)
   promptX: 60,
-  promptY: 160,
+  promptY: 200,
   promptWidth: 280,
   promptHeight: 300,
   
@@ -94,8 +94,8 @@ const LAYOUT = {
   userFileGap: 75,
   
   // Right side - Scratchpad (same Y as prompt)
-  scratchpadX: 780,
-  scratchpadY: 160,
+  scratchpadX: 900,
+  scratchpadY: 200,
   scratchpadWidth: 320,
   scratchpadHeight: 300,
   
@@ -109,13 +109,13 @@ const LAYOUT = {
   toolRowGap: 12,
   toolColumns: 2,
   
-  // Read tools - ABOVE agent
-  readToolsStartX: 380,
-  readToolsStartY: 50,
+  // Read tools - ABOVE agent (centered above agent X)
+  readToolsStartX: 360,  // Will be centered with 2 columns
+  readToolsStartY: 40,   // At top
   
   // Write tools - BELOW agent
-  writeToolsStartX: 380,
-  writeToolsStartY: 500,
+  writeToolsStartX: 360,
+  writeToolsStartY: 520, // Well below agent (agentY + ~120)
 };
 
 // Helper to lay out tools in 2 columns
@@ -190,23 +190,23 @@ export function FreeAgentCanvas({
       return defaultPos;
     };
 
-    // === LEFT SIDE: Prompt ===
-    if (session?.prompt) {
-      const promptId = "prompt";
-      newNodeIds.add(promptId);
-      newNodes.push({
-        id: promptId,
+    // === LEFT SIDE: Prompt (always visible) ===
+    const promptId = "prompt";
+    newNodeIds.add(promptId);
+    newNodes.push({
+      id: promptId,
+      type: "prompt",
+      position: getPosition(promptId, { x: LAYOUT.promptX, y: LAYOUT.promptY }),
+      data: {
         type: "prompt",
-        position: getPosition(promptId, { x: LAYOUT.promptX, y: LAYOUT.promptY }),
-        data: {
-          type: "prompt",
-          label: "User Prompt",
-          content: session.prompt,
-          status: "idle",
-        },
-      });
+        label: "User Prompt",
+        content: session?.prompt || "",
+        status: "idle",
+      },
+    });
 
-      // Edge from prompt to agent LEFT side
+    // Edge from prompt to agent LEFT side (only if there's content)
+    if (session?.prompt) {
       newEdges.push({
         id: "edge-prompt-agent",
         source: "prompt",
