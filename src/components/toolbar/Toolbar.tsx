@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { Play, Plus, Save, Upload, Trash2, HelpCircle, LayoutGrid, LayoutList, Eye, Eraser } from "lucide-react";
+import { Play, Plus, Save, Upload, Trash2, HelpCircle, LayoutGrid, LayoutList, Eye, Eraser, Bot, Workflow } from "lucide-react";
 import { useRef, useState } from "react";
 import { HelpModal } from "@/components/help/HelpModal";
 import {
@@ -18,6 +18,8 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
+
 interface ToolbarProps {
   onAddStage: () => void;
   onSave: () => void;
@@ -27,6 +29,8 @@ interface ToolbarProps {
   onClearOutputs: () => void;
   viewMode: "stacked" | "canvas" | "simple";
   onSetViewMode: (mode: "stacked" | "canvas" | "simple") => void;
+  appMode?: "workflow" | "freeAgent";
+  onSetAppMode?: (mode: "workflow" | "freeAgent") => void;
 }
 export const Toolbar = ({
   onAddStage,
@@ -36,7 +40,9 @@ export const Toolbar = ({
   onRun,
   onClearOutputs,
   viewMode,
-  onSetViewMode
+  onSetViewMode,
+  appMode = "workflow",
+  onSetAppMode,
 }: ToolbarProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [helpOpen, setHelpOpen] = useState(false);
@@ -62,84 +68,118 @@ export const Toolbar = ({
             <p className="text-xs text-muted-foreground">From the Alberta AI Academy</p>
           </div>
         </div>
+        
+        {/* Mode Toggle */}
+        {onSetAppMode && (
+          <div className="flex items-center bg-muted rounded-lg p-1 ml-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn(
+                "gap-2 rounded-md transition-colors",
+                appMode === "workflow" && "bg-background shadow-sm"
+              )}
+              onClick={() => onSetAppMode("workflow")}
+            >
+              <Workflow className="h-4 w-4" />
+              Workflow
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className={cn(
+                "gap-2 rounded-md transition-colors",
+                appMode === "freeAgent" && "bg-background shadow-sm"
+              )}
+              onClick={() => onSetAppMode("freeAgent")}
+            >
+              <Bot className="h-4 w-4" />
+              Free Agent
+            </Button>
+          </div>
+        )}
       </div>
 
       <div className="flex items-center gap-2">
-        <Button variant="ghost" size="sm" className="gap-2" onClick={onAddStage}>
-          <Plus className="h-4 w-4" />
-          Add Stage
-        </Button>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button 
-              variant="outline"
-              size="sm"
-              className="gap-2"
-            >
-              {viewMode === "canvas" ? (
-                <>
-                  <LayoutGrid className="h-4 w-4" />
-                  Canvas
-                </>
-              ) : viewMode === "simple" ? (
-                <>
-                  <Eye className="h-4 w-4" />
-                  Simple
-                </>
-              ) : (
-                <>
-                  <LayoutList className="h-4 w-4" />
-                  Stacked
-                </>
-              )}
+        {appMode === "workflow" && (
+          <>
+            <Button variant="ghost" size="sm" className="gap-2" onClick={onAddStage}>
+              <Plus className="h-4 w-4" />
+              Add Stage
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => onSetViewMode("stacked")}>
-              <LayoutList className="h-4 w-4 mr-2" />
-              Stacked
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onSetViewMode("canvas")}>
-              <LayoutGrid className="h-4 w-4 mr-2" />
-              Canvas
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => onSetViewMode("simple")}>
-              <Eye className="h-4 w-4 mr-2" />
-              Simple
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <div className="w-px h-6 bg-border mx-2" />
-        <Button variant="outline" size="sm" className="gap-2" onClick={handleLoadClick}>
-          <Upload className="h-4 w-4" />
-          Load
-        </Button>
-        <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleFileChange} />
-        <Button variant="outline" size="sm" className="gap-2" onClick={onSave}>
-          <Save className="h-4 w-4" />
-          Save
-        </Button>
-        <Button variant="outline" size="sm" className="gap-2" onClick={onClear}>
-          <Trash2 className="h-4 w-4" />
-          Clear
-        </Button>
-        <Button variant="outline" size="sm" className="gap-2" onClick={() => setHelpOpen(true)}>
-          <HelpCircle className="h-4 w-4" />
-          Help
-        </Button>
-        <div className="w-px h-6 bg-border mx-2" />
-        <Button size="sm" className="gap-2 bg-gradient-to-r from-primary to-primary-hover hover:opacity-90" onClick={onRun}>
-          <Play className="h-4 w-4" />
-          Run Workflow
-        </Button>
-        <Button 
-          size="sm" 
-          className="gap-2 bg-orange-500 text-white hover:bg-orange-600" 
-          onClick={() => setClearDialogOpen(true)}
-        >
-          <Eraser className="h-4 w-4" />
-          Clear
-        </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                >
+                  {viewMode === "canvas" ? (
+                    <>
+                      <LayoutGrid className="h-4 w-4" />
+                      Canvas
+                    </>
+                  ) : viewMode === "simple" ? (
+                    <>
+                      <Eye className="h-4 w-4" />
+                      Simple
+                    </>
+                  ) : (
+                    <>
+                      <LayoutList className="h-4 w-4" />
+                      Stacked
+                    </>
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => onSetViewMode("stacked")}>
+                  <LayoutList className="h-4 w-4 mr-2" />
+                  Stacked
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onSetViewMode("canvas")}>
+                  <LayoutGrid className="h-4 w-4 mr-2" />
+                  Canvas
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => onSetViewMode("simple")}>
+                  <Eye className="h-4 w-4 mr-2" />
+                  Simple
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <div className="w-px h-6 bg-border mx-2" />
+            <Button variant="outline" size="sm" className="gap-2" onClick={handleLoadClick}>
+              <Upload className="h-4 w-4" />
+              Load
+            </Button>
+            <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleFileChange} />
+            <Button variant="outline" size="sm" className="gap-2" onClick={onSave}>
+              <Save className="h-4 w-4" />
+              Save
+            </Button>
+            <Button variant="outline" size="sm" className="gap-2" onClick={onClear}>
+              <Trash2 className="h-4 w-4" />
+              Clear
+            </Button>
+            <Button variant="outline" size="sm" className="gap-2" onClick={() => setHelpOpen(true)}>
+              <HelpCircle className="h-4 w-4" />
+              Help
+            </Button>
+            <div className="w-px h-6 bg-border mx-2" />
+            <Button size="sm" className="gap-2 bg-gradient-to-r from-primary to-primary-hover hover:opacity-90" onClick={onRun}>
+              <Play className="h-4 w-4" />
+              Run Workflow
+            </Button>
+            <Button 
+              size="sm" 
+              className="gap-2 bg-orange-500 text-white hover:bg-orange-600" 
+              onClick={() => setClearDialogOpen(true)}
+            >
+              <Eraser className="h-4 w-4" />
+              Clear
+            </Button>
+          </>
+        )}
       </div>
       <HelpModal open={helpOpen} onOpenChange={setHelpOpen} />
       <AlertDialog open={clearDialogOpen} onOpenChange={setClearDialogOpen}>

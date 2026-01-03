@@ -6,6 +6,7 @@ import { PropertiesPanel } from "@/components/properties/PropertiesPanel";
 import { Toolbar } from "@/components/toolbar/Toolbar";
 import { OutputLog } from "@/components/output/OutputLog";
 import { ResponsiveLayout } from "@/components/layout/ResponsiveLayout";
+import { FreeAgentView } from "@/components/freeAgent/FreeAgentView";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import type { 
@@ -26,8 +27,11 @@ import { FunctionExecutor } from "@/lib/functionExecutor";
 export type { ToolInstance, LogEntry } from "@/types/workflow";
 export type Agent = AgentNode;
 
+type AppMode = "workflow" | "freeAgent";
+
 const Index = () => {
   const { toast } = useToast();
+  const [appMode, setAppMode] = useState<AppMode>("workflow");
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [connectingFrom, setConnectingFrom] = useState<string | null>(null);
   const [connectingFromPort, setConnectingFromPort] = useState<string | undefined>(undefined);
@@ -2932,8 +2936,15 @@ const Index = () => {
         onRun={runWorkflow}
         viewMode={workflow.viewMode || "stacked"}
         onSetViewMode={setViewMode}
+        appMode={appMode}
+        onSetAppMode={setAppMode}
       />
       
+      {appMode === "freeAgent" ? (
+        <div className="flex-1 overflow-hidden">
+          <FreeAgentView model={selectedModel} maxIterations={50} />
+        </div>
+      ) : (
       <div className="flex-1 flex flex-col overflow-hidden">
         <ResponsiveLayout
           sidebar={
@@ -3152,6 +3163,7 @@ const Index = () => {
         
         <OutputLog logs={logs} />
       </div>
+      )}
     </div>
   );
 };
