@@ -3,6 +3,7 @@ import React from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Eye,
   Lightbulb,
@@ -12,7 +13,9 @@ import {
   Package,
   AlertTriangle,
   ClipboardList,
+  Copy,
 } from "lucide-react";
+import { toast } from "sonner";
 import type { BlackboardEntry } from "@/types/freeAgent";
 
 interface BlackboardViewerProps {
@@ -61,15 +64,43 @@ const categoryConfig: Record<
 };
 
 export function BlackboardViewer({ entries }: BlackboardViewerProps) {
+  const copyAllToClipboard = () => {
+    if (entries.length === 0) {
+      toast.info("No entries to copy");
+      return;
+    }
+    
+    const text = entries
+      .map((entry) => {
+        const config = categoryConfig[entry.category];
+        return `[${config.label} #${entry.iteration}]\n${entry.content}${
+          entry.data ? `\nData: ${JSON.stringify(entry.data, null, 2)}` : ""
+        }`;
+      })
+      .join("\n\n---\n\n");
+
+    navigator.clipboard.writeText(text);
+    toast.success("Blackboard copied to clipboard");
+  };
+
   return (
     <Card className="h-full flex flex-col">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
           <ClipboardList className="w-4 h-4" />
           Blackboard
-          <Badge variant="secondary" className="ml-auto">
-            {entries.length}
-          </Badge>
+          <div className="ml-auto flex items-center gap-2">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6"
+              onClick={copyAllToClipboard}
+              title="Copy all entries"
+            >
+              <Copy className="h-3 w-3" />
+            </Button>
+            <Badge variant="secondary">{entries.length}</Badge>
+          </div>
         </CardTitle>
       </CardHeader>
 
