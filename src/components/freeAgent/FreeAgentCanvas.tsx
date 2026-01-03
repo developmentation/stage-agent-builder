@@ -312,11 +312,12 @@ export function FreeAgentCanvas({
         },
       });
 
-      // Edge from read tool to agent TOP (input) - show for current iteration or active
+      // Edge from read tool BOTTOM to agent TOP (input)
       if (isActive || wasUsedRecently) {
         newEdges.push({
           id: `edge-tool-agent-${toolId}`,
           source: nodeId,
+          sourceHandle: "bottom",
           target: "agent",
           targetHandle: "top",
           animated: isActive,
@@ -388,13 +389,14 @@ export function FreeAgentCanvas({
         },
       });
 
-      // Edge from agent BOTTOM to write tool (output) - show for current iteration or active
+      // Edge from agent BOTTOM to write tool TOP (output) - show for current iteration or active
       if (isActive || wasUsedRecently) {
         newEdges.push({
           id: `edge-agent-tool-${toolId}`,
           source: "agent",
           sourceHandle: "bottom",
           target: nodeId,
+          targetHandle: "top",
           animated: isActive,
           style: { stroke: "#f59e0b", strokeWidth: isActive ? 2 : 1.5 },
         });

@@ -83,10 +83,19 @@ export function ToolNode({ data }: NodeProps<ToolNodeData>) {
         data.status === "active" && "animate-pulse shadow-lg"
       )}
     >
-      {/* Handle for connections */}
+      {/* Target handle - for receiving connections (write tools receive from agent) */}
       <Handle
         type="target"
-        position={Position.Left}
+        position={Position.Top}
+        id="top"
+        className="!bg-muted-foreground !w-2 !h-2"
+      />
+
+      {/* Source handle - for sending connections (read tools send to agent) */}
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="bottom"
         className="!bg-muted-foreground !w-2 !h-2"
       />
 
