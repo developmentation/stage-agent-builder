@@ -121,11 +121,11 @@ const LAYOUT = {
   
   // Read tools - ABOVE agent
   // Calculate: 2 columns of tools centered above agent
-  readToolsStartX: 400,  // -20px shift left
+  readToolsStartX: 420,
   readToolsStartY: 30,
   
   // Write tools - BELOW agent  
-  writeToolsStartX: 400,  // -20px shift left
+  writeToolsStartX: 420,
   writeToolsStartY: 480,
 };
 
@@ -212,7 +212,7 @@ export function FreeAgentCanvas({
     
     // Agent positioned after read tools with gap
     const agentY = LAYOUT.readToolsStartY + readToolsHeight + 40;
-    const agentX = LAYOUT.readToolsStartX + (LAYOUT.toolColumns * (LAYOUT.toolNodeWidth + LAYOUT.toolColumnGap)) / 2 - 60;
+    const agentX = LAYOUT.readToolsStartX + (LAYOUT.toolColumns * (LAYOUT.toolNodeWidth + LAYOUT.toolColumnGap)) / 2 - 80; // -20px left
     
     // Write tools positioned after agent
     const writeToolsStartY = agentY + 140;
