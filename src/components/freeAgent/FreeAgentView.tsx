@@ -12,6 +12,8 @@ import { useFreeAgentSession } from "@/hooks/useFreeAgentSession";
 import type { ToolsManifest, SessionFile, AssistanceRequest, FreeAgentSession } from "@/types/freeAgent";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { ClipboardList, Package, FileCode, FileText } from "lucide-react";
 
 interface FreeAgentViewProps {
   maxIterations?: number;
@@ -160,17 +162,21 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
             <div className="h-full">
               <Tabs defaultValue="blackboard" className="h-full flex flex-col">
                 <TabsList className="mx-2 mt-2 grid grid-cols-4">
-                  <TabsTrigger value="blackboard">
-                    Blackboard
+                  <TabsTrigger value="blackboard" className="flex items-center justify-center gap-1 px-1">
+                    <ClipboardList className="w-4 h-4 shrink-0" />
+                    <span className="hidden min-[400px]:inline truncate">Blackboard</span>
                   </TabsTrigger>
-                  <TabsTrigger value="artifacts">
-                    Artifacts
+                  <TabsTrigger value="artifacts" className="flex items-center justify-center gap-1 px-1">
+                    <Package className="w-4 h-4 shrink-0" />
+                    <span className="hidden min-[400px]:inline truncate">Artifacts</span>
                   </TabsTrigger>
-                  <TabsTrigger value="raw">
-                    Raw
+                  <TabsTrigger value="raw" className="flex items-center justify-center gap-1 px-1">
+                    <FileCode className="w-4 h-4 shrink-0" />
+                    <span className="hidden min-[400px]:inline truncate">Raw</span>
                   </TabsTrigger>
-                  <TabsTrigger value="prompt">
-                    Prompt
+                  <TabsTrigger value="prompt" className="flex items-center justify-center gap-1 px-1">
+                    <FileText className="w-4 h-4 shrink-0" />
+                    <span className="hidden min-[400px]:inline truncate">Prompt</span>
                   </TabsTrigger>
                 </TabsList>
                 <TabsContent value="blackboard" className="flex-1 overflow-hidden m-0 p-0">
@@ -234,20 +240,54 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
           <ResizablePanel defaultSize={25} minSize={20} maxSize={35}>
             <div className="h-full">
               <Tabs defaultValue="blackboard" className="h-full flex flex-col">
-                <TabsList className="mx-2 mt-2 grid grid-cols-4">
-                  <TabsTrigger value="blackboard">
-                    Blackboard
-                  </TabsTrigger>
-                  <TabsTrigger value="artifacts">
-                    Artifacts
-                  </TabsTrigger>
-                  <TabsTrigger value="raw">
-                    Raw
-                  </TabsTrigger>
-                  <TabsTrigger value="prompt">
-                    Prompt
-                  </TabsTrigger>
-                </TabsList>
+                <TooltipProvider delayDuration={300}>
+                  <TabsList className="mx-2 mt-2 grid grid-cols-4 gap-0.5">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <TabsTrigger value="blackboard" className="flex items-center justify-center gap-1 px-1 min-w-0">
+                          <ClipboardList className="w-4 h-4 shrink-0" />
+                          <span className="hidden xl:inline truncate text-xs">Blackboard</span>
+                        </TabsTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="xl:hidden">
+                        Blackboard
+                      </TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <TabsTrigger value="artifacts" className="flex items-center justify-center gap-1 px-1 min-w-0">
+                          <Package className="w-4 h-4 shrink-0" />
+                          <span className="hidden xl:inline truncate text-xs">Artifacts</span>
+                        </TabsTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="xl:hidden">
+                        Artifacts
+                      </TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <TabsTrigger value="raw" className="flex items-center justify-center gap-1 px-1 min-w-0">
+                          <FileCode className="w-4 h-4 shrink-0" />
+                          <span className="hidden xl:inline truncate text-xs">Raw</span>
+                        </TabsTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="xl:hidden">
+                        Raw
+                      </TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <TabsTrigger value="prompt" className="flex items-center justify-center gap-1 px-1 min-w-0">
+                          <FileText className="w-4 h-4 shrink-0" />
+                          <span className="hidden xl:inline truncate text-xs">Prompt</span>
+                        </TabsTrigger>
+                      </TooltipTrigger>
+                      <TooltipContent side="bottom" className="xl:hidden">
+                        Prompt
+                      </TooltipContent>
+                    </Tooltip>
+                  </TabsList>
+                </TooltipProvider>
                 <TabsContent value="blackboard" className="flex-1 overflow-hidden m-0 p-0">
                   <BlackboardViewer entries={session?.blackboard || []} />
                 </TabsContent>
