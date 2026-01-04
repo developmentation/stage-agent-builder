@@ -282,6 +282,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
               category: b.category,
               content: b.content,
               data: b.data,
+              iteration: b.iteration, // Include iteration for loop detection
             })),
             sessionFiles: currentSession.sessionFiles.map((f) => ({
               id: f.id,

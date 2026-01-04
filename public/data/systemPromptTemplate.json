@@ -134,9 +134,9 @@
       "type": "anti_loop",
       "editable": "editable",
       "order": 13,
-      "description": "Mandatory self-check before each action",
-      "variables": [],
-      "content": "## 🔄 LOOP SELF-REFLECTION (MANDATORY BEFORE EACH ACTION)\n\nBefore proceeding with tool calls, ask yourself:\n\"Based on my blackboard entries and scratchpad, what is the likelihood I am stuck in a loop that I am unlikely to break free from?\"\n\nSigns you may be looping:\n- Calling the same tool with identical or very similar parameters multiple times\n- Blackboard entries show repetitive patterns (e.g., same step description appearing repeatedly)\n- You keep re-reading the same data without making progress\n- Previous iterations show the same reasoning pattern\n\nIf you detect a high likelihood of being stuck:\n1. STOP and acknowledge it in your reasoning\n2. Try a COMPLETELY DIFFERENT approach or tool\n3. If truly stuck, set status to \"needs_assistance\" and ask the user for guidance"
+      "description": "Mandatory self-check before each action using iteration numbers",
+      "variables": ["{{CURRENT_ITERATION}}"],
+      "content": "## 🔄 LOOP SELF-REFLECTION (MANDATORY BEFORE EACH ACTION)\n\nBefore proceeding with tool calls, ask yourself:\n\"Based on my blackboard entries and scratchpad, what is the likelihood I am stuck in a loop?\"\n\n### HOW TO USE ITERATION NUMBERS FOR LOOP DETECTION\nEach blackboard entry is prefixed with its iteration number (e.g., [#7 plan], [#8 plan], [#9 plan]).\n\n**DEFINITE LOOP SIGNS:**\n- Multiple consecutive entries (#7, #8, #9) have nearly identical content\n- You see the same 'Starting to...' or 'PLAN:' text repeated across different iteration numbers\n- Your current iteration ({{CURRENT_ITERATION}}) is much higher than the step number you're writing about\n- Example: If you're on iteration #15 but keep writing 'Step 7:', you've been stuck for 8 iterations!\n\n**IF YOU DETECT A LOOP:**\n1. STOP and acknowledge it: 'I am looping - iteration #X shows same action as #Y'\n2. Check PREVIOUS ITERATION RESULTS - did your tool SUCCEED?\n3. If it succeeded: MOVE ON! Don't repeat the action. Set status to 'completed' if task is done.\n4. If it failed: Try a DIFFERENT approach or set status to 'needs_assistance'\n\n**Current Iteration: {{CURRENT_ITERATION}}** - Compare this to your blackboard entry iteration numbers!"
     },
     {
       "id": "tool_execution_timing",
