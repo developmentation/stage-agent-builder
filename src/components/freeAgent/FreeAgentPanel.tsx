@@ -35,11 +35,13 @@ import {
   Wand2,
   Settings,
   ChevronDown,
+  Lightbulb,
 } from "lucide-react";
 import type { FreeAgentSession, SessionFile } from "@/types/freeAgent";
 import { InterjectModal } from "./InterjectModal";
 import { EnhancePromptModal } from "./EnhancePromptModal";
 import { EnhancePromptSettingsModal } from "./EnhancePromptSettingsModal";
+import { ReflectModal } from "./ReflectModal";
 import { safeStringify } from "@/lib/safeRender";
 
 // Available models - same as workflow tool
@@ -87,6 +89,7 @@ export function FreeAgentPanel({
   const [interjectModalOpen, setInterjectModalOpen] = useState(false);
   const [enhanceModalOpen, setEnhanceModalOpen] = useState(false);
   const [enhanceSettingsModalOpen, setEnhanceSettingsModalOpen] = useState(false);
+  const [reflectModalOpen, setReflectModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Sync model and maxIterations from session when transitioning to idle (Continue)
@@ -487,6 +490,14 @@ export function FreeAgentPanel({
                     <Button variant="outline" onClick={onReset} className="flex-1">
                       Reset
                     </Button>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => setReflectModalOpen(true)}
+                      className="flex-1 border-purple-500/50 text-purple-600 hover:bg-purple-500/10"
+                    >
+                      <Lightbulb className="w-4 h-4 mr-2" />
+                      Reflect
+                    </Button>
                     {(session.status === "paused" || session.status === "error") && (
                       <Button onClick={onRetry} className="flex-1 bg-orange-500 hover:bg-orange-600">
                         <RotateCcw className="w-4 h-4 mr-2" />
@@ -528,6 +539,16 @@ export function FreeAgentPanel({
         <EnhancePromptSettingsModal
           open={enhanceSettingsModalOpen}
           onOpenChange={setEnhanceSettingsModalOpen}
+        />
+
+        {/* Reflect Modal */}
+        <ReflectModal
+          open={reflectModalOpen}
+          onOpenChange={setReflectModalOpen}
+          blackboard={session?.blackboard || []}
+          scratchpad={session?.scratchpad || ""}
+          originalPrompt={session?.prompt || ""}
+          model={selectedModel}
         />
       </CardContent>
     </Card>
