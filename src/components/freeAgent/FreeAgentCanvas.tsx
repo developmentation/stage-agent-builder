@@ -212,7 +212,7 @@ export function FreeAgentCanvas({
     
     // Agent positioned after read tools with gap
     const agentY = LAYOUT.readToolsStartY + readToolsHeight + 40;
-    const agentX = LAYOUT.readToolsStartX + (LAYOUT.toolColumns * (LAYOUT.toolNodeWidth + LAYOUT.toolColumnGap)) / 2 - 80; // -20px left
+    const agentX = LAYOUT.readToolsStartX + (LAYOUT.toolColumns * (LAYOUT.toolNodeWidth + LAYOUT.toolColumnGap)) / 2 - 100; // -40px left total
     
     // Write tools positioned after agent
     const writeToolsStartY = agentY + 140;
