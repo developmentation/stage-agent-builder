@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -15,6 +16,14 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { 
   ChevronDown, 
@@ -38,7 +47,11 @@ import {
   Save,
   X,
   Check,
-  Undo2
+  Undo2,
+  Plus,
+  ChevronUp,
+  Trash2,
+  GripVertical
 } from "lucide-react";
 import type { SystemPromptTemplate, PromptSection, ResponseSchema, ExportedPromptTemplate } from "@/types/systemPrompt";
 import { usePromptCustomization } from "@/hooks/usePromptCustomization";
@@ -84,6 +97,13 @@ interface SectionCardProps {
   effectiveContent: string;
   onSave: (content: string) => void;
   onReset: () => void;
+  isCustomSection?: boolean;
+  onDelete?: () => void;
+  onUpdateTitle?: (title: string) => void;
+  onMoveUp?: () => void;
+  onMoveDown?: () => void;
+  isFirst?: boolean;
+  isLast?: boolean;
 }
 
 function SectionCard({ 
@@ -93,10 +113,19 @@ function SectionCard({
   isCustomized,
   effectiveContent,
   onSave,
-  onReset
+  onReset,
+  isCustomSection,
+  onDelete,
+  onUpdateTitle,
+  onMoveUp,
+  onMoveDown,
+  isFirst,
+  isLast
 }: SectionCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(effectiveContent);
+  const [editTitle, setEditTitle] = useState(section.title);
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   
   const icon = sectionIcons[section.type] || <FileJson className="h-4 w-4" />;
@@ -108,6 +137,12 @@ function SectionCard({
       setEditContent(effectiveContent);
     }
   }, [effectiveContent, isEditing]);
+  
+  useEffect(() => {
+    if (!isEditingTitle) {
+      setEditTitle(section.title);
+    }
+  }, [section.title, isEditingTitle]);
   
   const handleStartEdit = useCallback(() => {
     setEditContent(effectiveContent);
@@ -132,37 +167,121 @@ function SectionCard({
     toast.success(`Reset "${section.title}" to default`);
   }, [onReset, section.content, section.title]);
   
+  const handleTitleSave = useCallback(() => {
+    if (onUpdateTitle && editTitle.trim()) {
+      onUpdateTitle(editTitle.trim());
+      setIsEditingTitle(false);
+      toast.success("Section title updated");
+    }
+  }, [editTitle, onUpdateTitle]);
+  
   return (
     <Collapsible open={isExpanded} onOpenChange={onToggle}>
       <div className={`border rounded-lg mb-2 overflow-hidden transition-colors ${
+        isCustomSection ? 'border-purple-500/50 bg-purple-500/5' :
         isCustomized ? 'border-green-500/50 bg-green-500/5' :
         section.editable === 'editable' ? 'border-primary/30 bg-primary/5' : 
         section.editable === 'dynamic' ? 'border-amber-500/30 bg-amber-500/5' : 
         'border-border bg-card'
       }`}>
-        <CollapsibleTrigger asChild>
-          <button className="w-full px-4 py-3 flex items-center gap-3 hover:bg-muted/50 transition-colors text-left">
-            <span className="text-muted-foreground">
-              {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-            </span>
-            <span className="text-muted-foreground">{icon}</span>
-            <span className="flex-1 font-medium text-sm">{section.title}</span>
-            {isCustomized && (
-              <Badge variant="outline" className="text-xs bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30">
-                <Check className="h-3 w-3 mr-1" />
-                Modified
+        <div className="flex items-center">
+          {/* Reorder buttons */}
+          <div className="flex flex-col px-1 py-2 border-r border-border/50">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-5 w-5 p-0" 
+              onClick={(e) => { e.stopPropagation(); onMoveUp?.(); }}
+              disabled={isFirst}
+            >
+              <ChevronUp className="h-3 w-3" />
+            </Button>
+            <GripVertical className="h-3 w-3 mx-auto text-muted-foreground/50" />
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-5 w-5 p-0" 
+              onClick={(e) => { e.stopPropagation(); onMoveDown?.(); }}
+              disabled={isLast}
+            >
+              <ChevronDown className="h-3 w-3" />
+            </Button>
+          </div>
+          
+          <CollapsibleTrigger asChild>
+            <button className="flex-1 px-3 py-3 flex items-center gap-3 hover:bg-muted/50 transition-colors text-left">
+              <span className="text-muted-foreground">
+                {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              </span>
+              <span className="text-muted-foreground">{icon}</span>
+              <span className="flex-1 font-medium text-sm">{section.title}</span>
+              {isCustomSection && (
+                <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30">
+                  <Plus className="h-3 w-3 mr-1" />
+                  Custom
+                </Badge>
+              )}
+              {isCustomized && !isCustomSection && (
+                <Badge variant="outline" className="text-xs bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30">
+                  <Check className="h-3 w-3 mr-1" />
+                  Modified
+                </Badge>
+              )}
+              <Badge variant="outline" className={`text-xs ${editableColors[section.editable]}`}>
+                {section.editable === 'readonly' && <Lock className="h-3 w-3 mr-1" />}
+                {section.editable === 'editable' && <Pencil className="h-3 w-3 mr-1" />}
+                {section.editable === 'dynamic' && <RefreshCw className="h-3 w-3 mr-1" />}
+                {editableLabels[section.editable]}
               </Badge>
-            )}
-            <Badge variant="outline" className={`text-xs ${editableColors[section.editable]}`}>
-              {section.editable === 'readonly' && <Lock className="h-3 w-3 mr-1" />}
-              {section.editable === 'editable' && <Pencil className="h-3 w-3 mr-1" />}
-              {section.editable === 'dynamic' && <RefreshCw className="h-3 w-3 mr-1" />}
-              {editableLabels[section.editable]}
-            </Badge>
-          </button>
-        </CollapsibleTrigger>
+            </button>
+          </CollapsibleTrigger>
+          
+          {/* Delete button for custom sections */}
+          {isCustomSection && onDelete && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="h-8 w-8 p-0 mr-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+              onClick={(e) => { e.stopPropagation(); onDelete(); }}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
         <CollapsibleContent>
           <div className="px-4 pb-4 border-t border-border/50">
+            {/* Editable title for custom sections */}
+            {isCustomSection && (
+              <div className="mt-3 mb-2">
+                {isEditingTitle ? (
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={editTitle}
+                      onChange={(e) => setEditTitle(e.target.value)}
+                      className="h-7 text-sm"
+                      placeholder="Section title..."
+                    />
+                    <Button size="sm" className="h-7 text-xs" onClick={handleTitleSave}>
+                      <Save className="h-3 w-3" />
+                    </Button>
+                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setIsEditingTitle(false)}>
+                      <X className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ) : (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-6 text-xs text-muted-foreground"
+                    onClick={() => setIsEditingTitle(true)}
+                  >
+                    <Pencil className="h-3 w-3 mr-1" />
+                    Edit Title
+                  </Button>
+                )}
+              </div>
+            )}
+            
             {section.description && (
               <p className="text-xs text-muted-foreground mt-3 mb-2 italic">
                 {section.description}
@@ -190,7 +309,7 @@ function SectionCard({
                   <Pencil className="h-3 w-3 mr-1" />
                   Edit
                 </Button>
-                {isCustomized && (
+                {isCustomized && !isCustomSection && (
                   <Button 
                     variant="ghost" 
                     size="sm" 
@@ -232,7 +351,7 @@ function SectionCard({
                     <X className="h-3 w-3 mr-1" />
                     Cancel
                   </Button>
-                  {isCustomized && (
+                  {isCustomized && !isCustomSection && (
                     <Button 
                       variant="ghost" 
                       size="sm" 
@@ -315,6 +434,11 @@ export function SystemPromptViewer({ onClose }: SystemPromptViewerProps) {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<"sections" | "schemas" | "tools">("sections");
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [addSectionDialogOpen, setAddSectionDialogOpen] = useState(false);
+  const [newSectionTitle, setNewSectionTitle] = useState("");
+  const [newSectionContent, setNewSectionContent] = useState("");
+  const [newSectionDescription, setNewSectionDescription] = useState("");
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const {
@@ -327,6 +451,14 @@ export function SystemPromptViewer({ onClose }: SystemPromptViewerProps) {
     resetAll,
     exportCustomizations,
     importCustomizations,
+    addCustomSection,
+    updateCustomSection,
+    deleteCustomSection,
+    getCustomSections,
+    moveSection,
+    getSortedSections,
+    hasOrderChanges,
+    resetOrder,
   } = usePromptCustomization(template?.id || "default");
   
   // Load template
@@ -357,9 +489,10 @@ export function SystemPromptViewer({ onClose }: SystemPromptViewerProps) {
   
   const expandAll = useCallback(() => {
     if (template) {
-      setExpandedSections(new Set(template.sections.map((s) => s.id)));
+      const allSections = getSortedSections(template.sections);
+      setExpandedSections(new Set(allSections.map((s) => s.id)));
     }
-  }, [template]);
+  }, [template, getSortedSections]);
   
   const collapseAll = useCallback(() => {
     setExpandedSections(new Set());
@@ -414,6 +547,34 @@ export function SystemPromptViewer({ onClose }: SystemPromptViewerProps) {
     toast.success("All customizations have been reset to defaults");
   }, [resetAll]);
   
+  const handleAddSection = useCallback(() => {
+    if (!newSectionTitle.trim()) {
+      toast.error("Section title is required");
+      return;
+    }
+    
+    const id = addCustomSection({
+      title: newSectionTitle.trim(),
+      content: newSectionContent || "Enter your custom instructions here...",
+      type: 'custom',
+      editable: 'editable',
+      description: newSectionDescription || undefined,
+    });
+    
+    setAddSectionDialogOpen(false);
+    setNewSectionTitle("");
+    setNewSectionContent("");
+    setNewSectionDescription("");
+    setExpandedSections((prev) => new Set([...prev, id]));
+    toast.success(`Added custom section "${newSectionTitle}"`);
+  }, [newSectionTitle, newSectionContent, newSectionDescription, addCustomSection]);
+  
+  const handleDeleteSection = useCallback((sectionId: string) => {
+    deleteCustomSection(sectionId);
+    setDeleteConfirmId(null);
+    toast.success("Custom section deleted");
+  }, [deleteCustomSection]);
+  
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -430,7 +591,9 @@ export function SystemPromptViewer({ onClose }: SystemPromptViewerProps) {
     );
   }
   
-  const sortedSections = [...template.sections].sort((a, b) => a.order - b.order);
+  const sortedSections = getSortedSections(template.sections);
+  const customSections = getCustomSections();
+  const customSectionIds = new Set(customSections.map(s => s.id));
   
   // Count by editable status
   const editableCounts = {
@@ -438,6 +601,7 @@ export function SystemPromptViewer({ onClose }: SystemPromptViewerProps) {
     readonly: template.sections.filter(s => s.editable === 'readonly').length,
     dynamic: template.sections.filter(s => s.editable === 'dynamic').length,
     customized: customizedSectionIds.size,
+    custom: customSections.length,
   };
   
   return (
@@ -457,10 +621,20 @@ export function SystemPromptViewer({ onClose }: SystemPromptViewerProps) {
           <div>
             <h2 className="text-lg font-semibold">{template.name}</h2>
             <p className="text-xs text-muted-foreground">
-              v{template.version} • {template.sections.length} sections
+              v{template.version} • {sortedSections.length} sections
+              {editableCounts.custom > 0 && (
+                <span className="text-purple-600 dark:text-purple-400 ml-2">
+                  • {editableCounts.custom} custom
+                </span>
+              )}
               {hasCustomizations && (
                 <span className="text-green-600 dark:text-green-400 ml-2">
-                  • {editableCounts.customized} customized
+                  • {editableCounts.customized} modified
+                </span>
+              )}
+              {hasOrderChanges && (
+                <span className="text-amber-600 dark:text-amber-400 ml-2">
+                  • reordered
                 </span>
               )}
             </p>
@@ -474,7 +648,7 @@ export function SystemPromptViewer({ onClose }: SystemPromptViewerProps) {
               <Upload className="h-3 w-3 mr-1" />
               <span className="hidden sm:inline">Import</span>
             </Button>
-            {hasCustomizations && (
+            {(hasCustomizations || hasOrderChanges || editableCounts.custom > 0) && (
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -502,6 +676,12 @@ export function SystemPromptViewer({ onClose }: SystemPromptViewerProps) {
             <RefreshCw className="h-3 w-3 mr-1" />
             Runtime ({editableCounts.dynamic})
           </Badge>
+          {editableCounts.custom > 0 && (
+            <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30">
+              <Plus className="h-3 w-3 mr-1" />
+              Custom ({editableCounts.custom})
+            </Badge>
+          )}
           {hasCustomizations && (
             <Badge variant="outline" className="text-xs bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30">
               <Check className="h-3 w-3 mr-1" />
@@ -529,17 +709,38 @@ export function SystemPromptViewer({ onClose }: SystemPromptViewerProps) {
         </TabsList>
         
         <TabsContent value="sections" className="flex-1 overflow-hidden m-0 p-0">
-          <div className="px-4 py-2 border-b border-border flex items-center gap-2">
+          <div className="px-4 py-2 border-b border-border flex items-center gap-2 flex-wrap">
+            <Button 
+              variant="default" 
+              size="sm" 
+              onClick={() => setAddSectionDialogOpen(true)} 
+              className="h-7 text-xs"
+            >
+              <Plus className="h-3 w-3 mr-1" />
+              Add Section
+            </Button>
+            <div className="flex-1" />
             <Button variant="ghost" size="sm" onClick={expandAll} className="h-7 text-xs">
               Expand All
             </Button>
             <Button variant="ghost" size="sm" onClick={collapseAll} className="h-7 text-xs">
               Collapse All
             </Button>
+            {hasOrderChanges && (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={resetOrder} 
+                className="h-7 text-xs text-muted-foreground"
+              >
+                <Undo2 className="h-3 w-3 mr-1" />
+                Reset Order
+              </Button>
+            )}
           </div>
           <ScrollArea className="flex-1 h-[calc(100%-40px)]">
             <div className="p-4">
-              {sortedSections.map((section) => (
+              {sortedSections.map((section, index) => (
                 <SectionCard
                   key={section.id}
                   section={section}
@@ -547,8 +748,21 @@ export function SystemPromptViewer({ onClose }: SystemPromptViewerProps) {
                   onToggle={() => toggleSection(section.id)}
                   isCustomized={isCustomized(section.id)}
                   effectiveContent={getEffectiveContent(section)}
-                  onSave={(content) => updateSection(section.id, content)}
+                  onSave={(content) => {
+                    if (customSectionIds.has(section.id)) {
+                      updateCustomSection(section.id, { content });
+                    } else {
+                      updateSection(section.id, content);
+                    }
+                  }}
                   onReset={() => resetSection(section.id)}
+                  isCustomSection={customSectionIds.has(section.id)}
+                  onDelete={customSectionIds.has(section.id) ? () => setDeleteConfirmId(section.id) : undefined}
+                  onUpdateTitle={customSectionIds.has(section.id) ? (title) => updateCustomSection(section.id, { title }) : undefined}
+                  onMoveUp={() => moveSection(section.id, 'up', template.sections)}
+                  onMoveDown={() => moveSection(section.id, 'down', template.sections)}
+                  isFirst={index === 0}
+                  isLast={index === sortedSections.length - 1}
                 />
               ))}
             </div>
@@ -593,7 +807,7 @@ export function SystemPromptViewer({ onClose }: SystemPromptViewerProps) {
           <AlertDialogHeader>
             <AlertDialogTitle>Reset All Customizations?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will reset all {editableCounts.customized} customized section(s) back to their default values. 
+              This will reset all customizations, custom sections, and order changes back to defaults. 
               This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -601,6 +815,75 @@ export function SystemPromptViewer({ onClose }: SystemPromptViewerProps) {
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleResetAll} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Reset All
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+      {/* Add Section Dialog */}
+      <Dialog open={addSectionDialogOpen} onOpenChange={setAddSectionDialogOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Add Custom Section</DialogTitle>
+            <DialogDescription>
+              Create a new custom instruction section. Custom sections are fully editable and can be reordered.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Title *</label>
+              <Input
+                value={newSectionTitle}
+                onChange={(e) => setNewSectionTitle(e.target.value)}
+                placeholder="e.g., Custom Guidelines"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Description (optional)</label>
+              <Input
+                value={newSectionDescription}
+                onChange={(e) => setNewSectionDescription(e.target.value)}
+                placeholder="Brief description of this section's purpose"
+              />
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Content</label>
+              <Textarea
+                value={newSectionContent}
+                onChange={(e) => setNewSectionContent(e.target.value)}
+                placeholder="Enter your custom instructions here..."
+                className="min-h-[120px] font-mono text-sm"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddSectionDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleAddSection} disabled={!newSectionTitle.trim()}>
+              <Plus className="h-4 w-4 mr-1" />
+              Add Section
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      
+      {/* Delete Section Confirmation Dialog */}
+      <AlertDialog open={!!deleteConfirmId} onOpenChange={() => setDeleteConfirmId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Custom Section?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this custom section. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => deleteConfirmId && handleDeleteSection(deleteConfirmId)} 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
