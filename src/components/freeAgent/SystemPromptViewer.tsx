@@ -84,6 +84,7 @@ import remarkGfm from "remark-gfm";
 
 interface SystemPromptViewerProps {
   onClose?: () => void;
+  configuredParams?: Array<{ tool: string; param: string }>;
 }
 
 // Icon mapping for section types
@@ -675,7 +676,7 @@ function ToolCard({
   );
 }
 
-export function SystemPromptViewer({ onClose }: SystemPromptViewerProps) {
+export function SystemPromptViewer({ onClose, configuredParams = [] }: SystemPromptViewerProps) {
   const [template, setTemplate] = useState<SystemPromptTemplate | null>(null);
   const [toolsManifest, setToolsManifest] = useState<ToolsManifest | null>(null);
   const [loading, setLoading] = useState(true);
@@ -748,6 +749,35 @@ export function SystemPromptViewer({ onClose }: SystemPromptViewerProps) {
     return groups;
   }, [toolsManifest]);
   
+  // Replace dynamic placeholders with actual runtime data
+  const getDisplayContent = useCallback((section: PromptSection): string => {
+    let content = getEffectiveContent(section);
+    
+    // Replace {{CONFIGURED_PARAMS}} with actual configured params
+    if (content.includes('{{CONFIGURED_PARAMS}}')) {
+      if (configuredParams.length === 0) {
+        content = content.replace('{{CONFIGURED_PARAMS}}', 
+          '*No tool parameters currently configured. Add secrets and mappings in the Secrets tab.*');
+      } else {
+        // Group by tool
+        const byTool: Record<string, string[]> = {};
+        for (const cp of configuredParams) {
+          if (!byTool[cp.tool]) byTool[cp.tool] = [];
+          byTool[cp.tool].push(cp.param);
+        }
+        
+        const paramsList = Object.entries(byTool)
+          .map(([tool, params]) => `- **${tool}**: ${params.join(', ')}`)
+          .join('\n');
+        
+        content = content.replace('{{CONFIGURED_PARAMS}}', 
+          `## 🔐 PRE-CONFIGURED TOOL PARAMETERS\n\nThe following tool parameters have been pre-configured with secrets/credentials:\n\n${paramsList}\n\n*These values are injected automatically at execution time.*`);
+      }
+    }
+    
+    return content;
+  }, [getEffectiveContent, configuredParams]);
+
   // Filter tools by search
   const filteredToolsByCategory = useMemo(() => {
     if (!toolSearchQuery.trim()) return toolsByCategory;
@@ -1097,7 +1127,7 @@ export function SystemPromptViewer({ onClose }: SystemPromptViewerProps) {
                   isExpanded={expandedSections.has(section.id)}
                   onToggle={() => toggleSection(section.id)}
                   isCustomized={isCustomized(section.id)}
-                  effectiveContent={getEffectiveContent(section)}
+                  effectiveContent={getDisplayContent(section)}
                   onSave={(content) => {
                     if (customSectionIds.has(section.id)) {
                       updateCustomSection(section.id, { content });

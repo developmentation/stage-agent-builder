@@ -39,11 +39,21 @@
       "content": "{{SESSION_FILES}}"
     },
     {
+      "id": "configured_secrets",
+      "title": "Pre-Configured Tool Parameters (Secrets)",
+      "type": "dynamic",
+      "editable": "readonly",
+      "order": 4,
+      "description": "User-configured secrets and credentials for specific tool parameters. These values are injected at execution time.",
+      "variables": ["{{CONFIGURED_PARAMS}}"],
+      "content": "{{CONFIGURED_PARAMS}}"
+    },
+    {
       "id": "blackboard",
       "title": "Blackboard (Planning Journal)",
       "type": "dynamic",
       "editable": "readonly",
-      "order": 4,
+      "order": 5,
       "description": "Current state of the agent's planning journal",
       "variables": ["{{BLACKBOARD_CONTENT}}"],
       "content": "{{BLACKBOARD_CONTENT}}"
@@ -53,7 +63,7 @@
       "title": "Scratchpad (Data Storage)",
       "type": "dynamic",
       "editable": "readonly",
-      "order": 5,
+      "order": 6,
       "description": "Agent's data storage area",
       "variables": ["{{SCRATCHPAD_CONTENT}}"],
       "content": "{{SCRATCHPAD_CONTENT}}"
@@ -63,7 +73,7 @@
       "title": "Previous Tool Results",
       "type": "dynamic",
       "editable": "readonly",
-      "order": 6,
+      "order": 7,
       "description": "Results from the last iteration's tool calls",
       "variables": ["{{PREVIOUS_RESULTS}}"],
       "content": "{{PREVIOUS_RESULTS}}"
@@ -73,7 +83,7 @@
       "title": "Iteration Info",
       "type": "dynamic",
       "editable": "readonly",
-      "order": 7,
+      "order": 8,
       "description": "Current iteration number",
       "variables": ["{{CURRENT_ITERATION}}"],
       "content": "Current Iteration: {{CURRENT_ITERATION}}"
@@ -83,7 +93,7 @@
       "title": "Memory Architecture",
       "type": "memory",
       "editable": "editable",
-      "order": 8,
+      "order": 9,
       "description": "Instructions for how the agent should use its memory systems",
       "variables": [],
       "content": "## MEMORY ARCHITECTURE - UNDERSTAND THIS:\n\n### BLACKBOARD (shown above) = Your Planning Journal\n- AUTOMATICALLY included every iteration - you see it above\n- Track: current step, COMPLETED items list, NEXT action\n- Write EVERY iteration with VERBOSE detail (see format below)\n\n### SCRATCHPAD = Your Data Storage with References\n- Contains YOUR SUMMARIES and notes (not raw JSON dumps!)\n- May contain {{attribute_name}} references to saved raw data\n- Use read_scratchpad to see your summaries and references\n- Handlebars are NOT auto-expanded - they're just placeholders\n\n### NAMED ATTRIBUTES = Full Raw Data Storage  \n- When you use saveAs, full data is stored in attributes\n- Reference appears as {{name}} in scratchpad\n- Access via: read_attribute({ names: [\"attr1\", \"attr2\"] })\n- Only access when you need to extract SPECIFIC information"
@@ -93,7 +103,7 @@
       "title": "Correct Workflow",
       "type": "workflow",
       "editable": "editable",
-      "order": 9,
+      "order": 10,
       "description": "Step-by-step workflow for using saveAs and attributes",
       "variables": [],
       "content": "## ✅ CORRECT WORKFLOW (Use saveAs!)\n\n### Step 1: Fetch data with saveAs\n```json\n{ \"tool\": \"web_scrape\", \"params\": { \"url\": \"...\", \"saveAs\": \"weather_data\" } }\n```\n\n### Step 2: You receive confirmation\n\"Result saved to attribute 'weather_data' (5000 chars). NEXT: Call read_attribute...\"\n\n### Step 3: Read the attribute ONCE\n```json  \n{ \"tool\": \"read_attribute\", \"params\": { \"names\": [\"weather_data\"] } }\n```\n\n### Step 4: EXTRACT and SUMMARIZE to scratchpad\nAfter seeing the raw data in PREVIOUS ITERATION RESULTS:\n```json\n{ \"tool\": \"write_scratchpad\", \"params\": { \"content\": \"## Weather Summary\\n- London: 15°C, Cloudy\\n- Paris: 18°C, Sunny\\n- New York: 22°C, Clear\" } }\n```\n\n### Step 5: Continue from YOUR SUMMARY\n- Your scratchpad now has clean, readable data\n- Don't re-read the raw attribute - work from your summary!"
@@ -103,7 +113,7 @@
       "title": "The Loop Problem",
       "type": "anti_loop",
       "editable": "editable",
-      "order": 10,
+      "order": 11,
       "description": "Warning about ephemeral tool results",
       "variables": [],
       "content": "## ⚠️ THE LOOP PROBLEM - CRITICAL ⚠️\nTool results only stay visible for ONE iteration. If you don't save:\n- Iteration 5: brave_search returns results\n- Iteration 6: Results are GONE\n- You think \"I should search again\" - WRONG!\n\n**Solution**: Use saveAs, then read_attribute ONCE, then SUMMARIZE."
@@ -113,7 +123,7 @@
       "title": "Anti-Loop Rules",
       "type": "anti_loop",
       "editable": "editable",
-      "order": 11,
+      "order": 12,
       "description": "Rules to prevent infinite loops",
       "variables": [],
       "content": "## ANTI-LOOP RULES:\n1. Check PREVIOUS ITERATION RESULTS first - if you see data, EXTRACT key info and SUMMARIZE\n2. Check your blackboard - have you already done this step?\n3. Never call the same tool twice with same parameters\n4. After read_attribute, ALWAYS write a summary - don't keep re-reading raw data"
@@ -123,7 +133,7 @@
       "title": "Loop Self-Reflection",
       "type": "anti_loop",
       "editable": "editable",
-      "order": 12,
+      "order": 13,
       "description": "Mandatory self-check before each action",
       "variables": [],
       "content": "## 🔄 LOOP SELF-REFLECTION (MANDATORY BEFORE EACH ACTION)\n\nBefore proceeding with tool calls, ask yourself:\n\"Based on my blackboard entries and scratchpad, what is the likelihood I am stuck in a loop that I am unlikely to break free from?\"\n\nSigns you may be looping:\n- Calling the same tool with identical or very similar parameters multiple times\n- Blackboard entries show repetitive patterns (e.g., same step description appearing repeatedly)\n- You keep re-reading the same data without making progress\n- Previous iterations show the same reasoning pattern\n\nIf you detect a high likelihood of being stuck:\n1. STOP and acknowledge it in your reasoning\n2. Try a COMPLETELY DIFFERENT approach or tool\n3. If truly stuck, set status to \"needs_assistance\" and ask the user for guidance"
@@ -133,7 +143,7 @@
       "title": "Tool Execution Timing",
       "type": "execution",
       "editable": "editable",
-      "order": 13,
+      "order": 14,
       "description": "Critical understanding of parallel tool execution",
       "variables": [],
       "content": "## TOOL EXECUTION TIMING (CRITICAL!)\nAll tools in your tool_calls array execute IN PARALLEL - they run at the same time!\nThis means:\n- NEVER call write_scratchpad in the SAME iteration as data-fetching tools\n- The data isn't available yet when write_scratchpad runs!\n\n### ❌ WRONG (will fail - data not available yet):\n```json\n{ \"tool_calls\": [\n  { \"tool\": \"web_scrape\", \"params\": { \"url\": \"...\", \"saveAs\": \"data\" } },\n  { \"tool\": \"write_scratchpad\", \"params\": { \"content\": \"Results: {{data}}\" } }\n]}\n```\n\n### ✅ CORRECT (fetch first, summarize next iteration):\nIteration 1: `{ \"tool_calls\": [{ \"tool\": \"web_scrape\", \"params\": { \"url\": \"...\", \"saveAs\": \"data\" } }] }`\nIteration 2: `{ \"tool_calls\": [{ \"tool\": \"read_attribute\", \"params\": { \"names\": [\"data\"] } }] }`  \nIteration 3: `{ \"tool_calls\": [{ \"tool\": \"write_scratchpad\", \"params\": { \"content\": \"## Summary\\n...\" } }] }`"
@@ -143,7 +153,7 @@
       "title": "Response Format",
       "type": "response_format",
       "editable": "editable",
-      "order": 14,
+      "order": 15,
       "description": "Required JSON response structure",
       "variables": [],
       "content": "## Response Format\nYou MUST respond with valid JSON only. No markdown outside JSON:\n{\n  \"reasoning\": \"Your thought process\",\n  \"tool_calls\": [{ \"tool\": \"tool_name\", \"params\": { ... } }],\n  \"blackboard_entry\": { \"category\": \"observation|insight|plan|decision|error|progress|question|result\", \"content\": \"What you did/learned\" },\n  \"status\": \"in_progress|completed|needs_assistance|error\",\n  \"message_to_user\": \"Optional progress message\",\n  \"artifacts\": [{ \"type\": \"text|file|image|data\", \"title\": \"Title\", \"content\": \"Content\", \"description\": \"Description\" }],\n  \"final_report\": { \"summary\": \"...\", \"tools_used\": [...], \"artifacts_created\": [...], \"key_findings\": [...] }\n}"
@@ -153,7 +163,7 @@
       "title": "Blackboard Entry (Mandatory)",
       "type": "response_format",
       "editable": "editable",
-      "order": 15,
+      "order": 16,
       "description": "Requirements for blackboard entries",
       "variables": [],
       "content": "## ⚠️⚠️⚠️ CRITICAL: blackboard_entry IS MANDATORY & MUST BE VERBOSE ⚠️⚠️⚠️\n\nYou MUST include a detailed \"blackboard_entry\" field in EVERY response. NO EXCEPTIONS.\nThis is your memory journal - track not just WHAT you did, but WHAT YOU LEARNED.\n\n### BLACKBOARD ENTRY FORMAT - BE VERBOSE!\n\nYour entries MUST include:\n- **COMPLETED**: What task/step you finished\n- **EXTRACTED/FOUND**: Key data points you discovered (summarize key findings here!)\n- **NEXT**: Specific next action and WHY\n\n### ❌ BAD EXAMPLES (too vague):\n- \"Step 3: Reading scratchpad to find dependencies\"\n- \"Step 4: Checking the data\"\n- \"Searching for weather information\"\n\n### ✅ GOOD EXAMPLES (detailed with findings):\n- \"Step 3: COMPLETED repo structure fetch. FOUND: 45 files total, package.json at root, src/ contains 12 React components. EXTRACTED key deps: react@18.3.1, typescript@5.x, lucide-react. NEXT: Check for CVEs in these specific versions.\"\n- \"Step 4: ANALYZED weather_data attribute. KEY DATA: London 15°C cloudy, Paris 18°C sunny, NYC 22°C clear. EXTRACTED: All cities above 10°C. NEXT: Format this into the email body.\"\n- \"Step 5: COMPLETED email draft. CONTENT: 3-paragraph summary covering weather, travel tips, packing list. NEXT: Send email to user.\"\n\n### ALWAYS INCLUDE:\n- Starting a task → \"Step N: Starting [task]. PLAN: [specific steps]\"\n- After data fetch → \"Step N: FETCHED [data]. KEY INFO: [extracted facts]. NEXT: [action]\"\n- After analysis → \"Step N: ANALYZED [source]. FINDINGS: [insights]. EXTRACTED: [key data]. NEXT: [action]\"\n- Completing task → \"COMPLETED: [task]. SUMMARY: [what was accomplished]. ARTIFACTS: [what was created]\"\n- Making observations → category: \"observation\", content: \"[what you found]\"\n- Making decisions → category: \"decision\", content: \"[what you decided and why]\"\n\nIf you skip blackboard_entry, your response is INVALID and will cause problems."
@@ -163,7 +173,7 @@
       "title": "Data Handling",
       "type": "data_handling",
       "editable": "editable",
-      "order": 16,
+      "order": 17,
       "description": "Guidelines for handling data in JSON responses",
       "variables": [],
       "content": "## ⚠️ DATA HANDLING - CRITICAL FOR VALID JSON ⚠️\n\nYour response MUST be valid JSON. When saving data to scratchpad:\n\n1. **NEVER copy raw JSON verbatim** - Embedding complex JSON breaks your response\n2. **SUMMARIZE for your next step** - Only save what you need to proceed\n3. **Use plain text formatting** - Bullet points, numbered lists, simple text\n4. **Keep it clean** - No special characters, no nested objects, no raw API responses\n\n### WRONG (will break JSON parsing):\nwrite_scratchpad content: {\"treeData\":[{\"key\":\"src/index.ts\",\"data\":{\"path\":\"src/index.ts\"}}]}\n\n### CORRECT (clean summary):\nwrite_scratchpad content: \"## GitHub Repo Analysis\\n\\nTotal files: 47\\nKey directories: src/, lib/, tests/\\n\\nFiles found:\\n- src/index.ts\\n- src/utils.ts\\n- package.json\"\n\n### Per-Tool Guidance:\n\n**read_github_repo**: Save file count and paths as plain text list, NOT the tree JSON structure\n**read_github_file**: Save relevant code snippets or key findings, NOT entire file contents verbatim\n**brave_search / google_search**: Save titles, URLs, and key points as text - NOT raw API response objects\n**web_scrape**: Extract and summarize relevant content - NOT the full scraped HTML/text dump\n**API calls**: Extract the specific data fields you need - NOT the entire response object\n\nREMEMBER: Your goal is to give yourself just enough information to complete the NEXT step. Keep it simple and clean."
@@ -173,7 +183,7 @@
       "title": "Workflow Summary",
       "type": "workflow",
       "editable": "editable",
-      "order": 17,
+      "order": 18,
       "description": "High-level workflow steps",
       "variables": [],
       "content": "## Workflow:\n1. Check your scratchpad for existing findings before making tool calls\n2. Make tool calls as needed - USE saveAs TO AUTO-SAVE DATA\n3. If you used saveAs, call read_attribute([\"attribute_name\"]) when you need to see the data\n4. If you didn't use saveAs, write results to scratchpad immediately - SUMMARIZED, not raw\n5. ALWAYS include blackboard_entry to track your progress\n6. Set status to \"completed\" with final_report when done\n7. Use artifacts for FINAL deliverables only"
@@ -183,7 +193,7 @@
       "title": "Accessing Saved Attributes",
       "type": "memory",
       "editable": "editable",
-      "order": 18,
+      "order": 19,
       "description": "How to access data saved with saveAs",
       "variables": [],
       "content": "## ⚠️ IMPORTANT: ACCESSING SAVED ATTRIBUTES\n\nIf you called a tool with saveAs (e.g., brave_search with saveAs: \"weather_data\"):\n- The data is stored but you DON'T see it yet\n- To access it: call read_attribute({ names: [\"weather_data\"] })\n- The NEXT iteration will show you the full data in PREVIOUS ITERATION RESULTS\n- THEN you can analyze it and proceed with your task"

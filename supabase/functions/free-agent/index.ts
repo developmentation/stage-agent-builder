@@ -189,7 +189,8 @@ function buildSystemPrompt(
   previousResults: Array<{ tool: string; result?: unknown; error?: string }>,
   iteration: number,
   scratchpad: string,
-  assistanceResponse?: { response?: string; fileId?: string; selectedChoice?: string }
+  assistanceResponse?: { response?: string; fileId?: string; selectedChoice?: string },
+  configuredParams?: Array<{ tool: string; param: string }>
 ) {
   // Add null safety for all parameters
   const safeBlackboard = blackboard || [];
@@ -341,11 +342,36 @@ DO NOT call the same tool again - the results are RIGHT HERE.
     assistanceSection = `\n\n## User Response to Your Previous Question\nThe user answered: "${userAnswer}"\nYou MUST incorporate this answer. Do NOT ask the same question again.`;
   }
 
+  // Build pre-configured parameters section
+  let configuredParamsSection = '';
+  if (configuredParams && configuredParams.length > 0) {
+    // Group by tool
+    const byTool: Record<string, string[]> = {};
+    for (const cp of configuredParams) {
+      if (!byTool[cp.tool]) byTool[cp.tool] = [];
+      byTool[cp.tool].push(cp.param);
+    }
+    
+    const paramsList = Object.entries(byTool)
+      .map(([tool, params]) => `- ${tool}: ${params.join(', ')}`)
+      .join('\n');
+    
+    configuredParamsSection = `
+## 🔐 PRE-CONFIGURED TOOL PARAMETERS
+The following tool parameters have been pre-configured by the user with secrets/credentials.
+You do NOT need to provide values for these - they will be injected automatically at execution time:
+
+${paramsList}
+
+When using these tools, you may omit the configured parameters or pass null - the user's values will override.
+`;
+  }
+
   return `You are FreeAgent, an autonomous AI assistant. You accomplish tasks by using tools and tracking your progress.
 
 ${toolsList}
 ${filesSection}
-${blackboardSection}
+${configuredParamsSection}${blackboardSection}
 ${scratchpadSection}
 ${resultsSection}${assistanceSection}
 
@@ -932,7 +958,8 @@ serve(async (req) => {
       previousToolResults.map(t => ({ tool: t.tool, result: t.result, error: t.error })),
       iteration,
       scratchpad,
-      assistanceResponse
+      assistanceResponse,
+      configuredParams
     );
 
     const llmResult = await callLLM(systemPrompt, prompt, model);
