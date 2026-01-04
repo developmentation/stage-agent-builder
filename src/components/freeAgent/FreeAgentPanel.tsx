@@ -487,7 +487,7 @@ export function FreeAgentPanel({
                 </div>
               ) : (
                 <>
-                  {/* Reflect button - full width on its own row */}
+                  {/* Reflect button */}
                   <Button 
                     variant="outline" 
                     onClick={() => setReflectModalOpen(true)}
@@ -497,25 +497,27 @@ export function FreeAgentPanel({
                     Reflect on Session
                   </Button>
                   
-                  {/* Reset + Retry/Continue row */}
-                  <div className="flex gap-2">
-                    <Button variant="outline" onClick={onReset} className="flex-1">
-                      <RotateCcw className="w-4 h-4 sm:mr-2" />
-                      <span className="hidden sm:inline">Reset</span>
+                  {/* Reset button */}
+                  <Button variant="outline" onClick={onReset} className="w-full">
+                    <RotateCcw className="w-4 h-4 mr-2" />
+                    Reset
+                  </Button>
+                  
+                  {/* Retry button */}
+                  {(session.status === "paused" || session.status === "error") && (
+                    <Button onClick={onRetry} className="w-full bg-orange-500 hover:bg-orange-600">
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Retry
                     </Button>
-                    {(session.status === "paused" || session.status === "error") && (
-                      <Button onClick={onRetry} className="flex-1 bg-orange-500 hover:bg-orange-600">
-                        <RefreshCw className="w-4 h-4 sm:mr-2" />
-                        <span className="hidden sm:inline">Retry</span>
-                      </Button>
-                    )}
-                    {session.status === "completed" && (
-                      <Button onClick={onContinue} className="flex-1">
-                        <Play className="w-4 h-4 sm:mr-2" />
-                        <span className="hidden sm:inline">Continue</span>
-                      </Button>
-                    )}
-                  </div>
+                  )}
+                  
+                  {/* Continue button */}
+                  {session.status === "completed" && (
+                    <Button onClick={onContinue} className="w-full">
+                      <Play className="w-4 h-4 mr-2" />
+                      Continue
+                    </Button>
+                  )}
                 </>
               )}
             </div>
