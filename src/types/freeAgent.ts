@@ -210,6 +210,10 @@ export interface FreeAgentSession {
   
   // Debug data for Raw viewer
   rawData: RawIterationData[];
+  
+  // Secrets injection for tool execution
+  secretOverrides?: Record<string, { params?: Record<string, unknown>; headers?: Record<string, string> }>;
+  configuredParams?: Array<{ tool: string; param: string }>;
 }
 
 // Tool definition from manifest
@@ -235,6 +239,7 @@ export interface ToolParameter {
   description: string;
   enum?: string[];
   items?: string | Record<string, unknown>;
+  sensitive?: boolean;  // Marks parameter as containing sensitive data
 }
 
 export interface ToolsManifest {
