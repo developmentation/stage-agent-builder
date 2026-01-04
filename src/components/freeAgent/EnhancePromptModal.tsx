@@ -327,46 +327,38 @@ Please create an improved plan that addresses the user's feedback.`;
   return (
     <Dialog open={open} onOpenChange={handleCancel}>
       <DialogContent
-        className="w-[calc(100vw-100px)] max-w-none h-[calc(100vh-100px)] flex flex-col p-0 gap-0"
-        style={{ maxHeight: "calc(100vh - 100px)" }}
+        className="w-[calc(100%-50px)] h-[calc(100%-50px)] max-w-[calc(100%-50px)] max-h-[calc(100%-50px)] flex flex-col p-0 gap-0"
       >
-        <DialogHeader className="px-6 py-4 border-b bg-muted/30 shrink-0">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Wand2 className="w-5 h-5 text-amber-500" />
-              <DialogTitle className="text-lg">Enhance Your Prompt</DialogTitle>
+        <DialogHeader className="px-3 py-2 border-b bg-muted/30 shrink-0">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 min-w-0">
+              <Wand2 className="w-4 h-4 text-amber-500 shrink-0" />
+              <DialogTitle className="text-base truncate">Enhance Your Prompt</DialogTitle>
             </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className={modelInfo.color}>
-                {modelInfo.label}
-              </Badge>
-              {files.length > 0 && (
-                <Badge variant="secondary">
-                  {files.length} file{files.length > 1 ? "s" : ""}
-                </Badge>
-              )}
-            </div>
+            <Badge variant="outline" className={`${modelInfo.color} shrink-0 text-xs`}>
+              {modelInfo.label}
+            </Badge>
           </div>
         </DialogHeader>
 
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
           {/* Original prompt section */}
-          <div className="px-6 py-4 border-b bg-background shrink-0">
-            <Label className="text-sm text-muted-foreground mb-2 block">
+          <div className="px-3 py-2 border-b bg-background shrink-0">
+            <Label className="text-xs text-muted-foreground mb-1 block">
               Original Prompt
             </Label>
-            <div className="bg-muted/50 rounded-md p-3 text-sm max-h-24 overflow-y-auto">
+            <div className="bg-muted/50 rounded-md p-2 text-sm max-h-20 overflow-y-auto">
               {originalPrompt}
             </div>
           </div>
 
           {/* Main content area */}
-          <div className="flex-1 flex flex-col min-h-0 p-6 gap-4">
+          <div className="flex-1 flex flex-col min-h-0 p-3 gap-2 overflow-hidden">
             {/* Action buttons for initial enhancement */}
             {!hasEnhanced && !isEnhancing && (
-              <div className="flex items-center justify-center py-8">
-                <Button onClick={handleEnhance} size="lg" className="gap-2">
-                  <Sparkles className="w-5 h-5" />
+              <div className="flex items-center justify-center py-4">
+                <Button onClick={handleEnhance} size="default" className="gap-2">
+                  <Sparkles className="w-4 h-4" />
                   Generate Structured Plan
                 </Button>
               </div>
@@ -374,7 +366,7 @@ Please create an improved plan that addresses the user's feedback.`;
 
             {/* Loading state */}
             {isEnhancing && (
-              <div className="flex items-center gap-2 text-muted-foreground">
+              <div className="flex items-center gap-2 text-muted-foreground shrink-0">
                 <Loader2 className="w-4 h-4 animate-spin" />
                 <span className="text-sm">
                   {hasEnhanced ? "Refining plan..." : "Generating structured plan..."}
@@ -387,16 +379,16 @@ Please create an improved plan that addresses the user's feedback.`;
               <Tabs
                 value={activeTab}
                 onValueChange={(v) => setActiveTab(v as "markdown" | "raw")}
-                className="flex-1 flex flex-col min-h-0"
+                className="flex-1 flex flex-col min-h-0 overflow-hidden"
               >
-                <div className="flex items-center justify-between shrink-0">
-                  <TabsList className="h-8">
-                    <TabsTrigger value="markdown" className="text-xs gap-1.5">
-                      <FileText className="w-3.5 h-3.5" />
+                <div className="flex items-center justify-between shrink-0 gap-2">
+                  <TabsList className="h-7">
+                    <TabsTrigger value="markdown" className="text-xs gap-1 px-2">
+                      <FileText className="w-3 h-3" />
                       Preview
                     </TabsTrigger>
-                    <TabsTrigger value="raw" className="text-xs gap-1.5">
-                      <Code className="w-3.5 h-3.5" />
+                    <TabsTrigger value="raw" className="text-xs gap-1 px-2">
+                      <Code className="w-3 h-3" />
                       Edit
                     </TabsTrigger>
                   </TabsList>
@@ -405,18 +397,18 @@ Please create an improved plan that addresses the user's feedback.`;
                       variant="outline"
                       size="sm"
                       onClick={handleEnhance}
-                      className="gap-1.5"
+                      className="gap-1 text-xs h-7 px-2"
                     >
-                      <RefreshCw className="w-3.5 h-3.5" />
+                      <RefreshCw className="w-3 h-3" />
                       Start Over
                     </Button>
                   )}
                 </div>
 
-                <div className="flex-1 min-h-0 mt-3 border rounded-md overflow-hidden">
+                <div className="flex-1 min-h-0 mt-2 border rounded-md overflow-hidden">
                   <TabsContent value="markdown" className="h-full m-0 p-0">
                     <ScrollArea className="h-full">
-                      <div className="p-4 prose prose-sm dark:prose-invert max-w-none">
+                      <div className="p-3 prose prose-sm dark:prose-invert max-w-none">
                         <ReactMarkdown remarkPlugins={[remarkGfm]}>
                           {enhancedPrompt || "_Generating..._"}
                         </ReactMarkdown>
@@ -438,26 +430,26 @@ Please create an improved plan that addresses the user's feedback.`;
 
             {/* Feedback section */}
             {hasEnhanced && !isEnhancing && (
-              <div className="shrink-0 space-y-2 border-t pt-4">
-                <Label className="text-sm text-muted-foreground flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4" />
-                  Refine with Feedback (optional)
+              <div className="shrink-0 space-y-1 border-t pt-2">
+                <Label className="text-xs text-muted-foreground flex items-center gap-1">
+                  <MessageSquare className="w-3 h-3" />
+                  Refine with Feedback
                 </Label>
                 <div className="flex gap-2">
                   <Textarea
                     value={feedback}
                     onChange={(e) => setFeedback(e.target.value)}
-                    placeholder="Provide feedback to refine the plan... e.g., 'Focus more on error handling' or 'Add a verification step'"
-                    className="min-h-[60px] resize-none flex-1"
+                    placeholder="Provide feedback to refine the plan..."
+                    className="min-h-[50px] resize-none flex-1 text-sm"
                   />
                   <Button
                     onClick={handleRefine}
                     disabled={!feedback.trim()}
                     variant="secondary"
-                    className="shrink-0"
+                    size="sm"
+                    className="shrink-0 h-auto"
                   >
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    Refine
+                    <RefreshCw className="w-3 h-3" />
                   </Button>
                 </div>
               </div>
@@ -466,30 +458,30 @@ Please create an improved plan that addresses the user's feedback.`;
         </div>
 
         {/* Footer */}
-        <div className="px-6 py-4 border-t bg-muted/30 shrink-0">
-          <div className="flex items-center justify-between">
-            <Button variant="outline" onClick={handleCancel}>
+        <div className="px-3 py-2 border-t bg-muted/30 shrink-0">
+          <div className="flex items-center justify-end gap-2 flex-wrap">
+            <Button variant="outline" size="sm" onClick={handleCancel}>
               Cancel
             </Button>
-            <div className="flex gap-2">
-              <Button
-                variant="secondary"
-                onClick={handleAccept}
-                disabled={!enhancedPrompt || isEnhancing}
-                className="gap-2"
-              >
-                <Check className="w-4 h-4" />
-                Accept
-              </Button>
-              <Button
-                onClick={handleAcceptAndStart}
-                disabled={!enhancedPrompt || isEnhancing}
-                className="gap-2"
-              >
-                <Play className="w-4 h-4" />
-                Accept & Start
-              </Button>
-            </div>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleAccept}
+              disabled={!enhancedPrompt || isEnhancing}
+              className="gap-1"
+            >
+              <Check className="w-3 h-3" />
+              Accept
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleAcceptAndStart}
+              disabled={!enhancedPrompt || isEnhancing}
+              className="gap-1"
+            >
+              <Play className="w-3 h-3" />
+              Accept & Start
+            </Button>
           </div>
         </div>
       </DialogContent>
