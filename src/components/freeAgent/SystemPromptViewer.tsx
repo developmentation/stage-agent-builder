@@ -1,9 +1,21 @@
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Textarea } from "@/components/ui/textarea";
+import { 
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { toast } from "sonner";
 import { 
   ChevronDown, 
   ChevronRight, 
@@ -21,9 +33,15 @@ import {
   Workflow,
   AlertTriangle,
   Database,
-  Settings
+  Settings,
+  RotateCcw,
+  Save,
+  X,
+  Check,
+  Undo2
 } from "lucide-react";
-import type { SystemPromptTemplate, PromptSection, ResponseSchema } from "@/types/systemPrompt";
+import type { SystemPromptTemplate, PromptSection, ResponseSchema, ExportedPromptTemplate } from "@/types/systemPrompt";
+import { usePromptCustomization } from "@/hooks/usePromptCustomization";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -58,16 +76,66 @@ const editableLabels: Record<string, string> = {
   dynamic: "Runtime",
 };
 
-function SectionCard({ section, isExpanded, onToggle }: { 
-  section: PromptSection; 
-  isExpanded: boolean; 
+interface SectionCardProps {
+  section: PromptSection;
+  isExpanded: boolean;
   onToggle: () => void;
-}) {
+  isCustomized: boolean;
+  effectiveContent: string;
+  onSave: (content: string) => void;
+  onReset: () => void;
+}
+
+function SectionCard({ 
+  section, 
+  isExpanded, 
+  onToggle, 
+  isCustomized,
+  effectiveContent,
+  onSave,
+  onReset
+}: SectionCardProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editContent, setEditContent] = useState(effectiveContent);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  
   const icon = sectionIcons[section.type] || <FileJson className="h-4 w-4" />;
+  const canEdit = section.editable === 'editable';
+  
+  // Sync edit content when effective content changes (e.g., on reset)
+  useEffect(() => {
+    if (!isEditing) {
+      setEditContent(effectiveContent);
+    }
+  }, [effectiveContent, isEditing]);
+  
+  const handleStartEdit = useCallback(() => {
+    setEditContent(effectiveContent);
+    setIsEditing(true);
+  }, [effectiveContent]);
+  
+  const handleSave = useCallback(() => {
+    onSave(editContent);
+    setIsEditing(false);
+    toast.success(`Saved changes to "${section.title}"`);
+  }, [editContent, onSave, section.title]);
+  
+  const handleCancel = useCallback(() => {
+    setEditContent(effectiveContent);
+    setIsEditing(false);
+  }, [effectiveContent]);
+  
+  const handleReset = useCallback(() => {
+    onReset();
+    setEditContent(section.content);
+    setIsEditing(false);
+    toast.success(`Reset "${section.title}" to default`);
+  }, [onReset, section.content, section.title]);
   
   return (
     <Collapsible open={isExpanded} onOpenChange={onToggle}>
       <div className={`border rounded-lg mb-2 overflow-hidden transition-colors ${
+        isCustomized ? 'border-green-500/50 bg-green-500/5' :
         section.editable === 'editable' ? 'border-primary/30 bg-primary/5' : 
         section.editable === 'dynamic' ? 'border-amber-500/30 bg-amber-500/5' : 
         'border-border bg-card'
@@ -79,6 +147,12 @@ function SectionCard({ section, isExpanded, onToggle }: {
             </span>
             <span className="text-muted-foreground">{icon}</span>
             <span className="flex-1 font-medium text-sm">{section.title}</span>
+            {isCustomized && (
+              <Badge variant="outline" className="text-xs bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30">
+                <Check className="h-3 w-3 mr-1" />
+                Modified
+              </Badge>
+            )}
             <Badge variant="outline" className={`text-xs ${editableColors[section.editable]}`}>
               {section.editable === 'readonly' && <Lock className="h-3 w-3 mr-1" />}
               {section.editable === 'editable' && <Pencil className="h-3 w-3 mr-1" />}
@@ -103,13 +177,83 @@ function SectionCard({ section, isExpanded, onToggle }: {
                 ))}
               </div>
             )}
-            <div className="mt-2 text-sm bg-muted/30 rounded-md p-3 overflow-x-auto">
-              <div className="prose prose-sm dark:prose-invert max-w-none prose-pre:bg-background prose-pre:border prose-pre:border-border prose-code:text-primary">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                  {section.content}
-                </ReactMarkdown>
+            
+            {/* Edit controls for editable sections */}
+            {canEdit && !isEditing && (
+              <div className="flex items-center gap-2 mt-3 mb-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleStartEdit}
+                  className="h-7 text-xs"
+                >
+                  <Pencil className="h-3 w-3 mr-1" />
+                  Edit
+                </Button>
+                {isCustomized && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={handleReset}
+                    className="h-7 text-xs text-muted-foreground"
+                  >
+                    <Undo2 className="h-3 w-3 mr-1" />
+                    Reset to Default
+                  </Button>
+                )}
               </div>
-            </div>
+            )}
+            
+            {/* Editing mode */}
+            {isEditing ? (
+              <div className="mt-2 space-y-2">
+                <Textarea
+                  ref={textareaRef}
+                  value={editContent}
+                  onChange={(e) => setEditContent(e.target.value)}
+                  className="min-h-[200px] font-mono text-sm resize-y"
+                  placeholder="Enter section content..."
+                />
+                <div className="flex items-center gap-2">
+                  <Button 
+                    size="sm" 
+                    onClick={handleSave}
+                    className="h-7 text-xs"
+                  >
+                    <Save className="h-3 w-3 mr-1" />
+                    Save
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={handleCancel}
+                    className="h-7 text-xs"
+                  >
+                    <X className="h-3 w-3 mr-1" />
+                    Cancel
+                  </Button>
+                  {isCustomized && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={handleReset}
+                      className="h-7 text-xs text-muted-foreground"
+                    >
+                      <Undo2 className="h-3 w-3 mr-1" />
+                      Reset
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="mt-2 text-sm bg-muted/30 rounded-md p-3 overflow-x-auto">
+                <div className="prose prose-sm dark:prose-invert max-w-none prose-pre:bg-background prose-pre:border prose-pre:border-border prose-code:text-primary">
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                    {effectiveContent}
+                  </ReactMarkdown>
+                </div>
+              </div>
+            )}
           </div>
         </CollapsibleContent>
       </div>
@@ -170,6 +314,20 @@ export function SystemPromptViewer({ onClose }: SystemPromptViewerProps) {
   const [loading, setLoading] = useState(true);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<"sections" | "schemas" | "tools">("sections");
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const {
+    hasCustomizations,
+    customizedSectionIds,
+    getEffectiveContent,
+    isCustomized,
+    updateSection,
+    resetSection,
+    resetAll,
+    exportCustomizations,
+    importCustomizations,
+  } = usePromptCustomization(template?.id || "default");
   
   // Load template
   useEffect(() => {
@@ -209,19 +367,52 @@ export function SystemPromptViewer({ onClose }: SystemPromptViewerProps) {
   
   const handleExport = useCallback(() => {
     if (!template) return;
-    const exportData = {
-      formatVersion: "1.0",
-      exportedAt: new Date().toISOString(),
-      template,
-    };
+    const exportData = exportCustomizations(template);
     const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: "application/json" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `freeagent-prompt-${template.version}.json`;
+    a.download = `freeagent-prompt-${template.version}-custom.json`;
     a.click();
     URL.revokeObjectURL(url);
-  }, [template]);
+    toast.success("Template exported successfully");
+  }, [template, exportCustomizations]);
+  
+  const handleImportClick = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+  
+  const handleImportFile = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file || !template) return;
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const content = e.target?.result as string;
+        const data = JSON.parse(content) as ExportedPromptTemplate;
+        
+        if (importCustomizations(data, template)) {
+          toast.success(`Imported customizations from "${data.template.name}"`);
+        } else {
+          toast.error("Failed to import template");
+        }
+      } catch (err) {
+        console.error("Import error:", err);
+        toast.error("Invalid template file");
+      }
+    };
+    reader.readAsText(file);
+    
+    // Reset input
+    event.target.value = "";
+  }, [template, importCustomizations]);
+  
+  const handleResetAll = useCallback(() => {
+    resetAll();
+    setResetDialogOpen(false);
+    toast.success("All customizations have been reset to defaults");
+  }, [resetAll]);
   
   if (loading) {
     return (
@@ -239,14 +430,6 @@ export function SystemPromptViewer({ onClose }: SystemPromptViewerProps) {
     );
   }
   
-  // Group sections by type for better organization
-  const sectionsByType = template.sections.reduce((acc, section) => {
-    const type = section.type;
-    if (!acc[type]) acc[type] = [];
-    acc[type].push(section);
-    return acc;
-  }, {} as Record<string, PromptSection[]>);
-  
   const sortedSections = [...template.sections].sort((a, b) => a.order - b.order);
   
   // Count by editable status
@@ -254,10 +437,20 @@ export function SystemPromptViewer({ onClose }: SystemPromptViewerProps) {
     editable: template.sections.filter(s => s.editable === 'editable').length,
     readonly: template.sections.filter(s => s.editable === 'readonly').length,
     dynamic: template.sections.filter(s => s.editable === 'dynamic').length,
+    customized: customizedSectionIds.size,
   };
   
   return (
     <div className="h-full flex flex-col bg-background">
+      {/* Hidden file input for import */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept=".json"
+        onChange={handleImportFile}
+        className="hidden"
+      />
+      
       {/* Header */}
       <div className="border-b border-border px-4 py-3 flex-shrink-0">
         <div className="flex items-center justify-between mb-2">
@@ -265,40 +458,56 @@ export function SystemPromptViewer({ onClose }: SystemPromptViewerProps) {
             <h2 className="text-lg font-semibold">{template.name}</h2>
             <p className="text-xs text-muted-foreground">
               v{template.version} • {template.sections.length} sections
+              {hasCustomizations && (
+                <span className="text-green-600 dark:text-green-400 ml-2">
+                  • {editableCounts.customized} customized
+                </span>
+              )}
             </p>
           </div>
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={handleExport} className="h-8">
               <Download className="h-3 w-3 mr-1" />
-              Export
+              <span className="hidden sm:inline">Export</span>
             </Button>
-            <Button variant="outline" size="sm" disabled className="h-8" title="Coming in Phase 2">
+            <Button variant="outline" size="sm" onClick={handleImportClick} className="h-8">
               <Upload className="h-3 w-3 mr-1" />
-              Import
+              <span className="hidden sm:inline">Import</span>
             </Button>
+            {hasCustomizations && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setResetDialogOpen(true)} 
+                className="h-8 text-destructive hover:text-destructive"
+              >
+                <RotateCcw className="h-3 w-3 mr-1" />
+                <span className="hidden sm:inline">Reset All</span>
+              </Button>
+            )}
           </div>
         </div>
         
         {/* Legend */}
-        <div className="flex flex-wrap items-center gap-3 text-xs">
-          <div className="flex items-center gap-1.5">
-            <Badge variant="outline" className={`${editableColors.editable} text-xs`}>
-              <Pencil className="h-3 w-3 mr-1" />
-              Customizable ({editableCounts.editable})
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <Badge variant="outline" className={`${editableColors.editable} text-xs`}>
+            <Pencil className="h-3 w-3 mr-1" />
+            Customizable ({editableCounts.editable})
+          </Badge>
+          <Badge variant="outline" className={`${editableColors.readonly} text-xs`}>
+            <Lock className="h-3 w-3 mr-1" />
+            System ({editableCounts.readonly})
+          </Badge>
+          <Badge variant="outline" className={`${editableColors.dynamic} text-xs`}>
+            <RefreshCw className="h-3 w-3 mr-1" />
+            Runtime ({editableCounts.dynamic})
+          </Badge>
+          {hasCustomizations && (
+            <Badge variant="outline" className="text-xs bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30">
+              <Check className="h-3 w-3 mr-1" />
+              Modified ({editableCounts.customized})
             </Badge>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Badge variant="outline" className={`${editableColors.readonly} text-xs`}>
-              <Lock className="h-3 w-3 mr-1" />
-              System ({editableCounts.readonly})
-            </Badge>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Badge variant="outline" className={`${editableColors.dynamic} text-xs`}>
-              <RefreshCw className="h-3 w-3 mr-1" />
-              Runtime ({editableCounts.dynamic})
-            </Badge>
-          </div>
+          )}
         </div>
       </div>
       
@@ -336,6 +545,10 @@ export function SystemPromptViewer({ onClose }: SystemPromptViewerProps) {
                   section={section}
                   isExpanded={expandedSections.has(section.id)}
                   onToggle={() => toggleSection(section.id)}
+                  isCustomized={isCustomized(section.id)}
+                  effectiveContent={getEffectiveContent(section)}
+                  onSave={(content) => updateSection(section.id, content)}
+                  onReset={() => resetSection(section.id)}
                 />
               ))}
             </div>
@@ -366,13 +579,32 @@ export function SystemPromptViewer({ onClose }: SystemPromptViewerProps) {
                   Future versions will allow viewing and customizing tool descriptions here.
                 </p>
                 <Button variant="outline" size="sm" className="mt-4" disabled>
-                  Coming in Phase 2
+                  Coming in Phase 3
                 </Button>
               </div>
             </div>
           </ScrollArea>
         </TabsContent>
       </Tabs>
+      
+      {/* Reset All Confirmation Dialog */}
+      <AlertDialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset All Customizations?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will reset all {editableCounts.customized} customized section(s) back to their default values. 
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleResetAll} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Reset All
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
