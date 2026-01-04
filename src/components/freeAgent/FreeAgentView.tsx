@@ -5,6 +5,7 @@ import { FreeAgentPanel } from "./FreeAgentPanel";
 import { BlackboardViewer } from "./BlackboardViewer";
 import { ArtifactsPanel } from "./ArtifactsPanel";
 import { RawViewer } from "./RawViewer";
+import { SystemPromptViewer } from "./SystemPromptViewer";
 import { AssistanceModal } from "./AssistanceModal";
 import { FinalReportModal } from "./FinalReportModal";
 import { useFreeAgentSession } from "@/hooks/useFreeAgentSession";
@@ -158,15 +159,18 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
           {mobileTab === "data" && (
             <div className="h-full">
               <Tabs defaultValue="blackboard" className="h-full flex flex-col">
-                <TabsList className="mx-2 mt-2">
-                  <TabsTrigger value="blackboard" className="flex-1">
+                <TabsList className="mx-2 mt-2 grid grid-cols-4">
+                  <TabsTrigger value="blackboard">
                     Blackboard
                   </TabsTrigger>
-                  <TabsTrigger value="artifacts" className="flex-1">
+                  <TabsTrigger value="artifacts">
                     Artifacts
                   </TabsTrigger>
-                  <TabsTrigger value="raw" className="flex-1">
+                  <TabsTrigger value="raw">
                     Raw
+                  </TabsTrigger>
+                  <TabsTrigger value="prompt">
+                    Prompt
                   </TabsTrigger>
                 </TabsList>
                 <TabsContent value="blackboard" className="flex-1 overflow-hidden m-0 p-0">
@@ -177,6 +181,9 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
                 </TabsContent>
                 <TabsContent value="raw" className="flex-1 overflow-hidden m-0 p-0">
                   <RawViewer rawData={session?.rawData || []} />
+                </TabsContent>
+                <TabsContent value="prompt" className="flex-1 overflow-hidden m-0 p-0">
+                  <SystemPromptViewer />
                 </TabsContent>
               </Tabs>
             </div>
@@ -227,15 +234,18 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
           <ResizablePanel defaultSize={25} minSize={20} maxSize={35}>
             <div className="h-full">
               <Tabs defaultValue="blackboard" className="h-full flex flex-col">
-                <TabsList className="mx-2 mt-2">
-                  <TabsTrigger value="blackboard" className="flex-1">
+                <TabsList className="mx-2 mt-2 grid grid-cols-4">
+                  <TabsTrigger value="blackboard">
                     Blackboard
                   </TabsTrigger>
-                  <TabsTrigger value="artifacts" className="flex-1">
+                  <TabsTrigger value="artifacts">
                     Artifacts
                   </TabsTrigger>
-                  <TabsTrigger value="raw" className="flex-1">
+                  <TabsTrigger value="raw">
                     Raw
+                  </TabsTrigger>
+                  <TabsTrigger value="prompt">
+                    Prompt
                   </TabsTrigger>
                 </TabsList>
                 <TabsContent value="blackboard" className="flex-1 overflow-hidden m-0 p-0">
@@ -246,6 +256,9 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
                 </TabsContent>
                 <TabsContent value="raw" className="flex-1 overflow-hidden m-0 p-0">
                   <RawViewer rawData={session?.rawData || []} />
+                </TabsContent>
+                <TabsContent value="prompt" className="flex-1 overflow-hidden m-0 p-0">
+                  <SystemPromptViewer />
                 </TabsContent>
               </Tabs>
             </div>
