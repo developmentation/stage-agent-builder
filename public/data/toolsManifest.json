@@ -954,9 +954,39 @@
         "properties": ["status", "statusText", "data"]
       }
     },
+    "read_database_schemas": {
+      "name": "Read Database Schemas",
+      "description": "Retrieve the complete schema structure from a PostgreSQL database including tables, columns, data types, constraints, and foreign key relationships. Use this BEFORE execute_sql to understand the database structure. Returns organized schema information for query planning.",
+      "edge_function": "external-db",
+      "icon": "DatabaseZap",
+      "category": "database",
+      "parameters": {
+        "connectionString": {
+          "type": "string",
+          "required": true,
+          "sensitive": true,
+          "description": "PostgreSQL connection string (e.g., postgres://user:pass@host:port/database). SSL will be enforced automatically."
+        },
+        "schemas": {
+          "type": "array",
+          "items": "string",
+          "required": false,
+          "description": "Filter to specific schema names (default: all non-system schemas like 'public')"
+        },
+        "saveAs": {
+          "type": "string",
+          "required": false,
+          "description": "Save schema structure to a named attribute for reference when building queries."
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": ["success", "schemas", "totalSchemas", "totalTables", "totalColumns"]
+      }
+    },
     "execute_sql": {
       "name": "Execute SQL",
-      "description": "Execute SQL queries on an external PostgreSQL database. User must provide connection string. Supports both read (SELECT) and write (INSERT/UPDATE/DELETE) operations.",
+      "description": "Execute SQL queries on an external PostgreSQL database. Supports both read (SELECT) and write (INSERT/UPDATE/DELETE) operations. Multiple statements can be separated by semicolons and will be executed sequentially. Use read_database_schemas first to understand the database structure.",
       "edge_function": "external-db",
       "icon": "Database",
       "category": "database",
@@ -965,12 +995,12 @@
           "type": "string",
           "required": true,
           "sensitive": true,
-          "description": "PostgreSQL connection string (e.g., postgres://user:pass@host:port/database)"
+          "description": "PostgreSQL connection string (e.g., postgres://user:pass@host:port/database). SSL will be enforced automatically."
         },
         "query": {
           "type": "string",
           "required": true,
-          "description": "SQL query to execute"
+          "description": "SQL query to execute. Multiple statements can be separated by semicolons."
         },
         "isWrite": {
           "type": "boolean",
@@ -981,17 +1011,17 @@
         "params": {
           "type": "array",
           "required": false,
-          "description": "Parameterized query values for security"
+          "description": "Parameterized query values for security (applies to single-statement queries)"
         },
         "saveAs": {
           "type": "string",
           "required": false,
-          "description": "Save result to a named attribute. Use read_attribute(['name']) to retrieve."
+          "description": "Save query results as JSON to a named attribute. Use read_attribute(['name']) to retrieve."
         }
       },
       "returns": {
         "type": "object",
-        "properties": ["success", "columns", "rows", "rowCount", "command"]
+        "properties": ["success", "columns", "rows", "rowCount", "command", "results", "summary"]
       }
     }
   },
