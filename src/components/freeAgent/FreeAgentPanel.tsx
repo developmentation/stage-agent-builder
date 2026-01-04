@@ -247,11 +247,11 @@ export function FreeAgentPanel({
 
   return (
     <Card className="h-full flex flex-col">
-      <CardHeader className="pb-3 pt-3">
+      <CardHeader className="pb-2 pt-2 px-2">
         {getStatusBadge()}
       </CardHeader>
 
-      <CardContent className="flex-1 flex flex-col overflow-hidden">
+      <CardContent className="flex-1 flex flex-col overflow-hidden px-2 pb-2">
         {/* Sub-tabs for Task vs Secrets */}
         <Tabs value={controlTab} onValueChange={(v) => setControlTab(v as 'task' | 'secrets')} className="flex-1 flex flex-col overflow-hidden">
           <TabsList className="grid w-full grid-cols-2 mb-3">
