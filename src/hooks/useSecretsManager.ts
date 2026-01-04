@@ -281,7 +281,7 @@ export function useSecretsManager() {
 
   // === Import/Export ===
 
-  const exportConfig = useCallback((): SecretsConfigExport => {
+  const exportConfig = useCallback((includeValues: boolean = false): SecretsConfigExport => {
     return {
       version: config.version,
       exportedAt: new Date().toISOString(),
@@ -289,6 +289,7 @@ export function useSecretsManager() {
         key: s.key,
         name: s.name,
         type: s.type,
+        ...(includeValues ? { value: s.value } : {}),
       })),
       mappings: config.mappings,
       headerMappings: config.headerMappings,
