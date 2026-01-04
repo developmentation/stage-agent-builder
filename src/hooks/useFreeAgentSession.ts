@@ -80,6 +80,7 @@ const AUTO_SAVE_TOOLS = [
   'analyze',
   // Database tools
   'execute_sql',
+  'read_database_schemas',
   // Generation tools
   'image_generation',
   'elevenlabs_tts',

@@ -229,7 +229,10 @@ Available Tools:
 ## API Tools
 - get_call_api: Make GET request (params: url, headers?, saveAs?)
 - post_call_api: Make POST request (params: url, headers?, saveAs?)
-- execute_sql: Execute SQL on external database (params: connectionString, query, isWrite?)
+
+## Database Tools
+- read_database_schemas: Get database structure - tables, columns, types, constraints (params: connectionString, schemas?, saveAs?)
+- execute_sql: Execute SQL on external PostgreSQL database (params: connectionString, query, isWrite?, params?, saveAs?). Multiple statements separated by semicolons are executed sequentially.
 
 ## Utility Tools
 - get_time: Get current date/time (params: timezone?)
@@ -577,6 +580,7 @@ async function executeTool(
     get_call_api: "api-call",
     post_call_api: "api-call",
     execute_sql: "external-db",
+    read_database_schemas: "external-db",
     elevenlabs_tts: "elevenlabs-tts",
     // Weather
     get_weather: "tool_weather",
@@ -624,6 +628,8 @@ async function executeTool(
       body = { ...body, method: "POST" };
     } else if (toolName === "image_generation") {
       body = { prompt: body.prompt, model: body.model || "gemini-2.5-flash-image" };
+    } else if (toolName === "read_database_schemas") {
+      body = { ...body, action: "schemas" };
     }
     
     // Apply user-defined headers to the body for tools that support them

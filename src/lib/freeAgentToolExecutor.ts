@@ -465,6 +465,7 @@ export async function executeEdgeFunctionTool(
     get_call_api: "api-call",
     post_call_api: "api-call",
     execute_sql: "external-db",
+    read_database_schemas: "external-db",
     elevenlabs_tts: "elevenlabs-tts",
     // Weather
     get_weather: "tool_weather",
@@ -495,6 +496,8 @@ export async function executeEdgeFunctionTool(
       body = { ...params, method: "POST" };
     } else if (tool === "image_generation") {
       body = { prompt: params.prompt, model: params.model || "gemini-2.5-flash-image" };
+    } else if (tool === "read_database_schemas") {
+      body = { ...params, action: "schemas" };
     }
 
     const { data, error } = await supabase.functions.invoke(functionName, {
