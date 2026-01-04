@@ -214,6 +214,20 @@ export interface FreeAgentSession {
   // Secrets injection for tool execution
   secretOverrides?: Record<string, { params?: Record<string, unknown>; headers?: Record<string, string> }>;
   configuredParams?: Array<{ tool: string; param: string }>;
+  
+  // Dynamic system prompt data from frontend
+  promptData?: {
+    sections: Array<{
+      id: string;
+      type: string;
+      title: string;
+      content: string;
+      order: number;
+      editable: string;
+      variables?: string[];
+    }>;
+    toolOverrides: Record<string, { description?: string }>;
+  };
 }
 
 // Tool definition from manifest

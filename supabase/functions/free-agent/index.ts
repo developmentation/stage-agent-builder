@@ -27,6 +27,19 @@ interface FreeAgentRequest {
   toolResultAttributes?: Record<string, { result: unknown; size: number }>;
   // Artifacts for reference resolution
   artifacts?: Array<{ id: string; type: string; title: string; content: string; description?: string }>;
+  // Dynamic prompt data from frontend (Phase 2)
+  promptData?: {
+    sections: Array<{
+      id: string;
+      type: string;
+      title: string;
+      content: string;
+      order: number;
+      editable: string;
+      variables?: string[];
+    }>;
+    toolOverrides?: Record<string, { description?: string }>;
+  };
 }
 
 // ============================================================================
@@ -652,6 +665,262 @@ If you called a tool with saveAs (e.g., brave_search with saveAs: "weather_data"
 - THEN you can analyze it and proceed with your task`;
 }
 
+// ============================================================================
+// DYNAMIC SYSTEM PROMPT BUILDER - Uses sections from frontend
+// ============================================================================
+
+// Format tools list with optional custom descriptions
+function formatToolsList(toolOverrides?: Record<string, { description?: string }>): string {
+  const tools = [
+    { id: "brave_search", defaultDesc: "Search the web", params: "query, numResults?, saveAs?" },
+    { id: "google_search", defaultDesc: "Search via Google", params: "query, numResults?, saveAs?" },
+    { id: "web_scrape", defaultDesc: "Scrape webpage content", params: "url, maxCharacters?, saveAs?" },
+    { id: "read_github_repo", defaultDesc: "Get repo file tree", params: "repoUrl, branch?, saveAs?" },
+    { id: "read_github_file", defaultDesc: "Read files from repo", params: "repoUrl, selectedPaths, branch?, saveAs?" },
+    { id: "pdf_info", defaultDesc: "Get PDF metadata and page count", params: "fileData - base64 encoded PDF" },
+    { id: "pdf_extract_text", defaultDesc: "Extract text from PDF", params: "fileData - base64 encoded PDF, pages?" },
+    { id: "ocr_image", defaultDesc: "Extract text from image via OCR", params: "imageSource - base64, URL, or data URI" },
+    { id: "read_zip_contents", defaultDesc: "List files in ZIP archive", params: "fileData - base64 encoded ZIP" },
+    { id: "read_zip_file", defaultDesc: "Read specific file from ZIP", params: "fileData, entryPath" },
+    { id: "extract_zip_files", defaultDesc: "Extract files from ZIP", params: "fileData, paths? - empty for all" },
+    { id: "send_email", defaultDesc: "Send email via Resend", params: "to, subject, body, useHtml?" },
+    { id: "request_assistance", defaultDesc: "Ask user for input", params: "question, context?, inputType?, choices?" },
+    { id: "image_generation", defaultDesc: "Generate image from prompt", params: "prompt" },
+    { id: "elevenlabs_tts", defaultDesc: "Text to speech", params: "text, voiceId?, modelId?" },
+    { id: "get_call_api", defaultDesc: "Make GET request", params: "url, headers?, saveAs?" },
+    { id: "post_call_api", defaultDesc: "Make POST request", params: "url, headers?, saveAs?" },
+    { id: "read_database_schemas", defaultDesc: "Get database structure - tables, columns, types, constraints", params: "connectionString, schemas?, saveAs?" },
+    { id: "execute_sql", defaultDesc: "Execute SQL on external PostgreSQL database", params: "connectionString, query, isWrite?, params?, saveAs?" },
+    { id: "get_time", defaultDesc: "Get current date/time", params: "timezone?" },
+    { id: "get_weather", defaultDesc: "Get weather for a location", params: "location, units? - celsius or fahrenheit" },
+    { id: "write_blackboard", defaultDesc: "Write to your planning journal", params: "category, content, data?" },
+    { id: "read_file", defaultDesc: "Read session file content", params: "fileId" },
+    { id: "read_prompt", defaultDesc: "Read the original user prompt", params: "" },
+    { id: "read_prompt_files", defaultDesc: "Get list of available files with metadata", params: "" },
+    { id: "read_attribute", defaultDesc: "Read saved tool result attributes", params: "names[] - empty array for list, specific names for content" },
+    { id: "read_scratchpad", defaultDesc: "Read your data storage", params: "" },
+    { id: "write_scratchpad", defaultDesc: "SAVE DATA HERE immediately after search/read", params: "content, mode?" },
+    { id: "export_word", defaultDesc: "Create Word document", params: "content, filename?" },
+    { id: "export_pdf", defaultDesc: "Create PDF document", params: "content, filename?" },
+  ];
+  
+  // Group by category
+  const categories: Record<string, typeof tools> = {
+    "Search & Web": tools.filter(t => ["brave_search", "google_search", "web_scrape"].includes(t.id)),
+    "GitHub": tools.filter(t => ["read_github_repo", "read_github_file"].includes(t.id)),
+    "Document": tools.filter(t => ["pdf_info", "pdf_extract_text", "ocr_image", "read_zip_contents", "read_zip_file", "extract_zip_files"].includes(t.id)),
+    "Communication": tools.filter(t => ["send_email", "request_assistance"].includes(t.id)),
+    "Generation": tools.filter(t => ["image_generation", "elevenlabs_tts"].includes(t.id)),
+    "API": tools.filter(t => ["get_call_api", "post_call_api"].includes(t.id)),
+    "Database": tools.filter(t => ["read_database_schemas", "execute_sql"].includes(t.id)),
+    "Utility": tools.filter(t => ["get_time", "get_weather"].includes(t.id)),
+    "Memory": tools.filter(t => ["write_blackboard", "read_file", "read_prompt", "read_prompt_files", "read_attribute", "read_scratchpad", "write_scratchpad"].includes(t.id)),
+    "Export": tools.filter(t => ["export_word", "export_pdf"].includes(t.id)),
+  };
+  
+  let output = "Available Tools:\n\n";
+  
+  for (const [category, categoryTools] of Object.entries(categories)) {
+    if (categoryTools.length === 0) continue;
+    output += `## ${category} Tools\n`;
+    for (const tool of categoryTools) {
+      const desc = toolOverrides?.[tool.id]?.description || tool.defaultDesc;
+      output += `- ${tool.id}: ${desc} (params: ${tool.params})\n`;
+    }
+    output += "\n";
+  }
+  
+  // Add the saveAs explanation
+  output += `## 🚀 NAMED TOOL RESULT ATTRIBUTES - USE saveAs TO SAVE TOKEN BUDGET!
+
+Data-fetching tools support a "saveAs" parameter that AUTOMATICALLY saves results to a named attribute:
+
+Example: { "tool": "web_scrape", "params": { "url": "...", "saveAs": "london_weather" } }
+
+Benefits of using saveAs:
+- Results are saved AUTOMATICALLY - no need to call write_scratchpad
+- You receive a small confirmation instead of the full data (saves tokens!)
+- Results appear as clickable nodes on the canvas
+- Use {{london_weather}} in scratchpad to reference the data
+- Call read_attribute(["london_weather"]) to retrieve specific attributes
+- Call read_attribute([]) to list all saved attributes
+
+RECOMMENDED: Use saveAs for ALL data-fetching operations (searches, scrapes, API calls, GitHub reads).
+This is the most efficient way to store data without wasting tokens on large responses!
+`;
+  
+  return output;
+}
+
+// Format session files section
+function formatSessionFiles(files: Array<{ id: string; filename: string; mimeType: string; size: number; content?: string }>): string {
+  if (!files || files.length === 0) {
+    return '\nNo session files provided.';
+  }
+  
+  const filesList = files.map(f => {
+    let fileInfo = `- ${f.filename} (fileId: "${f.id}", type: ${f.mimeType}, size: ${f.size} bytes)`;
+    if (f.content && f.size < 50000 && (f.mimeType.startsWith('text/') || f.mimeType.includes('json') || f.mimeType.includes('xml') || f.mimeType.includes('javascript') || f.mimeType.includes('typescript'))) {
+      fileInfo += `\n  Content:\n\`\`\`\n${f.content}\n\`\`\``;
+    }
+    return fileInfo;
+  }).join('\n');
+  
+  return `\nSession Files Available:\n${filesList}\n\nUse read_file with the exact fileId to read file contents.`;
+}
+
+// Format configured params section
+function formatConfiguredParams(configuredParams?: Array<{ tool: string; param: string }>): string {
+  if (!configuredParams || configuredParams.length === 0) {
+    return '';
+  }
+  
+  const byTool: Record<string, string[]> = {};
+  for (const cp of configuredParams) {
+    if (!byTool[cp.tool]) byTool[cp.tool] = [];
+    byTool[cp.tool].push(cp.param);
+  }
+  
+  const paramsList = Object.entries(byTool)
+    .map(([tool, params]) => `- ${tool}: ${params.join(', ')}`)
+    .join('\n');
+  
+  return `
+## 🔐 PRE-CONFIGURED TOOL PARAMETERS
+The following tool parameters have been pre-configured by the user with secrets/credentials.
+You do NOT need to provide values for these - they will be injected automatically at execution time:
+
+${paramsList}
+
+When using these tools, you may omit the configured parameters or pass null - the user's values will override.
+`;
+}
+
+// Format blackboard section
+function formatBlackboard(entries: Array<{ category: string; content: string }>): string {
+  if (!entries || entries.length === 0) {
+    return '\n## BLACKBOARD: Empty. Track your plan and completed items here.';
+  }
+  
+  const hasUserInterjections = entries.some(e => e.category === 'user_interjection');
+  const interjectionNote = hasUserInterjections 
+    ? '\n\n⚠️ Pay special attention to any recent User Interjections (within the last 1-5 blackboard entries) and ensure your next actions are aligned with the user\'s further direction.' 
+    : '';
+  
+  return `\n## YOUR BLACKBOARD (Planning Journal - Read this EVERY iteration!):\n${entries.map(e => `[${e.category}] ${e.content}`).join('\n')}${interjectionNote}`;
+}
+
+// Format scratchpad section
+function formatScratchpad(content: string): string {
+  if (!content || !content.trim()) {
+    return '\n## YOUR SCRATCHPAD (Data Storage): Empty. Write actual DATA here (file contents, search results, analysis).';
+  }
+  
+  if (content.length < 500) {
+    return `\n## YOUR SCRATCHPAD (Data Storage - ${content.length} chars):\n\`\`\`\n${content}\n\`\`\``;
+  }
+  
+  return `\n## YOUR SCRATCHPAD: Contains ${content.length} chars of saved data. Use read_scratchpad to view full content.`;
+}
+
+// Format previous results section
+function formatPreviousResults(results: Array<{ tool: string; result?: unknown; error?: string }>): string {
+  if (!results || results.length === 0) {
+    return '';
+  }
+  
+  const formattedResults = results.map(r => {
+    let resultStr: string;
+    if (r.result === undefined || r.result === null) {
+      resultStr = r.error ? `Error: ${r.error}` : "No result returned";
+    } else {
+      try {
+        resultStr = JSON.stringify(r.result, null, 2);
+      } catch (e) {
+        resultStr = `[Unable to serialize result: ${e instanceof Error ? e.message : 'Unknown error'}]`;
+      }
+    }
+    
+    const resultLength = resultStr?.length || 0;
+    const display = resultLength > 250000 
+      ? resultStr.slice(0, 250000) + '\n...[truncated at 250KB - use saveAs for large data]'
+      : resultStr || 'No result';
+      
+    return `### Tool: ${r.tool}\n\`\`\`json\n${display}\n\`\`\``;
+  }).join('\n\n');
+  
+  return `
+
+## ⚠️ PREVIOUS ITERATION TOOL RESULTS - READ THIS FIRST! ⚠️
+These results will DISAPPEAR next iteration! You MUST save important data to scratchpad NOW.
+
+${formattedResults}
+
+ACTION REQUIRED: If you see search/read results above, call write_scratchpad with the actual data.
+DO NOT call the same tool again - the results are RIGHT HERE.
+`;
+}
+
+// Format assistance response section
+function formatAssistanceResponse(assistanceResponse?: { response?: string; fileId?: string; selectedChoice?: string }): string {
+  if (!assistanceResponse || (!assistanceResponse.response && !assistanceResponse.selectedChoice)) {
+    return '';
+  }
+  
+  const userAnswer = assistanceResponse.response || assistanceResponse.selectedChoice;
+  return `\n\n## User Response to Your Previous Question\nThe user answered: "${userAnswer}"\nYou MUST incorporate this answer. Do NOT ask the same question again.`;
+}
+
+// Build system prompt dynamically from sections
+function buildSystemPromptDynamic(
+  blackboard: Array<{ category: string; content: string }>,
+  sessionFiles: Array<{ id: string; filename: string; mimeType: string; size: number; content?: string }>,
+  previousResults: Array<{ tool: string; result?: unknown; error?: string }>,
+  iteration: number,
+  scratchpad: string,
+  assistanceResponse?: { response?: string; fileId?: string; selectedChoice?: string },
+  configuredParams?: Array<{ tool: string; param: string }>,
+  promptData?: FreeAgentRequest['promptData']
+): string {
+  // REQUIRE promptData - no hardcoded fallback
+  if (!promptData || !promptData.sections || promptData.sections.length === 0) {
+    throw new Error('promptData is required - dynamic system prompt must be provided from frontend');
+  }
+  
+  // Build runtime variable map
+  const runtimeVars: Record<string, string> = {
+    '{{TOOLS_LIST}}': formatToolsList(promptData.toolOverrides),
+    '{{SESSION_FILES}}': formatSessionFiles(sessionFiles),
+    '{{CONFIGURED_PARAMS}}': formatConfiguredParams(configuredParams),
+    '{{BLACKBOARD_CONTENT}}': formatBlackboard(blackboard),
+    '{{SCRATCHPAD_CONTENT}}': formatScratchpad(scratchpad),
+    '{{PREVIOUS_RESULTS}}': formatPreviousResults(previousResults),
+    '{{CURRENT_ITERATION}}': String(iteration),
+    '{{ASSISTANCE_RESPONSE}}': formatAssistanceResponse(assistanceResponse),
+  };
+  
+  // Sort sections by order
+  const sortedSections = [...promptData.sections].sort((a, b) => a.order - b.order);
+  
+  // Build prompt by iterating through sections
+  let prompt = '';
+  for (const section of sortedSections) {
+    let content = section.content;
+    
+    // Replace runtime variables
+    for (const [variable, value] of Object.entries(runtimeVars)) {
+      content = content.split(variable).join(value);
+    }
+    
+    // Skip empty dynamic sections (e.g., no previous results, no assistance response)
+    if (section.type === 'dynamic' && !content.trim()) continue;
+    
+    prompt += content + '\n\n';
+  }
+  
+  return prompt.trim();
+}
+
 // Execute a single tool call against edge functions
 async function executeTool(
   toolName: string,
@@ -1033,6 +1302,7 @@ serve(async (req) => {
       configuredParams,
       toolResultAttributes = {},
       artifacts = [],
+      promptData,
     } = request || {};
 
     // Build resolver context for reference resolution in tool params
@@ -1059,16 +1329,32 @@ serve(async (req) => {
       console.log(`User assistance response: ${JSON.stringify(assistanceResponse)}`);
     }
 
-    // Build prompt and call LLM - include scratchpad for persistent memory
-    const systemPrompt = buildSystemPrompt(
-      blackboard,
-      sessionFiles,
-      previousToolResults.map(t => ({ tool: t.tool, result: t.result, error: t.error })),
-      iteration,
-      scratchpad,
-      assistanceResponse,
-      configuredParams
-    );
+    // Build prompt dynamically from frontend sections (or fall back to hardcoded for backward compat)
+    let systemPrompt: string;
+    if (promptData && promptData.sections && promptData.sections.length > 0) {
+      console.log(`Using dynamic system prompt with ${promptData.sections.length} sections`);
+      systemPrompt = buildSystemPromptDynamic(
+        blackboard,
+        sessionFiles,
+        previousToolResults.map(t => ({ tool: t.tool, result: t.result, error: t.error })),
+        iteration,
+        scratchpad,
+        assistanceResponse,
+        configuredParams,
+        promptData
+      );
+    } else {
+      console.log(`Using legacy hardcoded system prompt (no promptData provided)`);
+      systemPrompt = buildSystemPrompt(
+        blackboard,
+        sessionFiles,
+        previousToolResults.map(t => ({ tool: t.tool, result: t.result, error: t.error })),
+        iteration,
+        scratchpad,
+        assistanceResponse,
+        configuredParams
+      );
+    }
 
     const llmResult = await callLLM(systemPrompt, prompt, model);
 
