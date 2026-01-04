@@ -324,6 +324,112 @@ Without safeguards, the agent might:
 
 ---
 
+## Enhance Prompt Feature
+
+The **Enhance Prompt** feature uses AI to transform a vague user request into a detailed, structured execution plan before the agent starts running.
+
+### Purpose
+
+- Convert informal requests into actionable step-by-step plans
+- Identify which tools the agent should use at each phase
+- Define clear success criteria and checkpoints
+- Anticipate potential challenges
+- Estimate the number of iterations needed
+
+### How to Use
+
+1. **Enter your task description** in the prompt textarea
+2. **Click "Enhance Prompt"** (the wand icon button) above "Start Agent"
+3. **Review the generated plan** in the modal that opens
+4. **Choose a view**: 
+   - **Preview**: Rendered markdown view of the plan
+   - **Edit**: Raw text editor for manual modifications
+5. **Refine (optional)**: Provide feedback and click "Refine" for AI improvement
+6. **Accept**: Choose between:
+   - **Accept**: Replace prompt and return to panel
+   - **Accept & Start**: Replace prompt and immediately start the agent
+
+### Enhancement Modal Features
+
+| Feature | Description |
+|---------|-------------|
+| **Original Prompt** | Read-only display of your initial request |
+| **Model Indicator** | Shows which AI model will generate the plan |
+| **Preview Tab** | Formatted markdown rendering of the plan |
+| **Edit Tab** | Raw text editor for manual changes |
+| **Feedback Input** | Optional field to provide refinement instructions |
+| **Refine Button** | Re-generates plan incorporating your feedback |
+| **Start Over** | Regenerates from scratch |
+
+### Generated Plan Structure
+
+The enhanced prompt follows a consistent structure:
+
+```markdown
+## Goal
+Clear restatement of what needs to be accomplished.
+
+## Strategy  
+High-level approach to solving the problem.
+
+## Execution Plan
+
+### Phase 1: [Name]
+- **Tools**: [which tools to use]
+- **Actions**: [specific steps]
+- **Store**: [what to save to blackboard/scratchpad]
+- **Expected Output**: [what this phase produces]
+
+### Phase 2: [Name]
+...
+
+## Success Criteria
+- [How to know the task is complete]
+- [Quality checks to perform]
+
+## Potential Challenges
+- [Possible issues and how to handle them]
+
+## Estimated Iterations: [number]
+```
+
+### Context Provided to Enhancement
+
+The enhancement AI receives:
+- Your original prompt
+- Complete list of available tools with descriptions and parameters
+- Metadata about uploaded files (names, types, sizes)
+- The selected model's capabilities
+
+### Iterative Refinement
+
+You can refine the plan multiple times:
+
+1. Review the generated plan
+2. Identify areas that need improvement
+3. Enter feedback like:
+   - "Focus more on error handling"
+   - "Add a verification step after data collection"
+   - "Use brave_search instead of google_search"
+   - "Include a step to save intermediate results"
+4. Click "Refine" to regenerate with your feedback incorporated
+
+### When to Use Enhance Prompt
+
+**Recommended for:**
+- Complex multi-step tasks
+- Research and analysis projects
+- Tasks requiring multiple tool integrations
+- When you're unsure of the best approach
+- Long-running autonomous sessions
+
+**Skip for:**
+- Simple single-tool operations
+- Tasks you've done before with known steps
+- Quick queries or lookups
+
+---
+
 ## Canvas Visualization
 
 The FreeAgentCanvas provides visual feedback of the agent's state:
