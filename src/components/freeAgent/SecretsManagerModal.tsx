@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
@@ -90,6 +91,7 @@ export function SecretsManagerModal({
   // Import state
   const [importText, setImportText] = useState('');
   const [importType, setImportType] = useState<'json' | 'env'>('env');
+  const [exportIncludeValues, setExportIncludeValues] = useState(false);
   
   // Confirm dialogs
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
@@ -208,13 +210,23 @@ export function SecretsManagerModal({
         // For JSON import, we need to ask for secret values
         // For now, import with empty values if it's an export format
         if (parsed.secrets && parsed.mappings) {
-          // This is an export format - import structure but user needs to fill values
+          // This is an export format - check if values are included
           const secretValues: Record<string, string> = {};
-          parsed.secrets.forEach((s: { key: string }) => {
-            secretValues[s.key] = ''; // User will need to fill these
+          let hasValues = false;
+          parsed.secrets.forEach((s: { key: string; value?: string }) => {
+            if (s.value) {
+              secretValues[s.key] = s.value;
+              hasValues = true;
+            } else {
+              secretValues[s.key] = '';
+            }
           });
           secretsManager.importConfig(parsed, secretValues);
-          toast.info('Config imported - please fill in secret values');
+          if (hasValues) {
+            toast.success('Config imported with secret values');
+          } else {
+            toast.info('Config imported - please fill in secret values');
+          }
         } else {
           // Try to import as key-value pairs
           for (const [key, value] of Object.entries(parsed)) {
@@ -239,10 +251,12 @@ export function SecretsManagerModal({
 
   // Export handler
   const handleExport = () => {
-    const exported = secretsManager.exportConfig();
+    const exported = secretsManager.exportConfig(exportIncludeValues);
     const json = JSON.stringify(exported, null, 2);
     navigator.clipboard.writeText(json);
-    toast.success('Config copied to clipboard (without secret values)');
+    toast.success(exportIncludeValues 
+      ? 'Config copied to clipboard (WITH secret values - handle securely!)' 
+      : 'Config copied to clipboard (without secret values)');
   };
 
   // Clear all
@@ -657,11 +671,24 @@ export function SecretsManagerModal({
                   <div className="flex flex-col gap-3 p-3 sm:p-4 border rounded-lg">
                     <h3 className="font-medium">Export Configuration</h3>
                     <p className="text-sm text-muted-foreground">
-                      Export your secrets configuration. <strong>Secret values are NOT exported</strong> for security - only keys and mappings.
+                      {exportIncludeValues 
+                        ? <><strong className="text-destructive">Warning:</strong> Secret values WILL be exported. Handle the output securely!</>
+                        : <>Secret values are NOT exported for security - only keys and mappings.</>
+                      }
                     </p>
+                    <div className="flex items-center space-x-2">
+                      <Checkbox
+                        id="include-values"
+                        checked={exportIncludeValues}
+                        onCheckedChange={(checked) => setExportIncludeValues(checked === true)}
+                      />
+                      <Label htmlFor="include-values" className="text-sm cursor-pointer">
+                        Include secret values in export
+                      </Label>
+                    </div>
                     <div className="bg-muted/30 rounded p-3 overflow-auto max-h-[200px]">
                       <pre className="text-xs font-mono whitespace-pre-wrap break-all">
-                        {JSON.stringify(secretsManager.exportConfig(), null, 2)}
+                        {JSON.stringify(secretsManager.exportConfig(exportIncludeValues), null, 2)}
                       </pre>
                     </div>
                     <div className="flex flex-col sm:flex-row gap-2">
