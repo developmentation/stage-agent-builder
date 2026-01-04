@@ -158,8 +158,8 @@
       }
     },
     "read_github_repo": {
-      "name": "Read GitHub Repository",
-      "description": "Get the file tree structure of a GitHub repository. Returns a tree with paths, sizes, and types.",
+      "name": "Read GitHub Repository Structure",
+      "description": "Get the file structure of a GitHub repository. Returns file PATHS and SIZES only - NOT file contents. Use read_github_file to fetch actual file contents after identifying which files you need.",
       "edge_function": "github-fetch",
       "icon": "Github",
       "category": "code",
@@ -182,7 +182,7 @@
       },
       "returns": {
         "type": "object",
-        "properties": ["success", "mode", "repository", "treeData", "totalFiles"]
+        "properties": ["success", "mode", "repository", "totalFiles", "totalDirectories", "structure", "files"]
       }
     },
     "read_github_file": {

@@ -154,7 +154,76 @@ const downloadFile = async (fileInfo: TreeItem): Promise<{ path: string; content
   }
 };
 
-// Create tree structure for UI
+// Format file size for display
+const formatSize = (bytes: number): string => {
+  if (bytes === 0) return "0B";
+  if (bytes < 1024) return `${bytes}B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+};
+
+// Create compact response for LLM consumption (no nested tree, just flat list)
+const createCompactResponse = (
+  files: TreeItem[],
+  owner: string,
+  repo: string,
+  branch: string
+) => {
+  const fileItems = files.filter(f => f.type === "file");
+  const dirItems = files.filter(f => f.type === "directory");
+  
+  // Create a simple flat list of file paths with sizes
+  const fileList = fileItems.map(f => ({ path: f.path, size: f.size }));
+  
+  // Create a formatted structure string for immediate LLM consumption
+  // Group files by top-level directory for readability
+  const grouped = new Map<string, { path: string; size: number }[]>();
+  grouped.set("", []); // root files
+  
+  fileItems.forEach(f => {
+    const parts = f.path.split("/");
+    const topDir = parts.length > 1 ? parts[0] : "";
+    if (!grouped.has(topDir)) {
+      grouped.set(topDir, []);
+    }
+    grouped.get(topDir)!.push({ path: f.path, size: f.size });
+  });
+  
+  // Build formatted structure string
+  let structureLines: string[] = [];
+  const sortedDirs = Array.from(grouped.keys()).sort();
+  
+  for (const dir of sortedDirs) {
+    const dirFiles = grouped.get(dir)!;
+    if (dir === "") {
+      // Root files
+      dirFiles.forEach(f => structureLines.push(`${f.path} (${formatSize(f.size)})`));
+    } else {
+      structureLines.push(`${dir}/`);
+      dirFiles.forEach(f => {
+        const relativePath = f.path.slice(dir.length + 1);
+        structureLines.push(`  ${relativePath} (${formatSize(f.size)})`);
+      });
+    }
+  }
+  
+  // Limit structure preview to first 500 lines to keep response manageable
+  const structurePreview = structureLines.length > 500
+    ? structureLines.slice(0, 500).join("\n") + `\n... and ${structureLines.length - 500} more files`
+    : structureLines.join("\n");
+  
+  return {
+    success: true,
+    mode: "tree",
+    repository: { owner, repo, branch },
+    totalFiles: fileItems.length,
+    totalDirectories: dirItems.length,
+    structure: structurePreview,
+    files: fileList,
+  };
+};
+
+// Create tree structure for UI (still needed for frontend tree selection modal)
 const createTreeStructure = (files: TreeItem[]) => {
   const root: any[] = [];
   const dirMap = new Map<string, any>();
@@ -269,22 +338,36 @@ serve(async (req) => {
     const files = await fetchRepoContents(owner, repo, branch);
     console.log(`Fetched ${files.length} items from repository`);
 
-    // If no specific paths requested, return tree structure for selection
+    // If no specific paths requested, return compact structure for LLM
+    // Check if this is from edge function (agent) or frontend (tree modal)
+    const isFromAgent = req.headers.get("x-source") === "agent";
+    
     if (!selectedPaths || selectedPaths.length === 0) {
-      const treeData = createTreeStructure(files);
-      
-      return new Response(
-        JSON.stringify({
-          success: true,
-          mode: "tree",
-          repository: { owner, repo, branch },
-          treeData,
-          totalFiles: files.filter(f => f.type === "file").length,
-        }),
-        {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        }
-      );
+      if (isFromAgent) {
+        // Return compact response for LLM consumption
+        const compactResponse = createCompactResponse(files, owner, repo, branch);
+        return new Response(
+          JSON.stringify(compactResponse),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      } else {
+        // Return full tree structure for frontend UI selection
+        const treeData = createTreeStructure(files);
+        return new Response(
+          JSON.stringify({
+            success: true,
+            mode: "tree",
+            repository: { owner, repo, branch },
+            treeData,
+            totalFiles: files.filter(f => f.type === "file").length,
+          }),
+          {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          }
+        );
+      }
     }
 
     // Filter to only selected files

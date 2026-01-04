@@ -296,11 +296,11 @@ This is the most efficient way to store data without wasting tokens on large res
   // Make previous tool results VERY prominent so agent sees them
   let resultsSection = '';
   if (safePreviousResults.length > 0) {
-    const formattedResults = safePreviousResults.map(r => {
+  const formattedResults = safePreviousResults.map(r => {
       const resultStr = JSON.stringify(r.result, null, 2);
-      // Show full results up to 8KB per tool
-      const display = resultStr.length > 8000 
-        ? resultStr.slice(0, 8000) + '\n...[truncated - save to scratchpad NOW]'
+      // Show full results up to 250KB per tool (increased from 8KB)
+      const display = resultStr.length > 250000 
+        ? resultStr.slice(0, 250000) + '\n...[truncated at 250KB - use saveAs for large data]'
         : resultStr;
       return `### Tool: ${r.tool}\n\`\`\`json\n${display}\n\`\`\``;
     }).join('\n\n');
@@ -570,12 +570,18 @@ async function executeTool(
 
     console.log(`Executing tool ${toolName} via ${edgeFunction}:`, JSON.stringify(body));
 
+    // Add x-source header for github-fetch to return compact response
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${supabaseKey}`,
+    };
+    if (toolName === "read_github_repo") {
+      headers["x-source"] = "agent";
+    }
+
     const response = await fetch(`${supabaseUrl}/functions/v1/${edgeFunction}`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${supabaseKey}`,
-      },
+      headers,
       body: JSON.stringify(body),
     });
 
