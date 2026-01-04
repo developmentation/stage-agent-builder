@@ -493,12 +493,12 @@ function ResponseSchemaCard({ schema }: { schema: ResponseSchema }) {
       <div className="p-4">
         <p className="text-xs text-muted-foreground mb-3">{schema.description}</p>
         {showRaw ? (
-          <pre className="text-xs bg-muted/50 rounded-md p-3 overflow-x-auto max-h-80 font-mono">
+          <pre className="text-xs bg-muted/50 rounded-md p-3 overflow-x-auto max-h-80 font-mono whitespace-pre-wrap break-words">
             {schema.rawSchema}
           </pre>
         ) : (
-          <div className="text-sm bg-muted/30 rounded-md p-3">
-            <div className="prose prose-sm dark:prose-invert max-w-none">
+          <div className="text-sm bg-muted/30 rounded-md p-3 overflow-hidden">
+            <div className="prose prose-sm dark:prose-invert max-w-none prose-pre:whitespace-pre-wrap prose-pre:break-words prose-pre:overflow-x-auto">
               <ReactMarkdown remarkPlugins={[remarkGfm]}>
                 {`\`\`\`json\n${schema.rawSchema}\n\`\`\``}
               </ReactMarkdown>
@@ -665,20 +665,20 @@ function ToolCard({
               {params.length > 0 && (
                 <div>
                   <span className="text-xs font-medium text-muted-foreground">Parameters</span>
-                  <div className="mt-1 space-y-1">
+                  <div className="mt-1 space-y-2">
                     {requiredParams.map(([name, param]) => (
-                      <div key={name} className="flex items-start gap-2 text-xs">
-                        <code className="px-1.5 py-0.5 bg-primary/10 text-primary rounded font-mono">{name}</code>
-                        <span className="text-muted-foreground">({param.type})</span>
-                        <Badge variant="outline" className="h-4 text-[10px] bg-red-500/10 text-red-600 border-red-500/30">required</Badge>
-                        <span className="text-muted-foreground flex-1 truncate">{param.description}</span>
+                      <div key={name} className="flex flex-wrap items-start gap-1.5 text-xs">
+                        <code className="px-1.5 py-0.5 bg-primary/10 text-primary rounded font-mono shrink-0">{name}</code>
+                        <span className="text-muted-foreground shrink-0">({param.type})</span>
+                        <Badge variant="outline" className="h-4 text-[10px] bg-red-500/10 text-red-600 border-red-500/30 shrink-0">required</Badge>
+                        <span className="text-muted-foreground break-words w-full sm:w-auto sm:flex-1">{param.description}</span>
                       </div>
                     ))}
                     {optionalParams.map(([name, param]) => (
-                      <div key={name} className="flex items-start gap-2 text-xs">
-                        <code className="px-1.5 py-0.5 bg-muted text-muted-foreground rounded font-mono">{name}</code>
-                        <span className="text-muted-foreground">({param.type})</span>
-                        <span className="text-muted-foreground flex-1 truncate">{param.description}</span>
+                      <div key={name} className="flex flex-wrap items-start gap-1.5 text-xs">
+                        <code className="px-1.5 py-0.5 bg-muted text-muted-foreground rounded font-mono shrink-0">{name}</code>
+                        <span className="text-muted-foreground shrink-0">({param.type})</span>
+                        <span className="text-muted-foreground break-words w-full sm:w-auto sm:flex-1">{param.description}</span>
                       </div>
                     ))}
                   </div>
@@ -1224,19 +1224,19 @@ export function SystemPromptViewer({ onClose, configuredParams = [], promptCusto
                       
                       return (
                         <div key={categoryId} className="mb-3">
-                          <button
+                        <button
                             onClick={() => toggleCategory(categoryId)}
-                            className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-muted/50 transition-colors"
+                            className="w-full flex flex-wrap items-center gap-2 px-2 py-2 rounded-lg hover:bg-muted/50 transition-colors text-left"
                           >
-                            {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                            <span className="shrink-0">{isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}</span>
                             <span 
-                              className="w-3 h-3 rounded-full" 
+                              className="w-3 h-3 rounded-full shrink-0" 
                               style={{ backgroundColor: category.color }} 
                             />
-                            <span className="font-medium text-sm">{category.name}</span>
-                            <span className="text-xs text-muted-foreground">({tools.length})</span>
-                            <span className="flex-1" />
-                            <span className="text-xs text-muted-foreground">{category.description}</span>
+                            <span className="font-medium text-sm shrink-0">{category.name}</span>
+                            <span className="text-xs text-muted-foreground shrink-0">({tools.length})</span>
+                            <span className="hidden sm:block flex-1" />
+                            <span className="text-xs text-muted-foreground break-words w-full sm:w-auto">{category.description}</span>
                           </button>
                           
                           {isExpanded && (
