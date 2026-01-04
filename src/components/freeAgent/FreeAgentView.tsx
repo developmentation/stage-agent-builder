@@ -69,9 +69,12 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
 
   const handleStart = useCallback(
     async (prompt: string, files: SessionFile[], model: string, maxIterations: number, existingSession?: FreeAgentSession | null) => {
-      await startSession(prompt, files, model, maxIterations, existingSession);
+      // Compute secrets at start time for tool parameter injection
+      const secretOverrides = secretsManager.getSecretOverrides();
+      const configuredParams = secretsManager.getConfiguredToolParams();
+      await startSession(prompt, files, model, maxIterations, existingSession, secretOverrides, configuredParams);
     },
-    [startSession]
+    [startSession, secretsManager]
   );
 
   const handleAssistanceResponse = useCallback(
