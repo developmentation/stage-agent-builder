@@ -272,7 +272,8 @@ export function FreeAgentPanel({
           </TabsList>
 
           {/* Task Tab */}
-          <TabsContent value="task" className="flex-1 flex flex-col gap-4 overflow-hidden m-0">
+          <TabsContent value="task" className="flex-1 overflow-y-auto m-0">
+            <div className="flex flex-col gap-4 pr-1">
             {/* Show input form when no session OR when session is idle (after Continue) */}
             {(!session || session.status === "idle") ? (
               <>
@@ -434,8 +435,8 @@ export function FreeAgentPanel({
                 Clear
               </Button>
             )}
-          </>
-        ) : (
+            </>
+            ) : (
           <>
             {/* Session info */}
             <div className="space-y-2">
@@ -550,6 +551,7 @@ export function FreeAgentPanel({
             </div>
           </>
         )}
+            </div>
           </TabsContent>
 
           {/* Secrets Tab */}
