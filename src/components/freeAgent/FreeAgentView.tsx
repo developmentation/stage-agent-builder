@@ -201,7 +201,7 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
       <div className="hidden lg:block h-full">
         <ResizablePanelGroup direction="horizontal">
           {/* Left Panel - Control & Info */}
-          <ResizablePanel defaultSize={25} minSize={20} maxSize={35}>
+          <ResizablePanel defaultSize={25} minSize={5} maxSize={35}>
             <div className="h-full flex flex-col">
               <div className="flex-1 overflow-hidden">
                 <FreeAgentPanel
@@ -237,7 +237,7 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
           <ResizableHandle withHandle />
 
           {/* Right Panel - Blackboard & Artifacts */}
-          <ResizablePanel defaultSize={25} minSize={20} maxSize={35}>
+          <ResizablePanel defaultSize={25} minSize={5} maxSize={35}>
             <div className="h-full">
               <Tabs defaultValue="blackboard" className="h-full flex flex-col">
                 <TooltipProvider delayDuration={300}>

@@ -944,27 +944,50 @@ export function SystemPromptViewer({ onClose }: SystemPromptViewerProps) {
         </p>
         
         {/* Export/Import buttons */}
-        <div className="flex items-center gap-2 mb-3">
-          <Button variant="outline" size="sm" onClick={handleExport} className="h-8">
-            <Download className="h-3 w-3 mr-1" />
-            <span className="hidden sm:inline">Export</span>
-          </Button>
-          <Button variant="outline" size="sm" onClick={handleImportClick} className="h-8">
-            <Upload className="h-3 w-3 mr-1" />
-            <span className="hidden sm:inline">Import</span>
-          </Button>
-          {(hasCustomizations || hasOrderChanges || editableCounts.custom > 0 || hasToolCustomizations) && (
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={() => setResetDialogOpen(true)} 
-              className="h-8 text-destructive hover:text-destructive"
-            >
-              <RotateCcw className="h-3 w-3 mr-1" />
-              <span className="hidden sm:inline">Reset All</span>
-            </Button>
-          )}
-        </div>
+        <TooltipProvider delayDuration={300}>
+          <div className="flex flex-wrap items-center gap-2 mb-3">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="sm" onClick={handleExport} className="h-8">
+                  <Download className="h-3 w-3 xl:mr-1" />
+                  <span className="hidden xl:inline">Export</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="xl:hidden">
+                Export
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="sm" onClick={handleImportClick} className="h-8">
+                  <Upload className="h-3 w-3 xl:mr-1" />
+                  <span className="hidden xl:inline">Import</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="xl:hidden">
+                Import
+              </TooltipContent>
+            </Tooltip>
+            {(hasCustomizations || hasOrderChanges || editableCounts.custom > 0 || hasToolCustomizations) && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setResetDialogOpen(true)} 
+                    className="h-8 text-destructive hover:text-destructive"
+                  >
+                    <RotateCcw className="h-3 w-3 xl:mr-1" />
+                    <span className="hidden xl:inline">Reset All</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="xl:hidden">
+                  Reset All
+                </TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+        </TooltipProvider>
         
         {/* Legend */}
         <div className="flex flex-wrap items-center gap-2 text-xs">
