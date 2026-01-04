@@ -255,7 +255,7 @@ export function SecretsManagerModal({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+        <DialogContent className="w-[calc(100%-50px)] h-[calc(100%-50px)] max-w-none max-h-none flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Key className="w-5 h-5" />
@@ -265,26 +265,27 @@ export function SecretsManagerModal({
 
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="flex-1 flex flex-col overflow-hidden">
             <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="secrets" className="gap-2">
-                <Key className="w-4 h-4" />
-                Secrets ({secretsManager.secrets.length})
+              <TabsTrigger value="secrets" className="gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3">
+                <Key className="w-4 h-4 shrink-0" />
+                <span className="hidden sm:inline">Secrets</span> ({secretsManager.secrets.length})
               </TabsTrigger>
-              <TabsTrigger value="mappings" className="gap-2">
-                <Link className="w-4 h-4" />
-                Mappings ({secretsManager.mappings.length + secretsManager.headerMappings.reduce((acc, hm) => acc + hm.headers.length, 0)})
+              <TabsTrigger value="mappings" className="gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3">
+                <Link className="w-4 h-4 shrink-0" />
+                <span className="hidden sm:inline">Mappings</span> ({secretsManager.mappings.length + secretsManager.headerMappings.reduce((acc, hm) => acc + hm.headers.length, 0)})
               </TabsTrigger>
-              <TabsTrigger value="import" className="gap-2">
-                <Upload className="w-4 h-4" />
-                Import/Export
+              <TabsTrigger value="import" className="gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3">
+                <Upload className="w-4 h-4 shrink-0" />
+                <span className="hidden sm:inline">Import/Export</span>
+                <span className="sm:hidden">I/E</span>
               </TabsTrigger>
             </TabsList>
 
             {/* Secrets Tab */}
             <TabsContent value="secrets" className="flex-1 overflow-hidden flex flex-col gap-4">
               {/* Add Secret Form */}
-              <div className="p-4 border rounded-lg bg-muted/30">
+              <div className="p-3 sm:p-4 border rounded-lg bg-muted/30">
                 <h3 className="font-medium mb-3">Add New Secret</h3>
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   <div className="space-y-1">
                     <Label className="text-xs">Display Name</Label>
                     <Input
@@ -301,7 +302,7 @@ export function SecretsManagerModal({
                       onChange={(e) => setNewSecretKey(e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, '_'))}
                     />
                   </div>
-                  <div className="space-y-1">
+                  <div className="space-y-1 sm:col-span-2 lg:col-span-1">
                     <Label className="text-xs">Value</Label>
                     <div className="flex gap-2">
                       <Input
@@ -309,8 +310,9 @@ export function SecretsManagerModal({
                         placeholder="Secret value"
                         value={newSecretValue}
                         onChange={(e) => setNewSecretValue(e.target.value)}
+                        className="flex-1"
                       />
-                      <Button onClick={handleAddSecret} size="icon">
+                      <Button onClick={handleAddSecret} size="icon" className="shrink-0">
                         <Plus className="w-4 h-4" />
                       </Button>
                     </div>
@@ -423,7 +425,7 @@ export function SecretsManagerModal({
             {/* Mappings Tab */}
             <TabsContent value="mappings" className="flex-1 overflow-hidden flex flex-col gap-4">
               {/* Tool Selection */}
-              <div className="p-4 border rounded-lg bg-muted/30">
+              <div className="p-3 sm:p-4 border rounded-lg bg-muted/30">
                 <h3 className="font-medium mb-3">Configure Tool Parameters</h3>
                 <div className="space-y-3">
                   <div className="space-y-1">
@@ -445,7 +447,7 @@ export function SecretsManagerModal({
                   {selectedTool && (
                     <>
                       {/* Parameter Mapping */}
-                      <div className="grid grid-cols-3 gap-3 pt-2 border-t">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-3 border-t">
                         <div className="space-y-1">
                           <Label className="text-xs">Parameter</Label>
                           <Select value={selectedParam} onValueChange={setSelectedParam}>
@@ -455,7 +457,7 @@ export function SecretsManagerModal({
                             <SelectContent>
                               {selectedToolParams.map((param) => (
                                 <SelectItem key={param.name} value={param.name}>
-                              {param.name}
+                                  {param.name}
                                   {(param as { sensitive?: boolean }).sensitive && <Badge className="ml-2 text-xs">sensitive</Badge>}
                                 </SelectItem>
                               ))}
@@ -477,8 +479,12 @@ export function SecretsManagerModal({
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="flex items-end">
-                          <Button onClick={handleAddMapping} disabled={!selectedParam || !selectedSecretKey}>
+                        <div className="flex items-end sm:col-span-2 lg:col-span-1">
+                          <Button 
+                            onClick={handleAddMapping} 
+                            disabled={!selectedParam || !selectedSecretKey}
+                            className="w-full sm:w-auto"
+                          >
                             <Plus className="w-4 h-4 mr-1" />
                             Map Parameter
                           </Button>
@@ -486,7 +492,7 @@ export function SecretsManagerModal({
                       </div>
 
                       {/* Header Mapping */}
-                      <div className="grid grid-cols-3 gap-3 pt-2 border-t">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-3 border-t">
                         <div className="space-y-1">
                           <Label className="text-xs">Header Name</Label>
                           <Input
@@ -510,8 +516,12 @@ export function SecretsManagerModal({
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="flex items-end">
-                          <Button onClick={handleAddHeaderMapping} disabled={!newHeaderName.trim() || !selectedHeaderSecretKey}>
+                        <div className="flex items-end sm:col-span-2 lg:col-span-1">
+                          <Button 
+                            onClick={handleAddHeaderMapping} 
+                            disabled={!newHeaderName.trim() || !selectedHeaderSecretKey}
+                            className="w-full sm:w-auto"
+                          >
                             <Plus className="w-4 h-4 mr-1" />
                             Map Header
                           </Button>
@@ -598,71 +608,76 @@ export function SecretsManagerModal({
 
             {/* Import/Export Tab */}
             <TabsContent value="import" className="flex-1 overflow-hidden flex flex-col gap-4">
-              <div className="grid grid-cols-2 gap-4 flex-1">
-                {/* Import Section */}
-                <div className="flex flex-col gap-3 p-4 border rounded-lg">
-                  <h3 className="font-medium">Import Secrets</h3>
-                  <div className="flex gap-2">
-                    <Button
-                      variant={importType === 'env' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setImportType('env')}
-                    >
-                      <FileText className="w-4 h-4 mr-1" />
-                      ENV Format
-                    </Button>
-                    <Button
-                      variant={importType === 'json' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setImportType('json')}
-                    >
-                      <FileText className="w-4 h-4 mr-1" />
-                      JSON Format
+              <ScrollArea className="flex-1">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {/* Import Section */}
+                  <div className="flex flex-col gap-3 p-3 sm:p-4 border rounded-lg">
+                    <h3 className="font-medium">Import Secrets</h3>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        variant={importType === 'env' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setImportType('env')}
+                        className="flex-1 sm:flex-none"
+                      >
+                        <FileText className="w-4 h-4 mr-1 shrink-0" />
+                        <span>ENV</span>
+                      </Button>
+                      <Button
+                        variant={importType === 'json' ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => setImportType('json')}
+                        className="flex-1 sm:flex-none"
+                      >
+                        <FileText className="w-4 h-4 mr-1 shrink-0" />
+                        <span>JSON</span>
+                      </Button>
+                    </div>
+                    <Textarea
+                      placeholder={
+                        importType === 'env'
+                          ? 'GITHUB_TOKEN=ghp_xxxx\nAPI_KEY=sk-xxxx\n...'
+                          : '{\n  "GITHUB_TOKEN": "ghp_xxxx",\n  "API_KEY": "sk-xxxx"\n}'
+                      }
+                      value={importText}
+                      onChange={(e) => setImportText(e.target.value)}
+                      className="min-h-[150px] font-mono text-sm"
+                    />
+                    <Button onClick={handleImport} disabled={!importText.trim()} className="w-full">
+                      <Upload className="w-4 h-4 mr-2 shrink-0" />
+                      Import
                     </Button>
                   </div>
-                  <Textarea
-                    placeholder={
-                      importType === 'env'
-                        ? 'GITHUB_TOKEN=ghp_xxxx\nAPI_KEY=sk-xxxx\n...'
-                        : '{\n  "GITHUB_TOKEN": "ghp_xxxx",\n  "API_KEY": "sk-xxxx"\n}'
-                    }
-                    value={importText}
-                    onChange={(e) => setImportText(e.target.value)}
-                    className="flex-1 font-mono text-sm"
-                  />
-                  <Button onClick={handleImport} disabled={!importText.trim()}>
-                    <Upload className="w-4 h-4 mr-2" />
-                    Import
-                  </Button>
-                </div>
 
-                {/* Export Section */}
-                <div className="flex flex-col gap-3 p-4 border rounded-lg">
-                  <h3 className="font-medium">Export Configuration</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Export your secrets configuration. <strong>Secret values are NOT exported</strong> for security - only keys and mappings.
-                  </p>
-                  <div className="flex-1 bg-muted/30 rounded p-3 overflow-auto">
-                    <pre className="text-xs font-mono whitespace-pre-wrap">
-                      {JSON.stringify(secretsManager.exportConfig(), null, 2)}
-                    </pre>
-                  </div>
-                  <div className="flex gap-2">
-                    <Button onClick={handleExport} className="flex-1">
-                      <Copy className="w-4 h-4 mr-2" />
-                      Copy to Clipboard
-                    </Button>
-                    <Button
-                      variant="destructive"
-                      onClick={() => setClearConfirmOpen(true)}
-                      disabled={secretsManager.secrets.length === 0}
-                    >
-                      <Trash2 className="w-4 h-4 mr-2" />
-                      Clear All
-                    </Button>
+                  {/* Export Section */}
+                  <div className="flex flex-col gap-3 p-3 sm:p-4 border rounded-lg">
+                    <h3 className="font-medium">Export Configuration</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Export your secrets configuration. <strong>Secret values are NOT exported</strong> for security - only keys and mappings.
+                    </p>
+                    <div className="bg-muted/30 rounded p-3 overflow-auto max-h-[200px] lg:max-h-[300px]">
+                      <pre className="text-xs font-mono whitespace-pre-wrap break-all">
+                        {JSON.stringify(secretsManager.exportConfig(), null, 2)}
+                      </pre>
+                    </div>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <Button onClick={handleExport} className="flex-1">
+                        <Copy className="w-4 h-4 mr-2 shrink-0" />
+                        <span className="truncate">Copy to Clipboard</span>
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        onClick={() => setClearConfirmOpen(true)}
+                        disabled={secretsManager.secrets.length === 0}
+                        className="sm:flex-none"
+                      >
+                        <Trash2 className="w-4 h-4 sm:mr-2 shrink-0" />
+                        <span className="hidden sm:inline">Clear All</span>
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </ScrollArea>
             </TabsContent>
           </Tabs>
         </DialogContent>
