@@ -281,335 +281,339 @@ export function SecretsManagerModal({
             </TabsList>
 
             {/* Secrets Tab */}
-            <TabsContent value="secrets" className="flex-1 overflow-hidden flex flex-col gap-4">
-              {/* Add Secret Form */}
-              <div className="p-3 sm:p-4 border rounded-lg bg-muted/30">
-                <h3 className="font-medium mb-3">Add New Secret</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Display Name</Label>
-                    <Input
-                      placeholder="e.g., GitHub PAT"
-                      value={newSecretName}
-                      onChange={(e) => setNewSecretName(e.target.value)}
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs">Key</Label>
-                    <Input
-                      placeholder="e.g., GITHUB_TOKEN"
-                      value={newSecretKey}
-                      onChange={(e) => setNewSecretKey(e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, '_'))}
-                    />
-                  </div>
-                  <div className="space-y-1 sm:col-span-2 lg:col-span-1">
-                    <Label className="text-xs">Value</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        type="password"
-                        placeholder="Secret value"
-                        value={newSecretValue}
-                        onChange={(e) => setNewSecretValue(e.target.value)}
-                        className="flex-1"
-                      />
-                      <Button onClick={handleAddSecret} size="icon" className="shrink-0">
-                        <Plus className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Secrets List */}
-              <ScrollArea className="flex-1">
-                <div className="space-y-2">
-                  {secretsManager.secrets.length === 0 ? (
-                    <div className="text-center text-muted-foreground py-8">
-                      No secrets configured. Add secrets above to get started.
-                    </div>
-                  ) : (
-                    secretsManager.secrets.map((secret) => (
-                      <div
-                        key={secret.id}
-                        className="flex items-center gap-3 p-3 border rounded-lg"
-                      >
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">{secret.name}</span>
-                            <Badge variant="outline" className="text-xs">
-                              {secret.key}
-                            </Badge>
-                            {secret.type === 'oauth' && (
-                              <Badge variant="secondary" className="text-xs">OAuth</Badge>
-                            )}
-                          </div>
-                          {editingSecretId === secret.id ? (
-                            <div className="flex items-center gap-2 mt-2">
-                              <Input
-                                type="password"
-                                value={editingSecretValue}
-                                onChange={(e) => setEditingSecretValue(e.target.value)}
-                                className="flex-1"
-                                autoFocus
-                              />
-                              <Button size="sm" onClick={() => handleUpdateSecretValue(secret.id)}>
-                                <Check className="w-3 h-3" />
-                              </Button>
-                              <Button size="sm" variant="ghost" onClick={() => setEditingSecretId(null)}>
-                                <X className="w-3 h-3" />
-                              </Button>
-                            </div>
-                          ) : (
-                            <div className="text-sm text-muted-foreground font-mono mt-1">
-                              {visibleSecrets.has(secret.id) ? secret.value : '••••••••••••'}
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <TooltipProvider delayDuration={300}>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => toggleSecretVisibility(secret.id)}
-                                >
-                                  {visibleSecrets.has(secret.id) ? (
-                                    <EyeOff className="w-4 h-4" />
-                                  ) : (
-                                    <Eye className="w-4 h-4" />
-                                  )}
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                {visibleSecrets.has(secret.id) ? 'Hide' : 'Show'} value
-                              </TooltipContent>
-                            </Tooltip>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => {
-                                    setEditingSecretId(secret.id);
-                                    setEditingSecretValue(secret.value);
-                                  }}
-                                >
-                                  <Settings className="w-4 h-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Edit value</TooltipContent>
-                            </Tooltip>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  onClick={() => setDeleteSecretId(secret.id)}
-                                  className="text-destructive hover:text-destructive"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Delete secret</TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
+            <TabsContent value="secrets" className="flex-1 overflow-hidden mt-0">
+              <ScrollArea className="h-full">
+                <div className="flex flex-col gap-4 pr-2">
+                  {/* Add Secret Form */}
+                  <div className="p-3 sm:p-4 border rounded-lg bg-muted/30">
+                    <h3 className="font-medium mb-3">Add New Secret</h3>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Display Name</Label>
+                        <Input
+                          placeholder="e.g., GitHub PAT"
+                          value={newSecretName}
+                          onChange={(e) => setNewSecretName(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Key</Label>
+                        <Input
+                          placeholder="e.g., GITHUB_TOKEN"
+                          value={newSecretKey}
+                          onChange={(e) => setNewSecretKey(e.target.value.toUpperCase().replace(/[^A-Z0-9_]/g, '_'))}
+                        />
+                      </div>
+                      <div className="space-y-1 sm:col-span-2 lg:col-span-1">
+                        <Label className="text-xs">Value</Label>
+                        <div className="flex gap-2">
+                          <Input
+                            type="password"
+                            placeholder="Secret value"
+                            value={newSecretValue}
+                            onChange={(e) => setNewSecretValue(e.target.value)}
+                            className="flex-1"
+                          />
+                          <Button onClick={handleAddSecret} size="icon" className="shrink-0">
+                            <Plus className="w-4 h-4" />
+                          </Button>
                         </div>
                       </div>
-                    ))
-                  )}
+                    </div>
+                  </div>
+
+                  {/* Secrets List */}
+                  <div className="space-y-2">
+                    {secretsManager.secrets.length === 0 ? (
+                      <div className="text-center text-muted-foreground py-8">
+                        No secrets configured. Add secrets above to get started.
+                      </div>
+                    ) : (
+                      secretsManager.secrets.map((secret) => (
+                        <div
+                          key={secret.id}
+                          className="flex items-center gap-3 p-3 border rounded-lg"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-medium">{secret.name}</span>
+                              <Badge variant="outline" className="text-xs">
+                                {secret.key}
+                              </Badge>
+                              {secret.type === 'oauth' && (
+                                <Badge variant="secondary" className="text-xs">OAuth</Badge>
+                              )}
+                            </div>
+                            {editingSecretId === secret.id ? (
+                              <div className="flex items-center gap-2 mt-2">
+                                <Input
+                                  type="password"
+                                  value={editingSecretValue}
+                                  onChange={(e) => setEditingSecretValue(e.target.value)}
+                                  className="flex-1"
+                                  autoFocus
+                                />
+                                <Button size="sm" onClick={() => handleUpdateSecretValue(secret.id)}>
+                                  <Check className="w-3 h-3" />
+                                </Button>
+                                <Button size="sm" variant="ghost" onClick={() => setEditingSecretId(null)}>
+                                  <X className="w-3 h-3" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <div className="text-sm text-muted-foreground font-mono mt-1">
+                                {visibleSecrets.has(secret.id) ? secret.value : '••••••••••••'}
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <TooltipProvider delayDuration={300}>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => toggleSecretVisibility(secret.id)}
+                                  >
+                                    {visibleSecrets.has(secret.id) ? (
+                                      <EyeOff className="w-4 h-4" />
+                                    ) : (
+                                      <Eye className="w-4 h-4" />
+                                    )}
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  {visibleSecrets.has(secret.id) ? 'Hide' : 'Show'} value
+                                </TooltipContent>
+                              </Tooltip>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => {
+                                      setEditingSecretId(secret.id);
+                                      setEditingSecretValue(secret.value);
+                                    }}
+                                  >
+                                    <Settings className="w-4 h-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Edit value</TooltipContent>
+                              </Tooltip>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() => setDeleteSecretId(secret.id)}
+                                    className="text-destructive hover:text-destructive"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Delete secret</TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
               </ScrollArea>
             </TabsContent>
 
             {/* Mappings Tab */}
-            <TabsContent value="mappings" className="flex-1 overflow-hidden flex flex-col gap-4">
-              {/* Tool Selection */}
-              <div className="p-3 sm:p-4 border rounded-lg bg-muted/30">
-                <h3 className="font-medium mb-3">Configure Tool Parameters</h3>
-                <div className="space-y-3">
-                  <div className="space-y-1">
-                    <Label className="text-xs">Select Tool</Label>
-                    <Select value={selectedTool} onValueChange={setSelectedTool}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choose a tool to configure..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {edgeFunctionTools.map((tool) => (
-                          <SelectItem key={tool.id} value={tool.id}>
-                            {tool.name} ({tool.id})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+            <TabsContent value="mappings" className="flex-1 overflow-hidden mt-0">
+              <ScrollArea className="h-full">
+                <div className="flex flex-col gap-4 pr-2">
+                  {/* Tool Selection */}
+                  <div className="p-3 sm:p-4 border rounded-lg bg-muted/30">
+                    <h3 className="font-medium mb-3">Configure Tool Parameters</h3>
+                    <div className="space-y-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Select Tool</Label>
+                        <Select value={selectedTool} onValueChange={setSelectedTool}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Choose a tool to configure..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {edgeFunctionTools.map((tool) => (
+                              <SelectItem key={tool.id} value={tool.id}>
+                                {tool.name} ({tool.id})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      {selectedTool && (
+                        <>
+                          {/* Parameter Mapping */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-3 border-t">
+                            <div className="space-y-1">
+                              <Label className="text-xs">Parameter</Label>
+                              <Select value={selectedParam} onValueChange={setSelectedParam}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select parameter" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {selectedToolParams.map((param) => (
+                                    <SelectItem key={param.name} value={param.name}>
+                                      {param.name}
+                                      {(param as { sensitive?: boolean }).sensitive && <Badge className="ml-2 text-xs">sensitive</Badge>}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Secret</Label>
+                              <Select value={selectedSecretKey} onValueChange={setSelectedSecretKey}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select secret" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {secretsManager.secrets.map((secret) => (
+                                    <SelectItem key={secret.key} value={secret.key}>
+                                      {secret.name} ({secret.key})
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="flex items-end sm:col-span-2 lg:col-span-1">
+                              <Button 
+                                onClick={handleAddMapping} 
+                                disabled={!selectedParam || !selectedSecretKey}
+                                className="w-full sm:w-auto"
+                              >
+                                <Plus className="w-4 h-4 mr-1" />
+                                Map Parameter
+                              </Button>
+                            </div>
+                          </div>
+
+                          {/* Header Mapping */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-3 border-t">
+                            <div className="space-y-1">
+                              <Label className="text-xs">Header Name</Label>
+                              <Input
+                                placeholder="e.g., Authorization"
+                                value={newHeaderName}
+                                onChange={(e) => setNewHeaderName(e.target.value)}
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Secret</Label>
+                              <Select value={selectedHeaderSecretKey} onValueChange={setSelectedHeaderSecretKey}>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select secret" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {secretsManager.secrets.map((secret) => (
+                                    <SelectItem key={secret.key} value={secret.key}>
+                                      {secret.name} ({secret.key})
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="flex items-end sm:col-span-2 lg:col-span-1">
+                              <Button 
+                                onClick={handleAddHeaderMapping} 
+                                disabled={!newHeaderName.trim() || !selectedHeaderSecretKey}
+                                className="w-full sm:w-auto"
+                              >
+                                <Plus className="w-4 h-4 mr-1" />
+                                Map Header
+                              </Button>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
 
-                  {selectedTool && (
-                    <>
-                      {/* Parameter Mapping */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-3 border-t">
-                        <div className="space-y-1">
-                          <Label className="text-xs">Parameter</Label>
-                          <Select value={selectedParam} onValueChange={setSelectedParam}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select parameter" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {selectedToolParams.map((param) => (
-                                <SelectItem key={param.name} value={param.name}>
-                                  {param.name}
-                                  {(param as { sensitive?: boolean }).sensitive && <Badge className="ml-2 text-xs">sensitive</Badge>}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">Secret</Label>
-                          <Select value={selectedSecretKey} onValueChange={setSelectedSecretKey}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select secret" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {secretsManager.secrets.map((secret) => (
-                                <SelectItem key={secret.key} value={secret.key}>
-                                  {secret.name} ({secret.key})
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="flex items-end sm:col-span-2 lg:col-span-1">
-                          <Button 
-                            onClick={handleAddMapping} 
-                            disabled={!selectedParam || !selectedSecretKey}
-                            className="w-full sm:w-auto"
-                          >
-                            <Plus className="w-4 h-4 mr-1" />
-                            Map Parameter
-                          </Button>
-                        </div>
-                      </div>
-
-                      {/* Header Mapping */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-3 border-t">
-                        <div className="space-y-1">
-                          <Label className="text-xs">Header Name</Label>
-                          <Input
-                            placeholder="e.g., Authorization"
-                            value={newHeaderName}
-                            onChange={(e) => setNewHeaderName(e.target.value)}
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">Secret</Label>
-                          <Select value={selectedHeaderSecretKey} onValueChange={setSelectedHeaderSecretKey}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select secret" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {secretsManager.secrets.map((secret) => (
-                                <SelectItem key={secret.key} value={secret.key}>
-                                  {secret.name} ({secret.key})
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                        <div className="flex items-end sm:col-span-2 lg:col-span-1">
-                          <Button 
-                            onClick={handleAddHeaderMapping} 
-                            disabled={!newHeaderName.trim() || !selectedHeaderSecretKey}
-                            className="w-full sm:w-auto"
-                          >
-                            <Plus className="w-4 h-4 mr-1" />
-                            Map Header
-                          </Button>
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Active Mappings */}
-              <ScrollArea className="flex-1">
-                <div className="space-y-3">
-                  <h3 className="font-medium">Active Mappings</h3>
-                  
-                  {/* Parameter Mappings */}
-                  {secretsManager.mappings.length > 0 && (
-                    <div className="space-y-2">
-                      <h4 className="text-sm text-muted-foreground">Parameters</h4>
-                      {secretsManager.mappings.map((mapping) => (
-                        <div
-                          key={mapping.id}
-                          className="flex items-center justify-between p-2 border rounded bg-background"
-                        >
-                          <div className="flex items-center gap-2">
-                            <Badge variant="outline">{mapping.toolId}</Badge>
-                            <span className="text-muted-foreground">.</span>
-                            <span className="font-mono text-sm">{mapping.parameterPath}</span>
-                            <span className="text-muted-foreground">→</span>
-                            <Badge>{mapping.secretKey}</Badge>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => secretsManager.deleteMapping(mapping.id)}
-                            className="h-7 w-7"
-                          >
-                            <X className="w-3 h-3" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Header Mappings */}
-                  {secretsManager.headerMappings.length > 0 && (
-                    <div className="space-y-2">
-                      <h4 className="text-sm text-muted-foreground">Headers</h4>
-                      {secretsManager.headerMappings.flatMap((hm) =>
-                        hm.headers.map((header) => (
+                  {/* Active Mappings */}
+                  <div className="space-y-3">
+                    <h3 className="font-medium">Active Mappings</h3>
+                    
+                    {/* Parameter Mappings */}
+                    {secretsManager.mappings.length > 0 && (
+                      <div className="space-y-2">
+                        <h4 className="text-sm text-muted-foreground">Parameters</h4>
+                        {secretsManager.mappings.map((mapping) => (
                           <div
-                            key={header.id}
-                            className="flex items-center justify-between p-2 border rounded bg-background"
+                            key={mapping.id}
+                            className="flex items-center justify-between p-2 border rounded bg-background gap-2"
                           >
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline">{hm.toolId}</Badge>
-                              <span className="text-muted-foreground">header:</span>
-                              <span className="font-mono text-sm">{header.name}</span>
+                            <div className="flex items-center gap-2 flex-wrap min-w-0">
+                              <Badge variant="outline" className="shrink-0">{mapping.toolId}</Badge>
+                              <span className="text-muted-foreground">.</span>
+                              <span className="font-mono text-sm truncate">{mapping.parameterPath}</span>
                               <span className="text-muted-foreground">→</span>
-                              <Badge>{header.secretKey}</Badge>
+                              <Badge className="shrink-0">{mapping.secretKey}</Badge>
                             </div>
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => secretsManager.deleteHeaderMapping(hm.toolId, header.id)}
-                              className="h-7 w-7"
+                              onClick={() => secretsManager.deleteMapping(mapping.id)}
+                              className="h-7 w-7 shrink-0"
                             >
                               <X className="w-3 h-3" />
                             </Button>
                           </div>
-                        ))
-                      )}
-                    </div>
-                  )}
+                        ))}
+                      </div>
+                    )}
 
-                  {secretsManager.mappings.length === 0 && secretsManager.headerMappings.length === 0 && (
-                    <div className="text-center text-muted-foreground py-8">
-                      No mappings configured. Select a tool above to add mappings.
-                    </div>
-                  )}
+                    {/* Header Mappings */}
+                    {secretsManager.headerMappings.length > 0 && (
+                      <div className="space-y-2">
+                        <h4 className="text-sm text-muted-foreground">Headers</h4>
+                        {secretsManager.headerMappings.flatMap((hm) =>
+                          hm.headers.map((header) => (
+                            <div
+                              key={header.id}
+                              className="flex items-center justify-between p-2 border rounded bg-background gap-2"
+                            >
+                              <div className="flex items-center gap-2 flex-wrap min-w-0">
+                                <Badge variant="outline" className="shrink-0">{hm.toolId}</Badge>
+                                <span className="text-muted-foreground">header:</span>
+                                <span className="font-mono text-sm truncate">{header.name}</span>
+                                <span className="text-muted-foreground">→</span>
+                                <Badge className="shrink-0">{header.secretKey}</Badge>
+                              </div>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => secretsManager.deleteHeaderMapping(hm.toolId, header.id)}
+                                className="h-7 w-7 shrink-0"
+                              >
+                                <X className="w-3 h-3" />
+                              </Button>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    )}
+
+                    {secretsManager.mappings.length === 0 && secretsManager.headerMappings.length === 0 && (
+                      <div className="text-center text-muted-foreground py-8">
+                        No mappings configured. Select a tool above to add mappings.
+                      </div>
+                    )}
+                  </div>
                 </div>
               </ScrollArea>
             </TabsContent>
 
             {/* Import/Export Tab */}
-            <TabsContent value="import" className="flex-1 overflow-hidden flex flex-col gap-4">
-              <ScrollArea className="flex-1">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <TabsContent value="import" className="flex-1 overflow-hidden mt-0">
+              <ScrollArea className="h-full">
+                <div className="flex flex-col gap-4 pr-2">
                   {/* Import Section */}
                   <div className="flex flex-col gap-3 p-3 sm:p-4 border rounded-lg">
                     <h3 className="font-medium">Import Secrets</h3>
@@ -655,7 +659,7 @@ export function SecretsManagerModal({
                     <p className="text-sm text-muted-foreground">
                       Export your secrets configuration. <strong>Secret values are NOT exported</strong> for security - only keys and mappings.
                     </p>
-                    <div className="bg-muted/30 rounded p-3 overflow-auto max-h-[200px] lg:max-h-[300px]">
+                    <div className="bg-muted/30 rounded p-3 overflow-auto max-h-[200px]">
                       <pre className="text-xs font-mono whitespace-pre-wrap break-all">
                         {JSON.stringify(secretsManager.exportConfig(), null, 2)}
                       </pre>
