@@ -89,7 +89,7 @@ const LAYOUT = {
   
   // Left side - Prompt
   // Position so right edge of prompt aligns with left edge of tools area
-  promptX: 50,
+  promptX: -25,  // 75px farther to the left (was 50)
   promptY: 180,  // Same Y as scratchpad
   promptWidth: 280,
   promptHeight: 300,
@@ -113,8 +113,8 @@ const LAYOUT = {
   // Tool grid settings
   toolNodeWidth: 120,
   toolNodeHeight: 50,
-  toolColumnGap: 15,
-  toolRowGap: 8,
+  toolColumnGap: 65,  // 50px wider second column (was 15)
+  toolRowGap: 33,     // 25px greater vertical gap (was 8)
   toolColumns: 2,
   
   // Read tools - ABOVE agent
@@ -546,6 +546,7 @@ export function FreeAgentCanvas({
           onNodeClick={handleNodeClick}
           nodeTypes={nodeTypes}
           connectionLineType={ConnectionLineType.SmoothStep}
+          minZoom={0.1}
           fitView
           fitViewOptions={{ padding: 0.2 }}
           attributionPosition="bottom-left"
