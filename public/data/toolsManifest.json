@@ -14,6 +14,11 @@
           "required": false,
           "default": "UTC",
           "description": "IANA timezone name (e.g., America/New_York)"
+        },
+        "saveAs": {
+          "type": "string",
+          "required": false,
+          "description": "Save result to a named attribute. Use read_attribute(['name']) to retrieve."
         }
       },
       "returns": {
@@ -39,6 +44,11 @@
           "default": "metric",
           "enum": ["metric", "imperial"],
           "description": "Temperature units"
+        },
+        "saveAs": {
+          "type": "string",
+          "required": false,
+          "description": "Save result to a named attribute. Use read_attribute(['name']) to retrieve."
         }
       },
       "returns": {
@@ -400,6 +410,11 @@
           "required": true,
           "default": "list",
           "description": "Action to perform (always 'list' for this tool)"
+        },
+        "saveAs": {
+          "type": "string",
+          "required": false,
+          "description": "Save result to a named attribute. Use read_attribute(['name']) to retrieve."
         }
       },
       "returns": {
@@ -434,6 +449,11 @@
           "type": "string",
           "required": true,
           "description": "Path to file within the ZIP archive"
+        },
+        "saveAs": {
+          "type": "string",
+          "required": false,
+          "description": "Save result to a named attribute. Use read_attribute(['name']) to retrieve."
         }
       },
       "returns": {
@@ -464,6 +484,11 @@
           "items": "string",
           "required": false,
           "description": "Specific paths to extract (extracts all if empty)"
+        },
+        "saveAs": {
+          "type": "string",
+          "required": false,
+          "description": "Save result to a named attribute. Use read_attribute(['name']) to retrieve."
         }
       },
       "returns": {
@@ -493,6 +518,11 @@
           "required": true,
           "default": "info",
           "description": "Action to perform"
+        },
+        "saveAs": {
+          "type": "string",
+          "required": false,
+          "description": "Save result to a named attribute. Use read_attribute(['name']) to retrieve."
         }
       },
       "returns": {
@@ -523,6 +553,11 @@
           "items": "number",
           "required": false,
           "description": "Page numbers to extract (1-indexed, all if empty)"
+        },
+        "saveAs": {
+          "type": "string",
+          "required": false,
+          "description": "Save result to a named attribute. Use read_attribute(['name']) to retrieve."
         }
       },
       "returns": {
@@ -547,6 +582,11 @@
           "required": false,
           "default": "en",
           "description": "Language hint for OCR"
+        },
+        "saveAs": {
+          "type": "string",
+          "required": false,
+          "description": "Save result to a named attribute. Use read_attribute(['name']) to retrieve."
         }
       },
       "returns": {
@@ -576,6 +616,11 @@
           "required": false,
           "enum": ["analyze", "plan", "decide", "compare", "troubleshoot"],
           "description": "Type of thinking task"
+        },
+        "saveAs": {
+          "type": "string",
+          "required": false,
+          "description": "Save result to a named attribute. Use read_attribute(['name']) to retrieve."
         }
       },
       "returns": {
@@ -611,6 +656,11 @@
           "type": "string",
           "required": false,
           "description": "Specific area to focus on"
+        },
+        "saveAs": {
+          "type": "string",
+          "required": false,
+          "description": "Save result to a named attribute. Use read_attribute(['name']) to retrieve."
         }
       },
       "returns": {
@@ -642,6 +692,11 @@
           "items": "string",
           "required": false,
           "description": "Specific questions to address"
+        },
+        "saveAs": {
+          "type": "string",
+          "required": false,
+          "description": "Save result to a named attribute. Use read_attribute(['name']) to retrieve."
         }
       },
       "returns": {
@@ -676,6 +731,11 @@
           "required": false,
           "default": false,
           "description": "Send body as HTML"
+        },
+        "saveAs": {
+          "type": "string",
+          "required": false,
+          "description": "Save result to a named attribute. Use read_attribute(['name']) to retrieve."
         }
       },
       "returns": {
@@ -737,6 +797,11 @@
           "default": "gemini-2.5-flash-image",
           "enum": ["gemini-2.5-flash-image", "gemini-3-pro-image-preview"],
           "description": "Image generation model to use"
+        },
+        "saveAs": {
+          "type": "string",
+          "required": false,
+          "description": "Save result to a named attribute. Use read_attribute(['name']) to retrieve."
         }
       },
       "returns": {
@@ -766,6 +831,11 @@
           "required": false,
           "default": "eleven_turbo_v2_5",
           "description": "ElevenLabs model ID"
+        },
+        "saveAs": {
+          "type": "string",
+          "required": false,
+          "description": "Save result to a named attribute. Use read_attribute(['name']) to retrieve."
         }
       },
       "returns": {
@@ -909,6 +979,11 @@
           "type": "array",
           "required": false,
           "description": "Parameterized query values for security"
+        },
+        "saveAs": {
+          "type": "string",
+          "required": false,
+          "description": "Save result to a named attribute. Use read_attribute(['name']) to retrieve."
         }
       },
       "returns": {
