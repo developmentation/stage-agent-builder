@@ -796,8 +796,28 @@ When using these tools, you may omit the configured parameters or pass null - th
 `;
 }
 
-// Format blackboard section
-function formatBlackboard(entries: Array<{ category: string; content: string }>): string {
+// Detect potential loops by checking for repeated content in recent entries
+function detectPotentialLoop(entries: Array<{ category: string; content: string }>): boolean {
+  if (entries.length < 3) return false;
+  
+  const recentEntries = entries.slice(-5);
+  // Normalize content for comparison (trim, lowercase, remove step numbers)
+  const normalizedContents = recentEntries.map(e => 
+    e.content.trim().toLowerCase().replace(/step\s*\d+:?/gi, '').trim()
+  );
+  
+  // Count duplicates
+  const contentCounts = new Map<string, number>();
+  for (const content of normalizedContents) {
+    contentCounts.set(content, (contentCounts.get(content) || 0) + 1);
+  }
+  
+  // If any content appears 3+ times in last 5 entries, we're likely looping
+  return Array.from(contentCounts.values()).some(count => count >= 3);
+}
+
+// Format blackboard section with iteration prefixes for loop detection
+function formatBlackboard(entries: Array<{ category: string; content: string; iteration?: number }>): string {
   if (!entries || entries.length === 0) {
     return '\n## BLACKBOARD: Empty. Track your plan and completed items here.';
   }
@@ -807,7 +827,19 @@ function formatBlackboard(entries: Array<{ category: string; content: string }>)
     ? '\n\n⚠️ Pay special attention to any recent User Interjections (within the last 1-5 blackboard entries) and ensure your next actions are aligned with the user\'s further direction.' 
     : '';
   
-  return `\n## YOUR BLACKBOARD (Planning Journal - Read this EVERY iteration!):\n${entries.map(e => `[${e.category}] ${e.content}`).join('\n')}${interjectionNote}`;
+  // Check for potential loop
+  const potentialLoop = detectPotentialLoop(entries);
+  const loopWarning = potentialLoop 
+    ? '\n\n⚠️⚠️⚠️ LOOP WARNING: Your recent blackboard entries show REPETITIVE PATTERNS! Check if your last tool call SUCCEEDED in PREVIOUS ITERATION RESULTS before repeating it. If it succeeded, MOVE ON to the next step!\n'
+    : '';
+  
+  // Prefix each entry with iteration number for loop detection
+  const formattedEntries = entries.map(e => {
+    const iterPrefix = e.iteration !== undefined ? `#${e.iteration} ` : '';
+    return `[${iterPrefix}${e.category}] ${e.content}`;
+  }).join('\n');
+  
+  return `\n## YOUR BLACKBOARD (Planning Journal - Read this EVERY iteration!):${loopWarning}\n${formattedEntries}${interjectionNote}`;
 }
 
 // Format scratchpad section
@@ -873,7 +905,7 @@ function formatAssistanceResponse(assistanceResponse?: { response?: string; file
 
 // Build system prompt dynamically from sections
 function buildSystemPromptDynamic(
-  blackboard: Array<{ category: string; content: string }>,
+  blackboard: Array<{ category: string; content: string; iteration?: number }>,
   sessionFiles: Array<{ id: string; filename: string; mimeType: string; size: number; content?: string }>,
   previousResults: Array<{ tool: string; result?: unknown; error?: string }>,
   iteration: number,
