@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ClipboardEdit, Maximize2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { ScratchpadViewerModal } from './ScratchpadViewerModal';
 
 export interface ScratchpadNodeData {
   type: 'scratchpad';
@@ -19,6 +20,7 @@ export interface ScratchpadNodeData {
 export const ScratchpadNode = memo(({ data, selected }: NodeProps<ScratchpadNodeData>) => {
   const [isEditing, setIsEditing] = useState(false);
   const [localContent, setLocalContent] = useState(data.content || '');
+  const [isModalOpen, setIsModalOpen] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Sync with external content updates
@@ -49,6 +51,11 @@ export const ScratchpadNode = memo(({ data, selected }: NodeProps<ScratchpadNode
       }
     }
   }, [localContent, data]);
+
+  const handleExpandClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsModalOpen(true);
+  }, []);
 
   return (
     <>
@@ -85,7 +92,12 @@ export const ScratchpadNode = memo(({ data, selected }: NodeProps<ScratchpadNode
               </span>
             )}
           </div>
-          <Button variant="ghost" size="icon" className="h-6 w-6 text-amber-700 dark:text-amber-300 hover:bg-amber-300/50">
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-6 w-6 text-amber-700 dark:text-amber-300 hover:bg-amber-300/50"
+            onClick={handleExpandClick}
+          >
             <Maximize2 className="w-3 h-3" />
           </Button>
         </div>
@@ -123,6 +135,13 @@ export const ScratchpadNode = memo(({ data, selected }: NodeProps<ScratchpadNode
           )}
         </div>
       </div>
+
+      <ScratchpadViewerModal
+        open={isModalOpen}
+        onOpenChange={setIsModalOpen}
+        content={localContent}
+        label={data.label}
+      />
     </>
   );
 });
