@@ -500,6 +500,201 @@ Defines all available tools with:
 
 ---
 
+## Customizable System Prompt
+
+Free Agent supports full customization of the system prompt, allowing users to modify agent behavior, test different configurations, and create reusable prompt templates.
+
+### Prompt Tab Overview
+
+Access the Prompt tab in Free Agent view to see and modify:
+
+1. **System Sections** - Core agent instructions (read-only)
+2. **Customizable Sections** - Editable parts of the prompt
+3. **Runtime Sections** - Dynamic placeholders populated at execution
+4. **Tools** - Tool definitions with editable descriptions
+5. **Response Schemas** - Provider-specific JSON schemas (view-only)
+
+### Section Types
+
+| Type | Badge Color | Editable | Description |
+|------|-------------|----------|-------------|
+| System | Red | No | Core agent identity and critical rules |
+| Customizable | Blue | Yes | Workflow, anti-loop rules, data handling |
+| Runtime | Purple | No | Dynamic placeholders ({{TOOLS_LIST}}, etc.) |
+| Custom | Green | Yes | User-added sections |
+
+### Editing Sections
+
+For sections marked as "Customizable":
+
+1. Click the **Edit** button on any customizable section
+2. Modify the content in the textarea
+3. Click **Save** to persist changes
+4. Click **Reset** to restore original content
+
+Changes are automatically saved to localStorage and persist across sessions.
+
+**Visual Indicators:**
+- **Modified** badge appears on edited sections
+- **Reordered** badge shows sections moved from default position
+- **Custom** badge identifies user-created sections
+
+### Adding Custom Sections
+
+1. Click **Add Section** at the top of the Prompt tab
+2. Enter a unique title and description
+3. Write your custom content
+4. Click **Add Section** to save
+
+Custom sections can be:
+- Edited at any time
+- Reordered using up/down arrows
+- Deleted when no longer needed
+
+### Reordering Sections
+
+Use the up/down arrows on any section to change its position in the prompt. This affects the order in which instructions appear to the LLM.
+
+- System sections can be moved relative to each other
+- Custom sections can be placed anywhere in the order
+- Original order can be restored with Reset All
+
+### Runtime Sections (Dynamic Placeholders)
+
+These read-only sections show where dynamic content is injected at execution time:
+
+| Placeholder | Description |
+|-------------|-------------|
+| `{{TOOLS_LIST}}` | Available tools formatted for the LLM |
+| `{{SESSION_FILES}}` | List of attached files |
+| `{{BLACKBOARD_CONTENT}}` | Current planning journal entries |
+| `{{SCRATCHPAD_CONTENT}}` | Current scratchpad data |
+| `{{PREVIOUS_RESULTS}}` | Tool results from last iteration |
+| `{{ASSISTANCE_RESPONSE}}` | User response to assistance request |
+
+These placeholders help you understand where runtime data appears in the final prompt sent to the LLM.
+
+### Tools Tab
+
+The Tools tab displays all available tools organized by category:
+
+**Features:**
+- Search/filter tools by name
+- View tool parameters, types, and requirements
+- See edge function or frontend handler mapping
+- Edit tool descriptions to customize LLM behavior
+
+**Editing Tool Descriptions:**
+
+1. Click **Edit** on any tool
+2. Modify the description
+3. Click **Save** to persist
+
+Custom descriptions appear in `{{TOOLS_LIST}}` and help guide the LLM's understanding of when and how to use each tool.
+
+**Tool Categories:**
+- Memory (read/write blackboard, scratchpad, attributes)
+- Web (search, scrape)
+- Code (GitHub operations)
+- File (read files, ZIP handling)
+- Document (PDF, OCR)
+- Utility (time, weather)
+- Communication (email, assistance)
+- Export (Word, PDF generation)
+- API (HTTP calls, SQL)
+
+Tools can belong to multiple categories for easier discovery.
+
+### Response Schemas Tab
+
+View the JSON schemas used to enforce structured responses from each LLM provider:
+
+- **Gemini**: Uses `responseMimeType: "application/json"` with schema
+- **Claude**: Uses forced tool call with `respond_with_actions` tool
+- **Grok**: Uses OpenAI-compatible `response_format`
+
+These schemas ensure consistent response structure across providers and cannot be edited.
+
+### Export/Import Templates
+
+**Exporting:**
+1. Click the **Export** button in the Prompt tab header
+2. A JSON file downloads containing:
+   - All section customizations
+   - Custom sections you've added
+   - Order overrides
+   - Tool description overrides
+
+**Importing:**
+1. Click the **Import** button
+2. Select a previously exported JSON file
+3. All customizations are restored
+
+**Export Format (v1.0):**
+```json
+{
+  "formatVersion": "1.0",
+  "exportedAt": "2026-01-04T...",
+  "template": {
+    "id": "freeagent-default",
+    "name": "FreeAgent Default",
+    "sections": [...],
+    "responseSchemas": [...],
+    "tools": [...]
+  },
+  "customizations": {
+    "sectionOverrides": {
+      "section_id": "custom content..."
+    },
+    "additionalSections": [
+      {
+        "id": "custom_1",
+        "title": "My Custom Rules",
+        "content": "...",
+        "order": 5.5
+      }
+    ],
+    "orderOverrides": {
+      "section_id": 3.5
+    },
+    "toolOverrides": {
+      "brave_search": {
+        "description": "Custom search behavior..."
+      }
+    }
+  }
+}
+```
+
+### Reset Options
+
+- **Reset Section**: Restore individual section to default
+- **Reset All**: Clear all customizations and restore factory defaults
+
+### Use Cases
+
+**Testing Different Prompting Strategies:**
+- Modify anti-loop rules to test different behaviors
+- Add custom sections with specific constraints
+- Change tool descriptions to encourage certain patterns
+
+**Creating Specialized Agents:**
+- Export a base configuration
+- Create variations for different tasks (research, coding, writing)
+- Import the appropriate template before running
+
+**Debugging Agent Behavior:**
+- View the Raw tab to see the assembled prompt
+- Compare against your customizations
+- Identify which instructions affect behavior
+
+**Sharing Configurations:**
+- Export your optimized template
+- Share JSON file with team members
+- Import to replicate exact agent behavior
+
+---
+
 ## Best Practices
 
 ### For Users
@@ -507,6 +702,8 @@ Defines all available tools with:
 2. Attach relevant files upfront
 3. Use Continue to build on previous work
 4. Check Raw tab when debugging issues
+5. Export templates before making major changes
+6. Use custom sections for task-specific instructions
 
 ### For Agent Development
 1. Always use `saveAs` for data-fetching tools
@@ -514,3 +711,12 @@ Defines all available tools with:
 3. Summarize data, don't copy raw JSON
 4. Check blackboard before re-executing tools
 5. Use `read_attribute` to access saved results
+6. Test prompt changes with small iterations first
+
+### For Prompt Customization
+1. Start with small edits to customizable sections
+2. Use the Raw tab to verify changes appear correctly
+3. Export working configurations before experimenting
+4. Add custom sections for new behaviors rather than modifying core sections
+5. Use descriptive titles for custom sections
+6. Document your changes in section descriptions
