@@ -195,7 +195,7 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
                   <RawViewer rawData={session?.rawData || []} />
                 </TabsContent>
                 <TabsContent value="prompt" className="flex-1 overflow-hidden m-0 p-0">
-                  <SystemPromptViewer />
+                  <SystemPromptViewer configuredParams={secretsManager.getConfiguredToolParams()} />
                 </TabsContent>
               </Tabs>
             </div>
@@ -306,7 +306,7 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
                   <RawViewer rawData={session?.rawData || []} />
                 </TabsContent>
                 <TabsContent value="prompt" className="flex-1 overflow-hidden m-0 p-0">
-                  <SystemPromptViewer />
+                  <SystemPromptViewer configuredParams={secretsManager.getConfiguredToolParams()} />
                 </TabsContent>
               </Tabs>
             </div>
