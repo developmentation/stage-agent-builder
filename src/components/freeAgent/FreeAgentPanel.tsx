@@ -15,6 +15,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Play,
   Square,
   Upload,
@@ -27,10 +33,13 @@ import {
   RotateCcw,
   MessageSquarePlus,
   Wand2,
+  Settings,
+  ChevronDown,
 } from "lucide-react";
 import type { FreeAgentSession, SessionFile } from "@/types/freeAgent";
 import { InterjectModal } from "./InterjectModal";
 import { EnhancePromptModal } from "./EnhancePromptModal";
+import { EnhancePromptSettingsModal } from "./EnhancePromptSettingsModal";
 import { safeStringify } from "@/lib/safeRender";
 
 // Available models - same as workflow tool
@@ -77,6 +86,7 @@ export function FreeAgentPanel({
   const [maxIterations, setMaxIterations] = useState(() => session?.maxIterations || 50);
   const [interjectModalOpen, setInterjectModalOpen] = useState(false);
   const [enhanceModalOpen, setEnhanceModalOpen] = useState(false);
+  const [enhanceSettingsModalOpen, setEnhanceSettingsModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Sync model and maxIterations from session when transitioning to idle (Continue)
@@ -335,16 +345,42 @@ export function FreeAgentPanel({
               )}
             </div>
 
-            {/* Enhance Prompt button */}
-            <Button
-              variant="outline"
-              onClick={() => setEnhanceModalOpen(true)}
-              disabled={!prompt.trim() || isRunning}
-              className="w-full border-amber-500/50 text-amber-600 hover:bg-amber-500/10 hover:text-amber-500"
-            >
-              <Wand2 className="w-4 h-4 mr-2" />
-              Enhance Prompt
-            </Button>
+            {/* Enhance Prompt dropdown */}
+            <div className="flex gap-1">
+              <Button
+                variant="outline"
+                onClick={() => setEnhanceModalOpen(true)}
+                disabled={!prompt.trim() || isRunning}
+                className="flex-1 border-amber-500/50 text-amber-600 hover:bg-amber-500/10 hover:text-amber-500"
+              >
+                <Wand2 className="w-4 h-4 mr-2" />
+                Enhance Prompt
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="shrink-0 border-amber-500/50 text-amber-600 hover:bg-amber-500/10 hover:text-amber-500"
+                  >
+                    <ChevronDown className="w-4 h-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem 
+                    onClick={() => setEnhanceModalOpen(true)}
+                    disabled={!prompt.trim() || isRunning}
+                  >
+                    <Wand2 className="w-4 h-4 mr-2" />
+                    Enhance Prompt
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setEnhanceSettingsModalOpen(true)}>
+                    <Settings className="w-4 h-4 mr-2" />
+                    Edit Enhancement Template
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
 
             {/* Start button */}
             <Button
@@ -486,6 +522,12 @@ export function FreeAgentPanel({
           model={selectedModel}
           onAccept={handleEnhancedPromptAccept}
           onAcceptAndStart={handleEnhancedPromptAcceptAndStart}
+        />
+
+        {/* Enhance Prompt Settings Modal */}
+        <EnhancePromptSettingsModal
+          open={enhanceSettingsModalOpen}
+          onOpenChange={setEnhanceSettingsModalOpen}
         />
       </CardContent>
     </Card>

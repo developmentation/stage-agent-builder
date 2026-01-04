@@ -27,6 +27,62 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { SessionFile } from "@/types/freeAgent";
 
+const STORAGE_KEY = "freeagent-enhance-prompt-template";
+
+// Default enhancement prompt template
+export const DEFAULT_ENHANCEMENT_PROMPT = `You are an expert task planner for an autonomous AI agent called "Free Agent". Your job is to transform a user's request into a detailed, actionable execution plan that the agent can follow systematically.
+
+The agent operates in iterations, calling tools and tracking progress on a blackboard.
+
+Create a comprehensive execution plan that the agent can follow. The plan should be specific, actionable, and tailored to the available tools.
+
+Format your response as follows:
+
+## Goal
+Clearly restate what needs to be accomplished in 1-2 sentences.
+
+## Strategy  
+Describe the high-level approach in 2-3 sentences.
+
+## Execution Plan
+
+### Phase 1: [Name]
+- **Tools**: [which tools to use]
+- **Actions**: [specific steps the agent should take]
+- **Store**: [what to save to blackboard/scratchpad]
+- **Expected Output**: [what this phase produces]
+
+### Phase 2: [Name]
+...continue for all necessary phases...
+
+## Success Criteria
+- [How to know the task is complete]
+- [Quality checks to perform]
+
+## Potential Challenges
+- [Possible issues and how to handle them]
+
+## Estimated Iterations: [number]
+
+Be thorough but concise. Focus on practical, executable steps.`;
+
+export function getStoredEnhancementPrompt(): string {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    return stored || DEFAULT_ENHANCEMENT_PROMPT;
+  } catch {
+    return DEFAULT_ENHANCEMENT_PROMPT;
+  }
+}
+
+export function setStoredEnhancementPrompt(prompt: string): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, prompt);
+  } catch (e) {
+    console.error("Failed to save enhancement prompt:", e);
+  }
+}
+
 interface EnhancePromptModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -58,17 +114,7 @@ export function EnhancePromptModal({
   const [activeTab, setActiveTab] = useState<"markdown" | "raw">("markdown");
   const [hasEnhanced, setHasEnhanced] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
-
-  // Reset state when modal opens
-  useEffect(() => {
-    if (open) {
-      setEnhancedPrompt("");
-      setFeedback("");
-      setIsEnhancing(false);
-      setHasEnhanced(false);
-      setActiveTab("markdown");
-    }
-  }, [open]);
+  const hasStartedRef = useRef(false);
 
   // Load tools manifest for context
   const loadToolsList = async (): Promise<ToolInfo[]> => {
@@ -113,48 +159,18 @@ export function EnhancePromptModal({
     return "run-agent"; // Gemini default
   };
 
-  // Enhancement system prompt
+  // Enhancement system prompt - uses stored custom prompt
   const getEnhancementSystemPrompt = (toolsList: string, filesList: string, previousPlan?: string, userFeedback?: string): string => {
-    let prompt = `You are an expert task planner for an autonomous AI agent called "Free Agent". Your job is to transform a user's request into a detailed, actionable execution plan that the agent can follow systematically.
+    const basePrompt = getStoredEnhancementPrompt();
+    
+    let prompt = `${basePrompt}
 
-The agent operates in iterations, calling tools and tracking progress on a blackboard. It has access to these tools:
+The agent has access to these tools:
 
 ${toolsList}
 
 The user has provided these files:
-${filesList}
-
-Create a comprehensive execution plan that the agent can follow. The plan should be specific, actionable, and tailored to the available tools.
-
-Format your response as follows:
-
-## Goal
-Clearly restate what needs to be accomplished in 1-2 sentences.
-
-## Strategy  
-Describe the high-level approach in 2-3 sentences.
-
-## Execution Plan
-
-### Phase 1: [Name]
-- **Tools**: [which tools to use]
-- **Actions**: [specific steps the agent should take]
-- **Store**: [what to save to blackboard/scratchpad]
-- **Expected Output**: [what this phase produces]
-
-### Phase 2: [Name]
-...continue for all necessary phases...
-
-## Success Criteria
-- [How to know the task is complete]
-- [Quality checks to perform]
-
-## Potential Challenges
-- [Possible issues and how to handle them]
-
-## Estimated Iterations: [number]
-
-Be thorough but concise. Focus on practical, executable steps.`;
+${filesList}`;
 
     if (previousPlan && userFeedback) {
       prompt += `
@@ -279,9 +295,20 @@ Please create an improved plan that addresses the user's feedback.`;
     }
   };
 
-  const handleEnhance = () => {
-    streamEnhancement(false);
-  };
+  // Auto-start enhancement when modal opens
+  useEffect(() => {
+    if (open && !hasStartedRef.current) {
+      hasStartedRef.current = true;
+      setEnhancedPrompt("");
+      setFeedback("");
+      setHasEnhanced(false);
+      setActiveTab("markdown");
+      streamEnhancement(false);
+    }
+    if (!open) {
+      hasStartedRef.current = false;
+    }
+  }, [open]);
 
   const handleRefine = () => {
     if (!feedback.trim()) return;
@@ -303,6 +330,10 @@ Please create an improved plan that addresses the user's feedback.`;
       abortControllerRef.current.abort();
     }
     onOpenChange(false);
+  };
+
+  const handleRegenerate = () => {
+    streamEnhancement(false);
   };
 
   // Get model display info
@@ -342,28 +373,8 @@ Please create an improved plan that addresses the user's feedback.`;
         </DialogHeader>
 
         <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
-          {/* Original prompt section */}
-          <div className="px-3 py-2 border-b bg-background shrink-0">
-            <Label className="text-xs text-muted-foreground mb-1 block">
-              Original Prompt
-            </Label>
-            <div className="bg-muted/50 rounded-md p-2 text-sm max-h-20 overflow-y-auto">
-              {originalPrompt}
-            </div>
-          </div>
-
           {/* Main content area */}
           <div className="flex-1 flex flex-col min-h-0 p-3 gap-2 overflow-hidden">
-            {/* Action buttons for initial enhancement */}
-            {!hasEnhanced && !isEnhancing && (
-              <div className="flex items-center justify-center py-4">
-                <Button onClick={handleEnhance} size="default" className="gap-2">
-                  <Sparkles className="w-4 h-4" />
-                  Generate Structured Plan
-                </Button>
-              </div>
-            )}
-
             {/* Loading state */}
             {isEnhancing && (
               <div className="flex items-center gap-2 text-muted-foreground shrink-0">
@@ -375,58 +386,56 @@ Please create an improved plan that addresses the user's feedback.`;
             )}
 
             {/* Enhanced prompt display */}
-            {(enhancedPrompt || isEnhancing) && (
-              <Tabs
-                value={activeTab}
-                onValueChange={(v) => setActiveTab(v as "markdown" | "raw")}
-                className="flex-1 flex flex-col min-h-0 overflow-hidden"
-              >
-                <div className="flex items-center justify-between shrink-0 gap-2">
-                  <TabsList className="h-7">
-                    <TabsTrigger value="markdown" className="text-xs gap-1 px-2">
-                      <FileText className="w-3 h-3" />
-                      Preview
-                    </TabsTrigger>
-                    <TabsTrigger value="raw" className="text-xs gap-1 px-2">
-                      <Code className="w-3 h-3" />
-                      Edit
-                    </TabsTrigger>
-                  </TabsList>
-                  {hasEnhanced && !isEnhancing && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleEnhance}
-                      className="gap-1 text-xs h-7 px-2"
-                    >
-                      <RefreshCw className="w-3 h-3" />
-                      Start Over
-                    </Button>
-                  )}
-                </div>
+            <Tabs
+              value={activeTab}
+              onValueChange={(v) => setActiveTab(v as "markdown" | "raw")}
+              className="flex-1 flex flex-col min-h-0 overflow-hidden"
+            >
+              <div className="flex items-center justify-between shrink-0 gap-2">
+                <TabsList className="h-7">
+                  <TabsTrigger value="markdown" className="text-xs gap-1 px-2">
+                    <FileText className="w-3 h-3" />
+                    Preview
+                  </TabsTrigger>
+                  <TabsTrigger value="raw" className="text-xs gap-1 px-2">
+                    <Code className="w-3 h-3" />
+                    Edit
+                  </TabsTrigger>
+                </TabsList>
+                {!isEnhancing && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleRegenerate}
+                    className="gap-1 text-xs h-7 px-2"
+                  >
+                    <RefreshCw className="w-3 h-3" />
+                    Regenerate
+                  </Button>
+                )}
+              </div>
 
-                <div className="flex-1 min-h-0 mt-2 border rounded-md overflow-hidden">
-                  <TabsContent value="markdown" className="h-full m-0 p-0">
-                    <ScrollArea className="h-full">
-                      <div className="p-3 prose prose-sm dark:prose-invert max-w-none">
-                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                          {enhancedPrompt || "_Generating..._"}
-                        </ReactMarkdown>
-                      </div>
-                    </ScrollArea>
-                  </TabsContent>
+              <div className="flex-1 min-h-0 mt-2 border rounded-md overflow-hidden">
+                <TabsContent value="markdown" className="h-full m-0 p-0">
+                  <ScrollArea className="h-full">
+                    <div className="p-3 prose prose-sm dark:prose-invert max-w-none">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {enhancedPrompt || "_Generating..._"}
+                      </ReactMarkdown>
+                    </div>
+                  </ScrollArea>
+                </TabsContent>
 
-                  <TabsContent value="raw" className="h-full m-0 p-0">
-                    <Textarea
-                      value={enhancedPrompt}
-                      onChange={(e) => setEnhancedPrompt(e.target.value)}
-                      className="h-full w-full border-0 rounded-none resize-none font-mono text-sm"
-                      placeholder="Enhanced prompt will appear here..."
-                    />
-                  </TabsContent>
-                </div>
-              </Tabs>
-            )}
+                <TabsContent value="raw" className="h-full m-0 p-0">
+                  <Textarea
+                    value={enhancedPrompt}
+                    onChange={(e) => setEnhancedPrompt(e.target.value)}
+                    className="h-full w-full border-0 rounded-none resize-none font-mono text-sm"
+                    placeholder="Enhanced prompt will appear here..."
+                  />
+                </TabsContent>
+              </div>
+            </Tabs>
 
             {/* Feedback section */}
             {hasEnhanced && !isEnhancing && (
