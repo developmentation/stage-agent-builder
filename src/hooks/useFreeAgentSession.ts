@@ -733,7 +733,15 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
 
   // Start a new session (or resume with preserved memory if existingSession provided)
   const startSession = useCallback(
-    async (prompt: string, files: SessionFile[] = [], model: string = "gemini-2.5-flash", maxIterations: number = defaultMaxIterations, existingSession?: FreeAgentSession | null) => {
+    async (
+      prompt: string, 
+      files: SessionFile[] = [], 
+      model: string = "gemini-2.5-flash", 
+      maxIterations: number = defaultMaxIterations, 
+      existingSession?: FreeAgentSession | null,
+      secretOverrides?: FreeAgentSession['secretOverrides'],
+      configuredParams?: FreeAgentSession['configuredParams']
+    ) => {
       try {
         setIsRunning(true);
         iterationRef.current = 0;
@@ -743,6 +751,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
         pendingInterjectRef.current = null;
 
         // If continuing from an existing session, preserve memory (blackboard, scratchpad, artifacts)
+        // Also preserve secrets from existing session if not provided
         const newSession: FreeAgentSession = {
           id: existingSession?.id || crypto.randomUUID(),
           status: "running",
@@ -770,6 +779,9 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
           lastActivityTime: new Date().toISOString(),
           rawData: existingSession?.rawData || [],
           retryCount: 0,
+          // Include secrets for tool parameter injection
+          secretOverrides: secretOverrides || existingSession?.secretOverrides,
+          configuredParams: configuredParams || existingSession?.configuredParams,
         };
 
         // Initialize refs with session memory
