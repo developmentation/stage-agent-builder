@@ -182,7 +182,7 @@
       },
       "returns": {
         "type": "object",
-        "properties": ["success", "mode", "repository", "totalFiles", "totalDirectories", "structure", "files"]
+        "properties": ["success", "mode", "repository", "totalFiles", "totalDirectories", "files"]
       }
     },
     "read_github_file": {
