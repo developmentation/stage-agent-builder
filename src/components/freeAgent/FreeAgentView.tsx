@@ -72,19 +72,21 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
     }
   }, [session?.status, session?.finalReport]);
 
-  const handleStart = useCallback(
-    async (prompt: string, files: SessionFile[], model: string, maxIterations: number, existingSession?: FreeAgentSession | null) => {
-      // Compute secrets at start time for tool parameter injection
-      const secretOverrides = secretsManager.getSecretOverrides();
-      const configuredParams = secretsManager.getConfiguredToolParams();
-      
-      // Build dynamic prompt data from template + customizations
-      const promptData = await buildPromptData(promptCustomization);
-      
-      await startSession(prompt, files, model, maxIterations, existingSession, secretOverrides, configuredParams, promptData);
-    },
-    [startSession, secretsManager, promptCustomization]
-  );
+  // Don't memoize handleStart - we need fresh customizations every time
+  const handleStart = async (prompt: string, files: SessionFile[], model: string, maxIterations: number, existingSession?: FreeAgentSession | null) => {
+    // Compute secrets at start time for tool parameter injection
+    const secretOverrides = secretsManager.getSecretOverrides();
+    const configuredParams = secretsManager.getConfiguredToolParams();
+    
+    // Build dynamic prompt data from template + customizations
+    // Use promptCustomization directly (not from closure) to get latest values
+    const promptData = await buildPromptData(promptCustomization);
+    
+    console.log('[FreeAgentView] Starting session with promptData:', 
+      promptData.sections.find(s => s.id === 'identity')?.content.substring(0, 100));
+    
+    await startSession(prompt, files, model, maxIterations, existingSession, secretOverrides, configuredParams, promptData);
+  };
 
   const handleAssistanceResponse = useCallback(
     (response: { response?: string; fileId?: string; selectedChoice?: string }) => {
