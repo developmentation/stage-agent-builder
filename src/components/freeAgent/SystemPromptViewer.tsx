@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -51,9 +51,32 @@ import {
   Plus,
   ChevronUp,
   Trash2,
-  GripVertical
+  GripVertical,
+  Search,
+  Globe,
+  Clock,
+  Cloud,
+  FileText,
+  Github,
+  ClipboardList,
+  Mail,
+  HelpCircle,
+  Image,
+  Volume2,
+  BarChart2,
+  Archive,
+  ScanText,
+  FolderOutput,
+  FileCode,
+  ClipboardCopy,
+  ClipboardEdit,
+  MessageSquare,
+  Files,
+  FileSearch,
+  FileArchive,
+  Edit3
 } from "lucide-react";
-import type { SystemPromptTemplate, PromptSection, ResponseSchema, ExportedPromptTemplate } from "@/types/systemPrompt";
+import type { SystemPromptTemplate, PromptSection, ResponseSchema, ExportedPromptTemplate, ToolsManifest, ToolDefinition, ToolCategory } from "@/types/systemPrompt";
 import { usePromptCustomization } from "@/hooks/usePromptCustomization";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -74,6 +97,37 @@ const sectionIcons: Record<string, React.ReactNode> = {
   execution: <AlertTriangle className="h-4 w-4" />,
   dynamic: <RefreshCw className="h-4 w-4" />,
   custom: <Pencil className="h-4 w-4" />,
+};
+
+// Icon mapping for tools
+const toolIconMap: Record<string, React.ReactNode> = {
+  Clock: <Clock className="h-4 w-4" />,
+  Cloud: <Cloud className="h-4 w-4" />,
+  Search: <Search className="h-4 w-4" />,
+  Globe: <Globe className="h-4 w-4" />,
+  Github: <Github className="h-4 w-4" />,
+  FileCode: <FileCode className="h-4 w-4" />,
+  ClipboardList: <ClipboardList className="h-4 w-4" />,
+  Edit3: <Edit3 className="h-4 w-4" />,
+  FileText: <FileText className="h-4 w-4" />,
+  Database: <Database className="h-4 w-4" />,
+  ClipboardCopy: <ClipboardCopy className="h-4 w-4" />,
+  ClipboardEdit: <ClipboardEdit className="h-4 w-4" />,
+  MessageSquare: <MessageSquare className="h-4 w-4" />,
+  Files: <Files className="h-4 w-4" />,
+  Archive: <Archive className="h-4 w-4" />,
+  FileArchive: <FileArchive className="h-4 w-4" />,
+  FolderOutput: <FolderOutput className="h-4 w-4" />,
+  FileSearch: <FileSearch className="h-4 w-4" />,
+  ScanText: <ScanText className="h-4 w-4" />,
+  Brain: <Brain className="h-4 w-4" />,
+  BarChart2: <BarChart2 className="h-4 w-4" />,
+  Mail: <Mail className="h-4 w-4" />,
+  HelpCircle: <HelpCircle className="h-4 w-4" />,
+  Image: <Image className="h-4 w-4" />,
+  Volume2: <Volume2 className="h-4 w-4" />,
+  Download: <Download className="h-4 w-4" />,
+  Upload: <Upload className="h-4 w-4" />,
 };
 
 // Color mapping for editable status
@@ -428,10 +482,204 @@ function ResponseSchemaCard({ schema }: { schema: ResponseSchema }) {
   );
 }
 
+// ToolCard component
+interface ToolCardProps {
+  toolId: string;
+  tool: ToolDefinition;
+  categories: Record<string, ToolCategory>;
+  isCustomized: boolean;
+  effectiveDescription: string;
+  onSave: (description: string) => void;
+  onReset: () => void;
+}
+
+function ToolCard({ 
+  toolId, 
+  tool, 
+  categories, 
+  isCustomized, 
+  effectiveDescription, 
+  onSave, 
+  onReset 
+}: ToolCardProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editDescription, setEditDescription] = useState(effectiveDescription);
+  
+  const icon = toolIconMap[tool.icon] || <Settings className="h-4 w-4" />;
+  const toolCategories = Array.isArray(tool.category) ? tool.category : [tool.category];
+  
+  useEffect(() => {
+    if (!isEditing) {
+      setEditDescription(effectiveDescription);
+    }
+  }, [effectiveDescription, isEditing]);
+  
+  const handleSave = useCallback(() => {
+    onSave(editDescription);
+    setIsEditing(false);
+    toast.success(`Updated description for "${tool.name}"`);
+  }, [editDescription, onSave, tool.name]);
+  
+  const handleCancel = useCallback(() => {
+    setEditDescription(effectiveDescription);
+    setIsEditing(false);
+  }, [effectiveDescription]);
+  
+  const handleReset = useCallback(() => {
+    onReset();
+    setIsEditing(false);
+    toast.success(`Reset "${tool.name}" to default description`);
+  }, [onReset, tool.name]);
+  
+  const params = Object.entries(tool.parameters || {});
+  const requiredParams = params.filter(([_, p]) => p.required);
+  const optionalParams = params.filter(([_, p]) => !p.required);
+  
+  return (
+    <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
+      <div className={`border rounded-lg mb-2 overflow-hidden transition-colors ${
+        isCustomized ? 'border-green-500/50 bg-green-500/5' : 'border-border bg-card'
+      }`}>
+        <CollapsibleTrigger asChild>
+          <button className="w-full px-3 py-3 flex items-center gap-3 hover:bg-muted/50 transition-colors text-left">
+            <span className="text-muted-foreground">
+              {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+            </span>
+            <span className="text-muted-foreground">{icon}</span>
+            <span className="flex-1 font-medium text-sm">{tool.name}</span>
+            {toolCategories.map((cat) => {
+              const category = categories[cat];
+              return category ? (
+                <Badge 
+                  key={cat}
+                  variant="outline" 
+                  className="text-xs"
+                  style={{ 
+                    backgroundColor: `${category.color}20`,
+                    borderColor: `${category.color}50`,
+                    color: category.color
+                  }}
+                >
+                  {category.name}
+                </Badge>
+              ) : null;
+            })}
+            {isCustomized && (
+              <Badge variant="outline" className="text-xs bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30">
+                <Check className="h-3 w-3 mr-1" />
+                Modified
+              </Badge>
+            )}
+            {tool.frontend_handler && (
+              <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30">
+                Frontend
+              </Badge>
+            )}
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="px-4 pb-4 border-t border-border/50">
+            <div className="mt-3 space-y-3">
+              {/* Description */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-medium text-muted-foreground">Description</span>
+                  {!isEditing && (
+                    <div className="flex items-center gap-1">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        className="h-6 text-xs"
+                        onClick={() => { setEditDescription(effectiveDescription); setIsEditing(true); }}
+                      >
+                        <Pencil className="h-3 w-3 mr-1" />
+                        Edit
+                      </Button>
+                      {isCustomized && (
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-6 text-xs text-muted-foreground"
+                          onClick={handleReset}
+                        >
+                          <Undo2 className="h-3 w-3 mr-1" />
+                          Reset
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {isEditing ? (
+                  <div className="space-y-2">
+                    <Textarea
+                      value={editDescription}
+                      onChange={(e) => setEditDescription(e.target.value)}
+                      className="min-h-[80px] font-mono text-sm resize-y"
+                    />
+                    <div className="flex items-center gap-2">
+                      <Button size="sm" onClick={handleSave} className="h-7 text-xs">
+                        <Save className="h-3 w-3 mr-1" />
+                        Save
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={handleCancel} className="h-7 text-xs">
+                        <X className="h-3 w-3 mr-1" />
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-foreground/80">{effectiveDescription}</p>
+                )}
+              </div>
+              
+              {/* Parameters */}
+              {params.length > 0 && (
+                <div>
+                  <span className="text-xs font-medium text-muted-foreground">Parameters</span>
+                  <div className="mt-1 space-y-1">
+                    {requiredParams.map(([name, param]) => (
+                      <div key={name} className="flex items-start gap-2 text-xs">
+                        <code className="px-1.5 py-0.5 bg-primary/10 text-primary rounded font-mono">{name}</code>
+                        <span className="text-muted-foreground">({param.type})</span>
+                        <Badge variant="outline" className="h-4 text-[10px] bg-red-500/10 text-red-600 border-red-500/30">required</Badge>
+                        <span className="text-muted-foreground flex-1 truncate">{param.description}</span>
+                      </div>
+                    ))}
+                    {optionalParams.map(([name, param]) => (
+                      <div key={name} className="flex items-start gap-2 text-xs">
+                        <code className="px-1.5 py-0.5 bg-muted text-muted-foreground rounded font-mono">{name}</code>
+                        <span className="text-muted-foreground">({param.type})</span>
+                        <span className="text-muted-foreground flex-1 truncate">{param.description}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
+              {/* Edge function / Handler */}
+              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                {tool.edge_function && (
+                  <span>Edge Function: <code className="px-1 py-0.5 bg-muted rounded">{tool.edge_function}</code></span>
+                )}
+                {tool.frontend_handler && (
+                  <span>Handler: <code className="px-1 py-0.5 bg-muted rounded">frontend</code></span>
+                )}
+              </div>
+            </div>
+          </div>
+        </CollapsibleContent>
+      </div>
+    </Collapsible>
+  );
+}
+
 export function SystemPromptViewer({ onClose }: SystemPromptViewerProps) {
   const [template, setTemplate] = useState<SystemPromptTemplate | null>(null);
+  const [toolsManifest, setToolsManifest] = useState<ToolsManifest | null>(null);
   const [loading, setLoading] = useState(true);
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<"sections" | "schemas" | "tools">("sections");
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [addSectionDialogOpen, setAddSectionDialogOpen] = useState(false);
@@ -439,6 +687,7 @@ export function SystemPromptViewer({ onClose }: SystemPromptViewerProps) {
   const [newSectionContent, setNewSectionContent] = useState("");
   const [newSectionDescription, setNewSectionDescription] = useState("");
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [toolSearchQuery, setToolSearchQuery] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const {
@@ -459,20 +708,73 @@ export function SystemPromptViewer({ onClose }: SystemPromptViewerProps) {
     getSortedSections,
     hasOrderChanges,
     resetOrder,
+    getEffectiveToolDescription,
+    isToolCustomized,
+    updateToolDescription,
+    resetToolDescription,
+    hasToolCustomizations,
   } = usePromptCustomization(template?.id || "default");
   
-  // Load template
+  // Load template and tools manifest
   useEffect(() => {
-    fetch("/data/systemPromptTemplate.json")
-      .then((res) => res.json())
-      .then((data: SystemPromptTemplate) => {
-        setTemplate(data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error("Failed to load system prompt template:", err);
-        setLoading(false);
+    Promise.all([
+      fetch("/data/systemPromptTemplate.json").then(res => res.json()),
+      fetch("/data/toolsManifest.json").then(res => res.json())
+    ]).then(([templateData, toolsData]) => {
+      setTemplate(templateData as SystemPromptTemplate);
+      setToolsManifest(toolsData as ToolsManifest);
+      setLoading(false);
+    }).catch((err) => {
+      console.error("Failed to load data:", err);
+      setLoading(false);
+    });
+  }, []);
+  
+  // Group tools by category (dynamic)
+  const toolsByCategory = useMemo(() => {
+    if (!toolsManifest) return {};
+    
+    const groups: Record<string, Array<{ id: string; tool: ToolDefinition }>> = {};
+    
+    Object.entries(toolsManifest.tools).forEach(([id, tool]) => {
+      const cats = Array.isArray(tool.category) ? tool.category : [tool.category];
+      cats.forEach(cat => {
+        if (!groups[cat]) groups[cat] = [];
+        groups[cat].push({ id, tool });
       });
+    });
+    
+    return groups;
+  }, [toolsManifest]);
+  
+  // Filter tools by search
+  const filteredToolsByCategory = useMemo(() => {
+    if (!toolSearchQuery.trim()) return toolsByCategory;
+    
+    const query = toolSearchQuery.toLowerCase();
+    const filtered: Record<string, Array<{ id: string; tool: ToolDefinition }>> = {};
+    
+    Object.entries(toolsByCategory).forEach(([cat, tools]) => {
+      const matchingTools = tools.filter(({ id, tool }) => 
+        id.toLowerCase().includes(query) ||
+        tool.name.toLowerCase().includes(query) ||
+        tool.description.toLowerCase().includes(query)
+      );
+      if (matchingTools.length > 0) {
+        filtered[cat] = matchingTools;
+      }
+    });
+    
+    return filtered;
+  }, [toolsByCategory, toolSearchQuery]);
+  
+  const toggleCategory = useCallback((cat: string) => {
+    setExpandedCategories(prev => {
+      const next = new Set(prev);
+      if (next.has(cat)) next.delete(cat);
+      else next.add(cat);
+      return next;
+    });
   }, []);
   
   const toggleSection = useCallback((sectionId: string) => {
@@ -622,14 +924,17 @@ export function SystemPromptViewer({ onClose }: SystemPromptViewerProps) {
             <h2 className="text-lg font-semibold">{template.name}</h2>
             <p className="text-xs text-muted-foreground">
               v{template.version} • {sortedSections.length} sections
+              {toolsManifest && (
+                <span className="ml-2">• {Object.keys(toolsManifest.tools).length} tools</span>
+              )}
               {editableCounts.custom > 0 && (
                 <span className="text-purple-600 dark:text-purple-400 ml-2">
                   • {editableCounts.custom} custom
                 </span>
               )}
-              {hasCustomizations && (
+              {(hasCustomizations || hasToolCustomizations) && (
                 <span className="text-green-600 dark:text-green-400 ml-2">
-                  • {editableCounts.customized} modified
+                  • modified
                 </span>
               )}
               {hasOrderChanges && (
@@ -648,7 +953,7 @@ export function SystemPromptViewer({ onClose }: SystemPromptViewerProps) {
               <Upload className="h-3 w-3 mr-1" />
               <span className="hidden sm:inline">Import</span>
             </Button>
-            {(hasCustomizations || hasOrderChanges || editableCounts.custom > 0) && (
+            {(hasCustomizations || hasOrderChanges || editableCounts.custom > 0 || hasToolCustomizations) && (
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -783,19 +1088,86 @@ export function SystemPromptViewer({ onClose }: SystemPromptViewerProps) {
         </TabsContent>
         
         <TabsContent value="tools" className="flex-1 overflow-hidden m-0 p-0">
-          <ScrollArea className="h-full">
+          <div className="px-4 py-2 border-b border-border flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                value={toolSearchQuery}
+                onChange={(e) => setToolSearchQuery(e.target.value)}
+                placeholder="Search tools..."
+                className="pl-8 h-8"
+              />
+            </div>
+            <Badge variant="outline" className="text-xs">
+              {toolsManifest ? Object.keys(toolsManifest.tools).length : 0} tools
+            </Badge>
+            {hasToolCustomizations && (
+              <Badge variant="outline" className="text-xs bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30">
+                <Check className="h-3 w-3 mr-1" />
+                Customized
+              </Badge>
+            )}
+          </div>
+          <ScrollArea className="h-[calc(100%-48px)]">
             <div className="p-4">
-              <div className="border border-dashed border-border rounded-lg p-8 text-center">
-                <Settings className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
-                <h3 className="font-medium text-muted-foreground mb-2">Tool Definitions</h3>
-                <p className="text-sm text-muted-foreground/70 max-w-md mx-auto">
-                  Tool definitions are currently loaded from the tools manifest. 
-                  Future versions will allow viewing and customizing tool descriptions here.
-                </p>
-                <Button variant="outline" size="sm" className="mt-4" disabled>
-                  Coming in Phase 3
-                </Button>
-              </div>
+              {toolsManifest ? (
+                Object.entries(filteredToolsByCategory).length > 0 ? (
+                  Object.entries(filteredToolsByCategory)
+                    .sort(([a], [b]) => a.localeCompare(b))
+                    .map(([categoryId, tools]) => {
+                      const category = toolsManifest.categories[categoryId];
+                      if (!category) return null;
+                      
+                      const isExpanded = expandedCategories.has(categoryId);
+                      
+                      return (
+                        <div key={categoryId} className="mb-3">
+                          <button
+                            onClick={() => toggleCategory(categoryId)}
+                            className="w-full flex items-center gap-2 px-2 py-2 rounded-lg hover:bg-muted/50 transition-colors"
+                          >
+                            {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                            <span 
+                              className="w-3 h-3 rounded-full" 
+                              style={{ backgroundColor: category.color }} 
+                            />
+                            <span className="font-medium text-sm">{category.name}</span>
+                            <span className="text-xs text-muted-foreground">({tools.length})</span>
+                            <span className="flex-1" />
+                            <span className="text-xs text-muted-foreground">{category.description}</span>
+                          </button>
+                          
+                          {isExpanded && (
+                            <div className="ml-4 mt-2">
+                              {tools.map(({ id, tool }) => (
+                                <ToolCard
+                                  key={id}
+                                  toolId={id}
+                                  tool={tool}
+                                  categories={toolsManifest.categories}
+                                  isCustomized={isToolCustomized(id)}
+                                  effectiveDescription={getEffectiveToolDescription(id, tool.description)}
+                                  onSave={(desc) => updateToolDescription(id, desc)}
+                                  onReset={() => resetToolDescription(id)}
+                                />
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No tools match "{toolSearchQuery}"</p>
+                  </div>
+                )
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2" />
+                  <p className="text-sm">Loading tools...</p>
+                </div>
+              )}
             </div>
           </ScrollArea>
         </TabsContent>

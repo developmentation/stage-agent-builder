@@ -92,6 +92,7 @@ export interface SystemPromptTemplate {
     author?: string;
     tags?: string[];
     notes?: string;
+    toolOverrides?: Record<string, { description?: string }>;
   };
 }
 
@@ -114,6 +115,11 @@ export interface ExportedPromptTemplate {
   template: SystemPromptTemplate;
 }
 
+// Tool override for custom descriptions
+export interface ToolOverride {
+  description?: string;
+}
+
 // User customization overlay (Phase 2+)
 export interface PromptCustomization {
   templateId: string;
@@ -121,4 +127,44 @@ export interface PromptCustomization {
   disabledSections: string[]; // sectionIds to skip
   additionalSections: PromptSection[]; // User-added sections
   orderOverrides?: Record<string, number>; // sectionId -> custom order
+  toolOverrides?: Record<string, ToolOverride>; // toolId -> customizations
+}
+
+// Tool manifest types
+export interface ToolParameter {
+  type: string;
+  required: boolean;
+  description: string;
+  default?: string | number | boolean;
+  enum?: string[];
+  items?: string;
+}
+
+export interface ToolDefinition {
+  name: string;
+  description: string;
+  icon: string;
+  category: string | string[]; // Can have multiple categories
+  parameters: Record<string, ToolParameter>;
+  returns: {
+    type: string;
+    properties?: string[] | Record<string, unknown>;
+    items?: Record<string, unknown>;
+    description?: string;
+  };
+  edge_function?: string;
+  frontend_handler?: boolean;
+}
+
+export interface ToolCategory {
+  name: string;
+  description: string;
+  color: string;
+}
+
+export interface ToolsManifest {
+  version: string;
+  description: string;
+  tools: Record<string, ToolDefinition>;
+  categories: Record<string, ToolCategory>;
 }

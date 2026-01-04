@@ -3,7 +3,8 @@ import type {
   SystemPromptTemplate, 
   PromptSection, 
   PromptCustomization,
-  ExportedPromptTemplate 
+  ExportedPromptTemplate,
+  ToolOverride
 } from "@/types/systemPrompt";
 
 const STORAGE_KEY = "freeagent-prompt-customizations";
@@ -34,6 +35,14 @@ interface UsePromptCustomizationReturn {
   getSortedSections: (templateSections: PromptSection[]) => PromptSection[];
   hasOrderChanges: boolean;
   resetOrder: () => void;
+  
+  // Tool overrides
+  getEffectiveToolDescription: (toolId: string, originalDescription: string) => string;
+  isToolCustomized: (toolId: string) => boolean;
+  updateToolDescription: (toolId: string, description: string) => void;
+  resetToolDescription: (toolId: string) => void;
+  hasToolCustomizations: boolean;
+  getToolOverrides: () => Record<string, ToolOverride>;
   
   // Import/Export
   exportCustomizations: (template: SystemPromptTemplate) => ExportedPromptTemplate;
@@ -74,7 +83,8 @@ export function usePromptCustomization(templateId: string): UsePromptCustomizati
       const hasContent = customizations && (
         Object.keys(customizations.sectionOverrides).length > 0 ||
         customizations.additionalSections.length > 0 ||
-        Object.keys(customizations.orderOverrides || {}).length > 0
+        Object.keys(customizations.orderOverrides || {}).length > 0 ||
+        Object.keys(customizations.toolOverrides || {}).length > 0
       );
       
       if (hasContent) {
@@ -104,6 +114,8 @@ export function usePromptCustomization(templateId: string): UsePromptCustomizati
     (customizations?.additionalSections?.length || 0) > 0;
   
   const hasOrderChanges = Object.keys(customizations?.orderOverrides || {}).length > 0;
+  
+  const hasToolCustomizations = Object.keys(customizations?.toolOverrides || {}).length > 0;
   
   const isCustomized = useCallback((sectionId: string): boolean => {
     return customizedSectionIds.has(sectionId);
@@ -344,7 +356,8 @@ export function usePromptCustomization(templateId: string): UsePromptCustomizati
       if (!prev) return prev;
       
       const hasContent = Object.keys(prev.sectionOverrides).length > 0 || 
-        prev.additionalSections.length > 0;
+        prev.additionalSections.length > 0 ||
+        Object.keys(prev.toolOverrides || {}).length > 0;
       
       if (!hasContent) {
         return null;
@@ -356,6 +369,62 @@ export function usePromptCustomization(templateId: string): UsePromptCustomizati
       };
     });
   }, []);
+  
+  // Tool override functions
+  const getEffectiveToolDescription = useCallback((toolId: string, originalDescription: string): string => {
+    return customizations?.toolOverrides?.[toolId]?.description ?? originalDescription;
+  }, [customizations]);
+  
+  const isToolCustomized = useCallback((toolId: string): boolean => {
+    return !!customizations?.toolOverrides?.[toolId]?.description;
+  }, [customizations]);
+  
+  const updateToolDescription = useCallback((toolId: string, description: string) => {
+    setCustomizations((prev) => {
+      const current = prev || {
+        templateId,
+        sectionOverrides: {},
+        disabledSections: [],
+        additionalSections: [],
+        orderOverrides: {},
+        toolOverrides: {},
+      };
+      
+      return {
+        ...current,
+        toolOverrides: {
+          ...(current.toolOverrides || {}),
+          [toolId]: { description },
+        },
+      };
+    });
+  }, [templateId]);
+  
+  const resetToolDescription = useCallback((toolId: string) => {
+    setCustomizations((prev) => {
+      if (!prev) return prev;
+      
+      const { [toolId]: _, ...restTools } = prev.toolOverrides || {};
+      
+      const hasContent = Object.keys(prev.sectionOverrides).length > 0 || 
+        prev.additionalSections.length > 0 ||
+        Object.keys(prev.orderOverrides || {}).length > 0 ||
+        Object.keys(restTools).length > 0;
+      
+      if (!hasContent) {
+        return null;
+      }
+      
+      return {
+        ...prev,
+        toolOverrides: restTools,
+      };
+    });
+  }, []);
+  
+  const getToolOverrides = useCallback(() => {
+    return customizations?.toolOverrides || {};
+  }, [customizations]);
   
   const exportCustomizations = useCallback((template: SystemPromptTemplate): ExportedPromptTemplate => {
     const allSections = getSortedSections(template.sections);
@@ -372,6 +441,7 @@ export function usePromptCustomization(templateId: string): UsePromptCustomizati
       metadata: {
         ...template.metadata,
         notes: `Customized export from ${template.name}`,
+        toolOverrides: customizations?.toolOverrides,
       },
     };
     
@@ -380,7 +450,7 @@ export function usePromptCustomization(templateId: string): UsePromptCustomizati
       exportedAt: new Date().toISOString(),
       template: exportedTemplate,
     };
-  }, [getEffectiveContent, getSortedSections]);
+  }, [getEffectiveContent, getSortedSections, customizations]);
   
   const importCustomizations = useCallback((
     data: ExportedPromptTemplate, 
@@ -417,9 +487,13 @@ export function usePromptCustomization(templateId: string): UsePromptCustomizati
         }
       }
       
+      // Import tool overrides from metadata
+      const importedToolOverrides = (importedTemplate.metadata as { toolOverrides?: Record<string, { description?: string }> })?.toolOverrides || {};
+      
       const hasContent = Object.keys(newOverrides).length > 0 || 
         newCustomSections.length > 0 ||
-        Object.keys(newOrderOverrides).length > 0;
+        Object.keys(newOrderOverrides).length > 0 ||
+        Object.keys(importedToolOverrides).length > 0;
       
       if (hasContent) {
         setCustomizations({
@@ -428,6 +502,7 @@ export function usePromptCustomization(templateId: string): UsePromptCustomizati
           disabledSections: [],
           additionalSections: newCustomSections,
           orderOverrides: newOrderOverrides,
+          toolOverrides: importedToolOverrides,
         });
       }
       
@@ -457,6 +532,12 @@ export function usePromptCustomization(templateId: string): UsePromptCustomizati
     getSortedSections,
     hasOrderChanges,
     resetOrder,
+    getEffectiveToolDescription,
+    isToolCustomized,
+    updateToolDescription,
+    resetToolDescription,
+    hasToolCustomizations,
+    getToolOverrides,
     exportCustomizations,
     importCustomizations,
     saveToStorage,
