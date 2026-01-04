@@ -106,9 +106,11 @@ const LAYOUT = {
   // Artifacts - below scratchpad
   artifactGap: 75,
   
-  // Attributes - right of scratchpad
-  attributeX: 1220,  // Right of scratchpad
+  // Attributes - right of scratchpad (grid layout)
+  attributeX: 1245,  // Right of scratchpad (+25px)
   attributeGap: 70,
+  attributeColumnGap: 180,  // Gap between attribute columns
+  attributesPerColumn: 10,  // Start new column after 10 attributes
   
   // Tool grid settings
   toolNodeWidth: 120,
@@ -221,10 +223,17 @@ export function FreeAgentCanvas({
     // === LEFT SIDE: Prompt (always visible, always connected) ===
     const promptId = "prompt";
     newNodeIds.add(promptId);
+    
+    const userPromptSize = userSizesRef.current.get(promptId);
+    const promptStyle = userPromptSize 
+      ? { width: userPromptSize.width, height: userPromptSize.height }
+      : { width: LAYOUT.promptWidth, height: LAYOUT.promptHeight };
+    
     newNodes.push({
       id: promptId,
       type: "prompt",
       position: getPosition(promptId, { x: LAYOUT.promptX, y: sideNodesY }),
+      style: promptStyle,
       data: {
         type: "prompt",
         label: "User Prompt",
@@ -472,11 +481,16 @@ export function FreeAgentCanvas({
       });
     });
 
-    // === Attributes: Right of scratchpad, vertically ordered ===
+    // === Attributes: Right of scratchpad, grid layout (10 per column) ===
     const attributeEntries = Object.entries(session?.toolResultAttributes || {});
     attributeEntries.forEach(([name, attribute], index) => {
-      // Position to the right of scratchpad, stacked vertically
-      const attributeY = sideNodesY + (index * LAYOUT.attributeGap);
+      // Calculate column and row within that column
+      const column = Math.floor(index / LAYOUT.attributesPerColumn);
+      const row = index % LAYOUT.attributesPerColumn;
+      
+      // Position in grid: columns go right, rows go down
+      const attributeX = LAYOUT.attributeX + (column * LAYOUT.attributeColumnGap);
+      const attributeY = sideNodesY + (row * LAYOUT.attributeGap);
       
       const nodeId = `attribute-${name}`;
       newNodeIds.add(nodeId);
@@ -484,7 +498,7 @@ export function FreeAgentCanvas({
       newNodes.push({
         id: nodeId,
         type: "attribute",
-        position: getPosition(nodeId, { x: LAYOUT.attributeX, y: attributeY }),
+        position: getPosition(nodeId, { x: attributeX, y: attributeY }),
         data: {
           type: "attribute",
           label: name,
