@@ -19,6 +19,7 @@ import type {
 } from "@/types/freeAgent";
 import { executeFrontendTool, ToolExecutionContext } from "@/lib/freeAgentToolExecutor";
 import { resolveReferences, getResolvedReferenceSummary, type ResolverContext } from "@/lib/referenceResolver";
+import type { PromptDataPayload } from "@/lib/systemPromptBuilder";
 
 interface UseFreeAgentSessionOptions {
   maxIterations?: number;
@@ -312,6 +313,8 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
               content: a.content,
               description: a.description,
             })),
+            // Pass dynamic prompt data from frontend
+            promptData: currentSession.promptData,
           },
         });
 
@@ -778,7 +781,8 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
       maxIterations: number = defaultMaxIterations, 
       existingSession?: FreeAgentSession | null,
       secretOverrides?: FreeAgentSession['secretOverrides'],
-      configuredParams?: FreeAgentSession['configuredParams']
+      configuredParams?: FreeAgentSession['configuredParams'],
+      promptData?: PromptDataPayload
     ) => {
       try {
         setIsRunning(true);
@@ -820,6 +824,8 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
           // Include secrets for tool parameter injection
           secretOverrides: secretOverrides || existingSession?.secretOverrides,
           configuredParams: configuredParams || existingSession?.configuredParams,
+          // Include dynamic prompt data
+          promptData: promptData || existingSession?.promptData,
         };
 
         // Initialize refs with session memory

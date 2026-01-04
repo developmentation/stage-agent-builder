@@ -10,6 +10,8 @@ import { AssistanceModal } from "./AssistanceModal";
 import { FinalReportModal } from "./FinalReportModal";
 import { useFreeAgentSession } from "@/hooks/useFreeAgentSession";
 import { useSecretsManager } from "@/hooks/useSecretsManager";
+import { usePromptCustomization } from "@/hooks/usePromptCustomization";
+import { buildPromptData } from "@/lib/systemPromptBuilder";
 import type { ToolsManifest, SessionFile, AssistanceRequest, FreeAgentSession } from "@/types/freeAgent";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -43,6 +45,9 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
 
   // Secrets manager for tool parameter injection
   const secretsManager = useSecretsManager();
+  
+  // Prompt customization for dynamic system prompt
+  const promptCustomization = usePromptCustomization('default');
 
   // Load tools manifest
   useEffect(() => {
@@ -72,9 +77,13 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
       // Compute secrets at start time for tool parameter injection
       const secretOverrides = secretsManager.getSecretOverrides();
       const configuredParams = secretsManager.getConfiguredToolParams();
-      await startSession(prompt, files, model, maxIterations, existingSession, secretOverrides, configuredParams);
+      
+      // Build dynamic prompt data from template + customizations
+      const promptData = await buildPromptData(promptCustomization);
+      
+      await startSession(prompt, files, model, maxIterations, existingSession, secretOverrides, configuredParams, promptData);
     },
-    [startSession, secretsManager]
+    [startSession, secretsManager, promptCustomization]
   );
 
   const handleAssistanceResponse = useCallback(
