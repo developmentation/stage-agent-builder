@@ -109,7 +109,7 @@ const LAYOUT = {
   // Attributes - right of scratchpad (grid layout)
   attributeX: 1245,  // Right of scratchpad (+25px)
   attributeGap: 70,
-  attributeColumnGap: 180,  // Gap between attribute columns
+  attributeColumnGap: 230,  // Gap between attribute columns (+50px)
   attributesPerColumn: 10,  // Start new column after 10 attributes
   
   // Tool grid settings
@@ -121,11 +121,11 @@ const LAYOUT = {
   
   // Read tools - ABOVE agent
   // Calculate: 2 columns of tools centered above agent
-  readToolsStartX: 420,
+  readToolsStartX: 400,  // -20px shift left
   readToolsStartY: 30,
   
   // Write tools - BELOW agent  
-  writeToolsStartX: 420,
+  writeToolsStartX: 400,  // -20px shift left
   writeToolsStartY: 480,
 };
 
