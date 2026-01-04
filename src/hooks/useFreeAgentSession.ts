@@ -51,7 +51,41 @@ const CACHEABLE_TOOLS = ['read_github_repo', 'read_github_file', 'web_scrape'];
 const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 // Tools that support saveAs parameter for auto-saving results to attributes
-const AUTO_SAVE_TOOLS = ['brave_search', 'google_search', 'web_scrape', 'read_github_repo', 'read_github_file', 'get_call_api', 'post_call_api'];
+// All tools that return data can use saveAs to store results as named attributes
+const AUTO_SAVE_TOOLS = [
+  // Web tools
+  'brave_search', 
+  'google_search', 
+  'web_scrape',
+  // Code tools
+  'read_github_repo', 
+  'read_github_file',
+  // API tools
+  'get_call_api', 
+  'post_call_api',
+  // Utility tools
+  'get_time',
+  'get_weather',
+  // Document tools
+  'pdf_info',
+  'pdf_extract_text',
+  'ocr_image',
+  // File tools
+  'read_zip_contents',
+  'read_zip_file',
+  'extract_zip_files',
+  // Reasoning tools
+  'think',
+  'summarize',
+  'analyze',
+  // Database tools
+  'execute_sql',
+  // Generation tools
+  'image_generation',
+  'elevenlabs_tts',
+  // Communication tools
+  'send_email',
+];
 
 // Helper to generate cache key from tool + params
 function getToolCacheKey(tool: string, params: Record<string, unknown>): string {
