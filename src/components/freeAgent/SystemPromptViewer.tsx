@@ -78,13 +78,39 @@ import {
   Edit3
 } from "lucide-react";
 import type { SystemPromptTemplate, PromptSection, ResponseSchema, ExportedPromptTemplate, ToolsManifest, ToolDefinition, ToolCategory } from "@/types/systemPrompt";
-import { usePromptCustomization } from "@/hooks/usePromptCustomization";
+// Prompt customization is now passed as a prop from FreeAgentView
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+
+interface PromptCustomizationHook {
+  hasCustomizations: boolean;
+  customizedSectionIds: Set<string>;
+  getEffectiveContent: (section: PromptSection) => string;
+  isCustomized: (sectionId: string) => boolean;
+  updateSection: (sectionId: string, content: string) => void;
+  resetSection: (sectionId: string) => void;
+  resetAll: () => void;
+  addCustomSection: (section: Omit<PromptSection, 'id' | 'order'>) => string;
+  updateCustomSection: (sectionId: string, updates: Partial<PromptSection>) => void;
+  deleteCustomSection: (sectionId: string) => void;
+  getCustomSections: () => PromptSection[];
+  moveSection: (sectionId: string, direction: 'up' | 'down', allSections: PromptSection[]) => void;
+  getSortedSections: (templateSections: PromptSection[]) => PromptSection[];
+  hasOrderChanges: boolean;
+  resetOrder: () => void;
+  getEffectiveToolDescription: (toolId: string, originalDescription: string) => string;
+  isToolCustomized: (toolId: string) => boolean;
+  updateToolDescription: (toolId: string, description: string) => void;
+  resetToolDescription: (toolId: string) => void;
+  hasToolCustomizations: boolean;
+  exportCustomizations: (template: SystemPromptTemplate) => ExportedPromptTemplate;
+  importCustomizations: (data: ExportedPromptTemplate, currentTemplate: SystemPromptTemplate) => boolean;
+}
 
 interface SystemPromptViewerProps {
   onClose?: () => void;
   configuredParams?: Array<{ tool: string; param: string }>;
+  promptCustomization: PromptCustomizationHook;
 }
 
 // Icon mapping for section types
@@ -676,7 +702,7 @@ function ToolCard({
   );
 }
 
-export function SystemPromptViewer({ onClose, configuredParams = [] }: SystemPromptViewerProps) {
+export function SystemPromptViewer({ onClose, configuredParams = [], promptCustomization }: SystemPromptViewerProps) {
   const [template, setTemplate] = useState<SystemPromptTemplate | null>(null);
   const [toolsManifest, setToolsManifest] = useState<ToolsManifest | null>(null);
   const [loading, setLoading] = useState(true);
@@ -692,6 +718,7 @@ export function SystemPromptViewer({ onClose, configuredParams = [] }: SystemPro
   const [toolSearchQuery, setToolSearchQuery] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   
+  // Use the shared promptCustomization from props
   const {
     hasCustomizations,
     customizedSectionIds,
@@ -715,7 +742,7 @@ export function SystemPromptViewer({ onClose, configuredParams = [] }: SystemPro
     updateToolDescription,
     resetToolDescription,
     hasToolCustomizations,
-  } = usePromptCustomization(template?.id || "default");
+  } = promptCustomization;
   
   // Load template and tools manifest
   useEffect(() => {
