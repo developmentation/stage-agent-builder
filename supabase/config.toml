@@ -71,3 +71,6 @@ verify_jwt = false
 
 [functions.tool_analyze]
 verify_jwt = false
+
+[functions.enhance-prompt]
+verify_jwt = false

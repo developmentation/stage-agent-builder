@@ -26,9 +26,11 @@ import {
   Pause,
   RotateCcw,
   MessageSquarePlus,
+  Wand2,
 } from "lucide-react";
 import type { FreeAgentSession, SessionFile } from "@/types/freeAgent";
 import { InterjectModal } from "./InterjectModal";
+import { EnhancePromptModal } from "./EnhancePromptModal";
 import { safeStringify } from "@/lib/safeRender";
 
 // Available models - same as workflow tool
@@ -74,6 +76,7 @@ export function FreeAgentPanel({
   const [selectedModel, setSelectedModel] = useState(() => session?.model || "gemini-2.5-flash");
   const [maxIterations, setMaxIterations] = useState(() => session?.maxIterations || 50);
   const [interjectModalOpen, setInterjectModalOpen] = useState(false);
+  const [enhanceModalOpen, setEnhanceModalOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Sync model and maxIterations from session when transitioning to idle (Continue)
@@ -143,6 +146,18 @@ export function FreeAgentPanel({
 
   const handleInterject = (message: string) => {
     onInterject(message);
+  };
+
+  const handleEnhancedPromptAccept = (enhancedPrompt: string) => {
+    setPrompt(enhancedPrompt);
+  };
+
+  const handleEnhancedPromptAcceptAndStart = (enhancedPrompt: string) => {
+    setPrompt(enhancedPrompt);
+    // Start agent with enhanced prompt after state update
+    setTimeout(() => {
+      onStart(enhancedPrompt, files, selectedModel, maxIterations, session?.status === "idle" ? session : null);
+    }, 0);
   };
 
   const getStatusBadge = () => {
@@ -320,6 +335,17 @@ export function FreeAgentPanel({
               )}
             </div>
 
+            {/* Enhance Prompt button */}
+            <Button
+              variant="outline"
+              onClick={() => setEnhanceModalOpen(true)}
+              disabled={!prompt.trim() || isRunning}
+              className="w-full border-amber-500/50 text-amber-600 hover:bg-amber-500/10 hover:text-amber-500"
+            >
+              <Wand2 className="w-4 h-4 mr-2" />
+              Enhance Prompt
+            </Button>
+
             {/* Start button */}
             <Button
               onClick={handleStart}
@@ -449,6 +475,17 @@ export function FreeAgentPanel({
           open={interjectModalOpen}
           onClose={() => setInterjectModalOpen(false)}
           onSubmit={handleInterject}
+        />
+
+        {/* Enhance Prompt Modal */}
+        <EnhancePromptModal
+          open={enhanceModalOpen}
+          onOpenChange={setEnhanceModalOpen}
+          originalPrompt={prompt}
+          files={files}
+          model={selectedModel}
+          onAccept={handleEnhancedPromptAccept}
+          onAcceptAndStart={handleEnhancedPromptAcceptAndStart}
         />
       </CardContent>
     </Card>
