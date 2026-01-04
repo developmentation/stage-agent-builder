@@ -3,6 +3,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
@@ -919,52 +920,50 @@ export function SystemPromptViewer({ onClose }: SystemPromptViewerProps) {
       
       {/* Header */}
       <div className="border-b border-border px-4 py-3 flex-shrink-0">
-        <div className="flex items-center justify-between mb-2">
-          <div>
-            <h2 className="text-lg font-semibold">{template.name}</h2>
-            <p className="text-xs text-muted-foreground">
-              v{template.version} • {sortedSections.length} sections
-              {toolsManifest && (
-                <span className="ml-2">• {Object.keys(toolsManifest.tools).length} tools</span>
-              )}
-              {editableCounts.custom > 0 && (
-                <span className="text-purple-600 dark:text-purple-400 ml-2">
-                  • {editableCounts.custom} custom
-                </span>
-              )}
-              {(hasCustomizations || hasToolCustomizations) && (
-                <span className="text-green-600 dark:text-green-400 ml-2">
-                  • modified
-                </span>
-              )}
-              {hasOrderChanges && (
-                <span className="text-amber-600 dark:text-amber-400 ml-2">
-                  • reordered
-                </span>
-              )}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleExport} className="h-8">
-              <Download className="h-3 w-3 mr-1" />
-              <span className="hidden sm:inline">Export</span>
+        <h2 className="text-lg font-semibold">{template.name}</h2>
+        <p className="text-xs text-muted-foreground mb-2">
+          v{template.version} • {sortedSections.length} sections
+          {toolsManifest && (
+            <span className="ml-2">• {Object.keys(toolsManifest.tools).length} tools</span>
+          )}
+          {editableCounts.custom > 0 && (
+            <span className="text-purple-600 dark:text-purple-400 ml-2">
+              • {editableCounts.custom} custom
+            </span>
+          )}
+          {(hasCustomizations || hasToolCustomizations) && (
+            <span className="text-green-600 dark:text-green-400 ml-2">
+              • modified
+            </span>
+          )}
+          {hasOrderChanges && (
+            <span className="text-amber-600 dark:text-amber-400 ml-2">
+              • reordered
+            </span>
+          )}
+        </p>
+        
+        {/* Export/Import buttons */}
+        <div className="flex items-center gap-2 mb-3">
+          <Button variant="outline" size="sm" onClick={handleExport} className="h-8">
+            <Download className="h-3 w-3 mr-1" />
+            <span className="hidden sm:inline">Export</span>
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleImportClick} className="h-8">
+            <Upload className="h-3 w-3 mr-1" />
+            <span className="hidden sm:inline">Import</span>
+          </Button>
+          {(hasCustomizations || hasOrderChanges || editableCounts.custom > 0 || hasToolCustomizations) && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setResetDialogOpen(true)} 
+              className="h-8 text-destructive hover:text-destructive"
+            >
+              <RotateCcw className="h-3 w-3 mr-1" />
+              <span className="hidden sm:inline">Reset All</span>
             </Button>
-            <Button variant="outline" size="sm" onClick={handleImportClick} className="h-8">
-              <Upload className="h-3 w-3 mr-1" />
-              <span className="hidden sm:inline">Import</span>
-            </Button>
-            {(hasCustomizations || hasOrderChanges || editableCounts.custom > 0 || hasToolCustomizations) && (
-              <Button 
-                variant="outline" 
-                size="sm" 
-                onClick={() => setResetDialogOpen(true)} 
-                className="h-8 text-destructive hover:text-destructive"
-              >
-                <RotateCcw className="h-3 w-3 mr-1" />
-                <span className="hidden sm:inline">Reset All</span>
-              </Button>
-            )}
-          </div>
+          )}
         </div>
         
         {/* Legend */}
@@ -998,20 +997,43 @@ export function SystemPromptViewer({ onClose }: SystemPromptViewerProps) {
       
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="flex-1 flex flex-col overflow-hidden">
-        <TabsList className="mx-4 mt-3 mb-2 shrink-0">
-          <TabsTrigger value="sections" className="flex-1">
-            <FileJson className="h-3 w-3 mr-1" />
-            Sections
-          </TabsTrigger>
-          <TabsTrigger value="schemas" className="flex-1">
-            <Code className="h-3 w-3 mr-1" />
-            Response Schemas
-          </TabsTrigger>
-          <TabsTrigger value="tools" className="flex-1">
-            <Settings className="h-3 w-3 mr-1" />
-            Tools
-          </TabsTrigger>
-        </TabsList>
+        <TooltipProvider delayDuration={300}>
+          <TabsList className="mx-4 mt-3 mb-2 shrink-0">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <TabsTrigger value="sections" className="flex-1 flex items-center justify-center gap-1 px-1 min-w-0">
+                  <FileJson className="h-3 w-3 shrink-0" />
+                  <span className="hidden xl:inline truncate text-xs">Sections</span>
+                </TabsTrigger>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="xl:hidden">
+                Sections
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <TabsTrigger value="schemas" className="flex-1 flex items-center justify-center gap-1 px-1 min-w-0">
+                  <Code className="h-3 w-3 shrink-0" />
+                  <span className="hidden xl:inline truncate text-xs">Response Schema</span>
+                </TabsTrigger>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="xl:hidden">
+                Response Schema
+              </TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <TabsTrigger value="tools" className="flex-1 flex items-center justify-center gap-1 px-1 min-w-0">
+                  <Settings className="h-3 w-3 shrink-0" />
+                  <span className="hidden xl:inline truncate text-xs">Tools</span>
+                </TabsTrigger>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="xl:hidden">
+                Tools
+              </TooltipContent>
+            </Tooltip>
+          </TabsList>
+        </TooltipProvider>
         
         <TabsContent value="sections" className="flex-1 overflow-hidden m-0 p-0">
           <div className="px-4 py-2 border-b border-border flex items-center gap-2 flex-wrap">

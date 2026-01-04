@@ -5,8 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Code, ArrowRight, ArrowLeft, Copy, Check, Wrench, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { RawIterationData } from "@/types/freeAgent";
 import { safeStringify } from "@/lib/safeRender";
+import { toast } from "sonner";
 
 interface RawViewerProps {
   rawData: RawIterationData[];
@@ -19,6 +21,7 @@ export function RawViewer({ rawData }: RawViewerProps) {
   const [copiedInput, setCopiedInput] = useState(false);
   const [copiedOutput, setCopiedOutput] = useState(false);
   const [copiedTools, setCopiedTools] = useState(false);
+  const [copiedAll, setCopiedAll] = useState(false);
 
   // Update selected iteration when new data comes in
   useEffect(() => {
@@ -29,7 +32,7 @@ export function RawViewer({ rawData }: RawViewerProps) {
 
   const currentData = rawData[selectedIteration - 1];
 
-  const handleCopy = async (text: string, type: "input" | "output" | "tools") => {
+  const handleCopy = async (text: string, type: "input" | "output" | "tools" | "all") => {
     await navigator.clipboard.writeText(text);
     if (type === "input") {
       setCopiedInput(true);
@@ -37,10 +40,35 @@ export function RawViewer({ rawData }: RawViewerProps) {
     } else if (type === "output") {
       setCopiedOutput(true);
       setTimeout(() => setCopiedOutput(false), 2000);
+    } else if (type === "all") {
+      setCopiedAll(true);
+      toast.success("Copied full iteration data");
+      setTimeout(() => setCopiedAll(false), 2000);
     } else {
       setCopiedTools(true);
       setTimeout(() => setCopiedTools(false), 2000);
     }
+  };
+
+  const copyFullIteration = () => {
+    if (!currentData) return;
+    const fullData = {
+      iteration: selectedIteration,
+      input: {
+        model: currentData.input.model,
+        userPrompt: currentData.input.userPrompt,
+        systemPrompt: currentData.input.systemPrompt,
+        scratchpadLength: currentData.input.scratchpadLength,
+        blackboardEntries: currentData.input.blackboardEntries,
+        previousResultsCount: currentData.input.previousResultsCount,
+      },
+      output: {
+        rawResponse: currentData.output.rawLLMResponse || currentData.output.parseError?.rawResponse,
+        errorMessage: currentData.output.errorMessage,
+      },
+      toolResults: currentData.toolResults,
+    };
+    handleCopy(JSON.stringify(fullData, null, 2), "all");
   };
 
   return (
@@ -48,10 +76,29 @@ export function RawViewer({ rawData }: RawViewerProps) {
       <CardHeader className="pb-3 pt-4 px-4">
         <CardTitle className="flex items-center gap-2 text-base">
           <Code className="w-4 h-4" />
-          Raw LLM Data
-          <Badge variant="secondary" className="ml-auto">
-            {rawData.length} iterations
-          </Badge>
+          Raw Data
+          <TooltipProvider delayDuration={300}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={copyFullIteration}
+                  disabled={!currentData}
+                  className="ml-auto h-7 px-2"
+                >
+                  {copiedAll ? (
+                    <Check className="w-3 h-3 text-green-500" />
+                  ) : (
+                    <Copy className="w-3 h-3" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                Copy full iteration (input, output, tools)
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </CardTitle>
 
         {/* Iteration selector */}
