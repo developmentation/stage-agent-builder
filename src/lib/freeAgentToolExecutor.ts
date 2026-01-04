@@ -269,14 +269,28 @@ async function executeReadAttribute(
   
   // Return full content for requested attributes
   const results: Record<string, unknown> = {};
+  console.log(`[Read Attribute] Requested attributes: ${names.join(', ')}`);
+  console.log(`[Read Attribute] Available attributes: ${Object.keys(attributes).join(', ') || 'none'}`);
+  
   for (const name of names) {
     if (attributes[name]) {
-      results[name] = attributes[name].result;
+      // Safely serialize to ensure no circular references
+      try {
+        const serialized = JSON.parse(JSON.stringify(attributes[name].result));
+        results[name] = serialized;
+        console.log(`[Read Attribute] Found '${name}': ${JSON.stringify(serialized).length} chars`);
+      } catch (e) {
+        results[name] = `[Error serializing attribute '${name}': ${e instanceof Error ? e.message : 'Unknown error'}]`;
+        console.error(`[Read Attribute] Serialization error for ${name}:`, e);
+      }
     } else {
       results[name] = `Attribute '${name}' not found`;
+      console.log(`[Read Attribute] NOT FOUND: '${name}'`);
     }
   }
-  console.log(`[Read Attribute] Retrieved ${names.length} attributes`);
+  
+  const totalSize = JSON.stringify(results).length;
+  console.log(`[Read Attribute] Retrieved ${names.length} attributes, total result size: ${totalSize} chars`);
   return { success: true, result: results };
 }
 

@@ -246,6 +246,21 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
           : undefined;
 
         console.log(`[Iteration ${iterationRef.current}] Passing ${previousIterationResults.length} previous tool results`);
+        if (previousIterationResults.length > 0) {
+          console.log(`[Iteration ${iterationRef.current}] Previous tools: ${previousIterationResults.map(t => t.tool).join(', ')}`);
+          // Validate serialization and log sizes
+          try {
+            const serialized = JSON.stringify(previousIterationResults);
+            console.log(`[Iteration ${iterationRef.current}] Serialized size: ${serialized.length} chars`);
+            // Log each tool result size
+            previousIterationResults.forEach((t, idx) => {
+              const resultSize = t.result ? JSON.stringify(t.result).length : 0;
+              console.log(`[Iteration ${iterationRef.current}]   [${idx}] ${t.tool}: ${resultSize} chars, success=${t.success}, hasError=${!!t.error}`);
+            });
+          } catch (e) {
+            console.error(`[Iteration ${iterationRef.current}] Failed to serialize previousIterationResults:`, e);
+          }
+        }
 
         // Use refs for blackboard/scratchpad to ensure latest data (bypass async state)
         const currentBlackboard = blackboardRef.current.length > 0 ? blackboardRef.current : currentSession.blackboard;

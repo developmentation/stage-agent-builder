@@ -884,6 +884,16 @@ serve(async (req) => {
 
     console.log(`Free Agent iteration ${iteration}, model: ${model}, prompt: ${(prompt || "").slice(0, 100)}...`);
     console.log(`Scratchpad length: ${(scratchpad || "").length} chars`);
+    console.log(`Previous tool results count: ${(previousToolResults || []).length}`);
+    if (previousToolResults && previousToolResults.length > 0) {
+      console.log(`Previous tool results tools: ${previousToolResults.map((t: { tool: string }) => t.tool).join(', ')}`);
+      // Log each result's size for debugging
+      previousToolResults.forEach((t: { tool: string; result?: unknown; error?: string }, idx: number) => {
+        const resultSize = t.result ? JSON.stringify(t.result).length : 0;
+        const hasError = !!t.error;
+        console.log(`  [${idx}] ${t.tool}: result=${resultSize} chars, hasError=${hasError}`);
+      });
+    }
     if (assistanceResponse) {
       console.log(`User assistance response: ${JSON.stringify(assistanceResponse)}`);
     }
