@@ -19,6 +19,10 @@ interface FreeAgentRequest {
   iteration: number;
   scratchpad?: string;
   assistanceResponse?: { response?: string; fileId?: string; selectedChoice?: string };
+  // Secrets injection - values for tool parameters
+  secretOverrides?: Record<string, { params?: Record<string, unknown>; headers?: Record<string, string> }>;
+  // Configured params for LLM awareness (no values, just tool+param names)
+  configuredParams?: Array<{ tool: string; param: string }>;
 }
 
 // ============================================================================
@@ -532,7 +536,8 @@ async function executeTool(
   toolName: string,
   params: Record<string, unknown>,
   supabaseUrl: string,
-  supabaseKey: string
+  supabaseKey: string,
+  secretOverrides?: Record<string, { params?: Record<string, unknown>; headers?: Record<string, string> }>
 ): Promise<{ success: boolean; result?: unknown; error?: string }> {
   const toolMap: Record<string, string> = {
     get_time: "time",
@@ -571,17 +576,37 @@ async function executeTool(
   }
 
   try {
-    let body = params;
+    let body = { ...params };
+    
+    // Apply secret overrides for this tool (merge with user-defined values taking precedence)
+    const toolSecrets = secretOverrides?.[toolName];
+    if (toolSecrets?.params) {
+      // Deep merge params with secret values overriding LLM values
+      for (const [key, value] of Object.entries(toolSecrets.params)) {
+        if (typeof value === 'object' && value !== null && typeof body[key] === 'object' && body[key] !== null) {
+          // Merge objects (like headers)
+          body[key] = { ...(body[key] as Record<string, unknown>), ...(value as Record<string, unknown>) };
+        } else {
+          body[key] = value;
+        }
+      }
+    }
     
     if (toolName === "get_call_api") {
-      body = { ...params, method: "GET" };
+      body = { ...body, method: "GET" };
     } else if (toolName === "post_call_api") {
-      body = { ...params, method: "POST" };
+      body = { ...body, method: "POST" };
     } else if (toolName === "image_generation") {
-      body = { prompt: params.prompt, model: params.model || "gemini-2.5-flash-image" };
+      body = { prompt: body.prompt, model: body.model || "gemini-2.5-flash-image" };
+    }
+    
+    // Apply user-defined headers to the body for tools that support them
+    if (toolSecrets?.headers && Object.keys(toolSecrets.headers).length > 0) {
+      const existingHeaders = (body.headers as Record<string, string>) || {};
+      body.headers = { ...existingHeaders, ...toolSecrets.headers };
     }
 
-    console.log(`Executing tool ${toolName} via ${edgeFunction}:`, JSON.stringify(body));
+    console.log(`Executing tool ${toolName} via ${edgeFunction}:`, JSON.stringify(body).slice(0, 500));
 
     // Add x-source header for github-fetch to return compact response
     const headers: Record<string, string> = {
@@ -880,6 +905,8 @@ serve(async (req) => {
       iteration = 1,
       scratchpad = "",
       assistanceResponse,
+      secretOverrides,
+      configuredParams,
     } = request || {};
 
     console.log(`Free Agent iteration ${iteration}, model: ${model}, prompt: ${(prompt || "").slice(0, 100)}...`);
@@ -978,7 +1005,8 @@ serve(async (req) => {
         toolCall.tool,
         toolCall.params,
         supabaseUrl,
-        supabaseKey
+        supabaseKey,
+        secretOverrides
       );
 
       if ((result.result as Record<string, unknown>)?.frontend_handler) {

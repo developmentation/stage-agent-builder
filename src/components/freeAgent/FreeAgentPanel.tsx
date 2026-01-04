@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -37,13 +38,18 @@ import {
   Settings,
   ChevronDown,
   Lightbulb,
+  Key,
+  ClipboardList,
 } from "lucide-react";
-import type { FreeAgentSession, SessionFile } from "@/types/freeAgent";
+import type { FreeAgentSession, SessionFile, ToolsManifest } from "@/types/freeAgent";
 import { InterjectModal } from "./InterjectModal";
 import { EnhancePromptModal } from "./EnhancePromptModal";
 import { EnhancePromptSettingsModal } from "./EnhancePromptSettingsModal";
 import { ReflectModal } from "./ReflectModal";
+import { SecretsManagerModal } from "./SecretsManagerModal";
+import { SecretsMiniPanel } from "./SecretsMiniPanel";
 import { safeStringify } from "@/lib/safeRender";
+import type { SecretsManager } from "@/hooks/useSecretsManager";
 
 // Available models - same as workflow tool
 const MODEL_OPTIONS = [
@@ -69,6 +75,8 @@ interface FreeAgentPanelProps {
   onRetry: () => void;
   onInterject: (message: string) => void;
   cacheSize?: number;
+  secretsManager: SecretsManager;
+  toolsManifest: ToolsManifest | null;
 }
 
 export function FreeAgentPanel({
@@ -81,6 +89,8 @@ export function FreeAgentPanel({
   onRetry,
   onInterject,
   cacheSize = 0,
+  secretsManager,
+  toolsManifest,
 }: FreeAgentPanelProps) {
   const [prompt, setPrompt] = useState("");
   const [files, setFiles] = useState<SessionFile[]>([]);
@@ -91,6 +101,8 @@ export function FreeAgentPanel({
   const [enhanceModalOpen, setEnhanceModalOpen] = useState(false);
   const [enhanceSettingsModalOpen, setEnhanceSettingsModalOpen] = useState(false);
   const [reflectModalOpen, setReflectModalOpen] = useState(false);
+  const [secretsModalOpen, setSecretsModalOpen] = useState(false);
+  const [controlTab, setControlTab] = useState<'task' | 'secrets'>('task');
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Sync model and maxIterations from session when transitioning to idle (Continue)
@@ -245,20 +257,35 @@ export function FreeAgentPanel({
         </div>
       </CardHeader>
 
-      <CardContent className="flex-1 flex flex-col gap-4 overflow-hidden">
-        {/* Show input form when no session OR when session is idle (after Continue) */}
-        {(!session || session.status === "idle") ? (
-          <>
-            {/* Prompt input */}
-            <div className="space-y-2">
-              <Label htmlFor="prompt">Task Description</Label>
-              <Textarea
-                id="prompt"
-                placeholder="Describe what you want the agent to do..."
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                className="min-h-[100px] resize-none"
-              />
+      <CardContent className="flex-1 flex flex-col overflow-hidden">
+        {/* Sub-tabs for Task vs Secrets */}
+        <Tabs value={controlTab} onValueChange={(v) => setControlTab(v as 'task' | 'secrets')} className="flex-1 flex flex-col overflow-hidden">
+          <TabsList className="grid w-full grid-cols-2 mb-3">
+            <TabsTrigger value="task" className="gap-1 text-xs">
+              <ClipboardList className="w-3 h-3" />
+              Task
+            </TabsTrigger>
+            <TabsTrigger value="secrets" className="gap-1 text-xs">
+              <Key className="w-3 h-3" />
+              Secrets ({secretsManager.secrets.length})
+            </TabsTrigger>
+          </TabsList>
+
+          {/* Task Tab */}
+          <TabsContent value="task" className="flex-1 flex flex-col gap-4 overflow-hidden m-0">
+            {/* Show input form when no session OR when session is idle (after Continue) */}
+            {(!session || session.status === "idle") ? (
+              <>
+                {/* Prompt input */}
+                <div className="space-y-2">
+                  <Label htmlFor="prompt">Task Description</Label>
+                  <Textarea
+                    id="prompt"
+                    placeholder="Describe what you want the agent to do..."
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    className="min-h-[100px] resize-none"
+                  />
             </div>
 
             {/* Model Selection */}
@@ -523,6 +550,16 @@ export function FreeAgentPanel({
             </div>
           </>
         )}
+          </TabsContent>
+
+          {/* Secrets Tab */}
+          <TabsContent value="secrets" className="flex-1 overflow-hidden m-0">
+            <SecretsMiniPanel
+              secretsManager={secretsManager}
+              onOpenModal={() => setSecretsModalOpen(true)}
+            />
+          </TabsContent>
+        </Tabs>
 
         {/* Interject Modal */}
         <InterjectModal
@@ -556,6 +593,14 @@ export function FreeAgentPanel({
           scratchpad={session?.scratchpad || ""}
           originalPrompt={session?.prompt || ""}
           model={selectedModel}
+        />
+
+        {/* Secrets Manager Modal */}
+        <SecretsManagerModal
+          open={secretsModalOpen}
+          onOpenChange={setSecretsModalOpen}
+          secretsManager={secretsManager}
+          toolsManifest={toolsManifest}
         />
       </CardContent>
     </Card>

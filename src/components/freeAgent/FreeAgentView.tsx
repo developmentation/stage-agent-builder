@@ -9,6 +9,7 @@ import { SystemPromptViewer } from "./SystemPromptViewer";
 import { AssistanceModal } from "./AssistanceModal";
 import { FinalReportModal } from "./FinalReportModal";
 import { useFreeAgentSession } from "@/hooks/useFreeAgentSession";
+import { useSecretsManager } from "@/hooks/useSecretsManager";
 import type { ToolsManifest, SessionFile, AssistanceRequest, FreeAgentSession } from "@/types/freeAgent";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -39,6 +40,9 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
     getCacheSize,
     interjectSession,
   } = useFreeAgentSession({ maxIterations });
+
+  // Secrets manager for tool parameter injection
+  const secretsManager = useSecretsManager();
 
   // Load tools manifest
   useEffect(() => {
@@ -144,6 +148,8 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
                 onRetry={retrySession}
                 onInterject={handleInterject}
                 cacheSize={getCacheSize()}
+                secretsManager={secretsManager}
+                toolsManifest={toolsManifest}
               />
             </div>
           )}
@@ -214,6 +220,8 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
                   onRetry={retrySession}
                   onInterject={handleInterject}
                   cacheSize={getCacheSize()}
+                  secretsManager={secretsManager}
+                  toolsManifest={toolsManifest}
                 />
               </div>
             </div>

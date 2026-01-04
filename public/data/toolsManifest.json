@@ -906,6 +906,7 @@
         "headers": {
           "type": "object",
           "required": false,
+          "sensitive": true,
           "description": "Request headers (e.g., Authorization, API keys)"
         },
         "saveAs": {
@@ -934,6 +935,7 @@
         "headers": {
           "type": "object",
           "required": false,
+          "sensitive": true,
           "description": "Request headers"
         },
         "body": {
@@ -962,6 +964,7 @@
         "connectionString": {
           "type": "string",
           "required": true,
+          "sensitive": true,
           "description": "PostgreSQL connection string (e.g., postgres://user:pass@host:port/database)"
         },
         "query": {

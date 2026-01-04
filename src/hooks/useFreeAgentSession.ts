@@ -267,6 +267,8 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
         const currentScratchpad = scratchpadRef.current || currentSession.scratchpad || "";
 
         // Call edge function with current state - pass tool results directly
+        // Note: secretOverrides and configuredParams should be passed from FreeAgentView
+        // For now, this is a placeholder - the full integration requires passing these from the component
         const { data, error } = await supabase.functions.invoke("free-agent", {
           body: {
             prompt: currentSession.prompt,
@@ -289,6 +291,9 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
             // Pass scratchpad as persistent memory
             scratchpad: currentScratchpad,
             assistanceResponse,
+            // Secrets will be injected by the caller via session options
+            secretOverrides: currentSession.secretOverrides,
+            configuredParams: currentSession.configuredParams,
           },
         });
 
