@@ -182,7 +182,7 @@ function getProvider(model: string): "gemini" | "claude" | "grok" {
 function buildSystemPrompt(
   blackboard: Array<{ category: string; content: string }>,
   sessionFiles: Array<{ id: string; filename: string; mimeType: string; size: number; content?: string }>,
-  previousResults: Array<{ tool: string; result?: unknown }>,
+  previousResults: Array<{ tool: string; result?: unknown; error?: string }>,
   iteration: number,
   scratchpad: string,
   assistanceResponse?: { response?: string; fileId?: string; selectedChoice?: string }
@@ -296,12 +296,25 @@ This is the most efficient way to store data without wasting tokens on large res
   // Make previous tool results VERY prominent so agent sees them
   let resultsSection = '';
   if (safePreviousResults.length > 0) {
-  const formattedResults = safePreviousResults.map(r => {
-      const resultStr = JSON.stringify(r.result, null, 2);
-      // Show full results up to 250KB per tool (increased from 8KB)
-      const display = resultStr.length > 250000 
+    const formattedResults = safePreviousResults.map(r => {
+      // Handle undefined, null, or error results gracefully
+      let resultStr: string;
+      if (r.result === undefined || r.result === null) {
+        resultStr = r.error ? `Error: ${r.error}` : "No result returned";
+      } else {
+        try {
+          resultStr = JSON.stringify(r.result, null, 2);
+        } catch (e) {
+          resultStr = `[Unable to serialize result: ${e instanceof Error ? e.message : 'Unknown error'}]`;
+        }
+      }
+      
+      // Safe length check with fallback
+      const resultLength = resultStr?.length || 0;
+      const display = resultLength > 250000 
         ? resultStr.slice(0, 250000) + '\n...[truncated at 250KB - use saveAs for large data]'
-        : resultStr;
+        : resultStr || 'No result';
+        
       return `### Tool: ${r.tool}\n\`\`\`json\n${display}\n\`\`\``;
     }).join('\n\n');
     
@@ -879,7 +892,7 @@ serve(async (req) => {
     const systemPrompt = buildSystemPrompt(
       blackboard,
       sessionFiles,
-      previousToolResults.map(t => ({ tool: t.tool, result: t.result })),
+      previousToolResults.map(t => ({ tool: t.tool, result: t.result, error: t.error })),
       iteration,
       scratchpad,
       assistanceResponse
