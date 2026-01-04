@@ -54,11 +54,35 @@ interface UsePromptCustomizationReturn {
 }
 
 export function usePromptCustomization(templateId: string): UsePromptCustomizationReturn {
-  const [customizations, setCustomizations] = useState<PromptCustomization | null>(null);
+  // Initialize synchronously from localStorage to avoid race conditions
+  const [customizations, setCustomizations] = useState<PromptCustomization | null>(() => {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored) as Record<string, PromptCustomization>;
+        const templateCustomizations = parsed[templateId] || null;
+        if (templateCustomizations) {
+          console.log(`[PromptCustomization] Loaded ${Object.keys(templateCustomizations.sectionOverrides || {}).length} section overrides for template "${templateId}"`);
+        }
+        return templateCustomizations;
+      }
+    } catch (err) {
+      console.error("Failed to load prompt customizations:", err);
+    }
+    return null;
+  });
   
-  // Load from localStorage on mount
+  // Reload if templateId changes (not on initial mount since we loaded synchronously)
   useEffect(() => {
-    loadFromStorage();
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored) as Record<string, PromptCustomization>;
+        setCustomizations(parsed[templateId] || null);
+      }
+    } catch (err) {
+      console.error("Failed to load prompt customizations:", err);
+    }
   }, [templateId]);
   
   const loadFromStorage = useCallback(() => {

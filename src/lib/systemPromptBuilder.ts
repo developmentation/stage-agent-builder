@@ -83,18 +83,32 @@ export async function buildPromptData(
   const sortedSections = customization.getSortedSections(template.sections);
   
   // Apply content overrides to each section
-  const sectionsWithOverrides: PromptDataSection[] = sortedSections.map((section, index) => ({
-    id: section.id,
-    type: section.type,
-    title: section.title,
-    content: customization.getEffectiveContent(section),
-    order: section.order ?? index, // Ensure order is always a number
-    editable: section.editable,
-    variables: section.variables,
-  }));
+  const sectionsWithOverrides: PromptDataSection[] = sortedSections.map((section, index) => {
+    const effectiveContent = customization.getEffectiveContent(section);
+    const isCustomized = effectiveContent !== section.content;
+    
+    // Log customized sections for debugging
+    if (isCustomized) {
+      console.log(`[PromptBuilder] Section "${section.id}" is customized. Preview:`, 
+        effectiveContent.substring(0, 100) + (effectiveContent.length > 100 ? '...' : ''));
+    }
+    
+    return {
+      id: section.id,
+      type: section.type,
+      title: section.title,
+      content: effectiveContent,
+      order: section.order ?? index,
+      editable: section.editable,
+      variables: section.variables,
+    };
+  });
   
   // Get tool description overrides
   const toolOverrides = customization.getToolOverrides();
+  
+  console.log(`[PromptBuilder] Built ${sectionsWithOverrides.length} sections, ` +
+    `${Object.keys(toolOverrides).length} tool overrides`);
   
   return {
     sections: sectionsWithOverrides,

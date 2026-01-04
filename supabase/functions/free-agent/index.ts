@@ -902,6 +902,12 @@ function buildSystemPromptDynamic(
   // Sort sections by order
   const sortedSections = [...promptData.sections].sort((a, b) => a.order - b.order);
   
+  // Log identity section for debugging
+  const identitySection = sortedSections.find(s => s.id === 'identity');
+  if (identitySection) {
+    console.log(`[DynamicPrompt] Identity section content (first 200 chars): ${identitySection.content.substring(0, 200)}`);
+  }
+  
   // Build prompt by iterating through sections
   let prompt = '';
   for (const section of sortedSections) {
