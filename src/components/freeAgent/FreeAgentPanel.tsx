@@ -26,6 +26,7 @@ import {
   Upload,
   X,
   Bot,
+  RefreshCw,
   Loader2,
   CheckCircle,
   AlertCircle,
@@ -469,50 +470,54 @@ export function FreeAgentPanel({
 
             {/* Control buttons */}
             <div className="flex flex-col gap-2">
-              <div className="flex gap-2">
-                {isRunning ? (
-                  <>
-                    <Button variant="destructive" onClick={onStop} className="flex-1">
-                      <Square className="w-4 h-4 mr-2" />
-                      Stop
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setInterjectModalOpen(true)}
-                      className="flex-1"
-                    >
-                      <MessageSquarePlus className="w-4 h-4 mr-2" />
-                      Interject
-                    </Button>
-                  </>
-                ) : (
-                  <>
+              {isRunning ? (
+                <div className="flex gap-2">
+                  <Button variant="destructive" onClick={onStop} className="flex-1">
+                    <Square className="w-4 h-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Stop</span>
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setInterjectModalOpen(true)}
+                    className="flex-1"
+                  >
+                    <MessageSquarePlus className="w-4 h-4 sm:mr-2" />
+                    <span className="hidden sm:inline">Interject</span>
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  {/* Reflect button - full width on its own row */}
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setReflectModalOpen(true)}
+                    className="w-full border-purple-500/50 text-purple-600 hover:bg-purple-500/10"
+                  >
+                    <Lightbulb className="w-4 h-4 mr-2" />
+                    Reflect on Session
+                  </Button>
+                  
+                  {/* Reset + Retry/Continue row */}
+                  <div className="flex gap-2">
                     <Button variant="outline" onClick={onReset} className="flex-1">
-                      Reset
-                    </Button>
-                    <Button 
-                      variant="outline" 
-                      onClick={() => setReflectModalOpen(true)}
-                      className="flex-1 border-purple-500/50 text-purple-600 hover:bg-purple-500/10"
-                    >
-                      <Lightbulb className="w-4 h-4 mr-2" />
-                      Reflect
+                      <RotateCcw className="w-4 h-4 sm:mr-2" />
+                      <span className="hidden sm:inline">Reset</span>
                     </Button>
                     {(session.status === "paused" || session.status === "error") && (
                       <Button onClick={onRetry} className="flex-1 bg-orange-500 hover:bg-orange-600">
-                        <RotateCcw className="w-4 h-4 mr-2" />
-                        Retry
+                        <RefreshCw className="w-4 h-4 sm:mr-2" />
+                        <span className="hidden sm:inline">Retry</span>
                       </Button>
                     )}
                     {session.status === "completed" && (
                       <Button onClick={onContinue} className="flex-1">
-                        <Play className="w-4 h-4 mr-2" />
-                        Continue
+                        <Play className="w-4 h-4 sm:mr-2" />
+                        <span className="hidden sm:inline">Continue</span>
                       </Button>
                     )}
-                  </>
-                )}
-              </div>
+                  </div>
+                </>
+              )}
             </div>
           </>
         )}
