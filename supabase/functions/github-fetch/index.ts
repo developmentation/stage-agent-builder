@@ -175,50 +175,12 @@ const createCompactResponse = (
   // Create a simple flat list of file paths with sizes
   const fileList = fileItems.map(f => ({ path: f.path, size: f.size }));
   
-  // Create a formatted structure string for immediate LLM consumption
-  // Group files by top-level directory for readability
-  const grouped = new Map<string, { path: string; size: number }[]>();
-  grouped.set("", []); // root files
-  
-  fileItems.forEach(f => {
-    const parts = f.path.split("/");
-    const topDir = parts.length > 1 ? parts[0] : "";
-    if (!grouped.has(topDir)) {
-      grouped.set(topDir, []);
-    }
-    grouped.get(topDir)!.push({ path: f.path, size: f.size });
-  });
-  
-  // Build formatted structure string
-  let structureLines: string[] = [];
-  const sortedDirs = Array.from(grouped.keys()).sort();
-  
-  for (const dir of sortedDirs) {
-    const dirFiles = grouped.get(dir)!;
-    if (dir === "") {
-      // Root files
-      dirFiles.forEach(f => structureLines.push(`${f.path} (${formatSize(f.size)})`));
-    } else {
-      structureLines.push(`${dir}/`);
-      dirFiles.forEach(f => {
-        const relativePath = f.path.slice(dir.length + 1);
-        structureLines.push(`  ${relativePath} (${formatSize(f.size)})`);
-      });
-    }
-  }
-  
-  // Limit structure preview to first 500 lines to keep response manageable
-  const structurePreview = structureLines.length > 500
-    ? structureLines.slice(0, 500).join("\n") + `\n... and ${structureLines.length - 500} more files`
-    : structureLines.join("\n");
-  
   return {
     success: true,
     mode: "tree",
     repository: { owner, repo, branch },
     totalFiles: fileItems.length,
     totalDirectories: dirItems.length,
-    structure: structurePreview,
     files: fileList,
   };
 };
