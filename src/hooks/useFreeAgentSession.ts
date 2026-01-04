@@ -18,6 +18,7 @@ import type {
   ToolResultAttribute,
 } from "@/types/freeAgent";
 import { executeFrontendTool, ToolExecutionContext } from "@/lib/freeAgentToolExecutor";
+import { resolveReferences, getResolvedReferenceSummary, type ResolverContext } from "@/lib/referenceResolver";
 
 interface UseFreeAgentSessionOptions {
   maxIterations?: number;
@@ -268,8 +269,10 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
         const currentScratchpad = scratchpadRef.current || currentSession.scratchpad || "";
 
         // Call edge function with current state - pass tool results directly
-        // Note: secretOverrides and configuredParams should be passed from FreeAgentView
-        // For now, this is a placeholder - the full integration requires passing these from the component
+        // Include toolResultAttributes and artifacts for edge function reference resolution (backup)
+        const currentAttributes = toolResultAttributesRef.current;
+        const currentArtifacts = currentSession.artifacts || [];
+        
         const { data, error } = await supabase.functions.invoke("free-agent", {
           body: {
             prompt: currentSession.prompt,
@@ -295,6 +298,20 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
             // Secrets will be injected by the caller via session options
             secretOverrides: currentSession.secretOverrides,
             configuredParams: currentSession.configuredParams,
+            // Pass attributes and artifacts for edge function reference resolution
+            toolResultAttributes: Object.fromEntries(
+              Object.entries(currentAttributes).map(([name, attr]) => [
+                name,
+                { result: attr.result, size: attr.size }
+              ])
+            ),
+            artifacts: currentArtifacts.map(a => ({
+              id: a.id,
+              type: a.type,
+              title: a.title,
+              content: a.content,
+              description: a.description,
+            })),
           },
         });
 
@@ -342,17 +359,35 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
 
         const response = data.response as AgentResponse;
 
-        // Record tool calls
+        // Build resolver context for reference resolution
+        const resolverContext: ResolverContext = {
+          scratchpad: scratchpadRef.current || currentSession.scratchpad || "",
+          blackboard: blackboardRef.current.length > 0 ? blackboardRef.current : currentSession.blackboard,
+          attributes: toolResultAttributesRef.current,
+          artifacts: currentSession.artifacts || [],
+        };
+
+        // Record tool calls with resolved params
         const newToolCalls: ToolCall[] = [];
         
-        // Set tools as active for animation
+        // Set tools as active for animation and resolve references in params
         for (const tc of response.tool_calls || []) {
           setActiveToolIds((prev) => new Set([...prev, tc.tool]));
+          
+          // Resolve references like {{scratchpad}}, {{attribute:name}}, etc.
+          const originalParams = tc.params;
+          const resolvedParams = resolveReferences(originalParams, resolverContext) as Record<string, unknown>;
+          
+          // Log what was resolved for debugging
+          const resolutionSummary = getResolvedReferenceSummary(originalParams, resolvedParams);
+          if (resolutionSummary.length > 0) {
+            console.log(`[Reference Resolution] ${tc.tool}:`, resolutionSummary);
+          }
           
           newToolCalls.push({
             id: crypto.randomUUID(),
             tool: tc.tool,
-            params: tc.params,
+            params: resolvedParams, // Use resolved params
             status: "executing",
             startTime: new Date().toISOString(),
             iteration: iterationRef.current,
@@ -447,7 +482,10 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
             onScratchpadUpdate: handleScratchpadUpdate,
             onAssistanceNeeded: handleAssistanceNeeded,
           };
-          const result = await executeFrontendTool(handler.tool, handler.params, context);
+          
+          // Resolve references in frontend tool params as well
+          const resolvedFrontendParams = resolveReferences(handler.params, resolverContext) as Record<string, unknown>;
+          const result = await executeFrontendTool(handler.tool, resolvedFrontendParams, context);
 
           if (toolCall) {
             toolCall.status = result.success ? "completed" : "error";

@@ -23,6 +23,10 @@ interface FreeAgentRequest {
   secretOverrides?: Record<string, { params?: Record<string, unknown>; headers?: Record<string, string> }>;
   // Configured params for LLM awareness (no values, just tool+param names)
   configuredParams?: Array<{ tool: string; param: string }>;
+  // Named attributes for reference resolution (full data from saveAs)
+  toolResultAttributes?: Record<string, { result: unknown; size: number }>;
+  // Artifacts for reference resolution
+  artifacts?: Array<{ id: string; type: string; title: string; content: string; description?: string }>;
 }
 
 // ============================================================================
@@ -180,6 +184,94 @@ function getProvider(model: string): "gemini" | "claude" | "grok" {
   if (model.startsWith("claude") || model.includes("claude")) return "claude";
   if (model.startsWith("grok") || model.includes("grok")) return "grok";
   return "gemini"; // Default to Gemini
+}
+
+// ============================================================================
+// REFERENCE RESOLUTION - Resolve placeholders in tool parameters
+// ============================================================================
+
+interface ResolverContext {
+  scratchpad: string;
+  blackboard: Array<{ category: string; content: string }>;
+  toolResultAttributes: Record<string, { result: unknown; size: number }>;
+  artifacts: Array<{ id: string; type: string; title: string; content: string; description?: string }>;
+}
+
+// Resolve reference placeholders in tool parameters
+function resolveReferences(value: unknown, context: ResolverContext): unknown {
+  if (typeof value === 'string') {
+    return resolveStringReferences(value, context);
+  }
+  if (Array.isArray(value)) {
+    return value.map(item => resolveReferences(item, context));
+  }
+  if (typeof value === 'object' && value !== null) {
+    const resolved: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(value)) {
+      resolved[key] = resolveReferences(val, context);
+    }
+    return resolved;
+  }
+  return value;
+}
+
+function resolveStringReferences(str: string, ctx: ResolverContext): string {
+  let result = str;
+  
+  // {{scratchpad}} -> full scratchpad content
+  result = result.replace(/\{\{scratchpad\}\}/gi, () => ctx.scratchpad || '');
+  
+  // {{blackboard}} -> formatted blackboard entries
+  result = result.replace(/\{\{blackboard\}\}/gi, () => {
+    if (!ctx.blackboard || ctx.blackboard.length === 0) return '[No blackboard entries]';
+    return ctx.blackboard
+      .map(e => `[${e.category.toUpperCase()}]: ${e.content}`)
+      .join('\n\n');
+  });
+  
+  // {{attributes}} -> all attributes as JSON object
+  result = result.replace(/\{\{attributes\}\}/gi, () => {
+    if (!ctx.toolResultAttributes || Object.keys(ctx.toolResultAttributes).length === 0) return '{}';
+    const formatted: Record<string, unknown> = {};
+    for (const [name, attr] of Object.entries(ctx.toolResultAttributes)) {
+      formatted[name] = attr.result;
+    }
+    return JSON.stringify(formatted, null, 2);
+  });
+  
+  // {{attribute:name}} -> specific attribute content
+  result = result.replace(/\{\{attribute:([^}]+)\}\}/gi, (_, name) => {
+    const trimmedName = name.trim();
+    const attr = ctx.toolResultAttributes?.[trimmedName];
+    if (attr) {
+      return typeof attr.result === 'string' ? attr.result : JSON.stringify(attr.result, null, 2);
+    }
+    return `[Attribute '${trimmedName}' not found]`;
+  });
+  
+  // {{artifacts}} -> all artifacts as JSON array
+  result = result.replace(/\{\{artifacts\}\}/gi, () => {
+    if (!ctx.artifacts || ctx.artifacts.length === 0) return '[]';
+    return JSON.stringify(ctx.artifacts.map(a => ({
+      id: a.id,
+      type: a.type,
+      title: a.title,
+      content: a.content,
+      description: a.description,
+    })), null, 2);
+  });
+  
+  // {{artifact:id}} -> specific artifact content
+  result = result.replace(/\{\{artifact:([^}]+)\}\}/gi, (_, id) => {
+    const trimmedId = id.trim();
+    const artifact = ctx.artifacts?.find(a => a.id === trimmedId || a.title === trimmedId);
+    if (artifact) {
+      return artifact.content;
+    }
+    return `[Artifact '${trimmedId}' not found]`;
+  });
+  
+  return result;
 }
 
 // Build system prompt for agent
@@ -939,7 +1031,17 @@ serve(async (req) => {
       assistanceResponse,
       secretOverrides,
       configuredParams,
+      toolResultAttributes = {},
+      artifacts = [],
     } = request || {};
+
+    // Build resolver context for reference resolution in tool params
+    const resolverContext: ResolverContext = {
+      scratchpad: scratchpad || "",
+      blackboard: blackboard || [],
+      toolResultAttributes: toolResultAttributes || {},
+      artifacts: artifacts || [],
+    };
 
     console.log(`Free Agent iteration ${iteration}, model: ${model}, prompt: ${(prompt || "").slice(0, 100)}...`);
     console.log(`Scratchpad length: ${(scratchpad || "").length} chars`);
@@ -1029,14 +1131,22 @@ serve(async (req) => {
       );
     }
 
-    // Execute tool calls
+    // Execute tool calls with reference resolution
     const toolResults: Array<{ tool: string; success: boolean; result?: unknown; error?: string }> = [];
     const frontendHandlers: Array<{ tool: string; params: Record<string, unknown> }> = [];
 
     for (const toolCall of agentResponse.tool_calls || []) {
+      // Resolve references in params (backup resolution - frontend already does this, but edge function has scratchpad/blackboard)
+      const resolvedParams = resolveReferences(toolCall.params, resolverContext) as Record<string, unknown>;
+      
+      // Log if references were resolved
+      if (JSON.stringify(resolvedParams) !== JSON.stringify(toolCall.params)) {
+        console.log(`[Reference Resolution] ${toolCall.tool}: params were resolved from placeholders`);
+      }
+      
       const result = await executeTool(
         toolCall.tool,
-        toolCall.params,
+        resolvedParams, // Use resolved params
         supabaseUrl,
         supabaseKey,
         secretOverrides
@@ -1045,7 +1155,7 @@ serve(async (req) => {
       if ((result.result as Record<string, unknown>)?.frontend_handler) {
         frontendHandlers.push({
           tool: toolCall.tool,
-          params: toolCall.params,
+          params: resolvedParams, // Pass resolved params to frontend
         });
       } else {
         toolResults.push({
