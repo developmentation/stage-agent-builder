@@ -21,6 +21,20 @@ interface UsePromptCustomizationReturn {
   resetSection: (sectionId: string) => void;
   resetAll: () => void;
   
+  // Custom sections
+  addCustomSection: (section: Omit<PromptSection, 'id' | 'order'>) => string;
+  updateCustomSection: (sectionId: string, updates: Partial<PromptSection>) => void;
+  deleteCustomSection: (sectionId: string) => void;
+  getCustomSections: () => PromptSection[];
+  
+  // Reordering
+  getOrderOverride: (sectionId: string) => number | undefined;
+  setOrderOverride: (sectionId: string, order: number) => void;
+  moveSection: (sectionId: string, direction: 'up' | 'down', allSections: PromptSection[]) => void;
+  getSortedSections: (templateSections: PromptSection[]) => PromptSection[];
+  hasOrderChanges: boolean;
+  resetOrder: () => void;
+  
   // Import/Export
   exportCustomizations: (template: SystemPromptTemplate) => ExportedPromptTemplate;
   importCustomizations: (data: ExportedPromptTemplate, currentTemplate: SystemPromptTemplate) => boolean;
@@ -57,7 +71,13 @@ export function usePromptCustomization(templateId: string): UsePromptCustomizati
       const stored = localStorage.getItem(STORAGE_KEY);
       const all = stored ? JSON.parse(stored) : {};
       
-      if (customizations && Object.keys(customizations.sectionOverrides).length > 0) {
+      const hasContent = customizations && (
+        Object.keys(customizations.sectionOverrides).length > 0 ||
+        customizations.additionalSections.length > 0 ||
+        Object.keys(customizations.orderOverrides || {}).length > 0
+      );
+      
+      if (hasContent) {
         all[templateId] = customizations;
       } else {
         delete all[templateId];
@@ -80,7 +100,10 @@ export function usePromptCustomization(templateId: string): UsePromptCustomizati
     customizations ? Object.keys(customizations.sectionOverrides) : []
   );
   
-  const hasCustomizations = customizedSectionIds.size > 0;
+  const hasCustomizations = customizedSectionIds.size > 0 || 
+    (customizations?.additionalSections?.length || 0) > 0;
+  
+  const hasOrderChanges = Object.keys(customizations?.orderOverrides || {}).length > 0;
   
   const isCustomized = useCallback((sectionId: string): boolean => {
     return customizedSectionIds.has(sectionId);
@@ -100,6 +123,7 @@ export function usePromptCustomization(templateId: string): UsePromptCustomizati
         sectionOverrides: {},
         disabledSections: [],
         additionalSections: [],
+        orderOverrides: {},
       };
       
       return {
@@ -118,7 +142,11 @@ export function usePromptCustomization(templateId: string): UsePromptCustomizati
       
       const { [sectionId]: _, ...rest } = prev.sectionOverrides;
       
-      if (Object.keys(rest).length === 0) {
+      const hasContent = Object.keys(rest).length > 0 || 
+        prev.additionalSections.length > 0 ||
+        Object.keys(prev.orderOverrides || {}).length > 0;
+      
+      if (!hasContent) {
         return null;
       }
       
@@ -143,13 +171,201 @@ export function usePromptCustomization(templateId: string): UsePromptCustomizati
     }
   }, [templateId]);
   
+  // Custom sections management
+  const addCustomSection = useCallback((section: Omit<PromptSection, 'id' | 'order'>): string => {
+    const id = `custom_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    setCustomizations((prev) => {
+      const current = prev || {
+        templateId,
+        sectionOverrides: {},
+        disabledSections: [],
+        additionalSections: [],
+        orderOverrides: {},
+      };
+      
+      // Find the highest order among existing custom sections
+      const maxOrder = current.additionalSections.reduce(
+        (max, s) => Math.max(max, s.order), 
+        999 // Start custom sections at 1000+
+      );
+      
+      const newSection: PromptSection = {
+        ...section,
+        id,
+        order: maxOrder + 1,
+        type: 'custom',
+        editable: 'editable',
+      };
+      
+      return {
+        ...current,
+        additionalSections: [...current.additionalSections, newSection],
+      };
+    });
+    
+    return id;
+  }, [templateId]);
+  
+  const updateCustomSection = useCallback((sectionId: string, updates: Partial<PromptSection>) => {
+    setCustomizations((prev) => {
+      if (!prev) return prev;
+      
+      return {
+        ...prev,
+        additionalSections: prev.additionalSections.map((section) =>
+          section.id === sectionId ? { ...section, ...updates } : section
+        ),
+      };
+    });
+  }, []);
+  
+  const deleteCustomSection = useCallback((sectionId: string) => {
+    setCustomizations((prev) => {
+      if (!prev) return prev;
+      
+      const newAdditional = prev.additionalSections.filter((s) => s.id !== sectionId);
+      const { [sectionId]: _, ...restOverrides } = prev.sectionOverrides;
+      const { [sectionId]: __, ...restOrder } = prev.orderOverrides || {};
+      
+      const hasContent = Object.keys(restOverrides).length > 0 || 
+        newAdditional.length > 0 ||
+        Object.keys(restOrder).length > 0;
+      
+      if (!hasContent) {
+        return null;
+      }
+      
+      return {
+        ...prev,
+        additionalSections: newAdditional,
+        sectionOverrides: restOverrides,
+        orderOverrides: restOrder,
+      };
+    });
+  }, []);
+  
+  const getCustomSections = useCallback((): PromptSection[] => {
+    return customizations?.additionalSections || [];
+  }, [customizations]);
+  
+  // Order management
+  const getOrderOverride = useCallback((sectionId: string): number | undefined => {
+    return customizations?.orderOverrides?.[sectionId];
+  }, [customizations]);
+  
+  const setOrderOverride = useCallback((sectionId: string, order: number) => {
+    setCustomizations((prev) => {
+      const current = prev || {
+        templateId,
+        sectionOverrides: {},
+        disabledSections: [],
+        additionalSections: [],
+        orderOverrides: {},
+      };
+      
+      return {
+        ...current,
+        orderOverrides: {
+          ...(current.orderOverrides || {}),
+          [sectionId]: order,
+        },
+      };
+    });
+  }, [templateId]);
+  
+  const getSortedSections = useCallback((templateSections: PromptSection[]): PromptSection[] => {
+    // Merge template sections with custom sections
+    const allSections = [
+      ...templateSections,
+      ...(customizations?.additionalSections || []),
+    ];
+    
+    // Apply order overrides
+    const sectionsWithOrder = allSections.map((section) => ({
+      ...section,
+      order: customizations?.orderOverrides?.[section.id] ?? section.order,
+    }));
+    
+    return sectionsWithOrder.sort((a, b) => a.order - b.order);
+  }, [customizations]);
+  
+  const moveSection = useCallback((
+    sectionId: string, 
+    direction: 'up' | 'down', 
+    allSections: PromptSection[]
+  ) => {
+    const sorted = getSortedSections(allSections);
+    const currentIndex = sorted.findIndex((s) => s.id === sectionId);
+    
+    if (currentIndex === -1) return;
+    if (direction === 'up' && currentIndex === 0) return;
+    if (direction === 'down' && currentIndex === sorted.length - 1) return;
+    
+    const targetIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+    const currentSection = sorted[currentIndex];
+    const targetSection = sorted[targetIndex];
+    
+    // Swap order values
+    setCustomizations((prev) => {
+      const current = prev || {
+        templateId,
+        sectionOverrides: {},
+        disabledSections: [],
+        additionalSections: [],
+        orderOverrides: {},
+      };
+      
+      const currentOrder = current.orderOverrides?.[currentSection.id] ?? currentSection.order;
+      const targetOrder = current.orderOverrides?.[targetSection.id] ?? targetSection.order;
+      
+      // If orders are the same, create distinct values
+      let newCurrentOrder = targetOrder;
+      let newTargetOrder = currentOrder;
+      
+      if (currentOrder === targetOrder) {
+        newCurrentOrder = direction === 'up' ? currentOrder - 0.5 : currentOrder + 0.5;
+        newTargetOrder = currentOrder;
+      }
+      
+      return {
+        ...current,
+        orderOverrides: {
+          ...(current.orderOverrides || {}),
+          [currentSection.id]: newCurrentOrder,
+          [targetSection.id]: newTargetOrder,
+        },
+      };
+    });
+  }, [templateId, getSortedSections]);
+  
+  const resetOrder = useCallback(() => {
+    setCustomizations((prev) => {
+      if (!prev) return prev;
+      
+      const hasContent = Object.keys(prev.sectionOverrides).length > 0 || 
+        prev.additionalSections.length > 0;
+      
+      if (!hasContent) {
+        return null;
+      }
+      
+      return {
+        ...prev,
+        orderOverrides: {},
+      };
+    });
+  }, []);
+  
   const exportCustomizations = useCallback((template: SystemPromptTemplate): ExportedPromptTemplate => {
+    const allSections = getSortedSections(template.sections);
+    
     // Apply customizations to template for export
     const exportedTemplate: SystemPromptTemplate = {
       ...template,
       isDefault: false,
       updatedAt: new Date().toISOString(),
-      sections: template.sections.map((section) => ({
+      sections: allSections.map((section) => ({
         ...section,
         content: getEffectiveContent(section),
       })),
@@ -164,7 +380,7 @@ export function usePromptCustomization(templateId: string): UsePromptCustomizati
       exportedAt: new Date().toISOString(),
       template: exportedTemplate,
     };
-  }, [getEffectiveContent]);
+  }, [getEffectiveContent, getSortedSections]);
   
   const importCustomizations = useCallback((
     data: ExportedPromptTemplate, 
@@ -178,24 +394,40 @@ export function usePromptCustomization(templateId: string): UsePromptCustomizati
       
       const importedTemplate = data.template;
       const newOverrides: Record<string, string> = {};
+      const newOrderOverrides: Record<string, number> = {};
+      const newCustomSections: PromptSection[] = [];
       
       // Compare imported sections with current template
       for (const importedSection of importedTemplate.sections) {
         const currentSection = currentTemplate.sections.find(s => s.id === importedSection.id);
         
-        if (currentSection && 
-            currentSection.editable === 'editable' && 
-            importedSection.content !== currentSection.content) {
-          newOverrides[importedSection.id] = importedSection.content;
+        if (currentSection) {
+          // Existing section - check for content changes
+          if (currentSection.editable === 'editable' && 
+              importedSection.content !== currentSection.content) {
+            newOverrides[importedSection.id] = importedSection.content;
+          }
+          // Check for order changes
+          if (importedSection.order !== currentSection.order) {
+            newOrderOverrides[importedSection.id] = importedSection.order;
+          }
+        } else if (importedSection.type === 'custom') {
+          // Custom section from import
+          newCustomSections.push(importedSection);
         }
       }
       
-      if (Object.keys(newOverrides).length > 0) {
+      const hasContent = Object.keys(newOverrides).length > 0 || 
+        newCustomSections.length > 0 ||
+        Object.keys(newOrderOverrides).length > 0;
+      
+      if (hasContent) {
         setCustomizations({
           templateId,
           sectionOverrides: newOverrides,
           disabledSections: [],
-          additionalSections: [],
+          additionalSections: newCustomSections,
+          orderOverrides: newOrderOverrides,
         });
       }
       
@@ -215,6 +447,16 @@ export function usePromptCustomization(templateId: string): UsePromptCustomizati
     updateSection,
     resetSection,
     resetAll,
+    addCustomSection,
+    updateCustomSection,
+    deleteCustomSection,
+    getCustomSections,
+    getOrderOverride,
+    setOrderOverride,
+    moveSection,
+    getSortedSections,
+    hasOrderChanges,
+    resetOrder,
     exportCustomizations,
     importCustomizations,
     saveToStorage,

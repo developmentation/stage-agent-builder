@@ -120,4 +120,5 @@ export interface PromptCustomization {
   sectionOverrides: Record<string, string>; // sectionId -> customContent
   disabledSections: string[]; // sectionIds to skip
   additionalSections: PromptSection[]; // User-added sections
+  orderOverrides?: Record<string, number>; // sectionId -> custom order
 }
