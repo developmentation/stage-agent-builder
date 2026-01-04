@@ -497,12 +497,10 @@ function ResponseSchemaCard({ schema }: { schema: ResponseSchema }) {
             {schema.rawSchema}
           </pre>
         ) : (
-          <div className="text-sm bg-muted/30 rounded-md p-3 overflow-hidden">
-            <div className="prose prose-sm dark:prose-invert max-w-none prose-pre:whitespace-pre-wrap prose-pre:break-words prose-pre:overflow-x-auto">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                {`\`\`\`json\n${schema.rawSchema}\n\`\`\``}
-              </ReactMarkdown>
-            </div>
+          <div className="text-sm bg-muted/30 rounded-md p-3 overflow-hidden max-w-full">
+            <pre className="text-xs font-mono whitespace-pre-wrap break-all overflow-hidden">
+              {schema.rawSchema}
+            </pre>
           </div>
         )}
       </div>
