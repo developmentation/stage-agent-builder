@@ -413,10 +413,10 @@ This is the most efficient way to store data without wasting tokens on large res
     const lastEntry = safeBlackboard[safeBlackboard.length - 1];
     const lastEntryIndex = safeBlackboard.length;
     
-    // Older: Just show iteration number, category, and first 60 chars
-    const olderSummary = olderEntries.map((e, i) => 
-      `[#${i + 1} ${e.category}] ${e.content.slice(0, 60)}${e.content.length > 60 ? '...' : ''}`
-    ).join('\n');
+    // Older: Show full content but grouped separately
+    const olderFormatted = olderEntries.map((e, i) => 
+      `[#${i + 1} ${e.category}] ${e.content}`
+    ).join('\n\n');
     
     // Recent: Show full content (indices are offset by older entries length)
     const recentStartIndex = olderEntries.length + 1;
@@ -437,7 +437,7 @@ ${lastFormatted}
 ${recentFormatted}
 
 ### Older Entries (Summarized - ${olderEntries.length} entries):
-${olderSummary}${hasUserInterjections ? '\n\n⚠️ Pay special attention to any recent User Interjections and ensure your next actions are aligned with the user\'s further direction.' : ''}`;
+${olderFormatted}${hasUserInterjections ? '\n\n⚠️ Pay special attention to any recent User Interjections and ensure your next actions are aligned with the user\'s further direction.' : ''}`;
   }
 
   // Scratchpad - only show preview if small, otherwise just size (saves context)
