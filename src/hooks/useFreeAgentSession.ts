@@ -545,18 +545,24 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
               toolResults: iterationToolResults,
             };
             
-            // Add blackboard entry if present
-            if (response.blackboard_entry) {
-              const entry: BlackboardEntry = {
-                id: crypto.randomUUID(),
-                timestamp: new Date().toISOString(),
-                category: response.blackboard_entry.category,
-                content: response.blackboard_entry.content,
-                data: response.blackboard_entry.data,
-                iteration: iterationRef.current,
-              };
-              handleBlackboardUpdate(entry);
-            }
+            // Add blackboard entry - use same logic as main flow (auto-generate if missing)
+            const spawnBlackboardEntry: BlackboardEntry = response.blackboard_entry 
+              ? {
+                  id: crypto.randomUUID(),
+                  timestamp: new Date().toISOString(),
+                  category: response.blackboard_entry.category,
+                  content: `[#${iterationRef.current} ${response.blackboard_entry.category}] ${response.blackboard_entry.content}`,
+                  data: response.blackboard_entry.data,
+                  iteration: iterationRef.current,
+                }
+              : {
+                  id: `auto_${iterationRef.current}_${Date.now()}`,
+                  category: 'decision' as BlackboardCategory,
+                  content: `[AUTO-LOGGED #${iterationRef.current}] Spawn requested. Tools: ${newToolCalls.map(t => t.tool).join(', ')}`,
+                  timestamp: new Date().toISOString(),
+                  iteration: iterationRef.current,
+                };
+            handleBlackboardUpdate(spawnBlackboardEntry);
             
             // Update session with rawData
             updateSession((prev) =>
@@ -600,18 +606,83 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
           toolResults: iterationToolResults,
         };
 
-        // Add blackboard entry from response
-        if (response.blackboard_entry) {
-          const entry: BlackboardEntry = {
-            id: crypto.randomUUID(),
+        // Determine if we need to auto-generate a blackboard entry
+        const shouldAutoGenerateBlackboard = (): boolean => {
+          const entry = response.blackboard_entry;
+          // No entry provided
+          if (!entry || !entry.content) return true;
+          // Too short to be meaningful
+          if (entry.content.trim().length < 20) return true;
+          // Check if it's a duplicate of the last entry
+          if (blackboardRef.current.length > 0) {
+            const lastEntry = blackboardRef.current[blackboardRef.current.length - 1];
+            const normalize = (s: string) => s.toLowerCase().replace(/\[#\d+\s*\w*\]/g, '').replace(/iteration\s*\d+/gi, '').trim();
+            if (normalize(entry.content) === normalize(lastEntry.content)) {
+              return true; // Duplicate detected
+            }
+          }
+          return false;
+        };
+
+        // Generate auto blackboard entry when agent omits proper update
+        const generateAutoBlackboardEntry = (): BlackboardEntry => {
+          const artifactCount = newArtifacts.length;
+          const artifactNames = newArtifacts.map(a => a.title).slice(0, 3).join(', ');
+          const toolCount = newToolCalls.length;
+          const toolNames = newToolCalls.map(t => t.tool).slice(0, 5).join(', ');
+          
+          const parts: string[] = [];
+          
+          if (artifactCount > 0) {
+            parts.push(`Created ${artifactCount} artifact(s): ${artifactNames}${artifactCount > 3 ? '...' : ''}`);
+          }
+          
+          if (toolCount > 0) {
+            parts.push(`Executed ${toolCount} tool(s): ${toolNames}${toolCount > 5 ? '...' : ''}`);
+          }
+          
+          // Check if scratchpad was updated
+          const scratchpadLen = scratchpadRef.current.length;
+          if (scratchpadLen > 0) {
+            parts.push(`Scratchpad: ${scratchpadLen} chars`);
+          }
+          
+          if (parts.length === 0) {
+            parts.push('No artifacts, tools, or scratchpad updates this iteration');
+          }
+          
+          const content = `[AUTO-LOGGED #${iterationRef.current}] ${parts.join('. ')}.`;
+          
+          // Determine category based on what happened
+          let category: BlackboardCategory = 'observation';
+          if (artifactCount > 0) category = 'artifact';
+          else if (toolCount > 0) category = 'decision';
+          
+          return {
+            id: `auto_${iterationRef.current}_${Date.now()}`,
+            category,
+            content,
             timestamp: new Date().toISOString(),
-            category: response.blackboard_entry.category,
-            content: response.blackboard_entry.content,
-            data: response.blackboard_entry.data,
             iteration: iterationRef.current,
           };
-          handleBlackboardUpdate(entry);
+        };
+
+        // Add blackboard entry from response OR auto-generate if missing/poor
+        let blackboardEntry: BlackboardEntry;
+        if (shouldAutoGenerateBlackboard()) {
+          console.log(`[FreeAgent] Auto-generating blackboard entry for iteration ${iterationRef.current}`);
+          blackboardEntry = generateAutoBlackboardEntry();
+        } else {
+          blackboardEntry = {
+            id: crypto.randomUUID(),
+            timestamp: new Date().toISOString(),
+            category: response.blackboard_entry!.category,
+            content: `[#${iterationRef.current} ${response.blackboard_entry!.category}] ${response.blackboard_entry!.content}`,
+            data: response.blackboard_entry!.data,
+            iteration: iterationRef.current,
+          };
         }
+        handleBlackboardUpdate(blackboardEntry);
 
         // Add assistant message
         const assistantMessage: FreeAgentMessage = {
