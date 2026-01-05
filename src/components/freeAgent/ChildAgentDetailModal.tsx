@@ -64,32 +64,34 @@ export function ChildAgentDetailModal({ isOpen, onClose, child }: ChildAgentDeta
         </DialogHeader>
 
         <Tabs defaultValue="task" className="flex-1 flex flex-col overflow-hidden">
-          <TabsList className="mx-6 mt-4 justify-start">
-            <TabsTrigger value="task" className="gap-1.5">
-              <MessageSquare className="w-4 h-4" />
-              Task
-            </TabsTrigger>
-            <TabsTrigger value="blackboard" className="gap-1.5">
-              <FileText className="w-4 h-4" />
-              Blackboard ({child.blackboard.length})
-            </TabsTrigger>
-            <TabsTrigger value="tools" className="gap-1.5">
-              <Wrench className="w-4 h-4" />
-              Tool Calls ({child.toolCalls.length})
-            </TabsTrigger>
-            <TabsTrigger value="scratchpad" className="gap-1.5">
-              <FileText className="w-4 h-4" />
-              Scratchpad
-            </TabsTrigger>
-            <TabsTrigger value="attributes" className="gap-1.5">
-              <Database className="w-4 h-4" />
-              Attributes ({Object.keys(child.toolResultAttributes || {}).length})
-            </TabsTrigger>
-            <TabsTrigger value="artifacts" className="gap-1.5">
-              <FileOutput className="w-4 h-4" />
-              Artifacts ({child.artifacts?.length || 0})
-            </TabsTrigger>
-          </TabsList>
+          <div className="mx-6 mt-4 overflow-x-auto">
+            <TabsList className="justify-start inline-flex min-w-max gap-1">
+              <TabsTrigger value="task" className="gap-1.5">
+                <MessageSquare className="w-4 h-4" />
+                Task
+              </TabsTrigger>
+              <TabsTrigger value="blackboard" className="gap-1.5">
+                <FileText className="w-4 h-4" />
+                Blackboard ({child.blackboard.length})
+              </TabsTrigger>
+              <TabsTrigger value="tools" className="gap-1.5">
+                <Wrench className="w-4 h-4" />
+                Tool Calls ({child.toolCalls.length})
+              </TabsTrigger>
+              <TabsTrigger value="scratchpad" className="gap-1.5">
+                <FileText className="w-4 h-4" />
+                Scratchpad
+              </TabsTrigger>
+              <TabsTrigger value="attributes" className="gap-1.5">
+                <Database className="w-4 h-4" />
+                Attributes ({Object.keys(child.toolResultAttributes || {}).length})
+              </TabsTrigger>
+              <TabsTrigger value="artifacts" className="gap-1.5">
+                <FileOutput className="w-4 h-4" />
+                Artifacts ({child.artifacts?.length || 0})
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           <div className="flex-1 overflow-hidden px-6 pb-6">
             {/* Task Tab */}
