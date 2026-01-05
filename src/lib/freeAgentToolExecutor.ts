@@ -574,10 +574,16 @@ async function executeReadSelf(
       result.sections = {
         sectionOverrides: context.promptCustomization.sectionOverrides || {},
         disabledSections: context.promptCustomization.disabledSections || [],
-        additionalSections: context.promptCustomization.additionalSections || [],
+        additionalSections: (context.promptCustomization.additionalSections || []).map(s => ({
+          id: s.id,
+          title: s.title,
+          contentLength: s.content?.length || 0,
+        })),
         orderOverrides: context.promptCustomization.orderOverrides || {},
       };
-      result.note = "Section IDs can be overridden using write_self with sectionOverrides parameter";
+      // Include list of valid template section IDs for reference
+      result.validSectionIds = Array.from(VALID_TEMPLATE_SECTION_IDS);
+      result.customSectionIds = (context.promptCustomization.additionalSections || []).map(s => s.id);
     }
     
     if (include === "all" || include === "tools") {
@@ -596,10 +602,13 @@ async function executeReadSelf(
         usage: {
           tip: "Use write_self to modify your configuration. Changes take effect next iteration.",
           examples: [
+            'Override EXISTING section: write_self({ sectionOverrides: { identity: "You are a helpful assistant..." } })',
+            'Add NEW custom section: write_self({ addSections: [{ title: "My Rules", content: "..." }] })',
+            'Delete custom section: write_self({ deleteSections: ["custom_section_id"] })',
             'Disable a section: write_self({ disableSections: ["memory_architecture"] })',
-            'Override section content: write_self({ sectionOverrides: { identity: "You are a helpful assistant..." } })',
             'Disable a tool: write_self({ disableTools: ["web_scrape"] })',
-          ]
+          ],
+          important: "sectionOverrides only works for existing sections. Use addSections to create NEW sections."
         }
       }
     };
@@ -610,6 +619,17 @@ async function executeReadSelf(
     };
   }
 }
+
+// Valid template section IDs that can be overridden
+const VALID_TEMPLATE_SECTION_IDS = new Set([
+  'identity', 'tools_list', 'session_files', 'configured_secrets', 
+  'blackboard', 'scratchpad', 'previous_results', 'iteration_info',
+  'memory_architecture', 'correct_workflow', 'loop_problem', 
+  'anti_loop_rules', 'loop_self_reflection', 'tool_execution_timing',
+  'response_format', 'blackboard_mandatory', 'data_handling', 
+  'workflow_summary', 'accessing_attributes', 'reference_resolution',
+  'self_author', 'spawn_capabilities'
+]);
 
 // Write/modify the agent's own prompt configuration
 async function executeWriteSelf(
@@ -631,6 +651,7 @@ async function executeWriteSelf(
   }
   
   const changesApplied: string[] = [];
+  const warnings: string[] = [];
   
   try {
     const sectionOverrides = params.sectionOverrides as Record<string, string> | undefined;
@@ -639,8 +660,15 @@ async function executeWriteSelf(
     const toolDescriptionOverrides = params.toolDescriptionOverrides as Record<string, string> | undefined;
     const disableTools = params.disableTools as string[] | undefined;
     const enableTools = params.enableTools as string[] | undefined;
+    // New parameters for adding/deleting custom sections
+    const addSections = params.addSections as Array<{
+      id?: string;
+      title: string;
+      content: string;
+    }> | undefined;
+    const deleteSections = params.deleteSections as string[] | undefined;
     
-    // Build the updated customization
+    // Build the updated customization - explicitly preserve all arrays/objects
     const currentCustomization = context.promptCustomization || {
       templateId: 'default',
       sectionOverrides: {},
@@ -654,12 +682,75 @@ async function executeWriteSelf(
       ...currentCustomization,
       sectionOverrides: { ...currentCustomization.sectionOverrides },
       disabledSections: [...(currentCustomization.disabledSections || [])],
+      additionalSections: [...(currentCustomization.additionalSections || [])], // Explicit copy
+      orderOverrides: { ...(currentCustomization.orderOverrides || {}) },        // Explicit copy
       toolOverrides: { ...currentCustomization.toolOverrides },
     };
+    
+    // Delete custom sections first (before adding new ones)
+    if (deleteSections) {
+      for (const sectionId of deleteSections) {
+        const index = updatedCustomization.additionalSections.findIndex(s => s.id === sectionId);
+        if (index !== -1) {
+          const section = updatedCustomization.additionalSections[index];
+          updatedCustomization.additionalSections.splice(index, 1);
+          changesApplied.push(`Deleted custom section: ${section.title} (${sectionId})`);
+        } else {
+          warnings.push(`Section '${sectionId}' not found in custom sections - cannot delete`);
+        }
+        // Also remove from sectionOverrides if it exists there
+        if (updatedCustomization.sectionOverrides[sectionId]) {
+          delete updatedCustomization.sectionOverrides[sectionId];
+        }
+      }
+    }
+    
+    // Add new custom sections
+    if (addSections) {
+      for (const section of addSections) {
+        if (!section.title || !section.content) {
+          warnings.push(`Skipped section: missing title or content`);
+          continue;
+        }
+        const newId = section.id || `custom_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        // Check if ID already exists
+        const existsInTemplate = VALID_TEMPLATE_SECTION_IDS.has(newId);
+        const existsInCustom = updatedCustomization.additionalSections.some(s => s.id === newId);
+        
+        if (existsInTemplate || existsInCustom) {
+          warnings.push(`Section ID '${newId}' already exists - use sectionOverrides to modify it`);
+          continue;
+        }
+        
+        const maxOrder = updatedCustomization.additionalSections.reduce(
+          (max, s) => Math.max(max, s.order), 999
+        );
+        updatedCustomization.additionalSections.push({
+          id: newId,
+          title: section.title,
+          type: 'custom',
+          editable: 'editable',
+          order: maxOrder + 1,
+          content: section.content,
+        });
+        changesApplied.push(`Added custom section '${section.title}' (${newId}, ${section.content.length} chars)`);
+      }
+    }
     
     // Apply section content overrides
     if (sectionOverrides) {
       for (const [sectionId, content] of Object.entries(sectionOverrides)) {
+        // Check if it's a valid template section
+        const isValidTemplate = VALID_TEMPLATE_SECTION_IDS.has(sectionId);
+        // Check if it's a custom section
+        const isCustom = updatedCustomization.additionalSections.some(s => s.id === sectionId);
+        
+        if (!isValidTemplate && !isCustom) {
+          warnings.push(`Section '${sectionId}' does not exist - use addSections to create it first. Valid sections: ${Array.from(VALID_TEMPLATE_SECTION_IDS).slice(0, 5).join(', ')}...`);
+          // Still save it (it won't display, but keep it)
+        }
+        
         updatedCustomization.sectionOverrides[sectionId] = content;
         changesApplied.push(`Override section '${sectionId}' (${content.length} chars)`);
       }
@@ -721,7 +812,7 @@ async function executeWriteSelf(
     if (changesApplied.length === 0) {
       return { 
         success: false, 
-        error: "No changes specified. Provide at least one of: sectionOverrides, disableSections, enableSections, toolDescriptionOverrides, disableTools, enableTools" 
+        error: "No changes specified. Provide at least one of: sectionOverrides, disableSections, enableSections, toolDescriptionOverrides, disableTools, enableTools, addSections, deleteSections" 
       };
     }
     
@@ -746,8 +837,11 @@ async function executeWriteSelf(
       success: true, 
       result: { 
         changesApplied,
+        warnings: warnings.length > 0 ? warnings : undefined,
+        validSectionIds: Array.from(VALID_TEMPLATE_SECTION_IDS),
+        customSections: updatedCustomization.additionalSections.map(s => s.id),
         note: "Changes saved and will take effect in the next iteration.",
-        warning: "Self-modification can lead to unexpected behavior. Use carefully."
+        tip: "To add new sections, use addSections: [{ title: 'My Section', content: '...' }]"
       }
     };
   } catch (error) {

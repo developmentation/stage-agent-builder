@@ -1046,7 +1046,7 @@
     },
     "write_self": {
       "name": "Write Self Configuration",
-      "description": "Modify your own system prompt configuration. Changes take effect in the next iteration. Use carefully - this modifies your behavior.",
+      "description": "Modify your own system prompt configuration. Changes take effect in the next iteration. Use carefully - this modifies your behavior. IMPORTANT: Use addSections to create NEW sections, sectionOverrides only works for EXISTING sections.",
       "frontend_handler": true,
       "icon": "PenTool",
       "category": "advanced_self_author",
@@ -1054,7 +1054,23 @@
         "sectionOverrides": {
           "type": "object",
           "required": false,
-          "description": "Map of sectionId to new content (e.g., {'identity': 'You are a data analyst...'})"
+          "description": "Map of EXISTING sectionId to new content. Valid IDs: identity, memory_architecture, correct_workflow, loop_problem, anti_loop_rules, loop_self_reflection, tool_execution_timing, response_format, blackboard_mandatory, data_handling, workflow_summary, accessing_attributes, reference_resolution. Use addSections to create NEW sections."
+        },
+        "addSections": {
+          "type": "array",
+          "required": false,
+          "description": "Add new custom sections: [{id?: string, title: string, content: string}]. ID is auto-generated if not provided.",
+          "items": {
+            "id": "string (optional) - Custom ID for the section, auto-generated if omitted",
+            "title": "string (required) - Section title displayed in UI",
+            "content": "string (required) - Section content/instructions"
+          }
+        },
+        "deleteSections": {
+          "type": "array",
+          "items": "string",
+          "required": false,
+          "description": "IDs of custom sections to delete. Only works for sections added via addSections."
         },
         "disableSections": {
           "type": "array",
@@ -1088,7 +1104,7 @@
       },
       "returns": {
         "type": "object",
-        "properties": ["success", "changesApplied"]
+        "properties": ["success", "changesApplied", "warnings", "validSectionIds", "customSections"]
       }
     },
     "spawn": {
