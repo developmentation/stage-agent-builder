@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { ChildSession } from "@/types/freeAgent";
-import { GitBranch, Clock, CheckCircle, XCircle, Loader2, FileText, Wrench, MessageSquare } from "lucide-react";
+import { GitBranch, Clock, CheckCircle, XCircle, Loader2, FileText, Wrench, MessageSquare, Database } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -80,6 +80,10 @@ export function ChildAgentDetailModal({ isOpen, onClose, child }: ChildAgentDeta
             <TabsTrigger value="scratchpad" className="gap-1.5">
               <FileText className="w-4 h-4" />
               Scratchpad
+            </TabsTrigger>
+            <TabsTrigger value="attributes" className="gap-1.5">
+              <Database className="w-4 h-4" />
+              Attributes ({Object.keys(child.toolResultAttributes || {}).length})
             </TabsTrigger>
           </TabsList>
 
@@ -221,6 +225,37 @@ export function ChildAgentDetailModal({ isOpen, onClose, child }: ChildAgentDeta
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                       {child.scratchpad}
                     </ReactMarkdown>
+                  </div>
+                )}
+              </ScrollArea>
+            </TabsContent>
+
+            {/* Attributes Tab */}
+            <TabsContent value="attributes" className="h-full m-0 mt-4">
+              <ScrollArea className="h-full">
+                {!child.toolResultAttributes || Object.keys(child.toolResultAttributes).length === 0 ? (
+                  <div className="text-center text-muted-foreground py-8">
+                    No named attributes saved
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {Object.entries(child.toolResultAttributes).map(([name, attr]) => (
+                      <div key={attr.id} className="p-3 border rounded-lg">
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <Database className="w-4 h-4 text-muted-foreground" />
+                            <span className="font-medium">{name}</span>
+                            <Badge variant="outline">{attr.tool}</Badge>
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            {attr.size} chars • Iteration {attr.iteration}
+                          </span>
+                        </div>
+                        <pre className="mt-1 p-2 bg-muted rounded text-xs overflow-x-auto max-h-32">
+                          {attr.resultString.slice(0, 500)}{attr.resultString.length > 500 ? '...' : ''}
+                        </pre>
+                      </div>
+                    ))}
                   </div>
                 )}
               </ScrollArea>

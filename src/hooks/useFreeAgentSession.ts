@@ -724,6 +724,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
       let childBlackboard = [...child.blackboard];
       let childToolCalls = [...child.toolCalls];
       let childArtifacts = [...child.artifacts];
+      let childAttributes: Record<string, ToolResultAttribute> = { ...child.toolResultAttributes };
       
       console.log(`[Child:${child.name}] Starting execution with max ${child.maxIterations} iterations`);
       
@@ -770,6 +771,7 @@ ${section.content}
           scratchpad: childScratchpad,
           toolCalls: childToolCalls,
           artifacts: childArtifacts,
+          toolResultAttributes: childAttributes,
         };
         onUpdate(updatedChild);
         
@@ -799,7 +801,13 @@ ${section.content}
               scratchpad: childScratchpad,
               secretOverrides: parentSession.secretOverrides,
               configuredParams: parentSession.configuredParams,
-              toolResultAttributes: {},
+              // Pass child's own attributes for reference resolution
+              toolResultAttributes: Object.fromEntries(
+                Object.entries(childAttributes).map(([name, attr]) => [
+                  name,
+                  { result: attr.result, size: attr.size }
+                ])
+              ),
               artifacts: childArtifacts.map(a => ({
                 id: a.id,
                 type: a.type,
@@ -864,6 +872,29 @@ ${section.content}
               setTimeout(() => onToolActive(result.tool, false), 1000);
             }
             
+            // Handle saveAs for child - create named attribute if present
+            const saveAsName = toolCall.params?.saveAs as string | undefined;
+            if (result.success && saveAsName && AUTO_SAVE_TOOLS.includes(result.tool)) {
+              const resultString = JSON.stringify(result.result, null, 2);
+              const attribute: ToolResultAttribute = {
+                id: crypto.randomUUID(),
+                name: saveAsName,
+                tool: result.tool,
+                params: toolCall.params || {},
+                result: result.result,
+                resultString,
+                size: resultString.length,
+                createdAt: new Date().toISOString(),
+                iteration: childIteration,
+              };
+              childAttributes[saveAsName] = attribute;
+              console.log(`[Child:${child.name}] Attribute created: ${saveAsName} (${resultString.length} chars)`);
+              
+              // Auto-add to child scratchpad with guidance
+              const scratchpadEntry = `\n\n## ${saveAsName} (from ${result.tool})\nData stored in attribute (${resultString.length} chars).\nAccess via: read_attribute({ names: ['${saveAsName}'] })\n\n**TODO: Summarize key findings here.**`;
+              childScratchpad = childScratchpad + scratchpadEntry;
+            }
+            
             // Handle frontend-handled tools locally for child
             if (result.result?.frontend_handler) {
               const frontendTool = result.result.tool as string;
@@ -909,6 +940,21 @@ ${section.content}
                   result: { content: childScratchpad },
                 });
                 continue;
+              } else if (frontendTool === 'read_attribute') {
+                // Handle read_attribute for child locally
+                const names = frontendParams.names as string[] || [];
+                const requestedAttrs: Record<string, unknown> = {};
+                for (const name of names) {
+                  if (childAttributes[name]) {
+                    requestedAttrs[name] = childAttributes[name].result;
+                  }
+                }
+                iterationToolResults.push({
+                  tool: frontendTool,
+                  success: true,
+                  result: requestedAttrs,
+                });
+                continue;
               }
               // Other frontend tools - pass through the marker
             }
@@ -930,6 +976,7 @@ ${section.content}
               scratchpad: childScratchpad,
               toolCalls: childToolCalls,
               artifacts: childArtifacts,
+              toolResultAttributes: childAttributes,
             };
             onUpdate(finalChild);
             return;
@@ -947,6 +994,7 @@ ${section.content}
               scratchpad: childScratchpad,
               toolCalls: childToolCalls,
               artifacts: childArtifacts,
+              toolResultAttributes: childAttributes,
               error: response.message_to_user || 'Child agent encountered an error',
             };
             onUpdate(errorChild);
@@ -979,6 +1027,7 @@ ${section.content}
         scratchpad: childScratchpad,
         toolCalls: childToolCalls,
         artifacts: childArtifacts,
+        toolResultAttributes: childAttributes,
       };
       onUpdate(finalChild);
     },
@@ -1094,6 +1143,7 @@ ${section.content}
             scratchpad: spawnRequest.parentScratchpad,
             toolCalls: [],
             artifacts: [],
+            toolResultAttributes: {}, // Initialize empty - child builds its own
           }));
           
           // Set orchestrator to 'waiting' status
@@ -1170,7 +1220,7 @@ ${section.content}
           
           console.log(`[Spawn] ${completedChildren.length}/${childSessions.length} children completed`);
           
-          // Get final child states and merge to parent blackboard
+          // Get final child states and merge to parent blackboard, scratchpad, and attributes
           for (const child of childSessions) {
             runningChildrenRef.current.delete(child.name);
             const finalChild = childSessionsRef.current.get(child.name);
@@ -1190,6 +1240,20 @@ ${section.content}
                 const childAdditions = finalChild.scratchpad.slice(spawnRequest.parentScratchpad.length);
                 if (childAdditions.trim()) {
                   handleScratchpadUpdate(scratchpadRef.current + `\n\n## [${child.name}] Results\n${childAdditions}`);
+                }
+              }
+              
+              // Merge child's named attributes to parent with name prefix
+              if (finalChild.toolResultAttributes && Object.keys(finalChild.toolResultAttributes).length > 0) {
+                for (const [name, attr] of Object.entries(finalChild.toolResultAttributes)) {
+                  const prefixedName = `${child.name}_${name}`;
+                  const prefixedAttr: ToolResultAttribute = {
+                    ...attr,
+                    id: crypto.randomUUID(),
+                    name: prefixedName,
+                  };
+                  handleAttributeCreated(prefixedAttr);
+                  console.log(`[Spawn] Merged child attribute: ${prefixedName} (${attr.size} chars)`);
                 }
               }
             }
