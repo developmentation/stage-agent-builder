@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 interface FreeAgentNodeData {
   type: "agent";
   label: string;
+  isWaiting?: boolean; // Orchestrator waiting for children
   status: "idle" | "thinking" | "active" | "success" | "error" | "paused";
   iteration?: number;
   reasoning?: string;
@@ -16,6 +17,10 @@ interface FreeAgentNodeData {
 
 export function FreeAgentNode({ data }: NodeProps<FreeAgentNodeData>) {
   const getStatusStyles = () => {
+    // Check for waiting state (orchestrator waiting for children)
+    if (data.isWaiting) {
+      return "border-amber-500 bg-amber-500/10 shadow-amber-500/30";
+    }
     switch (data.status) {
       case "thinking":
         return "border-yellow-500 bg-yellow-500/10 shadow-yellow-500/30";
@@ -33,6 +38,10 @@ export function FreeAgentNode({ data }: NodeProps<FreeAgentNodeData>) {
   };
 
   const getStatusIcon = () => {
+    // Waiting state shows pause with amber color
+    if (data.isWaiting) {
+      return <Pause className="w-6 h-6 text-amber-500" />;
+    }
     switch (data.status) {
       case "thinking":
         return <Loader2 className="w-6 h-6 text-yellow-500 animate-spin" />;
@@ -115,7 +124,7 @@ export function FreeAgentNode({ data }: NodeProps<FreeAgentNodeData>) {
 
       {/* Label */}
       <div className="text-xs font-semibold text-foreground text-center px-2">
-        {canRetry ? "Click to Retry" : data.label}
+        {canRetry ? "Click to Retry" : data.isWaiting ? "Waiting..." : data.label}
       </div>
 
       {/* Iteration badge */}

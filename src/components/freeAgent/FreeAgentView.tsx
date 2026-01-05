@@ -8,11 +8,12 @@ import { RawViewer } from "./RawViewer";
 import { SystemPromptViewer } from "./SystemPromptViewer";
 import { AssistanceModal } from "./AssistanceModal";
 import { FinalReportModal } from "./FinalReportModal";
+import { ChildAgentDetailModal } from "./ChildAgentDetailModal";
 import { useFreeAgentSession } from "@/hooks/useFreeAgentSession";
 import { useSecretsManager } from "@/hooks/useSecretsManager";
 import { usePromptCustomization } from "@/hooks/usePromptCustomization";
 import { buildPromptData } from "@/lib/systemPromptBuilder";
-import type { ToolsManifest, SessionFile, AssistanceRequest, FreeAgentSession, AdvancedFeatures } from "@/types/freeAgent";
+import type { ToolsManifest, SessionFile, AssistanceRequest, FreeAgentSession, AdvancedFeatures, ChildSession } from "@/types/freeAgent";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -27,6 +28,8 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
   const [assistanceModalOpen, setAssistanceModalOpen] = useState(false);
   const [finalReportModalOpen, setFinalReportModalOpen] = useState(false);
   const [pendingAssistance, setPendingAssistance] = useState<AssistanceRequest | null>(null);
+  const [selectedChild, setSelectedChild] = useState<ChildSession | null>(null);
+  const [childModalOpen, setChildModalOpen] = useState(false);
 
   const {
     session,
@@ -107,6 +110,14 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
     interjectSession(message);
   }, [interjectSession]);
 
+  const handleChildClick = useCallback((childName: string) => {
+    const child = session?.orchestration?.children?.find(c => c.name === childName);
+    if (child) {
+      setSelectedChild(child);
+      setChildModalOpen(true);
+    }
+  }, [session?.orchestration?.children]);
+
   const [mobileTab, setMobileTab] = useState<"panel" | "canvas" | "data">("panel");
 
   return (
@@ -176,6 +187,7 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
                 activeToolIds={activeToolIds}
                 onScratchpadChange={updateScratchpad}
                 onRetry={retrySession}
+                onChildClick={handleChildClick}
               />
             </div>
           )}
@@ -253,6 +265,7 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
                 activeToolIds={activeToolIds}
                 onScratchpadChange={updateScratchpad}
                 onRetry={retrySession}
+                onChildClick={handleChildClick}
               />
             </div>
           </ResizablePanel>
@@ -342,6 +355,12 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
         open={finalReportModalOpen}
         onClose={() => setFinalReportModalOpen(false)}
         onReset={handleReset}
+      />
+
+      <ChildAgentDetailModal
+        isOpen={childModalOpen}
+        onClose={() => setChildModalOpen(false)}
+        child={selectedChild}
       />
     </div>
   );

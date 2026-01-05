@@ -791,12 +791,12 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
           
           console.log(`[Spawn] Orchestrator entering waiting mode for ${spawnRequest.children.length} children`);
           
-          // Update session to orchestration mode
+          // Update session to orchestration mode with 'waiting' status
           const childSessions: ChildSession[] = spawnRequest.children.map(child => ({
             id: crypto.randomUUID(),
             name: child.name,
             task: child.task,
-            status: 'idle' as const, // Will change to 'running' when executed
+            status: 'running' as const, // Children start as running
             promptModifications: child.sectionOverrides ? 
               Object.entries(child.sectionOverrides).map(([sectionId, content]) => ({
                 type: 'override_section' as const,
@@ -813,8 +813,10 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
             artifacts: [],
           }));
           
+          // Set orchestrator to 'waiting' status
           updateSession((prev) => prev ? {
             ...prev,
+            status: 'waiting', // Orchestrator is waiting for children
             orchestration: {
               role: 'orchestrator',
               children: childSessions,
@@ -856,9 +858,10 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
             }
           }
           
-          // Resume orchestrator
+          // Resume orchestrator - back to running status
           updateSession((prev) => prev ? {
             ...prev,
+            status: 'running', // Resume orchestrator
             orchestration: {
               ...prev.orchestration!,
               awaitingChildren: false,
