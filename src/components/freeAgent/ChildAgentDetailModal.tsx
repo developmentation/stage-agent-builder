@@ -197,10 +197,10 @@ export function ChildAgentDetailModal({ isOpen, onClose, child }: ChildAgentDeta
                           {tc.result && (
                             <div>
                               <span className="text-muted-foreground">Result:</span>
-                              <pre className="mt-1 p-2 bg-muted rounded text-xs overflow-x-auto max-h-32">
+                              <pre className="mt-1 p-2 bg-muted rounded text-xs overflow-x-auto whitespace-pre-wrap break-words" style={{ overflowWrap: 'anywhere' }}>
                                 {typeof tc.result === 'string' 
-                                  ? tc.result.slice(0, 500) + (tc.result.length > 500 ? '...' : '')
-                                  : JSON.stringify(tc.result, null, 2).slice(0, 500)}
+                                  ? tc.result
+                                  : JSON.stringify(tc.result, null, 2)}
                               </pre>
                             </div>
                           )}
@@ -257,8 +257,8 @@ export function ChildAgentDetailModal({ isOpen, onClose, child }: ChildAgentDeta
                             {attr.size} chars • Iteration {attr.iteration}
                           </span>
                         </div>
-                        <pre className="mt-1 p-2 bg-muted rounded text-xs overflow-x-auto max-h-32">
-                          {attr.resultString.slice(0, 500)}{attr.resultString.length > 500 ? '...' : ''}
+                        <pre className="mt-1 p-2 bg-muted rounded text-xs whitespace-pre-wrap break-words" style={{ overflowWrap: 'anywhere' }}>
+                          {attr.resultString}
                         </pre>
                       </div>
                     ))}
@@ -291,8 +291,8 @@ export function ChildAgentDetailModal({ isOpen, onClose, child }: ChildAgentDeta
                         {artifact.description && (
                           <p className="text-sm text-muted-foreground mb-2">{artifact.description}</p>
                         )}
-                        <pre className="mt-1 p-2 bg-muted rounded text-xs overflow-x-auto max-h-48 whitespace-pre-wrap break-words">
-                          {artifact.content.slice(0, 1000)}{artifact.content.length > 1000 ? '...' : ''}
+                        <pre className="mt-1 p-2 bg-muted rounded text-xs whitespace-pre-wrap break-words" style={{ overflowWrap: 'anywhere' }}>
+                          {artifact.content}
                         </pre>
                       </div>
                     ))}
