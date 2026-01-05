@@ -1502,16 +1502,26 @@ ${section.content}
             }
           }
           
-          // Resume orchestrator
-          updateSession((prev) => prev ? {
-            ...prev,
-            status: 'running',
-            orchestration: {
-              ...prev.orchestration!,
-              awaitingChildren: false,
-              children: Array.from(childSessionsRef.current.values()),
-            },
-          } : null);
+          // Resume orchestrator - use session's children array as source of truth, not accumulated ref
+          updateSession((prev) => {
+            if (!prev) return null;
+            // Get the current cycle's children from the session state
+            const currentChildren = prev.orchestration?.children || [];
+            // Update each with final state from ref
+            const updatedChildren = currentChildren.map(child => {
+              const finalState = childSessionsRef.current.get(child.name);
+              return finalState || child;
+            });
+            return {
+              ...prev,
+              status: 'running',
+              orchestration: {
+                ...prev.orchestration!,
+                awaitingChildren: false,
+                children: updatedChildren,
+              },
+            };
+          });
           
           console.log('[Spawn] All children completed. Resuming orchestrator.');
           
