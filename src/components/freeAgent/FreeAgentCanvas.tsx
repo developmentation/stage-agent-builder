@@ -40,6 +40,7 @@ interface FreeAgentCanvasProps {
   onScratchpadChange?: (content: string) => void;
   onAttributeClick?: (attributeName: string) => void;
   onRetry?: () => void;
+  onChildClick?: (childName: string) => void;
 }
 
 const nodeTypes = {
@@ -159,6 +160,7 @@ export function FreeAgentCanvas({
   onScratchpadChange,
   onAttributeClick,
   onRetry,
+  onChildClick,
 }: FreeAgentCanvasProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -338,6 +340,10 @@ export function FreeAgentCanvas({
     });
 
     // === CENTER: Agent ===
+    // Check if orchestrator is waiting for children
+    const isWaitingForChildren = session?.orchestration?.role === 'orchestrator' && 
+                                  session?.orchestration?.awaitingChildren === true;
+    
     const agentStatus = session?.status === "running" 
       ? "thinking" 
       : session?.status === "completed" 
@@ -346,7 +352,9 @@ export function FreeAgentCanvas({
           ? "error" 
           : session?.status === "paused"
             ? "paused"
-            : "idle";
+            : session?.status === "waiting"
+              ? "paused"
+              : "idle";
 
     const agentId = "agent";
     newNodeIds.add(agentId);
@@ -358,6 +366,7 @@ export function FreeAgentCanvas({
         type: "agent",
         label: "Free Agent",
         status: agentStatus,
+        isWaiting: isWaitingForChildren,
         iteration: session?.currentIteration || 0,
         reasoning: session?.messages[session.messages.length - 1]?.content,
         retryCount: session?.retryCount,
@@ -391,9 +400,10 @@ export function FreeAgentCanvas({
           data: {
             type: 'childAgent',
             label: child.name,
+            childName: child.name,
             status: childStatus,
             task: child.task,
-            iteration: child.currentIteration,
+            currentIteration: child.currentIteration,
             maxIterations: child.maxIterations,
           },
         });
@@ -592,9 +602,11 @@ export function FreeAgentCanvas({
         onFileClick(node.data.fileId);
       } else if (node.type === "attribute" && onAttributeClick) {
         onAttributeClick(node.data.attributeName);
+      } else if (node.type === "childAgent" && onChildClick) {
+        onChildClick(node.data.childName);
       }
     },
-    [onToolClick, onArtifactClick, onFileClick, onAttributeClick]
+    [onToolClick, onArtifactClick, onFileClick, onAttributeClick, onChildClick]
   );
 
   return (
@@ -620,9 +632,11 @@ export function FreeAgentCanvas({
               if (node.type === "scratchpad") return "#f59e0b";
               if (node.type === "prompt") return "#3b82f6";
               if (node.type === "promptFile") return "#10b981";
+              if (node.type === "childAgent") return "#f59e0b"; // Amber for child agents
               if (node.data?.status === "active" || node.data?.status === "thinking") return "#f59e0b";
               if (node.data?.status === "success") return "#10b981";
               if (node.data?.status === "error") return "#ef4444";
+              if (node.data?.status === "waiting") return "#f59e0b"; // Amber for waiting
               return "#6b7280";
             }}
             maskColor="rgba(0, 0, 0, 0.8)"
@@ -632,6 +646,11 @@ export function FreeAgentCanvas({
               {session ? (
                 <span>
                   Iteration {session.currentIteration} / {session.maxIterations}
+                  {session.status === 'waiting' && session.orchestration?.children && (
+                    <span className="ml-2 text-amber-500">
+                      (Waiting for {session.orchestration.children.filter(c => c.status === 'running').length} children)
+                    </span>
+                  )}
                 </span>
               ) : (
                 <span>No active session</span>

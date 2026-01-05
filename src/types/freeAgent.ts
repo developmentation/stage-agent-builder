@@ -14,6 +14,7 @@ export type FreeAgentStatus =
   | 'idle' 
   | 'running' 
   | 'paused' 
+  | 'waiting'      // Orchestrator waiting for children to complete
   | 'needs_assistance' 
   | 'completed' 
   | 'error';
@@ -389,6 +390,7 @@ export interface FreeAgentNodeData {
   filename?: string; // For promptFile nodes
   size?: number; // For promptFile/attribute nodes
   isWriting?: boolean; // For scratchpad animation
+  isWaiting?: boolean; // For agent node waiting for children
   onContentChange?: (content: string) => void; // For scratchpad updates
   attributeName?: string; // For attribute nodes
   attributeTool?: string; // Source tool for attribute nodes
