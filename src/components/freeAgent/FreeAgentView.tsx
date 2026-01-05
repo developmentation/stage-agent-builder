@@ -99,7 +99,14 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
       orderOverrides: {},
       toolOverrides: {},
     };
-    await startSession(prompt, files, model, maxIterations, existingSession, secretOverrides, configuredParams, promptData, advancedFeatures, customizationsData);
+    
+    // Pass a callback to reload customizations from localStorage when write_self modifies them
+    const handlePromptCustomizationChange = () => {
+      console.log('[FreeAgentView] write_self triggered - reloading customizations from storage');
+      promptCustomization.loadFromStorage();
+    };
+    
+    await startSession(prompt, files, model, maxIterations, existingSession, secretOverrides, configuredParams, promptData, advancedFeatures, customizationsData, handlePromptCustomizationChange);
   };
 
   const handleAssistanceResponse = useCallback(

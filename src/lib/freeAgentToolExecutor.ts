@@ -37,6 +37,8 @@ export interface ToolExecutionContext {
   advancedFeatures?: AdvancedFeatures;
   // Self-author: prompt customization interface
   promptCustomization?: PromptCustomization;
+  // Self-author: callback to notify UI when prompt is modified
+  onPromptCustomizationChange?: () => void;
   // Spawn: callback to create child agents
   onSpawnChildren?: (request: SpawnRequest) => void;
 }
@@ -631,10 +633,6 @@ async function executeWriteSelf(
   const changesApplied: string[] = [];
   
   try {
-    // Note: The actual modification will happen via a callback mechanism
-    // For now, we return what changes would be applied
-    // The hook will need to be extended to support programmatic updates
-    
     const sectionOverrides = params.sectionOverrides as Record<string, string> | undefined;
     const disableSections = params.disableSections as string[] | undefined;
     const enableSections = params.enableSections as string[] | undefined;
@@ -642,38 +640,80 @@ async function executeWriteSelf(
     const disableTools = params.disableTools as string[] | undefined;
     const enableTools = params.enableTools as string[] | undefined;
     
+    // Build the updated customization
+    const currentCustomization = context.promptCustomization || {
+      templateId: 'default',
+      sectionOverrides: {},
+      disabledSections: [],
+      additionalSections: [],
+      orderOverrides: {},
+      toolOverrides: {},
+    };
+    
+    const updatedCustomization: PromptCustomization = {
+      ...currentCustomization,
+      sectionOverrides: { ...currentCustomization.sectionOverrides },
+      disabledSections: [...(currentCustomization.disabledSections || [])],
+      toolOverrides: { ...currentCustomization.toolOverrides },
+    };
+    
+    // Apply section content overrides
     if (sectionOverrides) {
       for (const [sectionId, content] of Object.entries(sectionOverrides)) {
+        updatedCustomization.sectionOverrides[sectionId] = content;
         changesApplied.push(`Override section '${sectionId}' (${content.length} chars)`);
       }
     }
     
+    // Disable sections
     if (disableSections) {
       for (const sectionId of disableSections) {
+        if (!updatedCustomization.disabledSections.includes(sectionId)) {
+          updatedCustomization.disabledSections.push(sectionId);
+        }
         changesApplied.push(`Disable section: ${sectionId}`);
       }
     }
     
+    // Enable sections (remove from disabled list)
     if (enableSections) {
       for (const sectionId of enableSections) {
+        updatedCustomization.disabledSections = updatedCustomization.disabledSections.filter(id => id !== sectionId);
         changesApplied.push(`Enable section: ${sectionId}`);
       }
     }
     
+    // Apply tool description overrides
     if (toolDescriptionOverrides) {
-      for (const [toolId] of Object.entries(toolDescriptionOverrides)) {
+      for (const [toolId, description] of Object.entries(toolDescriptionOverrides)) {
+        updatedCustomization.toolOverrides[toolId] = {
+          ...updatedCustomization.toolOverrides[toolId],
+          description,
+        };
         changesApplied.push(`Override tool description: ${toolId}`);
       }
     }
     
+    // Disable tools
     if (disableTools) {
       for (const toolId of disableTools) {
+        updatedCustomization.toolOverrides[toolId] = {
+          ...updatedCustomization.toolOverrides[toolId],
+          disabled: true,
+        };
         changesApplied.push(`Disable tool: ${toolId}`);
       }
     }
     
+    // Enable tools
     if (enableTools) {
       for (const toolId of enableTools) {
+        if (updatedCustomization.toolOverrides[toolId]) {
+          updatedCustomization.toolOverrides[toolId] = {
+            ...updatedCustomization.toolOverrides[toolId],
+            disabled: false,
+          };
+        }
         changesApplied.push(`Enable tool: ${toolId}`);
       }
     }
@@ -685,13 +725,28 @@ async function executeWriteSelf(
       };
     }
     
-    // Return success with planned changes
-    // Note: Full implementation requires connecting to the usePromptCustomization hook's setter functions
+    // Persist to localStorage
+    try {
+      const STORAGE_KEY = "freeagent-prompt-customizations";
+      const stored = localStorage.getItem(STORAGE_KEY);
+      const all = stored ? JSON.parse(stored) : {};
+      all[updatedCustomization.templateId] = updatedCustomization;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
+      console.log('[write_self] Saved customizations to localStorage:', changesApplied);
+      
+      // Notify UI to reload customizations
+      if (context.onPromptCustomizationChange) {
+        context.onPromptCustomizationChange();
+      }
+    } catch (storageError) {
+      console.error('[write_self] Failed to persist to localStorage:', storageError);
+    }
+    
     return { 
       success: true, 
       result: { 
         changesApplied,
-        note: "Changes queued for next iteration. The prompt configuration will be updated.",
+        note: "Changes saved and will take effect in the next iteration.",
         warning: "Self-modification can lead to unexpected behavior. Use carefully."
       }
     };

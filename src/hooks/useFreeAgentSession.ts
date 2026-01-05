@@ -144,6 +144,9 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
   // Prompt customization ref for self-author tools
   const promptCustomizationRef = useRef<PromptCustomization | null>(null);
   
+  // Callback to notify UI when prompt customization changes (for write_self)
+  const promptCustomizationChangeCallbackRef = useRef<(() => void) | null>(null);
+  
   // Update session and persist to localStorage
   const updateSession = useCallback((updater: (prev: FreeAgentSession | null) => FreeAgentSession | null) => {
     setSession((prev) => {
@@ -505,6 +508,12 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
             advancedFeatures: currentSession.advancedFeatures,
             // Prompt customization for self-author tools
             promptCustomization: promptCustomizationRef.current || undefined,
+            // Callback to notify UI when prompt is modified via write_self
+            onPromptCustomizationChange: () => {
+              if (promptCustomizationChangeCallbackRef.current) {
+                promptCustomizationChangeCallbackRef.current();
+              }
+            },
             // Spawn callback
             onSpawnChildren: (request) => {
               spawnRequestRef.current = request;
@@ -1462,7 +1471,8 @@ ${section.content}
       configuredParams?: FreeAgentSession['configuredParams'],
       promptData?: PromptDataPayload,
       advancedFeatures?: AdvancedFeatures,
-      promptCustomization?: PromptCustomization | null
+      promptCustomization?: PromptCustomization | null,
+      onPromptCustomizationChange?: () => void
     ) => {
       try {
         setIsRunning(true);
@@ -1474,6 +1484,8 @@ ${section.content}
         
         // Store prompt customization for self-author tools
         promptCustomizationRef.current = promptCustomization || null;
+        // Store callback for write_self to notify UI
+        promptCustomizationChangeCallbackRef.current = onPromptCustomizationChange || null;
 
         // If continuing from an existing session, preserve memory (blackboard, scratchpad, artifacts)
         // Also preserve secrets from existing session if not provided
