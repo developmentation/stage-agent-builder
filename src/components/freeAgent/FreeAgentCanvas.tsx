@@ -341,18 +341,21 @@ export function FreeAgentCanvas({
 
     // === CENTER: Agent ===
     // Check if orchestrator is waiting for children
-    const isWaitingForChildren = session?.orchestration?.role === 'orchestrator' && 
-                                  session?.orchestration?.awaitingChildren === true;
+    const isWaitingForChildren = session?.status === 'waiting' || (
+      session?.orchestration?.role === 'orchestrator' && 
+      session?.orchestration?.awaitingChildren === true
+    );
     
-    const agentStatus = session?.status === "running" 
-      ? "thinking" 
-      : session?.status === "completed" 
-        ? "success" 
-        : session?.status === "error" 
-          ? "error" 
-          : session?.status === "paused"
-            ? "paused"
-            : session?.status === "waiting"
+    // When waiting for children, use idle status (not paused) to avoid retry button
+    const agentStatus = isWaitingForChildren 
+      ? "idle"
+      : session?.status === "running" 
+        ? "thinking" 
+        : session?.status === "completed" 
+          ? "success" 
+          : session?.status === "error" 
+            ? "error" 
+            : session?.status === "paused"
               ? "paused"
               : "idle";
 

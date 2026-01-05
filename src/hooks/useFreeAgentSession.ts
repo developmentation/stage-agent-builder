@@ -715,7 +715,8 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
       child: ChildSession,
       parentSession: FreeAgentSession,
       parentPromptData: PromptDataPayload | undefined,
-      onUpdate: (child: ChildSession) => void
+      onUpdate: (child: ChildSession) => void,
+      onToolActive?: (toolId: string, active: boolean) => void
     ) => {
       let childIteration = 0;
       let lastToolResults: ToolResult[] = [];
@@ -840,7 +841,7 @@ ${section.content}
             });
           }
           
-          // Process tool calls
+          // Process tool calls - handle both backend and frontend tools
           const iterationToolResults: ToolResult[] = [];
           for (const result of data.toolResults || []) {
             const toolCall: ToolCall = {
@@ -855,12 +856,64 @@ ${section.content}
               iteration: childIteration,
             };
             childToolCalls.push(toolCall);
-            iterationToolResults.push(result);
             
-            // Handle scratchpad writes
-            if (result.tool === 'write_scratchpad' && result.success) {
-              childScratchpad = result.result?.content || childScratchpad;
+            // Highlight tool usage on canvas
+            if (onToolActive) {
+              onToolActive(result.tool, true);
+              // Deactivate after a short delay
+              setTimeout(() => onToolActive(result.tool, false), 1000);
             }
+            
+            // Handle frontend-handled tools locally for child
+            if (result.result?.frontend_handler) {
+              const frontendTool = result.result.tool as string;
+              const frontendParams = result.result.params as Record<string, unknown>;
+              
+              if (frontendTool === 'write_scratchpad') {
+                const content = frontendParams.content as string;
+                const mode = (frontendParams.mode as string) || "append";
+                const newContent = mode === "append" 
+                  ? childScratchpad + (childScratchpad ? "\n\n" : "") + content 
+                  : content;
+                childScratchpad = newContent;
+                console.log(`[Child:${child.name}] Scratchpad updated (${newContent.length} chars)`);
+                
+                // Override the result for next iteration
+                iterationToolResults.push({
+                  tool: frontendTool,
+                  success: true,
+                  result: { success: true, length: newContent.length },
+                });
+                continue;
+              } else if (frontendTool === 'write_blackboard') {
+                const entry: BlackboardEntry = {
+                  id: crypto.randomUUID(),
+                  timestamp: new Date().toISOString(),
+                  category: (frontendParams.category as BlackboardCategory) || 'observation',
+                  content: frontendParams.content as string,
+                  data: frontendParams.data as Record<string, unknown> | undefined,
+                  iteration: childIteration,
+                };
+                childBlackboard.push(entry);
+                
+                iterationToolResults.push({
+                  tool: frontendTool,
+                  success: true,
+                  result: { id: entry.id, success: true },
+                });
+                continue;
+              } else if (frontendTool === 'read_scratchpad') {
+                iterationToolResults.push({
+                  tool: frontendTool,
+                  success: true,
+                  result: { content: childScratchpad },
+                });
+                continue;
+              }
+              // Other frontend tools - pass through the marker
+            }
+            
+            iterationToolResults.push(result);
           }
           
           lastToolResults = iterationToolResults;
@@ -1073,19 +1126,34 @@ ${section.content}
                 (updatedChild) => {
                   // Update child in ref
                   childSessionsRef.current.set(child.name, updatedChild);
-                  // Update UI
+                  // Update UI - preserve waiting status!
                   updateSession((prev) => {
                     if (!prev?.orchestration?.children) return prev;
                     return {
                       ...prev,
+                      // Explicitly preserve waiting status during child execution
+                      status: 'waiting' as const,
                       orchestration: {
                         ...prev.orchestration,
+                        awaitingChildren: true,
                         children: prev.orchestration.children.map(c => 
                           c.name === child.name ? updatedChild : c
                         ),
                       },
                     };
                   });
+                },
+                // Pass tool activation callback for child tool highlighting
+                (toolId, active) => {
+                  if (active) {
+                    setActiveToolIds((prev) => new Set([...prev, toolId]));
+                  } else {
+                    setActiveToolIds((prev) => {
+                      const next = new Set(prev);
+                      next.delete(toolId);
+                      return next;
+                    });
+                  }
                 }
               );
               return { name: child.name, success: true };
