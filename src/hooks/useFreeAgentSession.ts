@@ -24,6 +24,7 @@ import type {
 import { executeFrontendTool, ToolExecutionContext, SpawnRequest } from "@/lib/freeAgentToolExecutor";
 import { resolveReferences, getResolvedReferenceSummary, type ResolverContext } from "@/lib/referenceResolver";
 import type { PromptDataPayload } from "@/lib/systemPromptBuilder";
+import type { PromptCustomization } from "@/types/systemPrompt";
 
 interface UseFreeAgentSessionOptions {
   maxIterations?: number;
@@ -139,6 +140,9 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
   const runningChildrenRef = useRef<Set<string>>(new Set());
   const orchestrationResolverRef = useRef<(() => void) | null>(null);
   const spawnRequestRef = useRef<SpawnRequest | null>(null);
+  
+  // Prompt customization ref for self-author tools
+  const promptCustomizationRef = useRef<PromptCustomization | null>(null);
   
   // Update session and persist to localStorage
   const updateSession = useCallback((updater: (prev: FreeAgentSession | null) => FreeAgentSession | null) => {
@@ -499,6 +503,8 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
             onAssistanceNeeded: handleAssistanceNeeded,
             // Advanced features
             advancedFeatures: currentSession.advancedFeatures,
+            // Prompt customization for self-author tools
+            promptCustomization: promptCustomizationRef.current || undefined,
             // Spawn callback
             onSpawnChildren: (request) => {
               spawnRequestRef.current = request;
@@ -1455,7 +1461,8 @@ ${section.content}
       secretOverrides?: FreeAgentSession['secretOverrides'],
       configuredParams?: FreeAgentSession['configuredParams'],
       promptData?: PromptDataPayload,
-      advancedFeatures?: AdvancedFeatures
+      advancedFeatures?: AdvancedFeatures,
+      promptCustomization?: PromptCustomization | null
     ) => {
       try {
         setIsRunning(true);
@@ -1464,6 +1471,9 @@ ${section.content}
         lastErrorIterationRef.current = 0;
         maxIterationsRef.current = maxIterations;
         pendingInterjectRef.current = null;
+        
+        // Store prompt customization for self-author tools
+        promptCustomizationRef.current = promptCustomization || null;
 
         // If continuing from an existing session, preserve memory (blackboard, scratchpad, artifacts)
         // Also preserve secrets from existing session if not provided
