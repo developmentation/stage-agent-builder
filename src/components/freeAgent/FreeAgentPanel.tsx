@@ -40,8 +40,11 @@ import {
   Lightbulb,
   Key,
   ClipboardList,
+  AlertTriangle,
+  GitBranch,
 } from "lucide-react";
-import type { FreeAgentSession, SessionFile, ToolsManifest } from "@/types/freeAgent";
+import { Switch } from "@/components/ui/switch";
+import type { FreeAgentSession, SessionFile, ToolsManifest, AdvancedFeatures } from "@/types/freeAgent";
 import { InterjectModal } from "./InterjectModal";
 import { EnhancePromptModal } from "./EnhancePromptModal";
 import { EnhancePromptSettingsModal } from "./EnhancePromptSettingsModal";
@@ -68,7 +71,7 @@ const MODEL_OPTIONS = [
 interface FreeAgentPanelProps {
   session: FreeAgentSession | null;
   isRunning: boolean;
-  onStart: (prompt: string, files: SessionFile[], model: string, maxIterations: number, existingSession?: FreeAgentSession | null) => void;
+  onStart: (prompt: string, files: SessionFile[], model: string, maxIterations: number, existingSession?: FreeAgentSession | null, advancedFeatures?: AdvancedFeatures) => void;
   onStop: () => void;
   onReset: () => void;
   onContinue: () => void;
@@ -102,8 +105,14 @@ export function FreeAgentPanel({
   const [enhanceSettingsModalOpen, setEnhanceSettingsModalOpen] = useState(false);
   const [reflectModalOpen, setReflectModalOpen] = useState(false);
   const [secretsModalOpen, setSecretsModalOpen] = useState(false);
-  const [controlTab, setControlTab] = useState<'task' | 'secrets'>('task');
+  const [controlTab, setControlTab] = useState<'task' | 'secrets' | 'advanced'>('task');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Advanced features state
+  const [selfAuthorEnabled, setSelfAuthorEnabled] = useState(false);
+  const [spawnEnabled, setSpawnEnabled] = useState(false);
+  const [maxChildren, setMaxChildren] = useState(5);
+  const [childMaxIterations, setChildMaxIterations] = useState(20);
   
   // Sync model and maxIterations from session when transitioning to idle (Continue)
   React.useEffect(() => {
@@ -165,8 +174,15 @@ export function FreeAgentPanel({
 
   const handleStart = () => {
     if (!prompt.trim()) return;
+    // Build advanced features from local state
+    const advancedFeatures: AdvancedFeatures = {
+      selfAuthorEnabled,
+      spawnEnabled,
+      maxChildren,
+      childMaxIterations,
+    };
     // Pass existing session if in "idle" state (after Continue) to preserve memory
-    onStart(prompt, files, selectedModel, maxIterations, session?.status === "idle" ? session : null);
+    onStart(prompt, files, selectedModel, maxIterations, session?.status === "idle" ? session : null, advancedFeatures);
     // Keep prompt and files so user can re-run
   };
 
@@ -252,16 +268,20 @@ export function FreeAgentPanel({
       </CardHeader>
 
       <CardContent className="flex-1 flex flex-col overflow-hidden px-2 pb-2">
-        {/* Sub-tabs for Task vs Secrets */}
-        <Tabs value={controlTab} onValueChange={(v) => setControlTab(v as 'task' | 'secrets')} className="flex-1 flex flex-col overflow-hidden">
-          <TabsList className="grid w-full grid-cols-2 mb-3">
+        {/* Sub-tabs for Task, Secrets, Advanced */}
+        <Tabs value={controlTab} onValueChange={(v) => setControlTab(v as 'task' | 'secrets' | 'advanced')} className="flex-1 flex flex-col overflow-hidden">
+          <TabsList className="grid w-full grid-cols-3 mb-3">
             <TabsTrigger value="task" className="gap-1 text-xs">
               <ClipboardList className="w-3 h-3" />
               Task
             </TabsTrigger>
             <TabsTrigger value="secrets" className="gap-1 text-xs">
               <Key className="w-3 h-3" />
-              Secrets ({secretsManager.secrets.length})
+              <span className="hidden min-[380px]:inline">Secrets</span> ({secretsManager.secrets.length})
+            </TabsTrigger>
+            <TabsTrigger value="advanced" className="gap-1 text-xs">
+              <AlertTriangle className="w-3 h-3" />
+              <span className="hidden min-[380px]:inline">Advanced</span>
             </TabsTrigger>
           </TabsList>
 
@@ -303,23 +323,6 @@ export function FreeAgentPanel({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-
-            {/* Max Iterations */}
-            <div className="space-y-2">
-              <Label htmlFor="max-iterations">Max Iterations</Label>
-              <Input
-                id="max-iterations"
-                type="number"
-                min={1}
-                max={200}
-                value={maxIterations}
-                onChange={(e) => setMaxIterations(Math.max(1, Math.min(200, parseInt(e.target.value) || 50)))}
-                className="w-full"
-              />
-              <p className="text-xs text-muted-foreground">
-                Maximum number of autonomous iterations (1-200)
-              </p>
             </div>
 
             {/* File uploads */}
@@ -554,6 +557,116 @@ export function FreeAgentPanel({
               secretsManager={secretsManager}
               onOpenModal={() => setSecretsModalOpen(true)}
             />
+          </TabsContent>
+
+          {/* Advanced Tab */}
+          <TabsContent value="advanced" className="flex-1 overflow-y-auto m-0">
+            <div className="space-y-4 pr-1">
+              <div className="border border-amber-500/50 rounded-lg p-3 bg-amber-500/5">
+                <div className="flex items-center gap-2 mb-3">
+                  <AlertTriangle className="w-4 h-4 text-amber-500" />
+                  <span className="text-sm font-medium text-amber-600">Advanced Features</span>
+                </div>
+                <p className="text-xs text-muted-foreground mb-4">
+                  These features grant the agent powerful capabilities. Use with caution.
+                </p>
+                
+                {/* Max Iterations - moved here */}
+                <div className="space-y-2 mb-4">
+                  <Label htmlFor="max-iterations">Max Iterations</Label>
+                  <Input
+                    id="max-iterations"
+                    type="number"
+                    min={1}
+                    max={200}
+                    value={maxIterations}
+                    onChange={(e) => setMaxIterations(Math.max(1, Math.min(200, parseInt(e.target.value) || 50)))}
+                    className="w-full"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Maximum number of autonomous iterations (1-200)
+                  </p>
+                </div>
+
+                {/* Self-Author Toggle */}
+                <div className="flex items-start gap-3 p-3 rounded-md border border-red-500/30 bg-red-500/5 mb-4">
+                  <Switch
+                    checked={selfAuthorEnabled}
+                    onCheckedChange={setSelfAuthorEnabled}
+                    className="mt-0.5"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Label className="text-red-600 cursor-pointer" onClick={() => setSelfAuthorEnabled(!selfAuthorEnabled)}>
+                        Self-Author
+                      </Label>
+                      <Badge variant="outline" className="text-red-500 border-red-500/50 text-[10px]">
+                        DANGER
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Agent can read and modify its own system prompt. May cause unanticipated actions. For testing only.
+                    </p>
+                    {selfAuthorEnabled && (
+                      <p className="text-xs text-red-500 mt-1">
+                        Grants: <code className="bg-muted px-1 rounded">read_self</code>, <code className="bg-muted px-1 rounded">write_self</code>
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Spawn Toggle */}
+                <div className="flex items-start gap-3 p-3 rounded-md border border-amber-500/30 bg-amber-500/5">
+                  <Switch
+                    checked={spawnEnabled}
+                    onCheckedChange={setSpawnEnabled}
+                    className="mt-0.5"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <Label className="text-amber-600 cursor-pointer" onClick={() => setSpawnEnabled(!spawnEnabled)}>
+                        Spawn Children
+                      </Label>
+                      <GitBranch className="w-3 h-3 text-amber-500" />
+                    </div>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      Agent can create child instances for parallel work. Orchestrator waits for children to complete.
+                    </p>
+                    {spawnEnabled && (
+                      <div className="grid grid-cols-2 gap-2 mt-2">
+                        <div>
+                          <Label className="text-xs text-muted-foreground">Max Children</Label>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={10}
+                            value={maxChildren}
+                            onChange={(e) => setMaxChildren(Math.max(1, Math.min(10, parseInt(e.target.value) || 5)))}
+                            className="h-8"
+                          />
+                        </div>
+                        <div>
+                          <Label className="text-xs text-muted-foreground">Child Max Iter</Label>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={50}
+                            value={childMaxIterations}
+                            onChange={(e) => setChildMaxIterations(Math.max(1, Math.min(50, parseInt(e.target.value) || 20)))}
+                            className="h-8"
+                          />
+                        </div>
+                      </div>
+                    )}
+                    {spawnEnabled && (
+                      <p className="text-xs text-amber-500 mt-2">
+                        Grants: <code className="bg-muted px-1 rounded">spawn</code>
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
           </TabsContent>
         </Tabs>
 

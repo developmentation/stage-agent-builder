@@ -207,6 +207,26 @@
       "description": "How to pass existing data to tools without rewriting",
       "variables": [],
       "content": "## REFERENCE RESOLUTION - PASSING DATA TO TOOLS\n\nInstead of rewriting large content into tool parameters, use reference placeholders. The system automatically resolves these before tool execution.\n\n### Available References:\n- `{{scratchpad}}` - Entire scratchpad content\n- `{{blackboard}}` - All blackboard entries formatted\n- `{{attribute:name}}` - Specific named attribute (e.g., `{{attribute:weather_data}}`)\n- `{{attributes}}` - ALL attributes as JSON object\n- `{{artifact:id}}` - Specific artifact by ID or title\n- `{{artifacts}}` - All artifacts as JSON array\n\n### Example: Send attribute via email\n```json\n{\n  \"tool\": \"send_email\",\n  \"params\": {\n    \"to\": \"user@example.com\",\n    \"subject\": \"Weather Report\",\n    \"body\": \"Here is the weather data:\\n\\n{{attribute:weather_data}}\"\n  }\n}\n```\n\n### Example: Save all attributes to database\n```json\n{\n  \"tool\": \"execute_sql\",\n  \"params\": {\n    \"query\": \"INSERT INTO reports (content) VALUES ($1)\",\n    \"params\": [\"{{attributes}}\"]\n  }\n}\n```\n\n### Example: Forward scratchpad summary\n```json\n{\n  \"tool\": \"send_email\",\n  \"params\": {\n    \"body\": \"## Analysis Summary\\n\\n{{scratchpad}}\"\n  }\n}\n```\n\n### Benefits:\n- **Token Efficient**: No need to rewrite 50KB of data\n- **Error-Free**: Exact data preservation, no LLM interpretation errors\n- **Works Everywhere**: Any tool parameter that accepts strings\n\n### When to Use:\n- Sending reports via email\n- Saving large data to databases\n- Passing collected data to other tools\n- Creating artifacts from stored attributes"
+    },
+    {
+      "id": "self_author",
+      "title": "Self-Author Capabilities",
+      "type": "advanced",
+      "editable": "editable",
+      "order": 21,
+      "description": "Instructions for agent self-modification (only active when Self-Author is enabled)",
+      "variables": ["{{SELF_AUTHOR}}"],
+      "content": "{{SELF_AUTHOR}}"
+    },
+    {
+      "id": "spawn_capabilities",
+      "title": "Spawn Capabilities",
+      "type": "advanced",
+      "editable": "editable",
+      "order": 22,
+      "description": "Instructions for spawning child agents (only active when Spawn is enabled)",
+      "variables": ["{{SPAWN}}"],
+      "content": "{{SPAWN}}"
     }
   ],
 

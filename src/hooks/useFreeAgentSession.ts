@@ -16,6 +16,7 @@ import type {
   ToolResult,
   ArtifactType,
   ToolResultAttribute,
+  AdvancedFeatures,
 } from "@/types/freeAgent";
 import { executeFrontendTool, ToolExecutionContext } from "@/lib/freeAgentToolExecutor";
 import { resolveReferences, getResolvedReferenceSummary, type ResolverContext } from "@/lib/referenceResolver";
@@ -783,7 +784,8 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
       existingSession?: FreeAgentSession | null,
       secretOverrides?: FreeAgentSession['secretOverrides'],
       configuredParams?: FreeAgentSession['configuredParams'],
-      promptData?: PromptDataPayload
+      promptData?: PromptDataPayload,
+      advancedFeatures?: AdvancedFeatures
     ) => {
       try {
         setIsRunning(true);
@@ -827,6 +829,8 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
           configuredParams: configuredParams || existingSession?.configuredParams,
           // Include dynamic prompt data
           promptData: promptData || existingSession?.promptData,
+          // Include advanced features
+          advancedFeatures: advancedFeatures || existingSession?.advancedFeatures,
         };
 
         // Initialize refs with session memory

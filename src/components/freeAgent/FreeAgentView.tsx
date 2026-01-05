@@ -12,7 +12,7 @@ import { useFreeAgentSession } from "@/hooks/useFreeAgentSession";
 import { useSecretsManager } from "@/hooks/useSecretsManager";
 import { usePromptCustomization } from "@/hooks/usePromptCustomization";
 import { buildPromptData } from "@/lib/systemPromptBuilder";
-import type { ToolsManifest, SessionFile, AssistanceRequest, FreeAgentSession } from "@/types/freeAgent";
+import type { ToolsManifest, SessionFile, AssistanceRequest, FreeAgentSession, AdvancedFeatures } from "@/types/freeAgent";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -73,7 +73,7 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
   }, [session?.status, session?.finalReport]);
 
   // Don't memoize handleStart - we need fresh customizations every time
-  const handleStart = async (prompt: string, files: SessionFile[], model: string, maxIterations: number, existingSession?: FreeAgentSession | null) => {
+  const handleStart = async (prompt: string, files: SessionFile[], model: string, maxIterations: number, existingSession?: FreeAgentSession | null, advancedFeatures?: AdvancedFeatures) => {
     // Compute secrets at start time for tool parameter injection
     const secretOverrides = secretsManager.getSecretOverrides();
     const configuredParams = secretsManager.getConfiguredToolParams();
@@ -84,8 +84,9 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
     
     console.log('[FreeAgentView] Starting session with promptData:', 
       promptData.sections.find(s => s.id === 'identity')?.content.substring(0, 100));
+    console.log('[FreeAgentView] Advanced features:', advancedFeatures);
     
-    await startSession(prompt, files, model, maxIterations, existingSession, secretOverrides, configuredParams, promptData);
+    await startSession(prompt, files, model, maxIterations, existingSession, secretOverrides, configuredParams, promptData, advancedFeatures);
   };
 
   const handleAssistanceResponse = useCallback(
