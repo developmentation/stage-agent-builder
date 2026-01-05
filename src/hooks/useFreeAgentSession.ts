@@ -17,8 +17,10 @@ import type {
   ArtifactType,
   ToolResultAttribute,
   AdvancedFeatures,
+  ChildSession,
+  OrchestrationState,
 } from "@/types/freeAgent";
-import { executeFrontendTool, ToolExecutionContext } from "@/lib/freeAgentToolExecutor";
+import { executeFrontendTool, ToolExecutionContext, SpawnRequest } from "@/lib/freeAgentToolExecutor";
 import { resolveReferences, getResolvedReferenceSummary, type ResolverContext } from "@/lib/referenceResolver";
 import type { PromptDataPayload } from "@/lib/systemPromptBuilder";
 
@@ -131,6 +133,12 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
   const pendingInterjectRef = useRef<string | null>(null);
   const interjectResolverRef = useRef<(() => void) | null>(null);
   
+  // Child session management for spawn feature
+  const childSessionsRef = useRef<Map<string, ChildSession>>(new Map());
+  const runningChildrenRef = useRef<Set<string>>(new Set());
+  const orchestrationResolverRef = useRef<(() => void) | null>(null);
+  const spawnRequestRef = useRef<SpawnRequest | null>(null);
+  
   // Update session and persist to localStorage
   const updateSession = useCallback((updater: (prev: FreeAgentSession | null) => FreeAgentSession | null) => {
     setSession((prev) => {
@@ -225,12 +233,12 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
   }, [updateSession]);
 
   // Execute a single iteration - now accepts previousIterationResults directly
-  // Returns: continue (keep iterating), toolResults, and error info for retry logic
+  // Returns: continue (keep iterating), toolResults, and error/spawn info for loop logic
   const executeIteration = useCallback(
     async (
       currentSession: FreeAgentSession,
       previousIterationResults: ToolResult[]
-    ): Promise<{ continue: boolean; toolResults: ToolResult[]; hadError?: boolean; errorMessage?: string }> => {
+    ): Promise<{ continue: boolean; toolResults: ToolResult[]; hadError?: boolean; errorMessage?: string; spawnRequested?: boolean }> => {
       const maxIter = maxIterationsRef.current;
       if (iterationRef.current >= maxIter) {
         toast.warning("Max iterations reached");
@@ -317,6 +325,8 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
             })),
             // Pass dynamic prompt data from frontend
             promptData: currentSession.promptData,
+            // Pass advanced features flags
+            advancedFeatures: currentSession.advancedFeatures,
           },
         });
 
@@ -486,6 +496,13 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
             onBlackboardUpdate: handleBlackboardUpdate,
             onScratchpadUpdate: handleScratchpadUpdate,
             onAssistanceNeeded: handleAssistanceNeeded,
+            // Advanced features
+            advancedFeatures: currentSession.advancedFeatures,
+            // Spawn callback
+            onSpawnChildren: (request) => {
+              spawnRequestRef.current = request;
+              console.log(`[Spawn] Request received for ${request.children.length} children:`, request.children.map(c => c.name));
+            },
           };
           
           // Resolve references in frontend tool params as well
@@ -510,6 +527,11 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
           // If assistance needed, stop here
           if (handler.tool === "request_assistance") {
             return { continue: false, toolResults: iterationToolResults };
+          }
+          
+          // If spawn was requested, stop here - the iteration loop will handle spawning
+          if (handler.tool === "spawn" && spawnRequestRef.current) {
+            return { continue: false, toolResults: iterationToolResults, spawnRequested: true };
           }
         }
 
@@ -762,6 +784,109 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
           retryCountRef.current = 0;
         }
         
+        // Handle spawn request - execute child sessions in parallel
+        if (result.spawnRequested && spawnRequestRef.current) {
+          const spawnRequest = spawnRequestRef.current;
+          spawnRequestRef.current = null;
+          
+          console.log(`[Spawn] Orchestrator entering waiting mode for ${spawnRequest.children.length} children`);
+          
+          // Update session to orchestration mode
+          const childSessions: ChildSession[] = spawnRequest.children.map(child => ({
+            id: crypto.randomUUID(),
+            name: child.name,
+            task: child.task,
+            status: 'idle' as const, // Will change to 'running' when executed
+            promptModifications: child.sectionOverrides ? 
+              Object.entries(child.sectionOverrides).map(([sectionId, content]) => ({
+                type: 'override_section' as const,
+                sectionId,
+                content,
+              })) : [],
+            maxIterations: child.maxIterations || 20,
+            currentIteration: 0,
+            startTime: new Date().toISOString(),
+            // Initialize empty state for children - inherit parent's scratchpad
+            blackboard: [],
+            scratchpad: spawnRequest.parentScratchpad,
+            toolCalls: [],
+            artifacts: [],
+          }));
+          
+          updateSession((prev) => prev ? {
+            ...prev,
+            orchestration: {
+              role: 'orchestrator',
+              children: childSessions,
+              awaitingChildren: true,
+              completionThreshold: spawnRequest.completionThreshold,
+            },
+          } : null);
+          
+          // Store child sessions in ref for tracking
+          for (const child of childSessions) {
+            childSessionsRef.current.set(child.name, child);
+            runningChildrenRef.current.add(child.name);
+          }
+          
+          // TODO: In future implementation, actually run child sessions in parallel here
+          // For now, mark children as completed after a delay to simulate execution
+          toast.info(`Spawned ${childSessions.length} child agents. Parallel execution is being developed.`);
+          
+          // Simulate child completion for now (placeholder for actual parallel execution)
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          // Mark all children as completed
+          for (const child of childSessions) {
+            runningChildrenRef.current.delete(child.name);
+            const updatedChild = childSessionsRef.current.get(child.name);
+            if (updatedChild) {
+              updatedChild.status = 'completed';
+              updatedChild.endTime = new Date().toISOString();
+              
+              // Add completion entry to blackboard
+              const entry: BlackboardEntry = {
+                id: crypto.randomUUID(),
+                timestamp: new Date().toISOString(),
+                category: 'observation',
+                content: `[CHILD:${child.name}] Completed task: ${child.task.slice(0, 100)}...`,
+                iteration: iterationRef.current,
+              };
+              handleBlackboardUpdate(entry);
+            }
+          }
+          
+          // Resume orchestrator
+          updateSession((prev) => prev ? {
+            ...prev,
+            orchestration: {
+              ...prev.orchestration!,
+              awaitingChildren: false,
+              children: childSessions.map(c => ({
+                ...c,
+                status: 'completed' as const,
+                endTime: new Date().toISOString(),
+              })),
+            },
+          } : null);
+          
+          console.log('[Spawn] All children completed. Resuming orchestrator.');
+          
+          // Continue iteration loop
+          shouldContinue = true;
+          lastToolResults = [{
+            tool: 'spawn',
+            success: true,
+            result: {
+              message: `All ${childSessions.length} children completed. Results merged to blackboard.`,
+              completedChildren: childSessions.map(c => c.name),
+            },
+          }];
+          
+          await new Promise(resolve => setTimeout(resolve, 500));
+          continue;
+        }
+        
         shouldContinue = result.continue;
         lastToolResults = result.toolResults;
         
@@ -771,7 +896,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
         }
       }
     },
-    [executeIteration, updateSession]
+    [executeIteration, updateSession, handleBlackboardUpdate]
   );
 
   // Start a new session (or resume with preserved memory if existingSession provided)

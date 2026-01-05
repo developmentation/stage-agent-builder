@@ -639,9 +639,9 @@ export function FreeAgentPanel({
                           <Input
                             type="number"
                             min={1}
-                            max={10}
+                            max={100}
                             value={maxChildren}
-                            onChange={(e) => setMaxChildren(Math.max(1, Math.min(10, parseInt(e.target.value) || 5)))}
+                            onChange={(e) => setMaxChildren(Math.max(1, Math.min(100, parseInt(e.target.value) || 5)))}
                             className="h-8"
                           />
                         </div>
