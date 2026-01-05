@@ -399,9 +399,46 @@ This is the most efficient way to store data without wasting tokens on large res
   // Check if there are any user interjections in the blackboard
   const hasUserInterjections = safeBlackboard.some(e => e.category === 'user_interjection');
   
-  const blackboardSection = safeBlackboard.length > 0
-    ? `\n## YOUR BLACKBOARD (Planning Journal - Read this EVERY iteration!):\n${safeBlackboard.map(e => `[${e.category}] ${e.content}`).join('\n')}${hasUserInterjections ? '\n\n⚠️ Pay special attention to any recent User Interjections (within the last 1-5 blackboard entries) and ensure your next actions are aligned with the user\'s further direction.' : ''}`
-    : '\n## BLACKBOARD: Empty. Track your plan and completed items here.';
+  // Format blackboard with tiered visibility: Last (1), Recent (3 prior), Older (summarized)
+  let blackboardSection: string;
+  if (safeBlackboard.length === 0) {
+    blackboardSection = '\n## BLACKBOARD: Empty. Track your plan and completed items here.';
+  } else if (safeBlackboard.length <= 4) {
+    // Show all entries if 4 or fewer
+    blackboardSection = `\n## YOUR BLACKBOARD (Planning Journal - Read this EVERY iteration!):\n${safeBlackboard.map((e, i) => `[#${i + 1} ${e.category}] ${e.content}`).join('\n\n')}${hasUserInterjections ? '\n\n⚠️ Pay special attention to any recent User Interjections and ensure your next actions are aligned with the user\'s further direction.' : ''}`;
+  } else {
+    // Split into 3 tiers: Older (summarized), Recent (3 prior), Last (1 most recent)
+    const olderEntries = safeBlackboard.slice(0, -4);
+    const recentEntries = safeBlackboard.slice(-4, -1);
+    const lastEntry = safeBlackboard[safeBlackboard.length - 1];
+    const lastEntryIndex = safeBlackboard.length;
+    
+    // Older: Just show iteration number, category, and first 60 chars
+    const olderSummary = olderEntries.map((e, i) => 
+      `[#${i + 1} ${e.category}] ${e.content.slice(0, 60)}${e.content.length > 60 ? '...' : ''}`
+    ).join('\n');
+    
+    // Recent: Show full content (indices are offset by older entries length)
+    const recentStartIndex = olderEntries.length + 1;
+    const recentFormatted = recentEntries.map((e, i) => 
+      `[#${recentStartIndex + i} ${e.category}] ${e.content}`
+    ).join('\n\n');
+    
+    // Last: Show full content with emphasis
+    const lastFormatted = `[#${lastEntryIndex} ${lastEntry.category}] ${lastEntry.content}`;
+    
+    blackboardSection = `
+## YOUR BLACKBOARD (Planning Journal)
+
+### 📌 LAST ENTRY (Most Recent - Your Current State):
+${lastFormatted}
+
+### Recent Entries (Previous 3):
+${recentFormatted}
+
+### Older Entries (Summarized - ${olderEntries.length} entries):
+${olderSummary}${hasUserInterjections ? '\n\n⚠️ Pay special attention to any recent User Interjections and ensure your next actions are aligned with the user\'s further direction.' : ''}`;
+  }
 
   // Scratchpad - only show preview if small, otherwise just size (saves context)
   let scratchpadSection: string;
