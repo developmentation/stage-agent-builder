@@ -30,27 +30,11 @@ interface UseFreeAgentSessionOptions {
   maxIterations?: number;
 }
 
-const LOCAL_STORAGE_KEY = "free_agent_sessions";
-
-// Save session to localStorage
-function saveSessionToLocal(session: FreeAgentSession) {
-  try {
-    const sessions = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || "{}");
-    sessions[session.id] = session;
-    localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(sessions));
-  } catch (e) {
-    console.warn("Failed to save session to localStorage:", e);
-  }
-}
-
-// Load session from localStorage
-function loadSessionFromLocal(sessionId: string): FreeAgentSession | null {
-  try {
-    const sessions = JSON.parse(localStorage.getItem(LOCAL_STORAGE_KEY) || "{}");
-    return sessions[sessionId] || null;
-  } catch {
-    return null;
-  }
+// One-time cleanup of legacy session storage (remove on next load)
+try {
+  localStorage.removeItem("free_agent_sessions");
+} catch {
+  // Ignore cleanup errors
 }
 
 // Cache-enabled tools (expensive operations) - only cache exact duplicate requests
@@ -147,15 +131,9 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
   // Callback to notify UI when prompt customization changes (for write_self)
   const promptCustomizationChangeCallbackRef = useRef<(() => void) | null>(null);
   
-  // Update session and persist to localStorage
+  // Update session (in-memory only - no localStorage persistence)
   const updateSession = useCallback((updater: (prev: FreeAgentSession | null) => FreeAgentSession | null) => {
-    setSession((prev) => {
-      const updated = updater(prev);
-      if (updated) {
-        saveSessionToLocal(updated);
-      }
-      return updated;
-    });
+    setSession((prev) => updater(prev));
   }, []);
 
   // Handle artifact creation
@@ -1218,8 +1196,8 @@ ${section.content}
           break;
         }
         
-        const currentSession = loadSessionFromLocal(sessionId) || initialSession;
-        const result = await executeIteration(currentSession, lastToolResults);
+        // Use initialSession directly - refs track latest memory state
+        const result = await executeIteration(initialSession, lastToolResults);
         
         // Handle error with auto-retry logic
         if (result.hadError) {
@@ -1277,8 +1255,8 @@ ${section.content}
           
           console.log(`[Spawn] Orchestrator entering waiting mode for ${spawnRequest.children.length} children`);
           
-          const currentSession = loadSessionFromLocal(sessionId) || initialSession;
-          const parentPromptData = currentSession.promptData;
+          // Use initialSession - promptData doesn't change during execution
+          const parentPromptData = initialSession.promptData;
           
           // Create child session objects
           const childSessions: ChildSession[] = spawnRequest.children.map(child => ({
@@ -1296,7 +1274,7 @@ ${section.content}
                   content,
                 })) : []),
             ],
-            maxIterations: child.maxIterations || currentSession.advancedFeatures?.childMaxIterations || 20,
+            maxIterations: child.maxIterations || initialSession.advancedFeatures?.childMaxIterations || 20,
             currentIteration: 0,
             startTime: new Date().toISOString(),
             blackboard: [],
@@ -1331,7 +1309,7 @@ ${section.content}
             try {
               await runChildSession(
                 child, 
-                currentSession, 
+                initialSession, 
                 parentPromptData,
                 (updatedChild) => {
                   // Update child in ref
@@ -1536,7 +1514,6 @@ ${section.content}
         }
 
         setSession(newSession);
-        saveSessionToLocal(newSession);
 
         // Run iterations with retry logic
         shouldStopRef.current = false;
@@ -1589,16 +1566,13 @@ ${section.content}
           retryCount: 0,
         };
 
-        // Save to localStorage IMMEDIATELY (synchronous) so executeIteration can read it
-        saveSessionToLocal(updatedSession);
-        console.log("Assistance response saved to localStorage:", {
+        // Update React state
+        setSession(updatedSession);
+        console.log("Assistance response set:", {
           response: response.response,
           selectedChoice: response.selectedChoice,
           respondedAt: updatedSession.assistanceRequest?.respondedAt,
         });
-
-        // Also update React state for UI
-        setSession(updatedSession);
 
         // Continue iterations with retry logic
         shouldStopRef.current = false;
@@ -1634,7 +1608,6 @@ ${section.content}
         retryCount: 0,
       };
 
-      saveSessionToLocal(updatedSession);
       setSession(updatedSession);
 
       console.log(`[Retry] Resuming from iteration ${iterationRef.current + 1}`);
