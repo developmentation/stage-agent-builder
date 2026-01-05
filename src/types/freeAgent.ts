@@ -220,6 +220,7 @@ export interface ChildSession {
   scratchpad: string;
   toolCalls: ToolCall[];
   artifacts: FreeAgentArtifact[];
+  toolResultAttributes: Record<string, ToolResultAttribute>; // Named attributes from saveAs
   error?: string;
 }
 
