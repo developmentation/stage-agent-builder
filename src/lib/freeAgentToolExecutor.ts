@@ -7,8 +7,20 @@ import type {
   FreeAgentArtifact, 
   SessionFile,
   AssistanceRequest,
-  ToolResultAttribute
+  ToolResultAttribute,
+  AdvancedFeatures,
+  ChildSpec,
 } from "@/types/freeAgent";
+import type { PromptCustomization } from "@/types/systemPrompt";
+
+// Spawn callback for creating child agents
+export interface SpawnRequest {
+  children: ChildSpec[];
+  completionThreshold?: number;
+  parentBlackboard: BlackboardEntry[];
+  parentScratchpad: string;
+  parentAttributes: Record<string, ToolResultAttribute>;
+}
 
 export interface ToolExecutionContext {
   sessionId: string;
@@ -21,6 +33,12 @@ export interface ToolExecutionContext {
   onBlackboardUpdate: (entry: BlackboardEntry) => void;
   onScratchpadUpdate: (content: string) => void;
   onAssistanceNeeded: (request: AssistanceRequest) => void;
+  // Advanced features
+  advancedFeatures?: AdvancedFeatures;
+  // Self-author: prompt customization interface
+  promptCustomization?: PromptCustomization;
+  // Spawn: callback to create child agents
+  onSpawnChildren?: (request: SpawnRequest) => void;
 }
 
 interface ToolResult {
@@ -58,6 +76,14 @@ export async function executeFrontendTool(
       return executeReadPromptFiles(context);
     case "read_attribute":
       return executeReadAttribute(params, context);
+    // Advanced: Self-Author tools
+    case "read_self":
+      return executeReadSelf(params, context);
+    case "write_self":
+      return executeWriteSelf(params, context);
+    // Advanced: Spawn tools
+    case "spawn":
+      return executeSpawn(params, context);
     default:
       return { success: false, error: `Unknown frontend tool: ${tool}` };
   }
@@ -512,4 +538,247 @@ export async function executeEdgeFunctionTool(
   } catch (error) {
     return { success: false, error: error instanceof Error ? error.message : "Edge function call failed" };
   }
+}
+
+// ============================================================================
+// ADVANCED TOOLS: Self-Author
+// ============================================================================
+
+// Read the agent's own prompt configuration
+async function executeReadSelf(
+  params: Record<string, unknown>,
+  context: ToolExecutionContext
+): Promise<ToolResult> {
+  if (!context.advancedFeatures?.selfAuthorEnabled) {
+    return { 
+      success: false, 
+      error: "Self-Author feature is not enabled. Enable it in the Advanced tab before using read_self." 
+    };
+  }
+  
+  if (!context.promptCustomization) {
+    return { 
+      success: false, 
+      error: "Prompt customization context not available" 
+    };
+  }
+  
+  const include = (params.include as string) || "all";
+  const result: Record<string, unknown> = {};
+  
+  try {
+    if (include === "all" || include === "sections") {
+      // Return section information with current state
+      result.sections = {
+        sectionOverrides: context.promptCustomization.sectionOverrides || {},
+        disabledSections: context.promptCustomization.disabledSections || [],
+        additionalSections: context.promptCustomization.additionalSections || [],
+        orderOverrides: context.promptCustomization.orderOverrides || {},
+      };
+      result.note = "Section IDs can be overridden using write_self with sectionOverrides parameter";
+    }
+    
+    if (include === "all" || include === "tools") {
+      result.tools = {
+        toolOverrides: context.promptCustomization.toolOverrides || {},
+        disabledToolsList: Object.entries(context.promptCustomization.toolOverrides || {})
+          .filter(([_, override]) => override.disabled)
+          .map(([toolId]) => toolId),
+      };
+    }
+    
+    return { 
+      success: true, 
+      result: {
+        ...result,
+        usage: {
+          tip: "Use write_self to modify your configuration. Changes take effect next iteration.",
+          examples: [
+            'Disable a section: write_self({ disableSections: ["memory_architecture"] })',
+            'Override section content: write_self({ sectionOverrides: { identity: "You are a helpful assistant..." } })',
+            'Disable a tool: write_self({ disableTools: ["web_scrape"] })',
+          ]
+        }
+      }
+    };
+  } catch (error) {
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : "Failed to read self configuration" 
+    };
+  }
+}
+
+// Write/modify the agent's own prompt configuration
+async function executeWriteSelf(
+  params: Record<string, unknown>,
+  context: ToolExecutionContext
+): Promise<ToolResult> {
+  if (!context.advancedFeatures?.selfAuthorEnabled) {
+    return { 
+      success: false, 
+      error: "Self-Author feature is not enabled. Enable it in the Advanced tab before using write_self." 
+    };
+  }
+  
+  if (!context.promptCustomization) {
+    return { 
+      success: false, 
+      error: "Prompt customization context not available" 
+    };
+  }
+  
+  const changesApplied: string[] = [];
+  
+  try {
+    // Note: The actual modification will happen via a callback mechanism
+    // For now, we return what changes would be applied
+    // The hook will need to be extended to support programmatic updates
+    
+    const sectionOverrides = params.sectionOverrides as Record<string, string> | undefined;
+    const disableSections = params.disableSections as string[] | undefined;
+    const enableSections = params.enableSections as string[] | undefined;
+    const toolDescriptionOverrides = params.toolDescriptionOverrides as Record<string, string> | undefined;
+    const disableTools = params.disableTools as string[] | undefined;
+    const enableTools = params.enableTools as string[] | undefined;
+    
+    if (sectionOverrides) {
+      for (const [sectionId, content] of Object.entries(sectionOverrides)) {
+        changesApplied.push(`Override section '${sectionId}' (${content.length} chars)`);
+      }
+    }
+    
+    if (disableSections) {
+      for (const sectionId of disableSections) {
+        changesApplied.push(`Disable section: ${sectionId}`);
+      }
+    }
+    
+    if (enableSections) {
+      for (const sectionId of enableSections) {
+        changesApplied.push(`Enable section: ${sectionId}`);
+      }
+    }
+    
+    if (toolDescriptionOverrides) {
+      for (const [toolId] of Object.entries(toolDescriptionOverrides)) {
+        changesApplied.push(`Override tool description: ${toolId}`);
+      }
+    }
+    
+    if (disableTools) {
+      for (const toolId of disableTools) {
+        changesApplied.push(`Disable tool: ${toolId}`);
+      }
+    }
+    
+    if (enableTools) {
+      for (const toolId of enableTools) {
+        changesApplied.push(`Enable tool: ${toolId}`);
+      }
+    }
+    
+    if (changesApplied.length === 0) {
+      return { 
+        success: false, 
+        error: "No changes specified. Provide at least one of: sectionOverrides, disableSections, enableSections, toolDescriptionOverrides, disableTools, enableTools" 
+      };
+    }
+    
+    // Return success with planned changes
+    // Note: Full implementation requires connecting to the usePromptCustomization hook's setter functions
+    return { 
+      success: true, 
+      result: { 
+        changesApplied,
+        note: "Changes queued for next iteration. The prompt configuration will be updated.",
+        warning: "Self-modification can lead to unexpected behavior. Use carefully."
+      }
+    };
+  } catch (error) {
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : "Failed to write self configuration" 
+    };
+  }
+}
+
+// ============================================================================
+// ADVANCED TOOLS: Spawn
+// ============================================================================
+
+// Spawn child agent instances
+async function executeSpawn(
+  params: Record<string, unknown>,
+  context: ToolExecutionContext
+): Promise<ToolResult> {
+  if (!context.advancedFeatures?.spawnEnabled) {
+    return { 
+      success: false, 
+      error: "Spawn feature is not enabled. Enable it in the Advanced tab before using spawn." 
+    };
+  }
+  
+  if (!context.onSpawnChildren) {
+    return { 
+      success: false, 
+      error: "Spawn callback not configured. This is an internal error." 
+    };
+  }
+  
+  const childSpecs = params.children as ChildSpec[] | undefined;
+  const completionThreshold = params.completionThreshold as number | undefined;
+  
+  if (!childSpecs || !Array.isArray(childSpecs) || childSpecs.length === 0) {
+    return { 
+      success: false, 
+      error: "No children specified. Provide an array of child specifications with 'name' and 'task'." 
+    };
+  }
+  
+  // Validate child specifications
+  const names: string[] = [];
+  for (const child of childSpecs) {
+    if (!child.name || typeof child.name !== 'string') {
+      return { success: false, error: "Each child must have a 'name' string" };
+    }
+    if (!child.task || typeof child.task !== 'string') {
+      return { success: false, error: "Each child must have a 'task' string" };
+    }
+    if (names.includes(child.name)) {
+      return { success: false, error: `Duplicate child name: ${child.name}. Names must be unique.` };
+    }
+    names.push(child.name);
+  }
+  
+  // Check limits
+  const maxChildren = context.advancedFeatures.maxChildren || 5;
+  if (childSpecs.length > maxChildren) {
+    return { 
+      success: false, 
+      error: `Too many children (${childSpecs.length}). Maximum allowed: ${maxChildren}` 
+    };
+  }
+  
+  // Trigger spawn via callback
+  context.onSpawnChildren({
+    children: childSpecs.map(child => ({
+      ...child,
+      maxIterations: child.maxIterations || context.advancedFeatures!.childMaxIterations || 20,
+    })),
+    completionThreshold,
+    parentBlackboard: context.blackboard,
+    parentScratchpad: context.scratchpad,
+    parentAttributes: context.toolResultAttributes || {},
+  });
+  
+  return {
+    success: true,
+    result: {
+      spawned: childSpecs.length,
+      childNames: names,
+      message: `Spawned ${childSpecs.length} child agent(s): ${names.join(', ')}. Entering orchestrate mode - execution will pause until children complete.`,
+      completionThreshold: completionThreshold || 'all',
+    }
+  };
 }

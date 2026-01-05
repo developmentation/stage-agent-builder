@@ -1023,6 +1023,103 @@
         "type": "object",
         "properties": ["success", "columns", "rows", "rowCount", "command", "results", "summary"]
       }
+    },
+    "read_self": {
+      "name": "Read Self Configuration",
+      "description": "Introspect your own system prompt configuration. Returns all editable sections, tool overrides, and disabled items. Use to understand your current configuration before modifying.",
+      "frontend_handler": true,
+      "icon": "Eye",
+      "category": "advanced_self_author",
+      "parameters": {
+        "include": {
+          "type": "string",
+          "required": false,
+          "enum": ["sections", "tools", "all"],
+          "default": "all",
+          "description": "What to return: sections only, tools only, or all configuration"
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": ["sections", "toolOverrides", "disabledSections", "disabledTools"]
+      }
+    },
+    "write_self": {
+      "name": "Write Self Configuration",
+      "description": "Modify your own system prompt configuration. Changes take effect in the next iteration. Use carefully - this modifies your behavior.",
+      "frontend_handler": true,
+      "icon": "PenTool",
+      "category": "advanced_self_author",
+      "parameters": {
+        "sectionOverrides": {
+          "type": "object",
+          "required": false,
+          "description": "Map of sectionId to new content (e.g., {'identity': 'You are a data analyst...'})"
+        },
+        "disableSections": {
+          "type": "array",
+          "items": "string",
+          "required": false,
+          "description": "Section IDs to disable"
+        },
+        "enableSections": {
+          "type": "array",
+          "items": "string",
+          "required": false,
+          "description": "Section IDs to re-enable"
+        },
+        "toolDescriptionOverrides": {
+          "type": "object",
+          "required": false,
+          "description": "Map of toolId to new description"
+        },
+        "disableTools": {
+          "type": "array",
+          "items": "string",
+          "required": false,
+          "description": "Tool IDs to disable"
+        },
+        "enableTools": {
+          "type": "array",
+          "items": "string",
+          "required": false,
+          "description": "Tool IDs to re-enable"
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": ["success", "changesApplied"]
+      }
+    },
+    "spawn": {
+      "name": "Spawn Child Agents",
+      "description": "Create child agent instances for parallel work. Each child receives your current memory plus modifications. You will enter orchestrate mode until children complete.",
+      "frontend_handler": true,
+      "icon": "GitBranch",
+      "category": "advanced_spawn",
+      "parameters": {
+        "children": {
+          "type": "array",
+          "required": true,
+          "description": "Array of child specifications: [{name, task, maxIterations?, sectionOverrides?, attributes?}]",
+          "items": {
+            "name": "string (required) - Unique identifier for this child",
+            "task": "string (required) - Specific task/prompt for this child",
+            "maxIterations": "number (optional) - Max iterations for child (default: 20)",
+            "sectionOverrides": "object (optional) - Section content overrides",
+            "attributes": "object (optional) - Additional attributes to inject"
+          }
+        },
+        "completionThreshold": {
+          "type": "number",
+          "required": false,
+          "description": "Resume orchestrator after this many children complete (default: all)"
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": ["spawned", "childNames", "message"]
+      }
     }
   },
   "categories": {
@@ -1090,6 +1187,16 @@
       "name": "Database",
       "description": "Database operations",
       "color": "#A855F7"
+    },
+    "advanced_self_author": {
+      "name": "Self-Author",
+      "description": "Agent self-modification (advanced)",
+      "color": "#DC2626"
+    },
+    "advanced_spawn": {
+      "name": "Spawn",
+      "description": "Child agent spawning (advanced)",
+      "color": "#D97706"
     }
   }
 }

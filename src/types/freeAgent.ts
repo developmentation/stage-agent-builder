@@ -170,6 +170,71 @@ export interface FinalReport {
   totalTime: number; // milliseconds
 }
 
+// ============================================================================
+// ADVANCED FEATURES
+// ============================================================================
+
+export interface AdvancedFeatures {
+  // Self-Author: Agent can read/modify its own prompt
+  selfAuthorEnabled: boolean;
+  
+  // Spawn: Agent can create child instances
+  spawnEnabled: boolean;
+  maxChildren: number;
+  childMaxIterations: number;
+}
+
+// ============================================================================
+// SPAWN / ORCHESTRATION TYPES
+// ============================================================================
+
+export interface PromptModification {
+  type: "override_section" | "disable_section" | "enable_section" | "add_attribute" | "set_task";
+  sectionId?: string;
+  content?: string;
+  attributeName?: string;
+  attributeValue?: unknown;
+}
+
+export interface ChildSpec {
+  name: string;
+  task: string;
+  maxIterations?: number;
+  sectionOverrides?: Record<string, string>;
+  attributes?: Record<string, unknown>;
+}
+
+export interface ChildSession {
+  id: string;
+  name: string;
+  status: FreeAgentStatus;
+  promptModifications: PromptModification[];
+  maxIterations: number;
+  currentIteration: number;
+  startTime: string;
+  endTime?: string;
+  // Child's local state
+  blackboard: BlackboardEntry[];
+  scratchpad: string;
+  toolCalls: ToolCall[];
+  artifacts: FreeAgentArtifact[];
+  error?: string;
+}
+
+export interface OrchestrationState {
+  role: "orchestrator" | "child";
+  // For children: parent's session ID
+  parentId?: string;
+  // For children: their assigned name
+  childName?: string;
+  // For orchestrator: spawned children
+  children?: ChildSession[];
+  // Orchestrator is waiting for children
+  awaitingChildren?: boolean;
+  // Resume after N children complete (default: all)
+  completionThreshold?: number;
+}
+
 // Main session state
 export interface FreeAgentSession {
   id: string;
@@ -228,6 +293,12 @@ export interface FreeAgentSession {
     }>;
     toolOverrides: Record<string, { description?: string }>;
   };
+  
+  // Advanced features state
+  advancedFeatures?: AdvancedFeatures;
+  
+  // Orchestration state (for spawn feature)
+  orchestration?: OrchestrationState;
 }
 
 // Tool definition from manifest
@@ -301,9 +372,9 @@ export interface AgentResponse {
 
 // Canvas node types for visualization
 export interface FreeAgentNodeData {
-  type: 'agent' | 'tool' | 'artifact' | 'file' | 'scratchpad' | 'prompt' | 'promptFile' | 'attribute';
+  type: 'agent' | 'tool' | 'artifact' | 'file' | 'scratchpad' | 'prompt' | 'promptFile' | 'attribute' | 'childAgent';
   label: string;
-  status: 'idle' | 'thinking' | 'active' | 'success' | 'error' | 'reading' | 'paused';
+  status: 'idle' | 'thinking' | 'active' | 'success' | 'error' | 'reading' | 'paused' | 'waiting';
   icon?: string;
   category?: string;
   toolId?: string;
@@ -323,6 +394,10 @@ export interface FreeAgentNodeData {
   attributeValue?: string; // Full attribute value for viewing
   retryCount?: number; // For agent node retry count display
   onRetry?: () => void; // Callback when retry button clicked on agent node
+  // For child agent nodes
+  childName?: string;
+  maxIterations?: number;
+  currentIteration?: number;
 }
 
 // Canvas edge for connections
