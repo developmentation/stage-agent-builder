@@ -1559,7 +1559,7 @@ serve(async (req) => {
     }
 
     // Execute tool calls with reference resolution
-    const toolResults: Array<{ tool: string; success: boolean; result?: unknown; error?: string }> = [];
+    const toolResults: Array<{ tool: string; params?: Record<string, unknown>; success: boolean; result?: unknown; error?: string }> = [];
     const frontendHandlers: Array<{ tool: string; params: Record<string, unknown> }> = [];
 
     for (const toolCall of agentResponse.tool_calls || []) {
@@ -1587,6 +1587,7 @@ serve(async (req) => {
       } else {
         toolResults.push({
           tool: toolCall.tool,
+          params: resolvedParams, // Include params so child can access saveAs
           success: result.success,
           result: result.result,
           error: result.error,
