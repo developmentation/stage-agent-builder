@@ -120,12 +120,12 @@ const LAYOUT = {
   toolNodeWidth: 100,
   toolNodeHeight: 44,
   toolColumnGap: 10,
-  toolRowGap: 10,
+  toolRowGap: 35,
   toolColumns: 12,
   
   // All tools positioned ABOVE agent in rows
   toolsStartX: 5,
-  toolsStartY: 20,
+  toolsStartY: -230,
   
   // Child agents - positioned lower
   childOffsetY: 250,  // 150px lower than before (was ~100)
