@@ -478,6 +478,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
             blackboard: blackboardRef.current.length > 0 ? blackboardRef.current : currentSession.blackboard,
             sessionFiles: currentSession.sessionFiles,
             toolResultAttributes: toolResultAttributesRef.current,
+            artifacts: currentSession.artifacts,
             onArtifactCreated: handleArtifactCreated,
             onBlackboardUpdate: handleBlackboardUpdate,
             onScratchpadUpdate: handleScratchpadUpdate,

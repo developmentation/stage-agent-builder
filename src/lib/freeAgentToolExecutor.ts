@@ -29,6 +29,7 @@ export interface ToolExecutionContext {
   blackboard: BlackboardEntry[];
   sessionFiles: SessionFile[];
   toolResultAttributes?: Record<string, ToolResultAttribute>;
+  artifacts?: FreeAgentArtifact[];
   onArtifactCreated: (artifact: FreeAgentArtifact) => void;
   onBlackboardUpdate: (entry: BlackboardEntry) => void;
   onScratchpadUpdate: (content: string) => void;
@@ -78,6 +79,8 @@ export async function executeFrontendTool(
       return executeReadPromptFiles(context);
     case "read_attribute":
       return executeReadAttribute(params, context);
+    case "read_artifact":
+      return executeReadArtifact(params, context);
     // Advanced: Self-Author tools
     case "read_self":
       return executeReadSelf(params, context);
@@ -320,6 +323,56 @@ async function executeReadAttribute(
   const totalSize = JSON.stringify(results).length;
   console.log(`[Read Attribute] Retrieved ${names.length} attributes, total result size: ${totalSize} chars`);
   return { success: true, result: results };
+}
+
+// Read artifacts created in session
+async function executeReadArtifact(
+  params: Record<string, unknown>,
+  context: ToolExecutionContext
+): Promise<ToolResult> {
+  const ids = (params.ids as string[]) || [];
+  const allArtifacts = context.artifacts || [];
+  
+  if (ids.length === 0) {
+    // Return metadata for all artifacts
+    const metadata = allArtifacts.map(a => ({
+      id: a.id,
+      title: a.title,
+      type: a.type,
+      description: a.description,
+      contentLength: a.content.length,
+      createdAt: a.createdAt,
+      iteration: a.iteration,
+    }));
+    console.log(`[Read Artifact] Returning metadata for ${metadata.length} artifacts`);
+    return { success: true, result: { artifacts: metadata, count: metadata.length } };
+  }
+  
+  // Find specific artifacts by ID or title
+  const found: Record<string, unknown> = {};
+  console.log(`[Read Artifact] Requested artifacts: ${ids.join(', ')}`);
+  console.log(`[Read Artifact] Available artifacts: ${allArtifacts.map(a => a.title).join(', ') || 'none'}`);
+  
+  for (const idOrTitle of ids) {
+    const artifact = allArtifacts.find(
+      a => a.id === idOrTitle || a.title.toLowerCase() === idOrTitle.toLowerCase()
+    );
+    if (artifact) {
+      found[artifact.title] = {
+        id: artifact.id,
+        type: artifact.type,
+        content: artifact.content,
+        description: artifact.description,
+        createdAt: artifact.createdAt,
+      };
+      console.log(`[Read Artifact] Found '${artifact.title}': ${artifact.content.length} chars`);
+    } else {
+      found[idOrTitle] = { error: `Artifact '${idOrTitle}' not found` };
+      console.log(`[Read Artifact] NOT FOUND: '${idOrTitle}'`);
+    }
+  }
+  
+  return { success: true, result: { artifacts: found, count: Object.keys(found).length } };
 }
 
 // Export to Word document

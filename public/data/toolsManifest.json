@@ -327,6 +327,25 @@
         "properties": ["attributes", "count"]
       }
     },
+    "read_artifact": {
+      "name": "Read Artifact",
+      "description": "Read artifacts created in this session. Call with empty ids array to list all artifacts with metadata, or with specific ids/titles to get their full content.",
+      "frontend_handler": true,
+      "icon": "FileOutput",
+      "category": "memory",
+      "parameters": {
+        "ids": {
+          "type": "array",
+          "items": "string",
+          "required": true,
+          "description": "Array of artifact IDs or titles to retrieve. Empty array returns metadata for all available artifacts."
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": ["artifacts", "count"]
+      }
+    },
     "read_scratchpad": {
       "name": "Read Scratchpad",
       "description": "Read the current contents of the scratchpad. The scratchpad is your working output area visible to the user. Use to review results before sending to output or API. Handlebar placeholders like {{attribute_name}} will be substituted with actual attribute content.",
