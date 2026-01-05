@@ -7,6 +7,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -105,6 +106,11 @@ interface PromptCustomizationHook {
   hasToolCustomizations: boolean;
   exportCustomizations: (template: SystemPromptTemplate) => ExportedPromptTemplate;
   importCustomizations: (data: ExportedPromptTemplate, currentTemplate: SystemPromptTemplate) => boolean;
+  // Disabling
+  isSectionDisabled: (sectionId: string) => boolean;
+  toggleSectionDisabled: (sectionId: string) => void;
+  isToolDisabled: (toolId: string) => boolean;
+  toggleToolDisabled: (toolId: string) => void;
 }
 
 interface SystemPromptViewerProps {
@@ -186,6 +192,8 @@ interface SectionCardProps {
   onMoveDown?: () => void;
   isFirst?: boolean;
   isLast?: boolean;
+  isDisabled?: boolean;
+  onToggleDisabled?: () => void;
 }
 
 function SectionCard({ 
@@ -202,7 +210,9 @@ function SectionCard({
   onMoveUp,
   onMoveDown,
   isFirst,
-  isLast
+  isLast,
+  isDisabled,
+  onToggleDisabled
 }: SectionCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editContent, setEditContent] = useState(effectiveContent);
@@ -260,6 +270,7 @@ function SectionCard({
   return (
     <Collapsible open={isExpanded} onOpenChange={onToggle}>
       <div className={`border rounded-lg mb-2 overflow-hidden transition-colors ${
+        isDisabled ? 'opacity-50 border-muted bg-muted/30' :
         isCustomSection ? 'border-purple-500/50 bg-purple-500/5' :
         isCustomized ? 'border-green-500/50 bg-green-500/5' :
         section.editable === 'editable' ? 'border-primary/30 bg-primary/5' : 
@@ -267,6 +278,24 @@ function SectionCard({
         'border-border bg-card'
       }`}>
         <div className="flex items-center">
+          {/* Enable/Disable toggle */}
+          <div className="flex items-center px-2 border-r border-border/50">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div onClick={(e) => e.stopPropagation()}>
+                  <Switch
+                    checked={!isDisabled}
+                    onCheckedChange={() => onToggleDisabled?.()}
+                    className="scale-75"
+                  />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p>{isDisabled ? 'Enable section' : 'Disable section'}</p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+          
           {/* Reorder buttons */}
           <div className="flex flex-col px-1 py-2 border-r border-border/50">
             <Button 
@@ -296,25 +325,32 @@ function SectionCard({
                 {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
               </span>
               <span className="text-muted-foreground">{icon}</span>
-              <span className="flex-1 font-medium text-sm">{section.title}</span>
-              {isCustomSection && (
+              <span className={`flex-1 font-medium text-sm ${isDisabled ? 'line-through text-muted-foreground' : ''}`}>{section.title}</span>
+              {isDisabled && (
+                <Badge variant="outline" className="text-xs bg-muted text-muted-foreground border-muted-foreground/30">
+                  Disabled
+                </Badge>
+              )}
+              {isCustomSection && !isDisabled && (
                 <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30">
                   <Plus className="h-3 w-3 mr-1" />
                   Custom
                 </Badge>
               )}
-              {isCustomized && !isCustomSection && (
+              {isCustomized && !isCustomSection && !isDisabled && (
                 <Badge variant="outline" className="text-xs bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30">
                   <Check className="h-3 w-3 mr-1" />
                   Modified
                 </Badge>
               )}
-              <Badge variant="outline" className={`text-xs ${editableColors[section.editable]}`}>
-                {section.editable === 'readonly' && <Lock className="h-3 w-3 mr-1" />}
-                {section.editable === 'editable' && <Pencil className="h-3 w-3 mr-1" />}
-                {section.editable === 'dynamic' && <RefreshCw className="h-3 w-3 mr-1" />}
-                {editableLabels[section.editable]}
-              </Badge>
+              {!isDisabled && (
+                <Badge variant="outline" className={`text-xs ${editableColors[section.editable]}`}>
+                  {section.editable === 'readonly' && <Lock className="h-3 w-3 mr-1" />}
+                  {section.editable === 'editable' && <Pencil className="h-3 w-3 mr-1" />}
+                  {section.editable === 'dynamic' && <RefreshCw className="h-3 w-3 mr-1" />}
+                  {editableLabels[section.editable]}
+                </Badge>
+              )}
             </button>
           </CollapsibleTrigger>
           
@@ -517,6 +553,8 @@ interface ToolCardProps {
   effectiveDescription: string;
   onSave: (description: string) => void;
   onReset: () => void;
+  isDisabled?: boolean;
+  onToggleDisabled?: () => void;
 }
 
 function ToolCard({ 
@@ -526,7 +564,9 @@ function ToolCard({
   isCustomized, 
   effectiveDescription, 
   onSave, 
-  onReset 
+  onReset,
+  isDisabled,
+  onToggleDisabled
 }: ToolCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
@@ -565,45 +605,71 @@ function ToolCard({
   return (
     <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
       <div className={`border rounded-lg mb-2 overflow-hidden transition-colors ${
+        isDisabled ? 'opacity-50 border-muted bg-muted/30' :
         isCustomized ? 'border-green-500/50 bg-green-500/5' : 'border-border bg-card'
       }`}>
-        <CollapsibleTrigger asChild>
-          <button className="w-full px-3 py-3 flex items-center gap-3 hover:bg-muted/50 transition-colors text-left">
-            <span className="text-muted-foreground">
-              {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-            </span>
-            <span className="text-muted-foreground">{icon}</span>
-            <span className="flex-1 font-medium text-sm">{tool.name}</span>
-            {toolCategories.map((cat) => {
-              const category = categories[cat];
-              return category ? (
-                <Badge 
-                  key={cat}
-                  variant="outline" 
-                  className="text-xs"
-                  style={{ 
-                    backgroundColor: `${category.color}20`,
-                    borderColor: `${category.color}50`,
-                    color: category.color
-                  }}
-                >
-                  {category.name}
+        <div className="flex items-center">
+          {/* Enable/Disable toggle */}
+          <div className="flex items-center px-2 border-r border-border/50">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <div onClick={(e) => e.stopPropagation()}>
+                  <Switch
+                    checked={!isDisabled}
+                    onCheckedChange={() => onToggleDisabled?.()}
+                    className="scale-75"
+                  />
+                </div>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p>{isDisabled ? 'Enable tool' : 'Disable tool'}</p>
+              </TooltipContent>
+            </Tooltip>
+          </div>
+          
+          <CollapsibleTrigger asChild>
+            <button className="flex-1 px-3 py-3 flex items-center gap-3 hover:bg-muted/50 transition-colors text-left">
+              <span className="text-muted-foreground">
+                {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+              </span>
+              <span className="text-muted-foreground">{icon}</span>
+              <span className={`flex-1 font-medium text-sm ${isDisabled ? 'line-through text-muted-foreground' : ''}`}>{tool.name}</span>
+              {isDisabled && (
+                <Badge variant="outline" className="text-xs bg-muted text-muted-foreground border-muted-foreground/30">
+                  Disabled
                 </Badge>
-              ) : null;
-            })}
-            {isCustomized && (
-              <Badge variant="outline" className="text-xs bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30">
-                <Check className="h-3 w-3 mr-1" />
-                Modified
-              </Badge>
-            )}
-            {tool.frontend_handler && (
-              <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30">
-                Frontend
-              </Badge>
-            )}
-          </button>
-        </CollapsibleTrigger>
+              )}
+              {!isDisabled && toolCategories.map((cat) => {
+                const category = categories[cat];
+                return category ? (
+                  <Badge 
+                    key={cat}
+                    variant="outline" 
+                    className="text-xs"
+                    style={{ 
+                      backgroundColor: `${category.color}20`,
+                      borderColor: `${category.color}50`,
+                      color: category.color
+                    }}
+                  >
+                    {category.name}
+                  </Badge>
+                ) : null;
+              })}
+              {isCustomized && !isDisabled && (
+                <Badge variant="outline" className="text-xs bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30">
+                  <Check className="h-3 w-3 mr-1" />
+                  Modified
+                </Badge>
+              )}
+              {tool.frontend_handler && !isDisabled && (
+                <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30">
+                  Frontend
+                </Badge>
+              )}
+            </button>
+          </CollapsibleTrigger>
+        </div>
         <CollapsibleContent>
           <div className="px-4 pb-4 border-t border-border/50">
             <div className="mt-3 space-y-3">
@@ -740,6 +806,10 @@ export function SystemPromptViewer({ onClose, configuredParams = [], promptCusto
     updateToolDescription,
     resetToolDescription,
     hasToolCustomizations,
+    isSectionDisabled,
+    toggleSectionDisabled,
+    isToolDisabled,
+    toggleToolDisabled,
   } = promptCustomization;
   
   // Load template and tools manifest
@@ -1168,6 +1238,8 @@ export function SystemPromptViewer({ onClose, configuredParams = [], promptCusto
                   onMoveDown={() => moveSection(section.id, 'down', template.sections)}
                   isFirst={index === 0}
                   isLast={index === sortedSections.length - 1}
+                  isDisabled={isSectionDisabled(section.id)}
+                  onToggleDisabled={() => toggleSectionDisabled(section.id)}
                 />
               ))}
             </div>
@@ -1249,6 +1321,8 @@ export function SystemPromptViewer({ onClose, configuredParams = [], promptCusto
                                   effectiveDescription={getEffectiveToolDescription(id, tool.description)}
                                   onSave={(desc) => updateToolDescription(id, desc)}
                                   onReset={() => resetToolDescription(id)}
+                                  isDisabled={isToolDisabled(id)}
+                                  onToggleDisabled={() => toggleToolDisabled(id)}
                                 />
                               ))}
                             </div>

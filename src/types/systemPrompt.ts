@@ -118,6 +118,7 @@ export interface ExportedPromptTemplate {
 // Tool override for custom descriptions
 export interface ToolOverride {
   description?: string;
+  disabled?: boolean;
 }
 
 // User customization overlay (Phase 2+)

@@ -38,7 +38,8 @@ interface FreeAgentRequest {
       editable: string;
       variables?: string[];
     }>;
-    toolOverrides?: Record<string, { description?: string }>;
+    toolOverrides?: Record<string, { description?: string; disabled?: boolean }>;
+    disabledTools?: string[];
   };
 }
 
@@ -669,9 +670,23 @@ If you called a tool with saveAs (e.g., brave_search with saveAs: "weather_data"
 // DYNAMIC SYSTEM PROMPT BUILDER - Uses sections from frontend
 // ============================================================================
 
-// Format tools list with optional custom descriptions
-function formatToolsList(toolOverrides?: Record<string, { description?: string }>): string {
-  const tools = [
+// Format tools list with optional custom descriptions and filtering disabled tools
+function formatToolsList(
+  toolOverrides?: Record<string, { description?: string; disabled?: boolean }>,
+  disabledTools?: string[]
+): string {
+  // Build a set of disabled tool IDs from both sources
+  const disabledSet = new Set(disabledTools || []);
+  // Also check toolOverrides for disabled flag
+  if (toolOverrides) {
+    for (const [toolId, override] of Object.entries(toolOverrides)) {
+      if (override.disabled) {
+        disabledSet.add(toolId);
+      }
+    }
+  }
+  
+  const allTools = [
     { id: "brave_search", defaultDesc: "Search the web", params: "query, numResults?, saveAs?" },
     { id: "google_search", defaultDesc: "Search via Google", params: "query, numResults?, saveAs?" },
     { id: "web_scrape", defaultDesc: "Scrape webpage content", params: "url, maxCharacters?, saveAs?" },
@@ -704,6 +719,14 @@ function formatToolsList(toolOverrides?: Record<string, { description?: string }
     { id: "export_pdf", defaultDesc: "Create PDF document", params: "content, filename?" },
   ];
   
+  // Filter out disabled tools
+  const tools = allTools.filter(t => !disabledSet.has(t.id));
+  
+  // Log if any tools are disabled
+  if (disabledSet.size > 0) {
+    console.log(`[formatToolsList] ${disabledSet.size} tools disabled:`, Array.from(disabledSet).join(', '));
+  }
+  
   // Group by category
   const categories: Record<string, typeof tools> = {
     "Search & Web": tools.filter(t => ["brave_search", "google_search", "web_scrape"].includes(t.id)),
@@ -729,7 +752,7 @@ function formatToolsList(toolOverrides?: Record<string, { description?: string }
     }
     output += "\n";
   }
-  
+
   // Add the saveAs explanation
   output += `## 🚀 NAMED TOOL RESULT ATTRIBUTES - USE saveAs TO SAVE TOKEN BUDGET!
 
@@ -921,7 +944,7 @@ function buildSystemPromptDynamic(
   
   // Build runtime variable map
   const runtimeVars: Record<string, string> = {
-    '{{TOOLS_LIST}}': formatToolsList(promptData.toolOverrides),
+    '{{TOOLS_LIST}}': formatToolsList(promptData.toolOverrides, promptData.disabledTools),
     '{{SESSION_FILES}}': formatSessionFiles(sessionFiles),
     '{{CONFIGURED_PARAMS}}': formatConfiguredParams(configuredParams),
     '{{BLACKBOARD_CONTENT}}': formatBlackboard(blackboard),

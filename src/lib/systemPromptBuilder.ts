@@ -15,6 +15,7 @@ export interface PromptDataSection {
 export interface PromptDataPayload {
   sections: PromptDataSection[];
   toolOverrides: Record<string, ToolOverride>;
+  disabledTools: string[];
 }
 
 // Interface for the template loaded from JSON
@@ -36,6 +37,8 @@ export interface PromptCustomizationMethods {
   getSortedSections: (templateSections: PromptSection[]) => PromptSection[];
   getEffectiveContent: (section: PromptSection) => string;
   getToolOverrides: () => Record<string, ToolOverride>;
+  getDisabledSections: () => string[];
+  getDisabledTools: () => string[];
 }
 
 // Cache for loaded template
@@ -82,8 +85,12 @@ export async function buildPromptData(
   // Get sorted sections (includes custom sections and respects order overrides)
   const sortedSections = customization.getSortedSections(template.sections);
   
+  // Filter out disabled sections
+  const disabledSectionIds = new Set(customization.getDisabledSections());
+  const activeSections = sortedSections.filter(s => !disabledSectionIds.has(s.id));
+  
   // Apply content overrides to each section
-  const sectionsWithOverrides: PromptDataSection[] = sortedSections.map((section, index) => {
+  const sectionsWithOverrides: PromptDataSection[] = activeSections.map((section, index) => {
     const effectiveContent = customization.getEffectiveContent(section);
     const isCustomized = effectiveContent !== section.content;
     
@@ -107,12 +114,16 @@ export async function buildPromptData(
   // Get tool description overrides
   const toolOverrides = customization.getToolOverrides();
   
-  console.log(`[PromptBuilder] Built ${sectionsWithOverrides.length} sections, ` +
-    `${Object.keys(toolOverrides).length} tool overrides`);
+  // Get disabled tools
+  const disabledTools = customization.getDisabledTools();
+  
+  console.log(`[PromptBuilder] Built ${sectionsWithOverrides.length} sections (${disabledSectionIds.size} disabled), ` +
+    `${Object.keys(toolOverrides).length} tool overrides, ${disabledTools.length} disabled tools`);
   
   return {
     sections: sectionsWithOverrides,
     toolOverrides,
+    disabledTools,
   };
 }
 
@@ -139,5 +150,6 @@ export async function buildDefaultPromptData(): Promise<PromptDataPayload> {
   return {
     sections,
     toolOverrides: {},
+    disabledTools: [],
   };
 }
