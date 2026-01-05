@@ -106,6 +106,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
   const blackboardRef = useRef<BlackboardEntry[]>([]);
   const scratchpadRef = useRef<string>("");
   const toolResultAttributesRef = useRef<Record<string, ToolResultAttribute>>({});
+  const artifactsRef = useRef<FreeAgentArtifact[]>([]);
   
   // Tool cache for expensive operations - caches EXACT duplicate requests only
   const toolCacheRef = useRef<Map<string, CacheEntry>>(new Map());
@@ -136,8 +137,12 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
     setSession((prev) => updater(prev));
   }, []);
 
-  // Handle artifact creation
+  // Handle artifact creation - update ref immediately for sync access
   const handleArtifactCreated = useCallback((artifact: FreeAgentArtifact) => {
+    // Update ref IMMEDIATELY (synchronous) for next iteration
+    artifactsRef.current = [...artifactsRef.current, artifact];
+    
+    // Also update React state (async, for UI)
     updateSession((prev) =>
       prev
         ? {
@@ -478,7 +483,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
             blackboard: blackboardRef.current.length > 0 ? blackboardRef.current : currentSession.blackboard,
             sessionFiles: currentSession.sessionFiles,
             toolResultAttributes: toolResultAttributesRef.current,
-            artifacts: currentSession.artifacts,
+            artifacts: artifactsRef.current.length > 0 ? artifactsRef.current : currentSession.artifacts,
             onArtifactCreated: handleArtifactCreated,
             onBlackboardUpdate: handleBlackboardUpdate,
             onScratchpadUpdate: handleScratchpadUpdate,
@@ -704,6 +709,11 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
           createdAt: new Date().toISOString(),
           iteration: iterationRef.current,
         }));
+        
+        // Update artifacts ref immediately for sync access in next iteration
+        if (newArtifacts.length > 0) {
+          artifactsRef.current = [...artifactsRef.current, ...newArtifacts];
+        }
 
         // AUTO-CREATE ARTIFACT if completed with no artifacts but has summary content
         if (response.status === "completed" && newArtifacts.length === 0) {
@@ -1622,6 +1632,7 @@ ${section.content}
         blackboardRef.current = newSession.blackboard;
         scratchpadRef.current = newSession.scratchpad;
         toolResultAttributesRef.current = newSession.toolResultAttributes;
+        artifactsRef.current = newSession.artifacts;
         
         // Clear tool cache only for fresh sessions (not continuations)
         if (!existingSession) {
@@ -1771,6 +1782,7 @@ ${section.content}
     blackboardRef.current = [];
     scratchpadRef.current = "";
     toolResultAttributesRef.current = {};
+    artifactsRef.current = [];
     retryCountRef.current = 0;
     lastErrorIterationRef.current = 0;
     toolCacheRef.current.clear();
