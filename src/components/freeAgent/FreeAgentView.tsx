@@ -89,7 +89,17 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
       promptData.sections.find(s => s.id === 'identity')?.content.substring(0, 100));
     console.log('[FreeAgentView] Advanced features:', advancedFeatures);
     
-    await startSession(prompt, files, model, maxIterations, existingSession, secretOverrides, configuredParams, promptData, advancedFeatures);
+    // Pass the promptCustomization.customizations object for self-author tools
+    // Provide a default empty object if no customizations exist yet
+    const customizationsData = promptCustomization.customizations || {
+      templateId: 'default',
+      sectionOverrides: {},
+      disabledSections: [],
+      additionalSections: [],
+      orderOverrides: {},
+      toolOverrides: {},
+    };
+    await startSession(prompt, files, model, maxIterations, existingSession, secretOverrides, configuredParams, promptData, advancedFeatures, customizationsData);
   };
 
   const handleAssistanceResponse = useCallback(
