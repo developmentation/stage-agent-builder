@@ -721,6 +721,7 @@ function formatToolsList(
     { id: "read_prompt", defaultDesc: "Read the original user prompt", params: "" },
     { id: "read_prompt_files", defaultDesc: "Get list of available files with metadata", params: "" },
     { id: "read_attribute", defaultDesc: "Read saved tool result attributes", params: "names[] - empty array for list, specific names for content" },
+    { id: "read_artifact", defaultDesc: "Read artifacts created in this session", params: "ids[] - empty array for list, specific ids/titles for content" },
     { id: "read_scratchpad", defaultDesc: "Read your data storage", params: "" },
     { id: "write_scratchpad", defaultDesc: "SAVE DATA HERE immediately after search/read", params: "content, mode?" },
     { id: "export_word", defaultDesc: "Create Word document", params: "content, filename?" },
@@ -764,7 +765,7 @@ function formatToolsList(
     "API": tools.filter(t => ["get_call_api", "post_call_api"].includes(t.id)),
     "Database": tools.filter(t => ["read_database_schemas", "execute_sql"].includes(t.id)),
     "Utility": tools.filter(t => ["get_time", "get_weather"].includes(t.id)),
-    "Memory": tools.filter(t => ["write_blackboard", "read_file", "read_prompt", "read_prompt_files", "read_attribute", "read_scratchpad", "write_scratchpad"].includes(t.id)),
+    "Memory": tools.filter(t => ["write_blackboard", "read_file", "read_prompt", "read_prompt_files", "read_attribute", "read_artifact", "read_scratchpad", "write_scratchpad"].includes(t.id)),
     "Export": tools.filter(t => ["export_word", "export_pdf"].includes(t.id)),
     "Advanced": tools.filter(t => ["read_self", "write_self", "spawn"].includes(t.id)),
   };
@@ -906,6 +907,24 @@ function formatScratchpad(content: string): string {
   return `\n## YOUR SCRATCHPAD: Contains ${content.length} chars of saved data. Use read_scratchpad to view full content.`;
 }
 
+// Format artifacts list section
+function formatArtifactsList(
+  artifacts: Array<{ id: string; type: string; title: string; content: string; description?: string }>
+): string {
+  if (!artifacts || artifacts.length === 0) {
+    return '\n## YOUR ARTIFACTS: None created yet. Use the artifacts field in your response to create deliverables.';
+  }
+  
+  const list = artifacts.map((a, i) => {
+    const preview = a.content.length > 200 
+      ? a.content.slice(0, 200) + '...' 
+      : a.content;
+    return `${i + 1}. **${a.title}** (${a.type}, ${a.content.length} chars)\n   ID: ${a.id}\n   ${a.description || 'No description'}\n   Preview: ${preview}`;
+  }).join('\n\n');
+  
+  return `\n## YOUR CREATED ARTIFACTS (${artifacts.length} total):\nThese artifacts were created in previous iterations. Use read_artifact to access full content or {{artifact:title}} in tool parameters.\n\n${list}`;
+}
+
 // Format previous results section
 function formatPreviousResults(results: Array<{ tool: string; result?: unknown; error?: string }>): string {
   if (!results || results.length === 0) {
@@ -961,6 +980,7 @@ function buildSystemPromptDynamic(
   previousResults: Array<{ tool: string; result?: unknown; error?: string }>,
   iteration: number,
   scratchpad: string,
+  artifacts: Array<{ id: string; type: string; title: string; content: string; description?: string }>,
   assistanceResponse?: { response?: string; fileId?: string; selectedChoice?: string },
   configuredParams?: Array<{ tool: string; param: string }>,
   promptData?: FreeAgentRequest['promptData'],
@@ -980,6 +1000,7 @@ function buildSystemPromptDynamic(
     '{{SCRATCHPAD_CONTENT}}': formatScratchpad(scratchpad),
     '{{PREVIOUS_RESULTS}}': formatPreviousResults(previousResults),
     '{{CURRENT_ITERATION}}': String(iteration),
+    '{{ARTIFACTS_LIST}}': formatArtifactsList(artifacts),
     '{{ASSISTANCE_RESPONSE}}': formatAssistanceResponse(assistanceResponse),
     // Advanced feature sections - only populated when enabled
     '{{SELF_AUTHOR}}': advancedFeatures?.selfAuthorEnabled ? `
@@ -1479,6 +1500,7 @@ serve(async (req) => {
         previousToolResults.map(t => ({ tool: t.tool, result: t.result, error: t.error })),
         iteration,
         scratchpad,
+        artifacts || [],
         assistanceResponse,
         configuredParams,
         promptData,

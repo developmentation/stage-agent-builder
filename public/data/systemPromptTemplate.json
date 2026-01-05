@@ -79,11 +79,21 @@
       "content": "{{PREVIOUS_RESULTS}}"
     },
     {
+      "id": "artifacts_list",
+      "title": "Created Artifacts",
+      "type": "dynamic",
+      "editable": "readonly",
+      "order": 8,
+      "description": "Artifacts created by the agent in this session",
+      "variables": ["{{ARTIFACTS_LIST}}"],
+      "content": "{{ARTIFACTS_LIST}}"
+    },
+    {
       "id": "iteration_info",
       "title": "Iteration Info",
       "type": "dynamic",
       "editable": "readonly",
-      "order": 8,
+      "order": 9,
       "description": "Current iteration number",
       "variables": ["{{CURRENT_ITERATION}}"],
       "content": "Current Iteration: {{CURRENT_ITERATION}}"
