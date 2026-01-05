@@ -771,8 +771,8 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
             summary: response.final_report?.summary || "Task completed",
             toolsUsed: response.final_report?.tools_used || [],
             artifactsCreated: (response.final_report?.artifacts_created || []).map((a) => ({
-              title: a.title,
-              description: a.description,
+              title: typeof a === 'string' ? a : (a.title || 'Unnamed'),
+              description: typeof a === 'string' ? '' : (a.description || ''),
               artifactId: "",
             })),
             keyFindings: response.final_report?.key_findings || [],
@@ -1501,7 +1501,10 @@ ${section.content}
                     title: `[${child.name}] ${artifact.title}`,
                     description: `${artifact.description || ''} (from child: ${child.name})`.trim(),
                   };
-                  // Update artifacts ref directly for consistency
+                  // Update artifacts ref IMMEDIATELY for sync access by parent
+                  artifactsRef.current = [...artifactsRef.current, prefixedArtifact];
+                  
+                  // Also update session state (async, for UI)
                   updateSession((prev) => prev ? {
                     ...prev,
                     artifacts: [...prev.artifacts, prefixedArtifact],
