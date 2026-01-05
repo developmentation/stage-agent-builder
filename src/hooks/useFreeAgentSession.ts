@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import type {
   FreeAgentSession,
   BlackboardEntry,
+  BlackboardCategory,
   ToolCall,
   FreeAgentArtifact,
   SessionFile,
@@ -708,6 +709,229 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
     [handleArtifactCreated, handleBlackboardUpdate, handleScratchpadUpdate, handleAssistanceNeeded, handleAttributeCreated, updateSession]
   );
 
+  // Run a child session - calls edge function iteratively
+  const runChildSession = useCallback(
+    async (
+      child: ChildSession,
+      parentSession: FreeAgentSession,
+      parentPromptData: PromptDataPayload | undefined,
+      onUpdate: (child: ChildSession) => void
+    ) => {
+      let childIteration = 0;
+      let lastToolResults: ToolResult[] = [];
+      let childScratchpad = child.scratchpad;
+      let childBlackboard = [...child.blackboard];
+      let childToolCalls = [...child.toolCalls];
+      let childArtifacts = [...child.artifacts];
+      
+      console.log(`[Child:${child.name}] Starting execution with max ${child.maxIterations} iterations`);
+      
+      // Build child's promptData by injecting task into identity section
+      const childPromptData: PromptDataPayload | undefined = parentPromptData ? {
+        toolOverrides: parentPromptData.toolOverrides,
+        disabledTools: parentPromptData.disabledTools,
+        sections: parentPromptData.sections.map(section => {
+          if (section.id === 'identity') {
+            // Prepend task to identity section
+            return {
+              ...section,
+              content: `## CHILD AGENT: ${child.name}
+
+**YOUR SPECIFIC TASK:**
+${child.task}
+
+---
+
+${section.content}
+
+---
+
+**IMPORTANT CHILD AGENT RULES:**
+1. You are a child agent spawned to complete ONE specific task
+2. Focus ONLY on your assigned task - do not deviate
+3. Write your findings to the scratchpad clearly with your name prefix
+4. Complete as quickly as possible - the orchestrator is waiting
+5. Set status to "completed" when done, or "error" if you cannot complete`,
+            };
+          }
+          return section;
+        }),
+      } : undefined;
+      
+      while (childIteration < child.maxIterations && !shouldStopRef.current) {
+        childIteration++;
+        
+        // Update child state
+        const updatedChild: ChildSession = {
+          ...child,
+          currentIteration: childIteration,
+          blackboard: childBlackboard,
+          scratchpad: childScratchpad,
+          toolCalls: childToolCalls,
+          artifacts: childArtifacts,
+        };
+        onUpdate(updatedChild);
+        
+        try {
+          console.log(`[Child:${child.name}] Iteration ${childIteration}/${child.maxIterations}`);
+          
+          // Call edge function for this child
+          const { data, error } = await supabase.functions.invoke("free-agent", {
+            body: {
+              prompt: child.task,
+              model: parentSession.model,
+              blackboard: childBlackboard.map(b => ({
+                category: b.category,
+                content: b.content,
+                data: b.data,
+                iteration: b.iteration,
+              })),
+              sessionFiles: parentSession.sessionFiles.map(f => ({
+                id: f.id,
+                filename: f.filename,
+                mimeType: f.mimeType,
+                size: f.size,
+                content: f.content,
+              })),
+              previousToolResults: lastToolResults,
+              iteration: childIteration,
+              scratchpad: childScratchpad,
+              secretOverrides: parentSession.secretOverrides,
+              configuredParams: parentSession.configuredParams,
+              toolResultAttributes: {},
+              artifacts: childArtifacts.map(a => ({
+                id: a.id,
+                type: a.type,
+                title: a.title,
+                content: a.content,
+                description: a.description,
+              })),
+              promptData: childPromptData,
+              advancedFeatures: undefined, // Children don't get advanced features
+            },
+          });
+          
+          if (error) throw error;
+          
+          if (!data.success) {
+            console.error(`[Child:${child.name}] LLM error:`, data.error);
+            // Add error to blackboard and continue
+            childBlackboard.push({
+              id: crypto.randomUUID(),
+              timestamp: new Date().toISOString(),
+              category: 'error',
+              content: `Error at iteration ${childIteration}: ${data.error}`,
+              iteration: childIteration,
+            });
+            continue;
+          }
+          
+          const response = data.response as AgentResponse;
+          
+          // Process blackboard entry
+          if (response.blackboard_entry) {
+            childBlackboard.push({
+              id: crypto.randomUUID(),
+              timestamp: new Date().toISOString(),
+              category: response.blackboard_entry.category as BlackboardCategory,
+              content: response.blackboard_entry.content,
+              data: response.blackboard_entry.data,
+              iteration: childIteration,
+            });
+          }
+          
+          // Process tool calls
+          const iterationToolResults: ToolResult[] = [];
+          for (const result of data.toolResults || []) {
+            const toolCall: ToolCall = {
+              id: crypto.randomUUID(),
+              tool: result.tool,
+              params: result.params || {},
+              status: result.success ? 'completed' : 'error',
+              result: result.result,
+              error: result.error,
+              startTime: new Date().toISOString(),
+              endTime: new Date().toISOString(),
+              iteration: childIteration,
+            };
+            childToolCalls.push(toolCall);
+            iterationToolResults.push(result);
+            
+            // Handle scratchpad writes
+            if (result.tool === 'write_scratchpad' && result.success) {
+              childScratchpad = result.result?.content || childScratchpad;
+            }
+          }
+          
+          lastToolResults = iterationToolResults;
+          
+          // Check for completion
+          if (response.status === 'completed') {
+            console.log(`[Child:${child.name}] Completed at iteration ${childIteration}`);
+            const finalChild: ChildSession = {
+              ...child,
+              status: 'completed',
+              currentIteration: childIteration,
+              endTime: new Date().toISOString(),
+              blackboard: childBlackboard,
+              scratchpad: childScratchpad,
+              toolCalls: childToolCalls,
+              artifacts: childArtifacts,
+            };
+            onUpdate(finalChild);
+            return;
+          }
+          
+          // Check for error status
+          if (response.status === 'error') {
+            console.error(`[Child:${child.name}] Error status at iteration ${childIteration}`);
+            const errorChild: ChildSession = {
+              ...child,
+              status: 'error',
+              currentIteration: childIteration,
+              endTime: new Date().toISOString(),
+              blackboard: childBlackboard,
+              scratchpad: childScratchpad,
+              toolCalls: childToolCalls,
+              artifacts: childArtifacts,
+              error: response.message_to_user || 'Child agent encountered an error',
+            };
+            onUpdate(errorChild);
+            return;
+          }
+          
+          // Small delay between iterations
+          await new Promise(resolve => setTimeout(resolve, 300));
+          
+        } catch (err) {
+          console.error(`[Child:${child.name}] Exception at iteration ${childIteration}:`, err);
+          childBlackboard.push({
+            id: crypto.randomUUID(),
+            timestamp: new Date().toISOString(),
+            category: 'error',
+            content: `Exception at iteration ${childIteration}: ${String(err)}`,
+            iteration: childIteration,
+          });
+        }
+      }
+      
+      // Max iterations reached
+      console.log(`[Child:${child.name}] Max iterations reached (${child.maxIterations})`);
+      const finalChild: ChildSession = {
+        ...child,
+        status: 'completed',
+        currentIteration: childIteration,
+        endTime: new Date().toISOString(),
+        blackboard: childBlackboard,
+        scratchpad: childScratchpad,
+        toolCalls: childToolCalls,
+        artifacts: childArtifacts,
+      };
+      onUpdate(finalChild);
+    },
+    []
+  );
+
   // Run the iteration loop with retry logic
   const runIterationLoop = useCallback(
     async (sessionId: string, initialSession: FreeAgentSession, initialToolResults: ToolResult[] = []) => {
@@ -791,22 +1015,28 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
           
           console.log(`[Spawn] Orchestrator entering waiting mode for ${spawnRequest.children.length} children`);
           
-          // Update session to orchestration mode with 'waiting' status
+          const currentSession = loadSessionFromLocal(sessionId) || initialSession;
+          const parentPromptData = currentSession.promptData;
+          
+          // Create child session objects
           const childSessions: ChildSession[] = spawnRequest.children.map(child => ({
             id: crypto.randomUUID(),
             name: child.name,
             task: child.task,
-            status: 'running' as const, // Children start as running
-            promptModifications: child.sectionOverrides ? 
-              Object.entries(child.sectionOverrides).map(([sectionId, content]) => ({
-                type: 'override_section' as const,
-                sectionId,
-                content,
-              })) : [],
-            maxIterations: child.maxIterations || 20,
+            status: 'running' as const,
+            promptModifications: [
+              // Add task as identity override
+              { type: 'set_task' as const, content: child.task },
+              ...(child.sectionOverrides ? 
+                Object.entries(child.sectionOverrides).map(([sectionId, content]) => ({
+                  type: 'override_section' as const,
+                  sectionId,
+                  content,
+                })) : []),
+            ],
+            maxIterations: child.maxIterations || currentSession.advancedFeatures?.childMaxIterations || 20,
             currentIteration: 0,
             startTime: new Date().toISOString(),
-            // Initialize empty state for children - inherit parent's scratchpad
             blackboard: [],
             scratchpad: spawnRequest.parentScratchpad,
             toolCalls: [],
@@ -816,7 +1046,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
           // Set orchestrator to 'waiting' status
           updateSession((prev) => prev ? {
             ...prev,
-            status: 'waiting', // Orchestrator is waiting for children
+            status: 'waiting',
             orchestration: {
               role: 'orchestrator',
               children: childSessions,
@@ -831,58 +1061,93 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
             runningChildrenRef.current.add(child.name);
           }
           
-          // TODO: In future implementation, actually run child sessions in parallel here
-          // For now, mark children as completed after a delay to simulate execution
-          toast.info(`Spawned ${childSessions.length} child agents. Parallel execution is being developed.`);
+          toast.info(`Spawning ${childSessions.length} child agents...`);
           
-          // Simulate child completion for now (placeholder for actual parallel execution)
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          // Execute children in parallel with real edge function calls
+          const childPromises = childSessions.map(async (child) => {
+            try {
+              await runChildSession(
+                child, 
+                currentSession, 
+                parentPromptData,
+                (updatedChild) => {
+                  // Update child in ref
+                  childSessionsRef.current.set(child.name, updatedChild);
+                  // Update UI
+                  updateSession((prev) => {
+                    if (!prev?.orchestration?.children) return prev;
+                    return {
+                      ...prev,
+                      orchestration: {
+                        ...prev.orchestration,
+                        children: prev.orchestration.children.map(c => 
+                          c.name === child.name ? updatedChild : c
+                        ),
+                      },
+                    };
+                  });
+                }
+              );
+              return { name: child.name, success: true };
+            } catch (error) {
+              console.error(`[Child:${child.name}] Error:`, error);
+              return { name: child.name, success: false, error: String(error) };
+            }
+          });
           
-          // Mark all children as completed
+          // Wait for all children to complete
+          const results = await Promise.all(childPromises);
+          const completedChildren = results.filter(r => r.success).map(r => r.name);
+          const failedChildren = results.filter(r => !r.success);
+          
+          console.log(`[Spawn] ${completedChildren.length}/${childSessions.length} children completed`);
+          
+          // Get final child states and merge to parent blackboard
           for (const child of childSessions) {
             runningChildrenRef.current.delete(child.name);
-            const updatedChild = childSessionsRef.current.get(child.name);
-            if (updatedChild) {
-              updatedChild.status = 'completed';
-              updatedChild.endTime = new Date().toISOString();
+            const finalChild = childSessionsRef.current.get(child.name);
+            if (finalChild) {
+              // Add child's blackboard entries to parent with prefix
+              for (const entry of finalChild.blackboard) {
+                const prefixedEntry: BlackboardEntry = {
+                  ...entry,
+                  id: crypto.randomUUID(),
+                  content: `[CHILD:${child.name}] ${entry.content}`,
+                };
+                handleBlackboardUpdate(prefixedEntry);
+              }
               
-              // Add completion entry to blackboard
-              const entry: BlackboardEntry = {
-                id: crypto.randomUUID(),
-                timestamp: new Date().toISOString(),
-                category: 'observation',
-                content: `[CHILD:${child.name}] Completed task: ${child.task.slice(0, 100)}...`,
-                iteration: iterationRef.current,
-              };
-              handleBlackboardUpdate(entry);
+              // If child has scratchpad content, add summary
+              if (finalChild.scratchpad && finalChild.scratchpad.length > spawnRequest.parentScratchpad.length) {
+                const childAdditions = finalChild.scratchpad.slice(spawnRequest.parentScratchpad.length);
+                if (childAdditions.trim()) {
+                  handleScratchpadUpdate(scratchpadRef.current + `\n\n## [${child.name}] Results\n${childAdditions}`);
+                }
+              }
             }
           }
           
-          // Resume orchestrator - back to running status
+          // Resume orchestrator
           updateSession((prev) => prev ? {
             ...prev,
-            status: 'running', // Resume orchestrator
+            status: 'running',
             orchestration: {
               ...prev.orchestration!,
               awaitingChildren: false,
-              children: childSessions.map(c => ({
-                ...c,
-                status: 'completed' as const,
-                endTime: new Date().toISOString(),
-              })),
+              children: Array.from(childSessionsRef.current.values()),
             },
           } : null);
           
           console.log('[Spawn] All children completed. Resuming orchestrator.');
           
-          // Continue iteration loop
           shouldContinue = true;
           lastToolResults = [{
             tool: 'spawn',
             success: true,
             result: {
-              message: `All ${childSessions.length} children completed. Results merged to blackboard.`,
-              completedChildren: childSessions.map(c => c.name),
+              message: `${completedChildren.length}/${childSessions.length} children completed.`,
+              completedChildren,
+              failedChildren: failedChildren.map(f => ({ name: f.name, error: f.error })),
             },
           }];
           
@@ -899,7 +1164,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
         }
       }
     },
-    [executeIteration, updateSession, handleBlackboardUpdate]
+    [executeIteration, updateSession, handleBlackboardUpdate, handleScratchpadUpdate]
   );
 
   // Start a new session (or resume with preserved memory if existingSession provided)

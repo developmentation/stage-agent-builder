@@ -294,6 +294,7 @@ export interface FreeAgentSession {
       variables?: string[];
     }>;
     toolOverrides: Record<string, { description?: string }>;
+    disabledTools: string[];
   };
   
   // Advanced features state
