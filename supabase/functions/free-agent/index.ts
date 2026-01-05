@@ -41,6 +41,13 @@ interface FreeAgentRequest {
     toolOverrides?: Record<string, { description?: string; disabled?: boolean }>;
     disabledTools?: string[];
   };
+  // Advanced features flags (Phase 3)
+  advancedFeatures?: {
+    selfAuthorEnabled?: boolean;
+    spawnEnabled?: boolean;
+    maxChildren?: number;
+    childMaxIterations?: number;
+  };
 }
 
 // ============================================================================
@@ -673,7 +680,8 @@ If you called a tool with saveAs (e.g., brave_search with saveAs: "weather_data"
 // Format tools list with optional custom descriptions and filtering disabled tools
 function formatToolsList(
   toolOverrides?: Record<string, { description?: string; disabled?: boolean }>,
-  disabledTools?: string[]
+  disabledTools?: string[],
+  advancedFeatures?: FreeAgentRequest['advancedFeatures']
 ): string {
   // Build a set of disabled tool IDs from both sources
   const disabledSet = new Set(disabledTools || []);
@@ -719,6 +727,25 @@ function formatToolsList(
     { id: "export_pdf", defaultDesc: "Create PDF document", params: "content, filename?" },
   ];
   
+  // Conditionally add advanced Self-Author tools
+  if (advancedFeatures?.selfAuthorEnabled) {
+    allTools.push(
+      { id: "read_self", defaultDesc: "Read your own system prompt configuration (sections, tools, overrides)", params: "include? - 'sections', 'tools', or 'all'" },
+      { id: "write_self", defaultDesc: "Modify your own system prompt - DANGEROUS! Changes take effect next iteration", params: "sectionOverrides?, disableSections?, enableSections?, toolDescriptionOverrides?, disableTools?, enableTools?" }
+    );
+    console.log(`[formatToolsList] Self-Author tools enabled`);
+  }
+  
+  // Conditionally add advanced Spawn tools
+  if (advancedFeatures?.spawnEnabled) {
+    const maxChildren = advancedFeatures.maxChildren || 5;
+    const childMaxIter = advancedFeatures.childMaxIterations || 20;
+    allTools.push(
+      { id: "spawn", defaultDesc: `Create up to ${maxChildren} child agents for parallel work. Each child gets ${childMaxIter} max iterations.`, params: "children[] - array of {name, task, maxIterations?, sectionOverrides?, attributes?}, completionThreshold?" }
+    );
+    console.log(`[formatToolsList] Spawn tool enabled (max ${maxChildren} children)`);
+  }
+  
   // Filter out disabled tools
   const tools = allTools.filter(t => !disabledSet.has(t.id));
   
@@ -739,6 +766,7 @@ function formatToolsList(
     "Utility": tools.filter(t => ["get_time", "get_weather"].includes(t.id)),
     "Memory": tools.filter(t => ["write_blackboard", "read_file", "read_prompt", "read_prompt_files", "read_attribute", "read_scratchpad", "write_scratchpad"].includes(t.id)),
     "Export": tools.filter(t => ["export_word", "export_pdf"].includes(t.id)),
+    "Advanced": tools.filter(t => ["read_self", "write_self", "spawn"].includes(t.id)),
   };
   
   let output = "Available Tools:\n\n";
@@ -935,7 +963,8 @@ function buildSystemPromptDynamic(
   scratchpad: string,
   assistanceResponse?: { response?: string; fileId?: string; selectedChoice?: string },
   configuredParams?: Array<{ tool: string; param: string }>,
-  promptData?: FreeAgentRequest['promptData']
+  promptData?: FreeAgentRequest['promptData'],
+  advancedFeatures?: FreeAgentRequest['advancedFeatures']
 ): string {
   // REQUIRE promptData - no hardcoded fallback
   if (!promptData || !promptData.sections || promptData.sections.length === 0) {
@@ -944,7 +973,7 @@ function buildSystemPromptDynamic(
   
   // Build runtime variable map
   const runtimeVars: Record<string, string> = {
-    '{{TOOLS_LIST}}': formatToolsList(promptData.toolOverrides, promptData.disabledTools),
+    '{{TOOLS_LIST}}': formatToolsList(promptData.toolOverrides, promptData.disabledTools, advancedFeatures),
     '{{SESSION_FILES}}': formatSessionFiles(sessionFiles),
     '{{CONFIGURED_PARAMS}}': formatConfiguredParams(configuredParams),
     '{{BLACKBOARD_CONTENT}}': formatBlackboard(blackboard),
@@ -952,6 +981,55 @@ function buildSystemPromptDynamic(
     '{{PREVIOUS_RESULTS}}': formatPreviousResults(previousResults),
     '{{CURRENT_ITERATION}}': String(iteration),
     '{{ASSISTANCE_RESPONSE}}': formatAssistanceResponse(assistanceResponse),
+    // Advanced feature sections - only populated when enabled
+    '{{SELF_AUTHOR}}': advancedFeatures?.selfAuthorEnabled ? `
+## ⚠️ SELF-AUTHOR CAPABILITIES (EXPERIMENTAL)
+
+You have access to powerful self-modification tools:
+
+- **read_self**: Introspect your own system prompt configuration
+  - Returns: sections, tool overrides, disabled items
+  - Use to understand your current behavior and constraints
+
+- **write_self**: Modify your own configuration
+  - Can: Override section content, enable/disable sections, change tool descriptions
+  - Changes take effect in the NEXT iteration, not immediately
+  - Use sparingly and carefully - incorrect modifications may cause errors
+
+WARNING: Self-modification is powerful but risky. Only use when:
+1. You need to optimize your behavior for a specific task
+2. You want to disable irrelevant sections to save tokens
+3. You need to adjust tool descriptions for clarity
+` : '',
+    '{{SPAWN}}': advancedFeatures?.spawnEnabled ? `
+## 🔀 SPAWN CAPABILITIES (PARALLEL PROCESSING)
+
+You can create child agent instances to process work in parallel:
+
+- **spawn**: Create up to ${advancedFeatures.maxChildren || 5} child agents
+  - Each child gets its own task and up to ${advancedFeatures.childMaxIterations || 20} iterations
+  - Children share your current scratchpad but have separate blackboards
+  - You enter "orchestrate" mode and wait for children to complete
+  - Child results are merged to your blackboard when they finish
+
+When to use spawn:
+- Processing multiple files, URLs, or data sources
+- Dividing a large task into independent subtasks
+- Parallel research on different topics
+- Bulk operations that don't depend on each other
+
+Example spawn call:
+{
+  "tool": "spawn",
+  "params": {
+    "children": [
+      { "name": "researcher_1", "task": "Research topic A" },
+      { "name": "researcher_2", "task": "Research topic B" }
+    ],
+    "completionThreshold": 2
+  }
+}
+` : '',
   };
   
   // Sort sections by order
@@ -1364,6 +1442,7 @@ serve(async (req) => {
       toolResultAttributes = {},
       artifacts = [],
       promptData,
+      advancedFeatures,
     } = request || {};
 
     // Build resolver context for reference resolution in tool params
@@ -1402,7 +1481,8 @@ serve(async (req) => {
         scratchpad,
         assistanceResponse,
         configuredParams,
-        promptData
+        promptData,
+        advancedFeatures
       );
     } else {
       console.log(`Using legacy hardcoded system prompt (no promptData provided)`);

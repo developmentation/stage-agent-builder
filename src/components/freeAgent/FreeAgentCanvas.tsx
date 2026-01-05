@@ -23,6 +23,7 @@ import { ScratchpadNode } from "./ScratchpadNode";
 import { PromptNode } from "./PromptNode";
 import { PromptFileNode } from "./PromptFileNode";
 import { AttributeNode } from "./AttributeNode";
+import { ChildAgentNode } from "./ChildAgentNode";
 import type {
   FreeAgentSession,
   ToolsManifest,
@@ -50,6 +51,7 @@ const nodeTypes = {
   prompt: PromptNode,
   promptFile: PromptFileNode,
   attribute: AttributeNode,
+  childAgent: ChildAgentNode,
 };
 
 // Read tools - gather/retrieve information (displayed ABOVE agent)
@@ -362,6 +364,52 @@ export function FreeAgentCanvas({
         onRetry: (agentStatus === "error" || agentStatus === "paused") ? onRetry : undefined,
       },
     });
+
+    // === CHILD AGENTS: Below agent when orchestrating ===
+    if (session?.orchestration?.role === 'orchestrator' && session.orchestration.children) {
+      const children = session.orchestration.children;
+      const childStartY = agentY + 100;
+      const childSpacing = 160;
+      const totalWidth = (children.length - 1) * childSpacing;
+      const startX = agentX - totalWidth / 2;
+      
+      children.forEach((child, index) => {
+        const childX = startX + index * childSpacing;
+        const childY = childStartY + 80;
+        const childNodeId = `child-${child.name}`;
+        newNodeIds.add(childNodeId);
+        
+        // Map child status to node status
+        const childStatus = child.status === 'running' ? 'thinking' : 
+                           child.status === 'completed' ? 'success' : 
+                           child.status === 'error' ? 'error' : 'idle';
+        
+        newNodes.push({
+          id: childNodeId,
+          type: 'childAgent',
+          position: getPosition(childNodeId, { x: childX, y: childY }),
+          data: {
+            type: 'childAgent',
+            label: child.name,
+            status: childStatus,
+            task: child.task,
+            iteration: child.currentIteration,
+            maxIterations: child.maxIterations,
+          },
+        });
+        
+        // Edge from orchestrator to child
+        newEdges.push({
+          id: `edge-orchestrator-${child.name}`,
+          source: 'agent',
+          target: childNodeId,
+          sourceHandle: 'bottom',
+          targetHandle: 'top',
+          animated: child.status === 'running',
+          style: { stroke: '#f59e0b', strokeWidth: 2 },
+        });
+      });
+    }
 
     // === WRITE TOOLS: Below agent in 2 columns ===
     const writeToolPositions = layoutToolsInColumns(

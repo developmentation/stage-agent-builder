@@ -207,6 +207,7 @@ export interface ChildSpec {
 export interface ChildSession {
   id: string;
   name: string;
+  task: string;  // The specific task given to this child
   status: FreeAgentStatus;
   promptModifications: PromptModification[];
   maxIterations: number;
@@ -396,6 +397,7 @@ export interface FreeAgentNodeData {
   onRetry?: () => void; // Callback when retry button clicked on agent node
   // For child agent nodes
   childName?: string;
+  task?: string; // Child agent's assigned task
   maxIterations?: number;
   currentIteration?: number;
 }
