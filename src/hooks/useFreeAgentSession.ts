@@ -960,6 +960,21 @@ ${section.content}
             });
           }
           
+          // Process artifacts from response
+          if (response.artifacts && response.artifacts.length > 0) {
+            const newChildArtifacts: FreeAgentArtifact[] = response.artifacts.map((a) => ({
+              id: crypto.randomUUID(),
+              type: a.type as ArtifactType,
+              title: a.title,
+              content: a.content,
+              description: a.description || `Created by ${child.name}`,
+              createdAt: new Date().toISOString(),
+              iteration: childIteration,
+            }));
+            childArtifacts.push(...newChildArtifacts);
+            console.log(`[Child:${child.name}] Created ${newChildArtifacts.length} artifacts`);
+          }
+          
           // Process tool calls - handle both backend and frontend tools
           const iterationToolResults: ToolResult[] = [];
           for (const result of data.toolResults || []) {
@@ -1464,6 +1479,24 @@ ${section.content}
                   };
                   handleAttributeCreated(prefixedAttr);
                   console.log(`[Spawn] Merged child attribute: ${prefixedName} (${attr.size} chars)`);
+                }
+              }
+              
+              // Merge child's artifacts to parent with name prefix
+              if (finalChild.artifacts && finalChild.artifacts.length > 0) {
+                for (const artifact of finalChild.artifacts) {
+                  const prefixedArtifact: FreeAgentArtifact = {
+                    ...artifact,
+                    id: crypto.randomUUID(),
+                    title: `[${child.name}] ${artifact.title}`,
+                    description: `${artifact.description || ''} (from child: ${child.name})`.trim(),
+                  };
+                  // Update artifacts ref directly for consistency
+                  updateSession((prev) => prev ? {
+                    ...prev,
+                    artifacts: [...prev.artifacts, prefixedArtifact],
+                  } : null);
+                  console.log(`[Spawn] Merged child artifact: ${prefixedArtifact.title}`);
                 }
               }
             }

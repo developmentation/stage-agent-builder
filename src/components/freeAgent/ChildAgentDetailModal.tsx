@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { ChildSession } from "@/types/freeAgent";
-import { GitBranch, Clock, CheckCircle, XCircle, Loader2, FileText, Wrench, MessageSquare, Database } from "lucide-react";
+import { GitBranch, Clock, CheckCircle, XCircle, Loader2, FileText, Wrench, MessageSquare, Database, FileOutput } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -85,17 +85,21 @@ export function ChildAgentDetailModal({ isOpen, onClose, child }: ChildAgentDeta
               <Database className="w-4 h-4" />
               Attributes ({Object.keys(child.toolResultAttributes || {}).length})
             </TabsTrigger>
+            <TabsTrigger value="artifacts" className="gap-1.5">
+              <FileOutput className="w-4 h-4" />
+              Artifacts ({child.artifacts?.length || 0})
+            </TabsTrigger>
           </TabsList>
 
           <div className="flex-1 overflow-hidden px-6 pb-6">
             {/* Task Tab */}
             <TabsContent value="task" className="h-full m-0 mt-4">
-              <ScrollArea className="h-full">
+              <ScrollArea className="h-full overflow-x-hidden">
                 <div className="space-y-4">
                   <div>
                     <h3 className="font-semibold mb-2">Assigned Task</h3>
-                    <div className="p-4 bg-muted rounded-lg">
-                      <p className="whitespace-pre-wrap">{child.task}</p>
+                    <div className="p-4 bg-muted rounded-lg overflow-hidden">
+                      <p className="whitespace-pre-wrap break-words" style={{ overflowWrap: 'anywhere' }}>{child.task}</p>
                     </div>
                   </div>
                   
@@ -113,11 +117,11 @@ export function ChildAgentDetailModal({ isOpen, onClose, child }: ChildAgentDeta
                       <h3 className="font-semibold mb-2">Prompt Modifications</h3>
                       <div className="space-y-2">
                         {child.promptModifications.map((mod, idx) => (
-                          <div key={idx} className="p-3 bg-muted rounded text-sm">
+                          <div key={idx} className="p-3 bg-muted rounded text-sm overflow-hidden">
                             <Badge variant="outline" className="mb-1">{mod.type}</Badge>
                             {mod.sectionId && <span className="text-muted-foreground ml-2">Section: {mod.sectionId}</span>}
                             {mod.content && (
-                              <p className="mt-2 text-muted-foreground truncate">{mod.content.slice(0, 200)}...</p>
+                              <p className="mt-2 text-muted-foreground whitespace-pre-wrap break-words" style={{ overflowWrap: 'anywhere' }}>{mod.content}</p>
                             )}
                           </div>
                         ))}
@@ -253,6 +257,40 @@ export function ChildAgentDetailModal({ isOpen, onClose, child }: ChildAgentDeta
                         </div>
                         <pre className="mt-1 p-2 bg-muted rounded text-xs overflow-x-auto max-h-32">
                           {attr.resultString.slice(0, 500)}{attr.resultString.length > 500 ? '...' : ''}
+                        </pre>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+            </TabsContent>
+
+            {/* Artifacts Tab */}
+            <TabsContent value="artifacts" className="h-full m-0 mt-4">
+              <ScrollArea className="h-full">
+                {!child.artifacts || child.artifacts.length === 0 ? (
+                  <div className="text-center text-muted-foreground py-8">
+                    No artifacts created
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {child.artifacts.map((artifact) => (
+                      <div key={artifact.id} className="p-3 border rounded-lg">
+                        <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
+                          <div className="flex items-center gap-2">
+                            <FileOutput className="w-4 h-4 text-muted-foreground" />
+                            <span className="font-medium">{artifact.title}</span>
+                            <Badge variant="outline">{artifact.type}</Badge>
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            {artifact.content.length} chars • Iteration {artifact.iteration}
+                          </span>
+                        </div>
+                        {artifact.description && (
+                          <p className="text-sm text-muted-foreground mb-2">{artifact.description}</p>
+                        )}
+                        <pre className="mt-1 p-2 bg-muted rounded text-xs overflow-x-auto max-h-48 whitespace-pre-wrap break-words">
+                          {artifact.content.slice(0, 1000)}{artifact.content.length > 1000 ? '...' : ''}
                         </pre>
                       </div>
                     ))}
