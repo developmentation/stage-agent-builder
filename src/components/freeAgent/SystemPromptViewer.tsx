@@ -320,37 +320,39 @@ function SectionCard({
           </div>
           
           <CollapsibleTrigger asChild>
-            <button className="flex-1 px-3 py-3 flex items-center gap-3 hover:bg-muted/50 transition-colors text-left">
-              <span className="text-muted-foreground">
+            <button className="flex-1 px-3 py-3 flex flex-wrap items-center gap-2 hover:bg-muted/50 transition-colors text-left min-w-0 overflow-hidden">
+              <span className="text-muted-foreground shrink-0">
                 {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
               </span>
-              <span className="text-muted-foreground">{icon}</span>
-              <span className={`flex-1 font-medium text-sm ${isDisabled ? 'line-through text-muted-foreground' : ''}`}>{section.title}</span>
-              {isDisabled && (
-                <Badge variant="outline" className="text-xs bg-muted text-muted-foreground border-muted-foreground/30">
-                  Disabled
-                </Badge>
-              )}
-              {isCustomSection && !isDisabled && (
-                <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30">
-                  <Plus className="h-3 w-3 mr-1" />
-                  Custom
-                </Badge>
-              )}
-              {isCustomized && !isCustomSection && !isDisabled && (
-                <Badge variant="outline" className="text-xs bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30">
-                  <Check className="h-3 w-3 mr-1" />
-                  Modified
-                </Badge>
-              )}
-              {!isDisabled && (
-                <Badge variant="outline" className={`text-xs ${editableColors[section.editable]}`}>
-                  {section.editable === 'readonly' && <Lock className="h-3 w-3 mr-1" />}
-                  {section.editable === 'editable' && <Pencil className="h-3 w-3 mr-1" />}
-                  {section.editable === 'dynamic' && <RefreshCw className="h-3 w-3 mr-1" />}
-                  {editableLabels[section.editable]}
-                </Badge>
-              )}
+              <span className="text-muted-foreground shrink-0">{icon}</span>
+              <span className={`font-medium text-sm truncate min-w-0 flex-1 ${isDisabled ? 'line-through text-muted-foreground' : ''}`}>{section.title}</span>
+              <div className="flex flex-wrap gap-1 shrink-0">
+                {isDisabled && (
+                  <Badge variant="outline" className="text-xs bg-muted text-muted-foreground border-muted-foreground/30 whitespace-nowrap">
+                    Disabled
+                  </Badge>
+                )}
+                {isCustomSection && !isDisabled && (
+                  <Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30 whitespace-nowrap">
+                    <Plus className="h-3 w-3 mr-1" />
+                    Custom
+                  </Badge>
+                )}
+                {isCustomized && !isCustomSection && !isDisabled && (
+                  <Badge variant="outline" className="text-xs bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30 whitespace-nowrap">
+                    <Check className="h-3 w-3 mr-1" />
+                    Modified
+                  </Badge>
+                )}
+                {!isDisabled && (
+                  <Badge variant="outline" className={`text-xs whitespace-nowrap ${editableColors[section.editable]}`}>
+                    {section.editable === 'readonly' && <Lock className="h-3 w-3 mr-1" />}
+                    {section.editable === 'editable' && <Pencil className="h-3 w-3 mr-1" />}
+                    {section.editable === 'dynamic' && <RefreshCw className="h-3 w-3 mr-1" />}
+                    {editableLabels[section.editable]}
+                  </Badge>
+                )}
+              </div>
             </button>
           </CollapsibleTrigger>
           
@@ -448,7 +450,7 @@ function SectionCard({
                   ref={textareaRef}
                   value={editContent}
                   onChange={(e) => setEditContent(e.target.value)}
-                  className="min-h-[200px] font-mono text-sm resize-y"
+                  className="min-h-[200px] w-full max-w-full font-mono text-sm resize-y"
                   placeholder="Enter section content..."
                 />
                 <div className="flex items-center gap-2">
@@ -483,8 +485,8 @@ function SectionCard({
                 </div>
               </div>
             ) : (
-              <div className="mt-2 text-sm bg-muted/30 rounded-md p-3 overflow-x-auto">
-                <div className="prose prose-sm dark:prose-invert max-w-none prose-pre:bg-background prose-pre:border prose-pre:border-border prose-code:text-primary">
+              <div className="mt-2 text-sm bg-muted/30 rounded-md p-3 overflow-hidden max-w-full">
+                <div className="prose prose-sm dark:prose-invert max-w-none prose-pre:bg-background prose-pre:border prose-pre:border-border prose-code:text-primary break-words" style={{ overflowWrap: 'anywhere' }}>
                   <ReactMarkdown remarkPlugins={[remarkGfm]}>
                     {effectiveContent}
                   </ReactMarkdown>
@@ -628,45 +630,47 @@ function ToolCard({
           </div>
           
           <CollapsibleTrigger asChild>
-            <button className="flex-1 px-3 py-3 flex items-center gap-3 hover:bg-muted/50 transition-colors text-left">
-              <span className="text-muted-foreground">
+            <button className="flex-1 px-3 py-3 flex flex-wrap items-center gap-2 hover:bg-muted/50 transition-colors text-left min-w-0 overflow-hidden">
+              <span className="text-muted-foreground shrink-0">
                 {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
               </span>
-              <span className="text-muted-foreground">{icon}</span>
-              <span className={`flex-1 font-medium text-sm ${isDisabled ? 'line-through text-muted-foreground' : ''}`}>{tool.name}</span>
-              {isDisabled && (
-                <Badge variant="outline" className="text-xs bg-muted text-muted-foreground border-muted-foreground/30">
-                  Disabled
-                </Badge>
-              )}
-              {!isDisabled && toolCategories.map((cat) => {
-                const category = categories[cat];
-                return category ? (
-                  <Badge 
-                    key={cat}
-                    variant="outline" 
-                    className="text-xs"
-                    style={{ 
-                      backgroundColor: `${category.color}20`,
-                      borderColor: `${category.color}50`,
-                      color: category.color
-                    }}
-                  >
-                    {category.name}
+              <span className="text-muted-foreground shrink-0">{icon}</span>
+              <span className={`font-medium text-sm truncate min-w-0 flex-1 ${isDisabled ? 'line-through text-muted-foreground' : ''}`}>{tool.name}</span>
+              <div className="flex flex-wrap gap-1 shrink-0">
+                {isDisabled && (
+                  <Badge variant="outline" className="text-xs bg-muted text-muted-foreground border-muted-foreground/30 whitespace-nowrap">
+                    Disabled
                   </Badge>
-                ) : null;
-              })}
-              {isCustomized && !isDisabled && (
-                <Badge variant="outline" className="text-xs bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30">
-                  <Check className="h-3 w-3 mr-1" />
-                  Modified
-                </Badge>
-              )}
-              {tool.frontend_handler && !isDisabled && (
-                <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30">
-                  Frontend
-                </Badge>
-              )}
+                )}
+                {!isDisabled && toolCategories.map((cat) => {
+                  const category = categories[cat];
+                  return category ? (
+                    <Badge 
+                      key={cat}
+                      variant="outline" 
+                      className="text-xs whitespace-nowrap"
+                      style={{ 
+                        backgroundColor: `${category.color}20`,
+                        borderColor: `${category.color}50`,
+                        color: category.color
+                      }}
+                    >
+                      {category.name}
+                    </Badge>
+                  ) : null;
+                })}
+                {isCustomized && !isDisabled && (
+                  <Badge variant="outline" className="text-xs bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30 whitespace-nowrap">
+                    <Check className="h-3 w-3 mr-1" />
+                    Modified
+                  </Badge>
+                )}
+                {tool.frontend_handler && !isDisabled && (
+                  <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30 whitespace-nowrap">
+                    Frontend
+                  </Badge>
+                )}
+              </div>
             </button>
           </CollapsibleTrigger>
         </div>
@@ -721,7 +725,7 @@ function ToolCard({
                     </div>
                   </div>
                 ) : (
-                  <p className="text-sm text-foreground/80">{effectiveDescription}</p>
+                  <p className="text-sm text-foreground/80 break-words" style={{ overflowWrap: 'anywhere' }}>{effectiveDescription}</p>
                 )}
               </div>
               
