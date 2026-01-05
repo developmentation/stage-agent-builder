@@ -918,13 +918,24 @@ ${section.content}
               setTimeout(() => onToolActive(result.tool, false), 1000);
             }
             
-            // Handle saveAs for child - create named attribute if present
-            const saveAsName = toolCall.params?.saveAs as string | undefined;
-            if (result.success && saveAsName && AUTO_SAVE_TOOLS.includes(result.tool)) {
+            // Auto-save ALL successful tool results from AUTO_SAVE_TOOLS for children
+            // Use explicit saveAs if provided, otherwise auto-generate a name
+            if (result.success && AUTO_SAVE_TOOLS.includes(result.tool)) {
+              // Generate a descriptive name based on tool and params
+              const explicitSaveAs = toolCall.params?.saveAs as string | undefined;
+              let autoName = explicitSaveAs;
+              
+              if (!autoName) {
+                // Auto-generate name from tool and key params
+                const keyParam = toolCall.params?.location || toolCall.params?.query || toolCall.params?.url || toolCall.params?.path || '';
+                const paramSlug = String(keyParam).replace(/[^a-zA-Z0-9]/g, '_').slice(0, 30);
+                autoName = paramSlug ? `${result.tool}_${paramSlug}` : `${result.tool}_${childIteration}_${childToolCalls.length}`;
+              }
+              
               const resultString = JSON.stringify(result.result, null, 2);
               const attribute: ToolResultAttribute = {
                 id: crypto.randomUUID(),
-                name: saveAsName,
+                name: autoName,
                 tool: result.tool,
                 params: toolCall.params || {},
                 result: result.result,
@@ -933,11 +944,11 @@ ${section.content}
                 createdAt: new Date().toISOString(),
                 iteration: childIteration,
               };
-              childAttributes[saveAsName] = attribute;
-              console.log(`[Child:${child.name}] Attribute created: ${saveAsName} (${resultString.length} chars)`);
+              childAttributes[autoName] = attribute;
+              console.log(`[Child:${child.name}] Attribute auto-saved: ${autoName} (${resultString.length} chars)`);
               
               // Auto-add to child scratchpad with guidance
-              const scratchpadEntry = `\n\n## ${saveAsName} (from ${result.tool})\nData stored in attribute (${resultString.length} chars).\nAccess via: read_attribute({ names: ['${saveAsName}'] })\n\n**TODO: Summarize key findings here.**`;
+              const scratchpadEntry = `\n\n## ${autoName} (from ${result.tool})\nData stored in attribute (${resultString.length} chars).\nAccess via: read_attribute({ names: ['${autoName}'] })\n\n**TODO: Summarize key findings here.**`;
               childScratchpad = childScratchpad + scratchpadEntry;
             }
             
