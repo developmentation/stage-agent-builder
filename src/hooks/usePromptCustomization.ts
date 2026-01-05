@@ -44,6 +44,16 @@ interface UsePromptCustomizationReturn {
   hasToolCustomizations: boolean;
   getToolOverrides: () => Record<string, ToolOverride>;
   
+  // Section disabling
+  isSectionDisabled: (sectionId: string) => boolean;
+  toggleSectionDisabled: (sectionId: string) => void;
+  getDisabledSections: () => string[];
+  
+  // Tool disabling
+  isToolDisabled: (toolId: string) => boolean;
+  toggleToolDisabled: (toolId: string) => void;
+  getDisabledTools: () => string[];
+  
   // Import/Export
   exportCustomizations: (template: SystemPromptTemplate) => ExportedPromptTemplate;
   importCustomizations: (data: ExportedPromptTemplate, currentTemplate: SystemPromptTemplate) => boolean;
@@ -108,7 +118,8 @@ export function usePromptCustomization(templateId: string): UsePromptCustomizati
         Object.keys(customizations.sectionOverrides).length > 0 ||
         customizations.additionalSections.length > 0 ||
         Object.keys(customizations.orderOverrides || {}).length > 0 ||
-        Object.keys(customizations.toolOverrides || {}).length > 0
+        Object.keys(customizations.toolOverrides || {}).length > 0 ||
+        (customizations.disabledSections?.length || 0) > 0
       );
       
       if (hasContent) {
@@ -135,7 +146,8 @@ export function usePromptCustomization(templateId: string): UsePromptCustomizati
   );
   
   const hasCustomizations = customizedSectionIds.size > 0 || 
-    (customizations?.additionalSections?.length || 0) > 0;
+    (customizations?.additionalSections?.length || 0) > 0 ||
+    (customizations?.disabledSections?.length || 0) > 0;
   
   const hasOrderChanges = Object.keys(customizations?.orderOverrides || {}).length > 0;
   
@@ -450,6 +462,77 @@ export function usePromptCustomization(templateId: string): UsePromptCustomizati
     return customizations?.toolOverrides || {};
   }, [customizations]);
   
+  // Section disabling
+  const isSectionDisabled = useCallback((sectionId: string): boolean => {
+    return customizations?.disabledSections?.includes(sectionId) || false;
+  }, [customizations]);
+  
+  const toggleSectionDisabled = useCallback((sectionId: string) => {
+    setCustomizations((prev) => {
+      const current = prev || {
+        templateId,
+        sectionOverrides: {},
+        disabledSections: [],
+        additionalSections: [],
+        orderOverrides: {},
+        toolOverrides: {},
+      };
+      
+      const isCurrentlyDisabled = current.disabledSections?.includes(sectionId) || false;
+      const newDisabledSections = isCurrentlyDisabled
+        ? (current.disabledSections || []).filter(id => id !== sectionId)
+        : [...(current.disabledSections || []), sectionId];
+      
+      return {
+        ...current,
+        disabledSections: newDisabledSections,
+      };
+    });
+  }, [templateId]);
+  
+  const getDisabledSections = useCallback((): string[] => {
+    return customizations?.disabledSections || [];
+  }, [customizations]);
+  
+  // Tool disabling
+  const isToolDisabled = useCallback((toolId: string): boolean => {
+    return customizations?.toolOverrides?.[toolId]?.disabled || false;
+  }, [customizations]);
+  
+  const toggleToolDisabled = useCallback((toolId: string) => {
+    setCustomizations((prev) => {
+      const current = prev || {
+        templateId,
+        sectionOverrides: {},
+        disabledSections: [],
+        additionalSections: [],
+        orderOverrides: {},
+        toolOverrides: {},
+      };
+      
+      const currentOverride = current.toolOverrides?.[toolId] || {};
+      const isCurrentlyDisabled = currentOverride.disabled || false;
+      
+      return {
+        ...current,
+        toolOverrides: {
+          ...(current.toolOverrides || {}),
+          [toolId]: {
+            ...currentOverride,
+            disabled: !isCurrentlyDisabled,
+          },
+        },
+      };
+    });
+  }, [templateId]);
+  
+  const getDisabledTools = useCallback((): string[] => {
+    if (!customizations?.toolOverrides) return [];
+    return Object.entries(customizations.toolOverrides)
+      .filter(([_, override]) => override.disabled)
+      .map(([toolId]) => toolId);
+  }, [customizations]);
+  
   const exportCustomizations = useCallback((template: SystemPromptTemplate): ExportedPromptTemplate => {
     const allSections = getSortedSections(template.sections);
     
@@ -562,6 +645,12 @@ export function usePromptCustomization(templateId: string): UsePromptCustomizati
     resetToolDescription,
     hasToolCustomizations,
     getToolOverrides,
+    isSectionDisabled,
+    toggleSectionDisabled,
+    getDisabledSections,
+    isToolDisabled,
+    toggleToolDisabled,
+    getDisabledTools,
     exportCustomizations,
     importCustomizations,
     saveToStorage,
