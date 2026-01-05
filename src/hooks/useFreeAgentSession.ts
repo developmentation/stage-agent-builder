@@ -1008,6 +1008,94 @@ ${section.content}
             iterationToolResults.push(result);
           }
           
+          // CRITICAL: Also process frontendHandlers array (separate from toolResults)
+          // This is where write_scratchpad, write_blackboard, etc. are returned by the edge function
+          for (const handler of data.frontendHandlers || []) {
+            const toolCall: ToolCall = {
+              id: crypto.randomUUID(),
+              tool: handler.tool,
+              params: handler.params || {},
+              status: 'completed',
+              result: undefined,
+              startTime: new Date().toISOString(),
+              endTime: new Date().toISOString(),
+              iteration: childIteration,
+            };
+            childToolCalls.push(toolCall);
+            
+            // Highlight tool usage on canvas
+            if (onToolActive) {
+              onToolActive(handler.tool, true);
+              setTimeout(() => onToolActive(handler.tool, false), 1000);
+            }
+            
+            // Handle each frontend tool locally for child
+            if (handler.tool === 'write_scratchpad') {
+              const content = handler.params.content as string;
+              const mode = (handler.params.mode as string) || "append";
+              const newContent = mode === "append" 
+                ? childScratchpad + (childScratchpad ? "\n\n" : "") + content 
+                : content;
+              childScratchpad = newContent;
+              console.log(`[Child:${child.name}] Scratchpad updated via frontendHandler (${newContent.length} chars)`);
+              
+              iterationToolResults.push({
+                tool: handler.tool,
+                success: true,
+                result: { success: true, length: newContent.length },
+              });
+            } else if (handler.tool === 'write_blackboard') {
+              const entry: BlackboardEntry = {
+                id: crypto.randomUUID(),
+                timestamp: new Date().toISOString(),
+                category: (handler.params.category as BlackboardCategory) || 'observation',
+                content: handler.params.content as string,
+                data: handler.params.data as Record<string, unknown> | undefined,
+                iteration: childIteration,
+              };
+              childBlackboard.push(entry);
+              
+              iterationToolResults.push({
+                tool: handler.tool,
+                success: true,
+                result: { id: entry.id, success: true },
+              });
+            } else if (handler.tool === 'read_scratchpad') {
+              iterationToolResults.push({
+                tool: handler.tool,
+                success: true,
+                result: { content: childScratchpad },
+              });
+            } else if (handler.tool === 'read_attribute') {
+              const names = handler.params.names as string[] || [];
+              const requestedAttrs: Record<string, unknown> = {};
+              for (const name of names) {
+                if (childAttributes[name]) {
+                  requestedAttrs[name] = childAttributes[name].result;
+                }
+              }
+              iterationToolResults.push({
+                tool: handler.tool,
+                success: true,
+                result: requestedAttrs,
+              });
+            } else if (handler.tool === 'read_blackboard') {
+              iterationToolResults.push({
+                tool: handler.tool,
+                success: true,
+                result: { entries: childBlackboard },
+              });
+            } else {
+              // Other frontend tools - just log and pass through
+              console.log(`[Child:${child.name}] Unhandled frontend tool: ${handler.tool}`);
+              iterationToolResults.push({
+                tool: handler.tool,
+                success: true,
+                result: { handled: false },
+              });
+            }
+          }
+          
           lastToolResults = iterationToolResults;
           
           // Check for completion
