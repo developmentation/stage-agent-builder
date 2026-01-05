@@ -145,8 +145,13 @@ export function ChildAgentDetailModal({ isOpen, onClose, child }: ChildAgentDeta
                   <div className="space-y-3">
                     {child.blackboard.map((entry, idx) => (
                       <div key={entry.id || idx} className="p-3 border rounded-lg">
-                        <div className="flex items-center gap-2 mb-2">
+                        <div className="flex items-center gap-2 mb-2 flex-wrap">
                           <Badge variant="outline">{entry.category}</Badge>
+                          {entry.tools && entry.tools.length > 0 && (
+                            <span className="text-xs text-amber-500">
+                              Tools: [{entry.tools.join(', ')}]
+                            </span>
+                          )}
                           <span className="text-xs text-muted-foreground">
                             Iteration {entry.iteration} • {formatTimestamp(entry.timestamp)}
                           </span>

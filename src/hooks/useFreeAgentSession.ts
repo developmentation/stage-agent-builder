@@ -964,36 +964,12 @@ ${section.content}
           
           const response = data.response as AgentResponse;
           
-          // Process blackboard entry
-          if (response.blackboard_entry) {
-            childBlackboard.push({
-              id: crypto.randomUUID(),
-              timestamp: new Date().toISOString(),
-              category: response.blackboard_entry.category as BlackboardCategory,
-              content: response.blackboard_entry.content,
-              data: response.blackboard_entry.data,
-              iteration: childIteration,
-            });
-          }
-          
-          // Process artifacts from response
-          if (response.artifacts && response.artifacts.length > 0) {
-            const newChildArtifacts: FreeAgentArtifact[] = response.artifacts.map((a) => ({
-              id: crypto.randomUUID(),
-              type: a.type as ArtifactType,
-              title: a.title,
-              content: a.content,
-              description: a.description || `Created by ${child.name}`,
-              createdAt: new Date().toISOString(),
-              iteration: childIteration,
-            }));
-            childArtifacts.push(...newChildArtifacts);
-            console.log(`[Child:${child.name}] Created ${newChildArtifacts.length} artifacts`);
-          }
-          
-          // Process tool calls - handle both backend and frontend tools
+          // Process tool calls first to get tool names for blackboard
           const iterationToolResults: ToolResult[] = [];
+          const iterationToolNames: string[] = [];
+          
           for (const result of data.toolResults || []) {
+            iterationToolNames.push(result.tool);
             const toolCall: ToolCall = {
               id: crypto.randomUUID(),
               tool: result.tool,
@@ -1010,19 +986,15 @@ ${section.content}
             // Highlight tool usage on canvas
             if (onToolActive) {
               onToolActive(result.tool, true);
-              // Deactivate after a short delay
               setTimeout(() => onToolActive(result.tool, false), 1000);
             }
             
             // Auto-save ALL successful tool results from AUTO_SAVE_TOOLS for children
-            // Use explicit saveAs if provided, otherwise auto-generate a name
             if (result.success && AUTO_SAVE_TOOLS.includes(result.tool)) {
-              // Generate a descriptive name based on tool and params
               const explicitSaveAs = toolCall.params?.saveAs as string | undefined;
               let autoName = explicitSaveAs;
               
               if (!autoName) {
-                // Auto-generate name from tool and key params
                 const keyParam = toolCall.params?.location || toolCall.params?.query || toolCall.params?.url || toolCall.params?.path || '';
                 const paramSlug = String(keyParam).replace(/[^a-zA-Z0-9]/g, '_').slice(0, 30);
                 autoName = paramSlug ? `${result.tool}_${paramSlug}` : `${result.tool}_${childIteration}_${childToolCalls.length}`;
@@ -1043,76 +1015,37 @@ ${section.content}
               childAttributes[autoName] = attribute;
               console.log(`[Child:${child.name}] Attribute auto-saved: ${autoName} (${resultString.length} chars)`);
               
-              // Auto-add to child scratchpad with guidance
               const scratchpadEntry = `\n\n## ${autoName} (from ${result.tool})\nData stored in attribute (${resultString.length} chars).\nAccess via: read_attribute({ names: ['${autoName}'] })\n\n**TODO: Summarize key findings here.**`;
               childScratchpad = childScratchpad + scratchpadEntry;
             }
-            
-            // Handle frontend-handled tools locally for child
-            if (result.result?.frontend_handler) {
-              const frontendTool = result.result.tool as string;
-              const frontendParams = result.result.params as Record<string, unknown>;
-              
-              if (frontendTool === 'write_scratchpad') {
-                const content = frontendParams.content as string;
-                const mode = (frontendParams.mode as string) || "append";
-                const newContent = mode === "append" 
-                  ? childScratchpad + (childScratchpad ? "\n\n" : "") + content 
-                  : content;
-                childScratchpad = newContent;
-                console.log(`[Child:${child.name}] Scratchpad updated (${newContent.length} chars)`);
-                
-                // Override the result for next iteration
-                iterationToolResults.push({
-                  tool: frontendTool,
-                  success: true,
-                  result: { success: true, length: newContent.length },
-                });
-                continue;
-              } else if (frontendTool === 'write_blackboard') {
-                const entry: BlackboardEntry = {
-                  id: crypto.randomUUID(),
-                  timestamp: new Date().toISOString(),
-                  category: (frontendParams.category as BlackboardCategory) || 'observation',
-                  content: frontendParams.content as string,
-                  data: frontendParams.data as Record<string, unknown> | undefined,
-                  iteration: childIteration,
-                };
-                childBlackboard.push(entry);
-                
-                iterationToolResults.push({
-                  tool: frontendTool,
-                  success: true,
-                  result: { id: entry.id, success: true },
-                });
-                continue;
-              } else if (frontendTool === 'read_scratchpad') {
-                iterationToolResults.push({
-                  tool: frontendTool,
-                  success: true,
-                  result: { content: childScratchpad },
-                });
-                continue;
-              } else if (frontendTool === 'read_attribute') {
-                // Handle read_attribute for child locally
-                const names = frontendParams.names as string[] || [];
-                const requestedAttrs: Record<string, unknown> = {};
-                for (const name of names) {
-                  if (childAttributes[name]) {
-                    requestedAttrs[name] = childAttributes[name].result;
-                  }
-                }
-                iterationToolResults.push({
-                  tool: frontendTool,
-                  success: true,
-                  result: requestedAttrs,
-                });
-                continue;
-              }
-              // Other frontend tools - pass through the marker
-            }
-            
-            iterationToolResults.push(result);
+          }
+          
+          // Process blackboard entry (with tool names from this iteration)
+          if (response.blackboard_entry) {
+            childBlackboard.push({
+              id: crypto.randomUUID(),
+              timestamp: new Date().toISOString(),
+              category: response.blackboard_entry.category as BlackboardCategory,
+              content: response.blackboard_entry.content,
+              data: response.blackboard_entry.data,
+              iteration: childIteration,
+              tools: iterationToolNames,
+            });
+          }
+          
+          // Process artifacts from response
+          if (response.artifacts && response.artifacts.length > 0) {
+            const newChildArtifacts: FreeAgentArtifact[] = response.artifacts.map((a) => ({
+              id: crypto.randomUUID(),
+              type: a.type as ArtifactType,
+              title: a.title,
+              content: a.content,
+              description: a.description || `Created by ${child.name}`,
+              createdAt: new Date().toISOString(),
+              iteration: childIteration,
+            }));
+            childArtifacts.push(...newChildArtifacts);
+            console.log(`[Child:${child.name}] Created ${newChildArtifacts.length} artifacts`);
           }
           
           // CRITICAL: Also process frontendHandlers array (separate from toolResults)
@@ -1159,6 +1092,7 @@ ${section.content}
                 content: handler.params.content as string,
                 data: handler.params.data as Record<string, unknown> | undefined,
                 iteration: childIteration,
+                tools: iterationToolNames,
               };
               childBlackboard.push(entry);
               
