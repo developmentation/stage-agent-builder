@@ -673,11 +673,15 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
           };
         };
 
+        // Get tool names for this iteration (for blackboard context)
+        const iterationToolNames = newToolCalls.map(t => t.tool);
+        
         // Add blackboard entry from response OR auto-generate if missing/poor
         let blackboardEntry: BlackboardEntry;
         if (shouldAutoGenerateBlackboard()) {
           console.log(`[FreeAgent] Auto-generating blackboard entry for iteration ${iterationRef.current}`);
           blackboardEntry = generateAutoBlackboardEntry();
+          blackboardEntry.tools = iterationToolNames; // Inject tools
         } else {
           blackboardEntry = {
             id: crypto.randomUUID(),
@@ -686,6 +690,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
             content: `[#${iterationRef.current} ${response.blackboard_entry!.category}] ${response.blackboard_entry!.content}`,
             data: response.blackboard_entry!.data,
             iteration: iterationRef.current,
+            tools: iterationToolNames, // Inject tools
           };
         }
         handleBlackboardUpdate(blackboardEntry);

@@ -13,7 +13,7 @@ interface ToolCall {
 interface FreeAgentRequest {
   prompt: string;
   model?: string;
-  blackboard: Array<{ category: string; content: string; data?: unknown }>;
+  blackboard: Array<{ category: string; content: string; data?: unknown; tools?: string[] }>;
   sessionFiles: Array<{ id: string; filename: string; mimeType: string; size: number; content?: string }>;
   previousToolResults?: Array<{ tool: string; success: boolean; result?: unknown; error?: string }>;
   iteration: number;
@@ -404,8 +404,12 @@ This is the most efficient way to store data without wasting tokens on large res
   if (safeBlackboard.length === 0) {
     blackboardSection = '\n## BLACKBOARD: Empty. Track your plan and completed items here.';
   } else if (safeBlackboard.length <= 4) {
-    // Show all entries if 4 or fewer
-    blackboardSection = `\n## YOUR BLACKBOARD (Planning Journal - Read this EVERY iteration!):\n${safeBlackboard.map((e, i) => `[#${i + 1} ${e.category}] ${e.content}`).join('\n\n')}${hasUserInterjections ? '\n\n⚠️ Pay special attention to any recent User Interjections and ensure your next actions are aligned with the user\'s further direction.' : ''}`;
+    // Show all entries if 4 or fewer - use helper for tool display
+    const formatEntrySimple = (e: { category: string; content: string; tools?: string[] }, index: number): string => {
+      const toolsSuffix = e.tools?.length ? ` | Tools: [${e.tools.join(', ')}]` : '';
+      return `[#${index} ${e.category}]${toolsSuffix} ${e.content}`;
+    };
+    blackboardSection = `\n## YOUR BLACKBOARD (Planning Journal - Read this EVERY iteration!):\n${safeBlackboard.map((e, i) => formatEntrySimple(e, i + 1)).join('\n\n')}${hasUserInterjections ? '\n\n⚠️ Pay special attention to any recent User Interjections and ensure your next actions are aligned with the user\'s further direction.' : ''}`;
   } else {
     // Split into 3 tiers: Older (summarized), Recent (3 prior), Last (1 most recent)
     const olderEntries = safeBlackboard.slice(0, -4);
@@ -413,19 +417,25 @@ This is the most efficient way to store data without wasting tokens on large res
     const lastEntry = safeBlackboard[safeBlackboard.length - 1];
     const lastEntryIndex = safeBlackboard.length;
     
+    // Helper to format entry with tools suffix
+    const formatEntry = (e: { category: string; content: string; tools?: string[] }, index: number): string => {
+      const toolsSuffix = e.tools?.length ? ` | Tools: [${e.tools.join(', ')}]` : '';
+      return `[#${index} ${e.category}]${toolsSuffix} ${e.content}`;
+    };
+    
     // Older: Show full content but grouped separately
     const olderFormatted = olderEntries.map((e, i) => 
-      `[#${i + 1} ${e.category}] ${e.content}`
+      formatEntry(e, i + 1)
     ).join('\n\n');
     
     // Recent: Show full content (indices are offset by older entries length)
     const recentStartIndex = olderEntries.length + 1;
     const recentFormatted = recentEntries.map((e, i) => 
-      `[#${recentStartIndex + i} ${e.category}] ${e.content}`
+      formatEntry(e, recentStartIndex + i)
     ).join('\n\n');
     
     // Last: Show full content with emphasis
-    const lastFormatted = `[#${lastEntryIndex} ${lastEntry.category}] ${lastEntry.content}`;
+    const lastFormatted = formatEntry(lastEntry, lastEntryIndex);
     
     blackboardSection = `
 ## YOUR BLACKBOARD (Planning Journal)

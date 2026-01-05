@@ -57,6 +57,7 @@ export interface BlackboardEntry {
   content: string;
   data?: Record<string, unknown>;
   iteration: number;
+  tools?: string[];  // Tools called during this iteration (auto-injected)
 }
 
 // Tool call tracking
