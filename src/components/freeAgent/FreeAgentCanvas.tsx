@@ -55,8 +55,7 @@ const nodeTypes = {
   childAgent: ChildAgentNode,
 };
 
-// Read tools - gather/retrieve information (displayed ABOVE agent)
-// Only include tools that exist in toolsManifest.json
+// Read tools - gather/retrieve information
 const READ_TOOLS = [
   // Web & Search
   "brave_search", "google_search", "web_scrape",
@@ -72,7 +71,7 @@ const READ_TOOLS = [
   "get_call_api", "get_time", "get_weather",
 ];
 
-// Write tools - create/send/modify (displayed BELOW agent)
+// Write tools - create/send/modify
 const WRITE_TOOLS = [
   // Memory writes
   "write_blackboard", "write_scratchpad",
@@ -84,25 +83,27 @@ const WRITE_TOOLS = [
   "export_word", "export_pdf", "image_generation", "elevenlabs_tts",
 ];
 
+// All tools combined for unified layout above agent
+const ALL_TOOLS = [...READ_TOOLS, ...WRITE_TOOLS];
+
 // Layout dimensions
 const LAYOUT = {
-  // Agent center position
+  // Agent center position - moved down to accommodate tool rows above
   agentX: 550,
-  agentY: 350,
+  agentY: 420,
   
-  // Left side - Prompt
-  // Position so right edge of prompt aligns with left edge of tools area
-  promptX: -25,  // 75px farther to the left (was 50)
-  promptY: 180,  // Same Y as scratchpad
+  // Left side - Prompt (below tools)
+  promptX: -25,
+  promptY: 250,
   promptWidth: 280,
   promptHeight: 300,
   
   // User files - below prompt
   userFileGap: 75,
   
-  // Right side - Scratchpad
+  // Right side - Scratchpad (below tools)
   scratchpadX: 850,
-  scratchpadY: 180,  // Same Y as prompt
+  scratchpadY: 250,
   scratchpadWidth: 320,
   scratchpadHeight: 300,
   
@@ -110,26 +111,24 @@ const LAYOUT = {
   artifactGap: 75,
   
   // Attributes - right of scratchpad (grid layout)
-  attributeX: 1245,  // Right of scratchpad (+25px)
+  attributeX: 1245,
   attributeGap: 70,
-  attributeColumnGap: 230,  // Gap between attribute columns (+50px)
-  attributesPerColumn: 10,  // Start new column after 10 attributes
+  attributeColumnGap: 230,
+  attributesPerColumn: 10,
   
-  // Tool grid settings
-  toolNodeWidth: 120,
-  toolNodeHeight: 50,
-  toolColumnGap: 65,  // 50px wider second column (was 15)
-  toolRowGap: 33,     // 25px greater vertical gap (was 8)
-  toolColumns: 2,
+  // Tool grid settings - 12 columns in horizontal rows
+  toolNodeWidth: 100,
+  toolNodeHeight: 44,
+  toolColumnGap: 10,
+  toolRowGap: 10,
+  toolColumns: 12,
   
-  // Read tools - ABOVE agent
-  // Calculate: 2 columns of tools centered above agent
-  readToolsStartX: 420,
-  readToolsStartY: 30,
+  // All tools positioned ABOVE agent in rows
+  toolsStartX: 5,
+  toolsStartY: 20,
   
-  // Write tools - BELOW agent  
-  writeToolsStartX: 420,
-  writeToolsStartY: 480,
+  // Child agents - positioned lower
+  childOffsetY: 250,  // 150px lower than before (was ~100)
 };
 
 // Helper to lay out tools in 2 columns
@@ -207,19 +206,15 @@ export function FreeAgentCanvas({
       return defaultPos;
     };
 
-    // Calculate dynamic positions based on tool counts
-    const availableReadTools = READ_TOOLS.filter(id => toolsManifest.tools[id]);
-    const availableWriteTools = WRITE_TOOLS.filter(id => toolsManifest.tools[id]);
+    // Calculate dynamic positions - ALL tools above agent in rows of 12
+    const availableTools = ALL_TOOLS.filter(id => toolsManifest.tools[id]);
     
-    const readToolRows = Math.ceil(availableReadTools.length / LAYOUT.toolColumns);
-    const readToolsHeight = readToolRows * (LAYOUT.toolNodeHeight + LAYOUT.toolRowGap);
+    const toolRows = Math.ceil(availableTools.length / LAYOUT.toolColumns);
+    const toolsHeight = toolRows * (LAYOUT.toolNodeHeight + LAYOUT.toolRowGap);
     
-    // Agent positioned after read tools with gap
-    const agentY = LAYOUT.readToolsStartY + readToolsHeight + 40;
-    const agentX = LAYOUT.readToolsStartX + (LAYOUT.toolColumns * (LAYOUT.toolNodeWidth + LAYOUT.toolColumnGap)) / 2 - 100; // -40px left total
-    
-    // Write tools positioned after agent
-    const writeToolsStartY = agentY + 140;
+    // Agent positioned after all tools with gap
+    const agentY = LAYOUT.toolsStartY + toolsHeight + 60;
+    const agentX = LAYOUT.toolsStartX + (LAYOUT.toolColumns * (LAYOUT.toolNodeWidth + LAYOUT.toolColumnGap)) / 2 - 60;
     
     // Position prompt and scratchpad to be centered with agent Y
     const sideNodesY = agentY - 80;
@@ -286,11 +281,11 @@ export function FreeAgentCanvas({
       });
     });
 
-    // === READ TOOLS: Above agent in 2 columns ===
-    const readToolPositions = layoutToolsInColumns(
-      availableReadTools,
-      LAYOUT.readToolsStartX,
-      LAYOUT.readToolsStartY,
+    // === ALL TOOLS: Above agent in rows of 12 ===
+    const allToolPositions = layoutToolsInColumns(
+      availableTools,
+      LAYOUT.toolsStartX,
+      LAYOUT.toolsStartY,
       LAYOUT.toolColumns
     );
 
@@ -298,7 +293,7 @@ export function FreeAgentCanvas({
     const currentIteration = session?.currentIteration || 0;
     const recentIterations = [currentIteration, currentIteration - 1].filter(i => i > 0);
 
-    readToolPositions.forEach(({ id: toolId, x, y }) => {
+    allToolPositions.forEach(({ id: toolId, x, y }) => {
       const tool = toolsManifest.tools[toolId];
       if (!tool) return;
 
@@ -310,6 +305,9 @@ export function FreeAgentCanvas({
       const wasUsedRecently = session?.toolCalls.some(
         (tc) => tc.tool === toolId && tc.status === "completed" && recentIterations.includes(tc.iteration)
       );
+
+      // Determine if this is a read or write tool for edge styling
+      const isReadTool = READ_TOOLS.includes(toolId);
 
       newNodes.push({
         id: nodeId,
@@ -325,7 +323,7 @@ export function FreeAgentCanvas({
         },
       });
 
-      // Edge from read tool BOTTOM to agent TOP (input)
+      // Edge from tool to agent TOP (all tools are above)
       if (isActive || wasUsedRecently) {
         newEdges.push({
           id: `edge-tool-agent-${toolId}`,
@@ -334,7 +332,10 @@ export function FreeAgentCanvas({
           target: "agent",
           targetHandle: "top",
           animated: isActive,
-          style: { stroke: "#3b82f6", strokeWidth: isActive ? 2 : 1.5 },
+          style: { 
+            stroke: isReadTool ? "#3b82f6" : "#f59e0b", 
+            strokeWidth: isActive ? 2 : 1.5 
+          },
         });
       }
     });
@@ -380,14 +381,14 @@ export function FreeAgentCanvas({
     // === CHILD AGENTS: Below agent when orchestrating ===
     if (session?.orchestration?.role === 'orchestrator' && session.orchestration.children) {
       const children = session.orchestration.children;
-      const childStartY = agentY + 100;
+      const childStartY = agentY + LAYOUT.childOffsetY;
       const childSpacing = 160;
       const totalWidth = (children.length - 1) * childSpacing;
       const startX = agentX - totalWidth / 2;
       
       children.forEach((child, index) => {
         const childX = startX + index * childSpacing;
-        const childY = childStartY + 80;
+        const childY = childStartY;
         const childNodeId = `child-${child.name}`;
         newNodeIds.add(childNodeId);
         
@@ -424,54 +425,7 @@ export function FreeAgentCanvas({
       });
     }
 
-    // === WRITE TOOLS: Below agent in 2 columns ===
-    const writeToolPositions = layoutToolsInColumns(
-      availableWriteTools,
-      LAYOUT.writeToolsStartX,
-      writeToolsStartY,
-      LAYOUT.toolColumns
-    );
-
-    writeToolPositions.forEach(({ id: toolId, x, y }) => {
-      const tool = toolsManifest.tools[toolId];
-      if (!tool) return;
-
-      const nodeId = `tool-${toolId}`;
-      newNodeIds.add(nodeId);
-
-      const isActive = activeToolIds.has(toolId);
-      const wasUsedEver = session?.toolCalls.some((tc) => tc.tool === toolId && tc.status === "completed");
-      const wasUsedRecently = session?.toolCalls.some(
-        (tc) => tc.tool === toolId && tc.status === "completed" && recentIterations.includes(tc.iteration)
-      );
-
-      newNodes.push({
-        id: nodeId,
-        type: "tool",
-        position: getPosition(nodeId, { x, y }),
-        data: {
-          type: "tool",
-          label: tool.name,
-          status: isActive ? "active" : wasUsedEver ? "success" : "idle",
-          icon: tool.icon,
-          category: tool.category,
-          toolId,
-        },
-      });
-
-      // Edge from agent BOTTOM to write tool TOP (output) - show for current iteration or active
-      if (isActive || wasUsedRecently) {
-        newEdges.push({
-          id: `edge-agent-tool-${toolId}`,
-          source: "agent",
-          sourceHandle: "bottom",
-          target: nodeId,
-          targetHandle: "top",
-          animated: isActive,
-          style: { stroke: "#f59e0b", strokeWidth: isActive ? 2 : 1.5 },
-        });
-      }
-    });
+    // Note: Write tools are now included in ALL_TOOLS above the agent
 
     // === RIGHT SIDE: Scratchpad ===
     const isWritingToScratchpad = activeToolIds.has("write_scratchpad");
