@@ -530,8 +530,54 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
             return { continue: false, toolResults: iterationToolResults };
           }
           
-          // If spawn was requested, stop here - the iteration loop will handle spawning
+          // If spawn was requested, save rawData and blackboard before stopping
           if (handler.tool === "spawn" && spawnRequestRef.current) {
+            // Store raw debug data for the Raw viewer
+            const spawnRawData: RawIterationData = {
+              iteration: iterationRef.current,
+              timestamp: new Date().toISOString(),
+              input: {
+                systemPrompt: data.debug?.systemPrompt || "",
+                userPrompt: data.debug?.userPrompt || currentSession.prompt,
+                fullPromptSent: data.debug?.fullPromptSent || "",
+                model: currentSession.model,
+                scratchpadLength: data.debug?.scratchpadLength || 0,
+                blackboardEntries: data.debug?.blackboardEntries || 0,
+                previousResultsCount: data.debug?.previousResultsCount || 0,
+              },
+              output: {
+                rawLLMResponse: data.debug?.rawLLMResponse || "",
+                parsedResponse: data.response,
+              },
+              toolResults: iterationToolResults,
+            };
+            
+            // Add blackboard entry if present
+            if (response.blackboard_entry) {
+              const entry: BlackboardEntry = {
+                id: crypto.randomUUID(),
+                timestamp: new Date().toISOString(),
+                category: response.blackboard_entry.category,
+                content: response.blackboard_entry.content,
+                data: response.blackboard_entry.data,
+                iteration: iterationRef.current,
+              };
+              handleBlackboardUpdate(entry);
+            }
+            
+            // Update session with rawData
+            updateSession((prev) =>
+              prev
+                ? {
+                    ...prev,
+                    currentIteration: iterationRef.current,
+                    toolCalls: [...prev.toolCalls, ...newToolCalls],
+                    rawData: [...(prev.rawData || []), spawnRawData],
+                    lastActivityTime: new Date().toISOString(),
+                  }
+                : null
+            );
+            
             return { continue: false, toolResults: iterationToolResults, spawnRequested: true };
           }
         }
