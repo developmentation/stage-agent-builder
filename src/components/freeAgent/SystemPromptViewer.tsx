@@ -1028,11 +1028,17 @@ export function SystemPromptViewer({ onClose, configuredParams = [], promptCusto
   const customSectionIds = new Set(customSections.map(s => s.id));
   
   // Count by editable status
+  // For "modified" count, exclude sections that are also disabled (they show "Disabled" badge instead)
+  // Also exclude custom sections (they show "Custom" badge instead)
+  const visibleCustomizedCount = Array.from(customizedSectionIds).filter(
+    id => !isSectionDisabled(id) && !customSectionIds.has(id)
+  ).length;
+  
   const editableCounts = {
     editable: template.sections.filter(s => s.editable === 'editable').length,
     readonly: template.sections.filter(s => s.editable === 'readonly').length,
     dynamic: template.sections.filter(s => s.editable === 'dynamic').length,
-    customized: customizedSectionIds.size,
+    customized: visibleCustomizedCount,
     custom: customSections.length,
   };
   
