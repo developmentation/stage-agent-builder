@@ -19,11 +19,15 @@ import {
   Package,
   Lightbulb,
   FileText,
+  Download,
 } from "lucide-react";
-import type { FinalReport } from "@/types/freeAgent";
+import { toast } from "sonner";
+import type { FinalReport, FreeAgentSession } from "@/types/freeAgent";
+import { exportSessionToZip } from "@/utils/sessionExporter";
 
 interface FinalReportModalProps {
   report: FinalReport | null;
+  session: FreeAgentSession | null;
   open: boolean;
   onClose: () => void;
   onReset: () => void;
@@ -31,11 +35,35 @@ interface FinalReportModalProps {
 
 export function FinalReportModal({
   report,
+  session,
   open,
   onClose,
   onReset,
 }: FinalReportModalProps) {
   if (!report) return null;
+
+  const handleDownload = async () => {
+    if (!session) return;
+
+    try {
+      const blob = await exportSessionToZip({
+        session,
+        promptSections: session.promptData?.sections,
+      });
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `freeagent-session-${new Date().toISOString().split("T")[0]}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+
+      toast.success("Session exported successfully");
+    } catch (error) {
+      console.error("Failed to export session:", error);
+      toast.error("Failed to export session");
+    }
+  };
 
   const formatDuration = (ms: number) => {
     const seconds = Math.floor(ms / 1000);
@@ -193,9 +221,18 @@ export function FinalReportModal({
           </div>
         </ScrollArea>
 
-        <DialogFooter>
+        <DialogFooter className="gap-2">
           <Button variant="outline" onClick={onClose}>
             Close
+          </Button>
+          <Button
+            variant="outline"
+            onClick={handleDownload}
+            disabled={!session}
+            className="border-green-500/50 text-green-600 hover:bg-green-500/10"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            Download
           </Button>
           <Button onClick={onReset}>Start New Task</Button>
         </DialogFooter>
