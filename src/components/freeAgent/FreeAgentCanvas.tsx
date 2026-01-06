@@ -82,36 +82,35 @@ const ALL_TOOLS = [...READ_TOOLS, ...WRITE_TOOLS];
 const LAYOUT = {
   // Agent centered between prompt and scratchpad
   agentX: 500,
-  agentY: 520,
+  agentY: 600,
   
-  // Concentric arcs for tools (above agent)
+  // Concentric arcs for tools (above agent) - 50% larger radii with more spread
   arcs: [
-    { radius: 420, categories: ["utility", "api", "database", "web", "code"] },
-    { radius: 320, categories: ["memory", "file", "document", "reasoning"] },
-    { radius: 240, categories: ["communication", "interaction", "generation", "export", "advanced_self_author", "advanced_spawn"] },
+    { radius: 550, categories: ["utility", "api", "database", "web", "code"] },
+    { radius: 420, categories: ["memory", "file", "document", "reasoning"] },
+    { radius: 310, categories: ["communication", "interaction", "generation", "export", "advanced_self_author", "advanced_spawn"] },
   ],
-  toolArcStartAngle: -165,   // Wider arc spread (degrees)
-  toolArcEndAngle: -15,
+  toolArcStartAngle: -170,   // Even wider arc spread (degrees)
+  toolArcEndAngle: -10,
   toolNodeWidth: 100,
   toolNodeHeight: 60,
-  categoryGap: 10,          // Extra gap between categories
   
-  // Left side - Prompt (further left)
-  promptX: -120,
-  promptY: 340,
+  // Left side - Prompt
+  promptX: -80,
+  promptY: 420,
   promptWidth: 260,
   promptHeight: 280,
   userFileGap: 70,
   
-  // Right side - Scratchpad (further right)
-  scratchpadX: 1120,
-  scratchpadY: 340,
+  // Right side - Scratchpad (closer to center)
+  scratchpadX: 820,
+  scratchpadY: 420,
   scratchpadWidth: 300,
   scratchpadHeight: 280,
   artifactGap: 70,
   
   // Attributes - right of scratchpad
-  attributeX: 1500,
+  attributeX: 1200,
   attributeGap: 65,
   attributeColumnGap: 220,
   attributesPerColumn: 10,
@@ -355,29 +354,7 @@ export function FreeAgentCanvas({
       }
     });
 
-    // Add category label nodes
-    Object.entries(categoryPositions).forEach(([categoryId, pos]) => {
-      const categoryData = toolsManifest.categories?.[categoryId];
-      if (!categoryData) return;
-      
-      const labelId = `category-${categoryId}`;
-      newNodeIds.add(labelId);
-      
-      newNodes.push({
-        id: labelId,
-        type: "categoryLabel",
-        position: { x: pos.x + LAYOUT.toolNodeWidth / 2 - 30, y: pos.y - 22 },
-        data: {
-          type: "categoryLabel",
-          label: categoryData.name,
-          status: "idle",
-          color: categoryData.color,
-          toolCount: pos.count,
-        },
-        selectable: false,
-        draggable: false,
-      });
-    });
+    // Category labels removed for cleaner look
 
     // === CENTER: Agent ===
     const isWaitingForChildren = session?.status === 'waiting' || (
