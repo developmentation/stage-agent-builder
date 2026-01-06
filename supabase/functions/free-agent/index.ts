@@ -1155,7 +1155,11 @@ Example spawn call:
     // Skip empty dynamic sections (e.g., no previous results, no assistance response)
     if (section.type === 'dynamic' && !content.trim()) continue;
     
-    prompt += content + '\n\n';
+    // FEATURE: XML Section Tags for Agent Introspection
+    // This wraps each section with metadata tags so the agent can "see" its own prompt structure,
+    // including section IDs and editability status, without needing to call read_self.
+    // ROLLBACK: To disable this feature, replace the line below with: prompt += content + '\n\n';
+    prompt += `<prompt-section id="${section.id}" editable="${section.editable}" type="${section.type}">\n${content}\n</prompt-section>\n\n`;
   }
   
   return prompt.trim();
