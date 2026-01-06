@@ -95,36 +95,36 @@ const ALL_TOOLS = [
 // Layout dimensions - Concentric arcs layout
 const LAYOUT = {
   // Agent centered between prompt and scratchpad
-  agentX: 500,
-  agentY: 680,
+  agentX: 550,
+  agentY: 800,
   
-  // Concentric arcs for tools (above agent) - larger radii for 38 tools
+  // Concentric arcs for tools (above agent) - much larger radii with bigger gaps
   arcs: [
-    { radius: 600, categories: ["utility", "api", "database", "web", "code"] },
-    { radius: 480, categories: ["memory", "file", "document", "reasoning"] },
-    { radius: 370, categories: ["communication", "interaction", "generation", "export", "advanced_self_author", "advanced_spawn"] },
+    { radius: 720, categories: ["utility", "api", "database", "web", "code"] },
+    { radius: 580, categories: ["memory", "file", "document", "reasoning"] },
+    { radius: 450, categories: ["communication", "interaction", "generation", "export", "advanced_self_author", "advanced_spawn"] },
   ],
-  toolArcStartAngle: -172,   // Wide arc spread (degrees)
-  toolArcEndAngle: -8,
+  toolArcStartAngle: -175,   // Very wide arc spread (degrees)
+  toolArcEndAngle: -5,
   toolNodeWidth: 100,
   toolNodeHeight: 60,
   
-  // Left side - Prompt (lowered to avoid tool overlap)
-  promptX: -80,
-  promptY: 520,
+  // Left side - Prompt (lowered significantly)
+  promptX: -50,
+  promptY: 640,
   promptWidth: 260,
   promptHeight: 280,
   userFileGap: 70,
   
   // Right side - Scratchpad (lowered to match)
-  scratchpadX: 820,
-  scratchpadY: 520,
+  scratchpadX: 890,
+  scratchpadY: 640,
   scratchpadWidth: 300,
   scratchpadHeight: 280,
   artifactGap: 70,
   
   // Attributes - right of scratchpad
-  attributeX: 1200,
+  attributeX: 1280,
   attributeGap: 65,
   attributeColumnGap: 220,
   attributesPerColumn: 10,
