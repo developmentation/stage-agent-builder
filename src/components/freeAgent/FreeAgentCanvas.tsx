@@ -57,54 +57,68 @@ const nodeTypes = {
   categoryLabel: CategoryLabelNode,
 };
 
-// Read tools - gather/retrieve information
-const READ_TOOLS = [
+// All tools from manifest - organized by category
+const ALL_TOOLS = [
+  // Utility
+  "get_time", "get_weather",
+  // Web
   "brave_search", "google_search", "web_scrape",
+  // Code
   "read_github_repo", "read_github_file",
-  "read_blackboard", "read_scratchpad", "read_prompt", "read_prompt_files",
+  // Memory
+  "read_blackboard", "write_blackboard", "read_scratchpad", "write_scratchpad", 
+  "read_prompt", "read_prompt_files", "read_attribute", "read_artifact",
+  // File
   "read_file", "read_zip_contents", "read_zip_file", "extract_zip_files",
+  // Document
   "pdf_info", "pdf_extract_text", "ocr_image",
-  "get_call_api", "get_time", "get_weather",
+  // Reasoning
+  "think", "summarize", "analyze",
+  // Communication
+  "send_email",
+  // Interaction
+  "request_assistance",
+  // Generation
+  "image_generation", "elevenlabs_tts",
+  // Export
+  "export_word", "export_pdf",
+  // API
+  "get_call_api", "post_call_api",
+  // Database
+  "read_database_schemas", "execute_sql",
+  // Self-Author (advanced)
+  "read_self", "write_self",
+  // Spawn (advanced)
+  "spawn",
 ];
-
-// Write tools - create/send/modify
-const WRITE_TOOLS = [
-  "write_blackboard", "write_scratchpad",
-  "send_email", "request_assistance",
-  "post_call_api", "execute_sql",
-  "export_word", "export_pdf", "image_generation", "elevenlabs_tts",
-];
-
-// All tools combined
-const ALL_TOOLS = [...READ_TOOLS, ...WRITE_TOOLS];
 
 // Layout dimensions - Concentric arcs layout
 const LAYOUT = {
   // Agent centered between prompt and scratchpad
   agentX: 500,
-  agentY: 600,
+  agentY: 680,
   
-  // Concentric arcs for tools (above agent) - 50% larger radii with more spread
+  // Concentric arcs for tools (above agent) - larger radii for 38 tools
   arcs: [
-    { radius: 550, categories: ["utility", "api", "database", "web", "code"] },
-    { radius: 420, categories: ["memory", "file", "document", "reasoning"] },
-    { radius: 310, categories: ["communication", "interaction", "generation", "export", "advanced_self_author", "advanced_spawn"] },
+    { radius: 600, categories: ["utility", "api", "database", "web", "code"] },
+    { radius: 480, categories: ["memory", "file", "document", "reasoning"] },
+    { radius: 370, categories: ["communication", "interaction", "generation", "export", "advanced_self_author", "advanced_spawn"] },
   ],
-  toolArcStartAngle: -170,   // Even wider arc spread (degrees)
-  toolArcEndAngle: -10,
+  toolArcStartAngle: -172,   // Wide arc spread (degrees)
+  toolArcEndAngle: -8,
   toolNodeWidth: 100,
   toolNodeHeight: 60,
   
-  // Left side - Prompt
+  // Left side - Prompt (lowered to avoid tool overlap)
   promptX: -80,
-  promptY: 420,
+  promptY: 520,
   promptWidth: 260,
   promptHeight: 280,
   userFileGap: 70,
   
-  // Right side - Scratchpad (closer to center)
+  // Right side - Scratchpad (lowered to match)
   scratchpadX: 820,
-  scratchpadY: 420,
+  scratchpadY: 520,
   scratchpadWidth: 300,
   scratchpadHeight: 280,
   artifactGap: 70,
@@ -307,7 +321,9 @@ export function FreeAgentCanvas({
         (tc) => tc.tool === toolId && tc.status === "completed" && recentIterations.includes(tc.iteration)
       );
 
-      const isReadTool = READ_TOOLS.includes(toolId);
+      // Determine if it's a read-type tool based on category
+      const readCategories = ["utility", "web", "code", "memory", "file", "document", "api", "database"];
+      const isReadTool = readCategories.includes(category);
       
       // Get category color
       const categoryData = toolsManifest.categories?.[category];
