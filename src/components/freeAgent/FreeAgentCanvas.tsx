@@ -94,31 +94,35 @@ const ALL_TOOLS = [
 
 // Layout dimensions - Concentric arcs layout
 const LAYOUT = {
-  // Agent centered between prompt and scratchpad
-  agentX: 550,
-  agentY: 950,  // Moved down 150px to push tools up
+  // Tool arc center (separate from agent for independent positioning)
+  toolCenterX: 550,
+  toolCenterY: 750,  // Tools arc around this point
   
-  // Concentric arcs for tools (above agent) - much larger radii with bigger gaps
+  // Agent position (below tools)
+  agentX: 550,
+  agentY: 750,
+  
+  // Concentric arcs for tools - radii from toolCenterY
   arcs: [
-    { radius: 720, categories: ["utility", "api", "database", "web", "code"] },
-    { radius: 580, categories: ["memory", "file", "document", "reasoning"] },
-    { radius: 450, categories: ["communication", "interaction", "generation", "export", "advanced_self_author", "advanced_spawn"] },
+    { radius: 680, categories: ["utility", "api", "database", "web", "code"] },
+    { radius: 540, categories: ["memory", "file", "document", "reasoning"] },
+    { radius: 420, categories: ["communication", "interaction", "generation", "export", "advanced_self_author", "advanced_spawn"] },
   ],
   toolArcStartAngle: -175,   // Very wide arc spread (degrees)
   toolArcEndAngle: -5,
   toolNodeWidth: 100,
   toolNodeHeight: 60,
   
-  // Left side - Prompt (lowered to match agent)
+  // Left side - Prompt (positioned below the tool arcs)
   promptX: -50,
-  promptY: 790,
+  promptY: 590,
   promptWidth: 260,
   promptHeight: 280,
   userFileGap: 70,
   
-  // Right side - Scratchpad (lowered to match)
+  // Right side - Scratchpad (positioned below the tool arcs)
   scratchpadX: 890,
-  scratchpadY: 790,
+  scratchpadY: 590,
   scratchpadWidth: 300,
   scratchpadHeight: 280,
   artifactGap: 70,
@@ -301,8 +305,8 @@ export function FreeAgentCanvas({
     // === TOOLS: Concentric arcs layout above agent ===
     const toolPositions = layoutToolsInConcentricArcs(
       toolsByCategory,
-      LAYOUT.agentX,
-      LAYOUT.agentY
+      LAYOUT.toolCenterX,
+      LAYOUT.toolCenterY
     );
 
     const currentIteration = session?.currentIteration || 0;
