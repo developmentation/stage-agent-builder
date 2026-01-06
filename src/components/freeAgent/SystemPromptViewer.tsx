@@ -111,6 +111,9 @@ interface PromptCustomizationHook {
   toggleSectionDisabled: (sectionId: string) => void;
   isToolDisabled: (toolId: string) => boolean;
   toggleToolDisabled: (toolId: string) => void;
+  // Custom name
+  getCustomName: () => string | undefined;
+  setCustomName: (name: string) => void;
 }
 
 interface SystemPromptViewerProps {
@@ -784,6 +787,8 @@ export function SystemPromptViewer({ onClose, configuredParams = [], promptCusto
   const [newSectionDescription, setNewSectionDescription] = useState("");
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [toolSearchQuery, setToolSearchQuery] = useState("");
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editName, setEditName] = useState("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Use the shared promptCustomization from props
@@ -814,6 +819,8 @@ export function SystemPromptViewer({ onClose, configuredParams = [], promptCusto
     toggleSectionDisabled,
     isToolDisabled,
     toggleToolDisabled,
+    getCustomName,
+    setCustomName,
   } = promptCustomization;
   
   // Load template and tools manifest
@@ -937,11 +944,19 @@ export function SystemPromptViewer({ onClose, configuredParams = [], promptCusto
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `freeagent-prompt-${template.version}-custom.json`;
+    
+    // Use custom name for filename if available
+    const customName = getCustomName?.();
+    const safeName = (customName || template.name)
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+    a.download = `${safeName}-v${template.version}.json`;
+    
     a.click();
     URL.revokeObjectURL(url);
     toast.success("Template exported successfully");
-  }, [template, exportCustomizations]);
+  }, [template, exportCustomizations, getCustomName]);
   
   const handleImportClick = useCallback(() => {
     fileInputRef.current?.click();
@@ -1055,7 +1070,65 @@ export function SystemPromptViewer({ onClose, configuredParams = [], promptCusto
       
       {/* Header */}
       <div className="border-b border-border px-4 py-3 flex-shrink-0">
-        <h2 className="text-lg font-semibold">{template.name}</h2>
+        <div className="flex items-center gap-2 mb-1">
+          {isEditingName ? (
+            <div className="flex items-center gap-2 flex-1">
+              <Input
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                className="h-8 text-lg font-semibold max-w-xs"
+                placeholder="Template name..."
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    setCustomName(editName);
+                    setIsEditingName(false);
+                    toast.success("Template name updated");
+                  } else if (e.key === 'Escape') {
+                    setIsEditingName(false);
+                  }
+                }}
+              />
+              <Button 
+                size="sm" 
+                variant="ghost" 
+                className="h-8 w-8 p-0"
+                onClick={() => {
+                  setCustomName(editName);
+                  setIsEditingName(false);
+                  toast.success("Template name updated");
+                }}
+              >
+                <Check className="h-4 w-4" />
+              </Button>
+              <Button 
+                size="sm" 
+                variant="ghost" 
+                className="h-8 w-8 p-0"
+                onClick={() => setIsEditingName(false)}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : (
+            <>
+              <h2 className="text-lg font-semibold">
+                {getCustomName() || template.name}
+              </h2>
+              <Button 
+                size="sm" 
+                variant="ghost" 
+                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                onClick={() => {
+                  setEditName(getCustomName() || template.name);
+                  setIsEditingName(true);
+                }}
+              >
+                <Edit3 className="h-3 w-3" />
+              </Button>
+            </>
+          )}
+        </div>
         <p className="text-xs text-muted-foreground mb-2">
           v{template.version} • {sortedSections.length} sections
           {toolsManifest && (

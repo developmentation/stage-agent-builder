@@ -113,6 +113,11 @@ export interface ExportedPromptTemplate {
   formatVersion: '1.0';
   exportedAt: string;
   template: SystemPromptTemplate;
+  customizations?: {
+    customName?: string;
+    disabledSections: string[];
+    disabledTools: string[];
+  };
 }
 
 // Tool override for custom descriptions
@@ -124,6 +129,7 @@ export interface ToolOverride {
 // User customization overlay (Phase 2+)
 export interface PromptCustomization {
   templateId: string;
+  customName?: string; // User's custom name for this configuration
   sectionOverrides: Record<string, string>; // sectionId -> customContent
   disabledSections: string[]; // sectionIds to skip
   additionalSections: PromptSection[]; // User-added sections

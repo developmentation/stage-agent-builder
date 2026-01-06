@@ -13,11 +13,11 @@ const STORAGE_KEY = "freeagent-prompt-customizations";
 const VALID_TEMPLATE_SECTION_IDS = new Set([
   'identity', 'tools_list', 'session_files', 'configured_secrets', 
   'blackboard', 'scratchpad', 'previous_results', 'iteration_info',
-  'memory_architecture', 'correct_workflow', 'loop_problem', 
+  'memory_architecture', 'memory_persistence', 'correct_workflow', 'loop_problem', 
   'anti_loop_rules', 'loop_self_reflection', 'tool_execution_timing',
   'response_format', 'blackboard_mandatory', 'data_handling', 
   'workflow_summary', 'accessing_attributes', 'reference_resolution',
-  'self_author', 'spawn_capabilities'
+  'self_author', 'spawn_capabilities', 'artifacts_list'
 ]);
 
 // Filter out invalid section overrides that don't correspond to valid sections or custom sections
@@ -100,6 +100,10 @@ interface UsePromptCustomizationReturn {
   exportCustomizations: (template: SystemPromptTemplate) => ExportedPromptTemplate;
   importCustomizations: (data: ExportedPromptTemplate, currentTemplate: SystemPromptTemplate) => boolean;
   
+  // Custom name
+  getCustomName: () => string | undefined;
+  setCustomName: (name: string) => void;
+  
   // Persistence
   saveToStorage: () => void;
   loadFromStorage: () => void;
@@ -166,7 +170,8 @@ export function usePromptCustomization(templateId: string): UsePromptCustomizati
         customizations.additionalSections.length > 0 ||
         Object.keys(customizations.orderOverrides || {}).length > 0 ||
         Object.keys(customizations.toolOverrides || {}).length > 0 ||
-        (customizations.disabledSections?.length || 0) > 0
+        (customizations.disabledSections?.length || 0) > 0 ||
+        !!customizations.customName
       );
       
       if (hasContent) {
@@ -583,9 +588,15 @@ export function usePromptCustomization(templateId: string): UsePromptCustomizati
   const exportCustomizations = useCallback((template: SystemPromptTemplate): ExportedPromptTemplate => {
     const allSections = getSortedSections(template.sections);
     
+    // Get disabled tools list
+    const disabledTools = Object.entries(customizations?.toolOverrides || {})
+      .filter(([_, override]) => override.disabled)
+      .map(([toolId]) => toolId);
+    
     // Apply customizations to template for export
     const exportedTemplate: SystemPromptTemplate = {
       ...template,
+      name: customizations?.customName || template.name,
       isDefault: false,
       updatedAt: new Date().toISOString(),
       sections: allSections.map((section) => ({
@@ -603,6 +614,11 @@ export function usePromptCustomization(templateId: string): UsePromptCustomizati
       formatVersion: "1.0",
       exportedAt: new Date().toISOString(),
       template: exportedTemplate,
+      customizations: {
+        customName: customizations?.customName,
+        disabledSections: customizations?.disabledSections || [],
+        disabledTools,
+      },
     };
   }, [getEffectiveContent, getSortedSections, customizations]);
   
@@ -642,21 +658,38 @@ export function usePromptCustomization(templateId: string): UsePromptCustomizati
       }
       
       // Import tool overrides from metadata
-      const importedToolOverrides = (importedTemplate.metadata as { toolOverrides?: Record<string, { description?: string }> })?.toolOverrides || {};
+      const importedToolOverrides = (importedTemplate.metadata as { toolOverrides?: Record<string, { description?: string; disabled?: boolean }> })?.toolOverrides || {};
+      
+      // Import disabled sections and tools from customizations block
+      const importedDisabledSections = data.customizations?.disabledSections || [];
+      const importedDisabledTools = data.customizations?.disabledTools || [];
+      const importedCustomName = data.customizations?.customName;
+      
+      // Merge disabled tools into tool overrides
+      const mergedToolOverrides = { ...importedToolOverrides };
+      for (const toolId of importedDisabledTools) {
+        mergedToolOverrides[toolId] = {
+          ...mergedToolOverrides[toolId],
+          disabled: true,
+        };
+      }
       
       const hasContent = Object.keys(newOverrides).length > 0 || 
         newCustomSections.length > 0 ||
         Object.keys(newOrderOverrides).length > 0 ||
-        Object.keys(importedToolOverrides).length > 0;
+        Object.keys(mergedToolOverrides).length > 0 ||
+        importedDisabledSections.length > 0 ||
+        !!importedCustomName;
       
       if (hasContent) {
         setCustomizations({
           templateId,
+          customName: importedCustomName,
           sectionOverrides: newOverrides,
-          disabledSections: [],
+          disabledSections: importedDisabledSections,
           additionalSections: newCustomSections,
           orderOverrides: newOrderOverrides,
-          toolOverrides: importedToolOverrides,
+          toolOverrides: mergedToolOverrides,
         });
       }
       
@@ -665,6 +698,27 @@ export function usePromptCustomization(templateId: string): UsePromptCustomizati
       console.error("Failed to import customizations:", err);
       return false;
     }
+  }, [templateId]);
+  
+  const getCustomName = useCallback((): string | undefined => {
+    return customizations?.customName;
+  }, [customizations]);
+  
+  const setCustomName = useCallback((name: string) => {
+    setCustomizations((prev) => {
+      const current = prev || {
+        templateId,
+        sectionOverrides: {},
+        disabledSections: [],
+        additionalSections: [],
+        orderOverrides: {},
+      };
+      
+      return {
+        ...current,
+        customName: name.trim() || undefined,
+      };
+    });
   }, [templateId]);
   
   return {
@@ -700,6 +754,8 @@ export function usePromptCustomization(templateId: string): UsePromptCustomizati
     getDisabledTools,
     exportCustomizations,
     importCustomizations,
+    getCustomName,
+    setCustomName,
     saveToStorage,
     loadFromStorage,
   };
