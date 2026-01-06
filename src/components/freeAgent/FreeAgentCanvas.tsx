@@ -94,11 +94,11 @@ const ALL_TOOLS = [
 
 // Layout dimensions - Concentric arcs layout
 const LAYOUT = {
-  // Tool arc center (separate from agent for independent positioning)
+  // Tool arc center
   toolCenterX: 550,
-  toolCenterY: 750,  // Tools arc around this point
+  toolCenterY: 750,
   
-  // Agent position (below tools)
+  // Agent position
   agentX: 550,
   agentY: 750,
   
@@ -108,32 +108,33 @@ const LAYOUT = {
     { radius: 540, categories: ["memory", "file", "document", "reasoning"] },
     { radius: 420, categories: ["communication", "interaction", "generation", "export", "advanced_self_author", "advanced_spawn"] },
   ],
-  toolArcStartAngle: -175,   // Very wide arc spread (degrees)
+  toolArcStartAngle: -175,
   toolArcEndAngle: -5,
   toolNodeWidth: 100,
   toolNodeHeight: 60,
   
-  // Left side - Prompt (positioned below the tool arcs)
+  // Left side - Prompt (BELOW the agent)
   promptX: -50,
-  promptY: 590,
+  promptY: 900,
   promptWidth: 260,
   promptHeight: 280,
   userFileGap: 70,
   
-  // Right side - Scratchpad (positioned below the tool arcs)
+  // Right side - Scratchpad (BELOW the agent)
   scratchpadX: 890,
-  scratchpadY: 590,
+  scratchpadY: 900,
   scratchpadWidth: 300,
   scratchpadHeight: 280,
   artifactGap: 70,
   
   // Attributes - right of scratchpad
   attributeX: 1280,
+  attributeY: 900,
   attributeGap: 65,
   attributeColumnGap: 220,
   attributesPerColumn: 10,
   
-  // Child agents - below agent (3 per row)
+  // Child agents - below prompt/scratchpad
   childOffsetY: 200,
   childSpacing: 180,
   childRowGap: 120,
