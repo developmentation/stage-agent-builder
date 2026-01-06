@@ -142,6 +142,11 @@ export function BlackboardViewer({ entries }: BlackboardViewerProps) {
                     <div className="flex items-center gap-2 mb-1">
                       {config.icon}
                       <span className="text-xs font-medium">{config.label}</span>
+                      {entry.tools && entry.tools.length > 0 && (
+                        <span className="text-xs text-amber-500">
+                          [{entry.tools.join(', ')}]
+                        </span>
+                      )}
                       <span className="text-xs text-muted-foreground ml-auto">
                         #{entry.iteration}
                       </span>
