@@ -493,6 +493,11 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
             advancedFeatures: currentSession.advancedFeatures,
             // Prompt customization for self-author tools
             promptCustomization: promptCustomizationRef.current || undefined,
+            // Callback to update in-memory ref immediately so read_self gets fresh data
+            onPromptCustomizationUpdate: (newCustomization) => {
+              promptCustomizationRef.current = newCustomization;
+              console.log('[write_self] Updated promptCustomizationRef for immediate read_self access');
+            },
             // Callback to notify UI when prompt is modified via write_self
             onPromptCustomizationChange: () => {
               if (promptCustomizationChangeCallbackRef.current) {

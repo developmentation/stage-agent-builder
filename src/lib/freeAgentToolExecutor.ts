@@ -40,6 +40,8 @@ export interface ToolExecutionContext {
   promptCustomization?: PromptCustomization;
   // Self-author: callback to notify UI when prompt is modified
   onPromptCustomizationChange?: () => void;
+  // Self-author: callback to update in-memory ref immediately (so read_self gets fresh data)
+  onPromptCustomizationUpdate?: (newCustomization: PromptCustomization) => void;
   // Spawn: callback to create child agents
   onSpawnChildren?: (request: SpawnRequest) => void;
 }
@@ -877,6 +879,12 @@ async function executeWriteSelf(
       all[updatedCustomization.templateId] = updatedCustomization;
       localStorage.setItem(STORAGE_KEY, JSON.stringify(all));
       console.log('[write_self] Saved customizations to localStorage:', changesApplied);
+      
+      // Update in-memory ref immediately so read_self gets fresh data in the same session
+      if (context.onPromptCustomizationUpdate) {
+        context.onPromptCustomizationUpdate(updatedCustomization);
+        console.log('[write_self] Updated promptCustomizationRef for immediate read_self access');
+      }
       
       // Notify UI to reload customizations
       if (context.onPromptCustomizationChange) {
