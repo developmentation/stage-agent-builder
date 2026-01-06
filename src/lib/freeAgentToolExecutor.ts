@@ -801,7 +801,7 @@ async function executeWriteSelf(
         
         if (!isValidTemplate && !isCustom) {
           warnings.push(`Section '${sectionId}' does not exist - use addSections to create it first. Valid sections: ${Array.from(VALID_TEMPLATE_SECTION_IDS).slice(0, 5).join(', ')}...`);
-          // Still save it (it won't display, but keep it)
+          continue; // Skip saving invalid sections to prevent phantom entries
         }
         
         updatedCustomization.sectionOverrides[sectionId] = content;
