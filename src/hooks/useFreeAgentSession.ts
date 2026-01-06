@@ -915,6 +915,7 @@ ${section.content}
                 content: b.content,
                 data: b.data,
                 iteration: b.iteration,
+                tools: b.tools,
               })),
               sessionFiles: parentSession.sessionFiles.map(f => ({
                 id: f.id,
@@ -1110,15 +1111,24 @@ ${section.content}
             } else if (handler.tool === 'read_attribute') {
               const names = handler.params.names as string[] || [];
               const requestedAttrs: Record<string, unknown> = {};
+              const notFound: string[] = [];
               for (const name of names) {
                 if (childAttributes[name]) {
                   requestedAttrs[name] = childAttributes[name].result;
+                } else {
+                  notFound.push(name);
                 }
               }
               iterationToolResults.push({
                 tool: handler.tool,
                 success: true,
-                result: requestedAttrs,
+                result: {
+                  ...requestedAttrs,
+                  ...(notFound.length > 0 && {
+                    _notFound: notFound,
+                    _hint: `Attributes not found: [${notFound.join(', ')}]. Available: [${Object.keys(childAttributes).join(', ') || 'none'}]`,
+                  }),
+                },
               });
             } else if (handler.tool === 'read_blackboard') {
               iterationToolResults.push({
@@ -1318,7 +1328,7 @@ ${section.content}
             scratchpad: spawnRequest.parentScratchpad,
             toolCalls: [],
             artifacts: [],
-            toolResultAttributes: {}, // Initialize empty - child builds its own
+            toolResultAttributes: { ...spawnRequest.parentAttributes }, // Inherit parent's attributes
           }));
           
           // Set orchestrator to 'waiting' status
