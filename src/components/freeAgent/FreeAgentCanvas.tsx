@@ -96,7 +96,7 @@ const ALL_TOOLS = [
 const LAYOUT = {
   // Agent centered between prompt and scratchpad
   agentX: 550,
-  agentY: 800,
+  agentY: 950,  // Moved down 150px to push tools up
   
   // Concentric arcs for tools (above agent) - much larger radii with bigger gaps
   arcs: [
@@ -109,16 +109,16 @@ const LAYOUT = {
   toolNodeWidth: 100,
   toolNodeHeight: 60,
   
-  // Left side - Prompt (lowered significantly)
+  // Left side - Prompt (lowered to match agent)
   promptX: -50,
-  promptY: 640,
+  promptY: 790,
   promptWidth: 260,
   promptHeight: 280,
   userFileGap: 70,
   
   // Right side - Scratchpad (lowered to match)
   scratchpadX: 890,
-  scratchpadY: 640,
+  scratchpadY: 790,
   scratchpadWidth: 300,
   scratchpadHeight: 280,
   artifactGap: 70,
@@ -129,8 +129,11 @@ const LAYOUT = {
   attributeColumnGap: 220,
   attributesPerColumn: 10,
   
-  // Child agents - below agent
-  childOffsetY: 280,
+  // Child agents - below agent (3 per row)
+  childOffsetY: 200,
+  childSpacing: 180,
+  childRowGap: 120,
+  childrenPerRow: 3,
 };
 
 export function FreeAgentCanvas({
@@ -408,17 +411,23 @@ export function FreeAgentCanvas({
       },
     });
 
-    // === CHILD AGENTS: Below agent ===
+    // === CHILD AGENTS: Below agent (3 per row with wrapping) ===
     if (session?.orchestration?.role === 'orchestrator' && session.orchestration.children) {
       const children = session.orchestration.children;
       const childStartY = LAYOUT.agentY + LAYOUT.childOffsetY;
-      const childSpacing = 160;
-      const totalWidth = (children.length - 1) * childSpacing;
-      const startX = LAYOUT.agentX - totalWidth / 2 - 60;
+      const childSpacing = LAYOUT.childSpacing;
+      const childrenPerRow = LAYOUT.childrenPerRow;
+      const rowGap = LAYOUT.childRowGap;
       
       children.forEach((child, index) => {
-        const childX = startX + index * childSpacing;
-        const childY = childStartY;
+        const row = Math.floor(index / childrenPerRow);
+        const col = index % childrenPerRow;
+        const rowChildCount = Math.min(childrenPerRow, children.length - row * childrenPerRow);
+        const rowWidth = (rowChildCount - 1) * childSpacing;
+        const rowStartX = LAYOUT.agentX - rowWidth / 2 - 60;
+        
+        const childX = rowStartX + col * childSpacing;
+        const childY = childStartY + row * rowGap;
         const childNodeId = `child-${child.name}`;
         newNodeIds.add(childNodeId);
         
