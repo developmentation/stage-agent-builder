@@ -1064,6 +1064,39 @@ You have access to powerful self-modification tools:
   - Changes take effect in the NEXT iteration, not immediately
   - Use sparingly and carefully - incorrect modifications may cause errors
 
+### VALID SECTION IDS FOR sectionOverrides:
+
+**Editable sections** (can override content):
+- identity - Your core persona and behavior definition
+- memory_architecture - How you use blackboard/scratchpad/attributes
+- correct_workflow - Workflow steps for data handling
+- loop_problem - Loop prevention guidance
+- anti_loop_rules - Anti-loop rules
+- loop_self_reflection - Loop detection instructions
+- tool_execution_timing - Parallel execution guidance
+- response_format - JSON response structure
+- blackboard_mandatory - Blackboard entry requirements
+- data_handling - JSON data handling guidelines
+- workflow_summary - High-level workflow steps
+- accessing_attributes - How to access saved attributes
+- reference_resolution - Reference placeholder documentation
+
+**Read-only sections** (can disable but NOT override):
+- tools_list - Auto-generated from tool manifest
+- session_files - User's uploaded files
+- configured_secrets - Auto-injected API keys
+- blackboard - Current blackboard state
+- scratchpad - Current scratchpad state
+- previous_results - Last iteration's tool results
+- iteration_info - Current iteration number
+- artifacts_list - Created artifacts list
+
+### CREATING NEW SECTIONS:
+To add a NEW section (like "persona"), use addSections - NOT sectionOverrides:
+\`\`\`json
+{ "tool": "write_self", "params": { "addSections": [{ "title": "My Persona", "content": "I am a JavaScript expert..." }] } }
+\`\`\`
+
 WARNING: Self-modification is powerful but risky. Only use when:
 1. You need to optimize your behavior for a specific task
 2. You want to disable irrelevant sections to save tokens
