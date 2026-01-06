@@ -1,4 +1,4 @@
-// Tool Node - Individual tool visualization
+// Tool Node - Individual tool visualization with category coloring
 import React from "react";
 import { Handle, Position, NodeProps } from "reactflow";
 import {
@@ -31,6 +31,7 @@ interface ToolNodeData {
   status: "idle" | "thinking" | "active" | "success" | "error";
   icon?: string;
   category?: string;
+  categoryColor?: string;
   toolId?: string;
 }
 
@@ -58,16 +59,18 @@ const iconMap: Record<string, React.ReactNode> = {
 };
 
 export function ToolNode({ data }: NodeProps<ToolNodeData>) {
+  const categoryColor = data.categoryColor || "#6B7280";
+  
   const getStatusStyles = () => {
     switch (data.status) {
       case "active":
-        return "border-yellow-500 bg-yellow-500/20 shadow-yellow-500/40";
+        return "border-2 border-yellow-500 bg-yellow-500/20 shadow-lg shadow-yellow-500/40";
       case "success":
-        return "border-green-500 bg-green-500/10";
+        return "border-2 bg-card";
       case "error":
-        return "border-red-500 bg-red-500/10";
+        return "border-2 border-red-500 bg-red-500/10";
       default:
-        return "border-border bg-card hover:border-muted-foreground/50";
+        return "border bg-card hover:bg-muted/50";
     }
   };
 
@@ -76,12 +79,17 @@ export function ToolNode({ data }: NodeProps<ToolNodeData>) {
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center",
-        "w-[100px] h-[60px] rounded-lg border",
+        "relative flex flex-col items-center justify-center",
+        "w-[100px] h-[60px] rounded-lg",
         "shadow-sm transition-all duration-200 cursor-pointer",
         getStatusStyles(),
-        data.status === "active" && "animate-pulse shadow-lg"
+        data.status === "active" && "animate-pulse"
       )}
+      style={{
+        borderColor: data.status === "idle" || data.status === "success" 
+          ? categoryColor 
+          : undefined,
+      }}
     >
       {/* Target handle - for receiving connections (write tools receive from agent) */}
       <Handle
@@ -99,15 +107,25 @@ export function ToolNode({ data }: NodeProps<ToolNodeData>) {
         className="!bg-muted-foreground !w-2 !h-2"
       />
 
+      {/* Category color indicator dot */}
+      <div 
+        className="absolute -top-1.5 -left-1.5 w-3 h-3 rounded-full border-2 border-background shadow-sm"
+        style={{ backgroundColor: categoryColor }}
+      />
+
       {/* Icon */}
       <div
         className={cn(
-          "mb-1",
+          "mb-1 transition-colors",
           data.status === "active" && "text-yellow-500",
-          data.status === "success" && "text-green-500",
           data.status === "error" && "text-red-500",
-          data.status === "idle" && "text-muted-foreground"
+          (data.status === "idle" || data.status === "success") && "text-muted-foreground"
         )}
+        style={{
+          color: (data.status === "idle" || data.status === "success") 
+            ? categoryColor 
+            : undefined,
+        }}
       >
         {icon}
       </div>

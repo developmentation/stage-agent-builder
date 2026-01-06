@@ -377,12 +377,15 @@ export interface AgentResponse {
 
 // Canvas node types for visualization
 export interface FreeAgentNodeData {
-  type: 'agent' | 'tool' | 'artifact' | 'file' | 'scratchpad' | 'prompt' | 'promptFile' | 'attribute' | 'childAgent';
+  type: 'agent' | 'tool' | 'artifact' | 'file' | 'scratchpad' | 'prompt' | 'promptFile' | 'attribute' | 'childAgent' | 'categoryLabel';
   label: string;
   status: 'idle' | 'thinking' | 'active' | 'success' | 'error' | 'reading' | 'paused' | 'waiting';
   icon?: string;
   category?: string;
+  categoryColor?: string;
   toolId?: string;
+  color?: string;
+  toolCount?: number;
   artifactId?: string;
   fileId?: string;
   iteration?: number;

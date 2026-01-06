@@ -1,5 +1,5 @@
-// Free Agent Canvas - Main visualization component
-import React, { useMemo, useCallback, useState, useRef } from "react";
+// Free Agent Canvas - Main visualization component with arc-based tool layout
+import React, { useMemo, useCallback, useRef } from "react";
 import ReactFlow, {
   Node,
   Edge,
@@ -24,6 +24,7 @@ import { PromptNode } from "./PromptNode";
 import { PromptFileNode } from "./PromptFileNode";
 import { AttributeNode } from "./AttributeNode";
 import { ChildAgentNode } from "./ChildAgentNode";
+import { CategoryLabelNode } from "./CategoryLabelNode";
 import type {
   FreeAgentSession,
   ToolsManifest,
@@ -53,101 +54,86 @@ const nodeTypes = {
   promptFile: PromptFileNode,
   attribute: AttributeNode,
   childAgent: ChildAgentNode,
+  categoryLabel: CategoryLabelNode,
 };
 
 // Read tools - gather/retrieve information
 const READ_TOOLS = [
-  // Web & Search
   "brave_search", "google_search", "web_scrape",
-  // GitHub  
   "read_github_repo", "read_github_file",
-  // Memory reads
   "read_blackboard", "read_scratchpad", "read_prompt", "read_prompt_files",
-  // File operations
   "read_file", "read_zip_contents", "read_zip_file", "extract_zip_files",
-  // Documents
   "pdf_info", "pdf_extract_text", "ocr_image",
-  // API reads
   "get_call_api", "get_time", "get_weather",
 ];
 
 // Write tools - create/send/modify
 const WRITE_TOOLS = [
-  // Memory writes
   "write_blackboard", "write_scratchpad",
-  // Communication
   "send_email", "request_assistance",
-  // API writes
   "post_call_api", "execute_sql",
-  // Export/Generation
   "export_word", "export_pdf", "image_generation", "elevenlabs_tts",
 ];
 
-// All tools combined for unified layout above agent
+// All tools combined
 const ALL_TOOLS = [...READ_TOOLS, ...WRITE_TOOLS];
 
-// Layout dimensions
+// Layout dimensions - Arc-based layout
 const LAYOUT = {
-  // Agent center position - moved down to accommodate tool rows above
+  // Agent at center of the canvas
   agentX: 550,
-  agentY: 420,
+  agentY: 380,
   
-  // Left side - Prompt (below tools)
-  promptX: -25,
-  promptY: 250,
-  promptWidth: 280,
-  promptHeight: 300,
+  // Arc parameters for tools
+  toolArcRadius: 320,
+  toolArcStartAngle: -155,  // Left side (degrees)
+  toolArcEndAngle: -25,     // Right side (degrees)
+  toolNodeWidth: 100,
+  toolNodeHeight: 60,
+  categoryGap: 25,          // Extra gap between categories
   
-  // User files - below prompt
-  userFileGap: 75,
+  // Left side - Prompt
+  promptX: 50,
+  promptY: 200,
+  promptWidth: 260,
+  promptHeight: 280,
+  userFileGap: 70,
   
-  // Right side - Scratchpad (below tools)
-  scratchpadX: 850,
-  scratchpadY: 250,
-  scratchpadWidth: 320,
-  scratchpadHeight: 300,
+  // Right side - Scratchpad
+  scratchpadX: 900,
+  scratchpadY: 200,
+  scratchpadWidth: 300,
+  scratchpadHeight: 280,
+  artifactGap: 70,
   
-  // Artifacts - below scratchpad
-  artifactGap: 75,
-  
-  // Attributes - right of scratchpad (grid layout)
-  attributeX: 1245,
-  attributeGap: 70,
-  attributeColumnGap: 230,
+  // Attributes - right of scratchpad
+  attributeX: 1280,
+  attributeGap: 65,
+  attributeColumnGap: 220,
   attributesPerColumn: 10,
   
-  // Tool grid settings - 12 columns in horizontal rows
-  toolNodeWidth: 100,
-  toolNodeHeight: 44,
-  toolColumnGap: 10,
-  toolRowGap: 35,
-  toolColumns: 12,
-  
-  // All tools positioned ABOVE agent in rows
-  toolsStartX: 5,
-  toolsStartY: -230,
-  
-  // Child agents - positioned lower
-  childOffsetY: 250,  // 150px lower than before (was ~100)
+  // Child agents - below agent
+  childOffsetY: 220,
 };
 
-// Helper to lay out tools in 2 columns
-const layoutToolsInColumns = (
-  toolIds: string[],
-  startX: number,
-  startY: number,
-  columns: number = 2
-): Array<{ id: string; x: number; y: number }> => {
-  return toolIds.map((toolId, index) => {
-    const col = index % columns;
-    const row = Math.floor(index / columns);
-    return {
-      id: toolId,
-      x: startX + col * (LAYOUT.toolNodeWidth + LAYOUT.toolColumnGap),
-      y: startY + row * (LAYOUT.toolNodeHeight + LAYOUT.toolRowGap),
-    };
-  });
-};
+// Category display order for the arc (left to right)
+const CATEGORY_ORDER = [
+  "utility",
+  "api",
+  "database",
+  "web",
+  "code",
+  "memory",
+  "file",
+  "document",
+  "reasoning",
+  "communication",
+  "interaction",
+  "generation",
+  "export",
+  "advanced_self_author",
+  "advanced_spawn",
+];
 
 export function FreeAgentCanvas({
   session,
@@ -164,16 +150,10 @@ export function FreeAgentCanvas({
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
   
-  // Track user-moved node positions to preserve them across layout updates
   const userPositionsRef = useRef<Map<string, XYPosition>>(new Map());
-  
-  // Track user-resized node dimensions (for scratchpad)
   const userSizesRef = useRef<Map<string, { width: number; height: number }>>(new Map());
-  
-  // Track which nodes exist to detect new ones
   const existingNodeIdsRef = useRef<Set<string>>(new Set());
 
-  // Handle node position and size changes - save user adjustments
   const handleNodesChange = useCallback((changes: NodeChange[]) => {
     changes.forEach(change => {
       if (change.type === 'position' && change.position && change.dragging === false) {
@@ -189,7 +169,68 @@ export function FreeAgentCanvas({
     onNodesChange(changes);
   }, [onNodesChange]);
 
-  // Calculate node positions with new layout
+  // Group tools by category
+  const toolsByCategory = useMemo(() => {
+    if (!toolsManifest) return {};
+    
+    const groups: Record<string, string[]> = {};
+    ALL_TOOLS.forEach(toolId => {
+      const tool = toolsManifest.tools[toolId];
+      if (!tool) return;
+      const cat = Array.isArray(tool.category) ? tool.category[0] : tool.category;
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(toolId);
+    });
+    return groups;
+  }, [toolsManifest]);
+
+  // Layout tools in a semi-circular arc grouped by category
+  const layoutToolsInArc = useCallback((
+    toolsByCategory: Record<string, string[]>,
+    centerX: number,
+    centerY: number,
+    radius: number
+  ): Array<{ id: string; x: number; y: number; category: string; categoryIndex: number }> => {
+    // Get ordered categories that have tools
+    const orderedCategories = CATEGORY_ORDER.filter(cat => toolsByCategory[cat]?.length > 0);
+    const totalTools = orderedCategories.reduce((sum, cat) => sum + toolsByCategory[cat].length, 0);
+    
+    if (totalTools === 0) return [];
+    
+    // Calculate angle range with gaps between categories
+    const angleRange = LAYOUT.toolArcEndAngle - LAYOUT.toolArcStartAngle;
+    const totalCategoryGaps = orderedCategories.length - 1;
+    const categoryGapAngle = 8; // degrees gap between categories
+    const usableAngle = angleRange - (totalCategoryGaps * categoryGapAngle);
+    const anglePerTool = usableAngle / totalTools;
+    
+    const positions: Array<{ id: string; x: number; y: number; category: string; categoryIndex: number }> = [];
+    let currentAngle = LAYOUT.toolArcStartAngle;
+    
+    orderedCategories.forEach((category, categoryIndex) => {
+      const tools = toolsByCategory[category];
+      
+      tools.forEach(toolId => {
+        const angleRad = currentAngle * (Math.PI / 180);
+        positions.push({
+          id: toolId,
+          x: centerX + radius * Math.cos(angleRad) - LAYOUT.toolNodeWidth / 2,
+          y: centerY + radius * Math.sin(angleRad) - LAYOUT.toolNodeHeight / 2,
+          category,
+          categoryIndex,
+        });
+        currentAngle += anglePerTool;
+      });
+      
+      // Add gap after category (except for last)
+      if (categoryIndex < orderedCategories.length - 1) {
+        currentAngle += categoryGapAngle;
+      }
+    });
+    
+    return positions;
+  }, []);
+
   const generateLayout = useCallback(() => {
     if (!toolsManifest) return { nodes: [], edges: [] };
 
@@ -197,7 +238,6 @@ export function FreeAgentCanvas({
     const newEdges: Edge[] = [];
     const newNodeIds = new Set<string>();
 
-    // Helper to get position (use user position if exists, otherwise default)
     const getPosition = (nodeId: string, defaultPos: XYPosition): XYPosition => {
       const userPos = userPositionsRef.current.get(nodeId);
       if (userPos && existingNodeIdsRef.current.has(nodeId)) {
@@ -206,20 +246,7 @@ export function FreeAgentCanvas({
       return defaultPos;
     };
 
-    // Calculate dynamic positions - ALL tools above agent in rows of 12
-    const availableTools = ALL_TOOLS.filter(id => toolsManifest.tools[id]);
-    
-    const toolRows = Math.ceil(availableTools.length / LAYOUT.toolColumns);
-    const toolsHeight = toolRows * (LAYOUT.toolNodeHeight + LAYOUT.toolRowGap);
-    
-    // Agent positioned after all tools with gap
-    const agentY = LAYOUT.toolsStartY + toolsHeight + 60;
-    const agentX = LAYOUT.toolsStartX + (LAYOUT.toolColumns * (LAYOUT.toolNodeWidth + LAYOUT.toolColumnGap)) / 2 - 60;
-    
-    // Position prompt and scratchpad to be centered with agent Y
-    const sideNodesY = agentY - 80;
-
-    // === LEFT SIDE: Prompt (always visible, always connected) ===
+    // === LEFT SIDE: Prompt ===
     const promptId = "prompt";
     newNodeIds.add(promptId);
     
@@ -231,7 +258,7 @@ export function FreeAgentCanvas({
     newNodes.push({
       id: promptId,
       type: "prompt",
-      position: getPosition(promptId, { x: LAYOUT.promptX, y: sideNodesY }),
+      position: getPosition(promptId, { x: LAYOUT.promptX, y: LAYOUT.promptY }),
       style: promptStyle,
       data: {
         type: "prompt",
@@ -241,7 +268,6 @@ export function FreeAgentCanvas({
       },
     });
 
-    // Edge from prompt to agent LEFT side (always connected)
     newEdges.push({
       id: "edge-prompt-agent",
       source: "prompt",
@@ -250,9 +276,9 @@ export function FreeAgentCanvas({
       style: { stroke: "#3b82f6", strokeWidth: 1.5, strokeDasharray: session?.prompt ? undefined : "5,5" },
     });
 
-    // User files (stacked below prompt)
+    // User files below prompt
     session?.sessionFiles.forEach((file, index) => {
-      const fileY = sideNodesY + LAYOUT.promptHeight + 20 + (index * LAYOUT.userFileGap);
+      const fileY = LAYOUT.promptY + LAYOUT.promptHeight + 20 + (index * LAYOUT.userFileGap);
       const fileId = `promptFile-${file.id}`;
       newNodeIds.add(fileId);
       
@@ -271,7 +297,6 @@ export function FreeAgentCanvas({
         },
       });
 
-      // Edge from file to agent LEFT side
       newEdges.push({
         id: `edge-promptFile-agent-${file.id}`,
         source: fileId,
@@ -281,19 +306,21 @@ export function FreeAgentCanvas({
       });
     });
 
-    // === ALL TOOLS: Above agent in rows of 12 ===
-    const allToolPositions = layoutToolsInColumns(
-      availableTools,
-      LAYOUT.toolsStartX,
-      LAYOUT.toolsStartY,
-      LAYOUT.toolColumns
+    // === TOOLS: Arc layout above agent ===
+    const toolPositions = layoutToolsInArc(
+      toolsByCategory,
+      LAYOUT.agentX,
+      LAYOUT.agentY,
+      LAYOUT.toolArcRadius
     );
 
-    // Get current iteration for showing recent connections (current or last iteration)
     const currentIteration = session?.currentIteration || 0;
     const recentIterations = [currentIteration, currentIteration - 1].filter(i => i > 0);
 
-    allToolPositions.forEach(({ id: toolId, x, y }) => {
+    // Track categories for labels
+    const categoryPositions: Record<string, { x: number; y: number; count: number }> = {};
+
+    toolPositions.forEach(({ id: toolId, x, y, category }) => {
       const tool = toolsManifest.tools[toolId];
       if (!tool) return;
 
@@ -306,8 +333,11 @@ export function FreeAgentCanvas({
         (tc) => tc.tool === toolId && tc.status === "completed" && recentIterations.includes(tc.iteration)
       );
 
-      // Determine if this is a read or write tool for edge styling
       const isReadTool = READ_TOOLS.includes(toolId);
+      
+      // Get category color
+      const categoryData = toolsManifest.categories?.[category];
+      const categoryColor = categoryData?.color || "#6B7280";
 
       newNodes.push({
         id: nodeId,
@@ -319,11 +349,21 @@ export function FreeAgentCanvas({
           status: isActive ? "active" : wasUsedEver ? "success" : "idle",
           icon: tool.icon,
           category: tool.category,
+          categoryColor,
           toolId,
         },
       });
 
-      // Edge from tool to agent TOP (all tools are above)
+      // Track for category labels
+      if (!categoryPositions[category]) {
+        categoryPositions[category] = { x, y, count: 1 };
+      } else {
+        categoryPositions[category].x = (categoryPositions[category].x + x) / 2;
+        categoryPositions[category].y = Math.min(categoryPositions[category].y, y);
+        categoryPositions[category].count++;
+      }
+
+      // Edge from tool to agent
       if (isActive || wasUsedRecently) {
         newEdges.push({
           id: `edge-tool-agent-${toolId}`,
@@ -340,14 +380,36 @@ export function FreeAgentCanvas({
       }
     });
 
+    // Add category label nodes
+    Object.entries(categoryPositions).forEach(([categoryId, pos]) => {
+      const categoryData = toolsManifest.categories?.[categoryId];
+      if (!categoryData) return;
+      
+      const labelId = `category-${categoryId}`;
+      newNodeIds.add(labelId);
+      
+      newNodes.push({
+        id: labelId,
+        type: "categoryLabel",
+        position: { x: pos.x + LAYOUT.toolNodeWidth / 2 - 30, y: pos.y - 22 },
+        data: {
+          type: "categoryLabel",
+          label: categoryData.name,
+          status: "idle",
+          color: categoryData.color,
+          toolCount: pos.count,
+        },
+        selectable: false,
+        draggable: false,
+      });
+    });
+
     // === CENTER: Agent ===
-    // Check if orchestrator is waiting for children
     const isWaitingForChildren = session?.status === 'waiting' || (
       session?.orchestration?.role === 'orchestrator' && 
       session?.orchestration?.awaitingChildren === true
     );
     
-    // When waiting for children, use idle status (not paused) to avoid retry button
     const agentStatus = isWaitingForChildren 
       ? "idle"
       : session?.status === "running" 
@@ -365,7 +427,7 @@ export function FreeAgentCanvas({
     newNodes.push({
       id: agentId,
       type: "agent",
-      position: getPosition(agentId, { x: agentX, y: agentY }),
+      position: getPosition(agentId, { x: LAYOUT.agentX - 60, y: LAYOUT.agentY - 60 }),
       data: {
         type: "agent",
         label: "Free Agent",
@@ -378,13 +440,13 @@ export function FreeAgentCanvas({
       },
     });
 
-    // === CHILD AGENTS: Below agent when orchestrating ===
+    // === CHILD AGENTS: Below agent ===
     if (session?.orchestration?.role === 'orchestrator' && session.orchestration.children) {
       const children = session.orchestration.children;
-      const childStartY = agentY + LAYOUT.childOffsetY;
+      const childStartY = LAYOUT.agentY + LAYOUT.childOffsetY;
       const childSpacing = 160;
       const totalWidth = (children.length - 1) * childSpacing;
-      const startX = agentX - totalWidth / 2;
+      const startX = LAYOUT.agentX - totalWidth / 2 - 60;
       
       children.forEach((child, index) => {
         const childX = startX + index * childSpacing;
@@ -392,7 +454,6 @@ export function FreeAgentCanvas({
         const childNodeId = `child-${child.name}`;
         newNodeIds.add(childNodeId);
         
-        // Map child status to node status
         const childStatus = child.status === 'running' ? 'thinking' : 
                            child.status === 'completed' ? 'success' : 
                            child.status === 'error' ? 'error' : 'idle';
@@ -412,7 +473,6 @@ export function FreeAgentCanvas({
           },
         });
         
-        // Edge from orchestrator to child
         newEdges.push({
           id: `edge-orchestrator-${child.name}`,
           source: 'agent',
@@ -424,8 +484,6 @@ export function FreeAgentCanvas({
         });
       });
     }
-
-    // Note: Write tools are now included in ALL_TOOLS above the agent
 
     // === RIGHT SIDE: Scratchpad ===
     const isWritingToScratchpad = activeToolIds.has("write_scratchpad");
@@ -440,7 +498,7 @@ export function FreeAgentCanvas({
     newNodes.push({
       id: scratchpadId,
       type: "scratchpad",
-      position: getPosition(scratchpadId, { x: LAYOUT.scratchpadX, y: sideNodesY }),
+      position: getPosition(scratchpadId, { x: LAYOUT.scratchpadX, y: LAYOUT.scratchpadY }),
       style: scratchpadStyle,
       data: {
         type: "scratchpad",
@@ -452,7 +510,6 @@ export function FreeAgentCanvas({
       },
     });
 
-    // Edge from agent RIGHT side to scratchpad
     newEdges.push({
       id: "edge-agent-scratchpad",
       source: "agent",
@@ -466,9 +523,9 @@ export function FreeAgentCanvas({
       },
     });
 
-    // === Artifacts: Below scratchpad (styled like user files) ===
+    // === Artifacts: Below scratchpad ===
     session?.artifacts.forEach((artifact, index) => {
-      const artifactY = sideNodesY + LAYOUT.scratchpadHeight + 20 + (index * LAYOUT.artifactGap);
+      const artifactY = LAYOUT.scratchpadY + LAYOUT.scratchpadHeight + 20 + (index * LAYOUT.artifactGap);
       
       const nodeId = `artifact-${artifact.id}`;
       newNodeIds.add(nodeId);
@@ -486,7 +543,6 @@ export function FreeAgentCanvas({
         },
       });
 
-      // Edge from agent to artifact
       newEdges.push({
         id: `edge-agent-artifact-${artifact.id}`,
         source: "agent",
@@ -496,16 +552,14 @@ export function FreeAgentCanvas({
       });
     });
 
-    // === Attributes: Right of scratchpad, grid layout (10 per column) ===
+    // === Attributes: Right of scratchpad ===
     const attributeEntries = Object.entries(session?.toolResultAttributes || {});
     attributeEntries.forEach(([name, attribute], index) => {
-      // Calculate column and row within that column
       const column = Math.floor(index / LAYOUT.attributesPerColumn);
       const row = index % LAYOUT.attributesPerColumn;
       
-      // Position in grid: columns go right, rows go down
       const attributeX = LAYOUT.attributeX + (column * LAYOUT.attributeColumnGap);
-      const attributeY = sideNodesY + (row * LAYOUT.attributeGap);
+      const attributeY = LAYOUT.scratchpadY + (row * LAYOUT.attributeGap);
       
       const nodeId = `attribute-${name}`;
       newNodeIds.add(nodeId);
@@ -526,7 +580,6 @@ export function FreeAgentCanvas({
         },
       });
 
-      // Edge from scratchpad right socket to attribute
       newEdges.push({
         id: `edge-scratchpad-attribute-${name}`,
         source: "scratchpad",
@@ -536,13 +589,11 @@ export function FreeAgentCanvas({
       });
     });
 
-    // Update existing node IDs for next render
     existingNodeIdsRef.current = newNodeIds;
 
     return { nodes: newNodes, edges: newEdges };
-  }, [toolsManifest, session, activeToolIds, onScratchpadChange]);
+  }, [toolsManifest, toolsByCategory, layoutToolsInArc, session, activeToolIds, onScratchpadChange, onRetry]);
 
-  // Update nodes and edges when session changes
   React.useEffect(() => {
     const { nodes: newNodes, edges: newEdges } = generateLayout();
     setNodes(newNodes);
@@ -586,14 +637,16 @@ export function FreeAgentCanvas({
           <Controls />
           <MiniMap
             nodeColor={(node) => {
+              if (node.type === "categoryLabel") return "transparent";
               if (node.type === "scratchpad") return "#f59e0b";
               if (node.type === "prompt") return "#3b82f6";
               if (node.type === "promptFile") return "#10b981";
-              if (node.type === "childAgent") return "#f59e0b"; // Amber for child agents
+              if (node.type === "childAgent") return "#f59e0b";
+              if (node.data?.categoryColor) return node.data.categoryColor;
               if (node.data?.status === "active" || node.data?.status === "thinking") return "#f59e0b";
               if (node.data?.status === "success") return "#10b981";
               if (node.data?.status === "error") return "#ef4444";
-              if (node.data?.status === "waiting") return "#f59e0b"; // Amber for waiting
+              if (node.data?.status === "waiting") return "#f59e0b";
               return "#6b7280";
             }}
             maskColor="rgba(0, 0, 0, 0.8)"
