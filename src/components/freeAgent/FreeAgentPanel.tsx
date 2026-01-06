@@ -42,7 +42,10 @@ import {
   ClipboardList,
   AlertTriangle,
   GitBranch,
+  Download,
 } from "lucide-react";
+import { toast } from "sonner";
+import { exportSessionToZip } from "@/utils/sessionExporter";
 import { Switch } from "@/components/ui/switch";
 import type { FreeAgentSession, SessionFile, ToolsManifest, AdvancedFeatures } from "@/types/freeAgent";
 import { InterjectModal } from "./InterjectModal";
@@ -541,6 +544,35 @@ export function FreeAgentPanel({
                     <Button onClick={onContinue} className="w-full">
                       <Play className="w-4 h-4 mr-2" />
                       Continue
+                    </Button>
+                  )}
+                  
+                  {/* Download button - show when completed */}
+                  {session.status === "completed" && (
+                    <Button
+                      variant="outline"
+                      onClick={async () => {
+                        try {
+                          const blob = await exportSessionToZip({
+                            session,
+                            promptSections: session.promptData?.sections,
+                          });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement("a");
+                          a.href = url;
+                          a.download = `freeagent-session-${new Date().toISOString().split("T")[0]}.zip`;
+                          a.click();
+                          URL.revokeObjectURL(url);
+                          toast.success("Session exported successfully");
+                        } catch (error) {
+                          console.error("Failed to export session:", error);
+                          toast.error("Failed to export session");
+                        }
+                      }}
+                      className="w-full border-green-500/50 text-green-600 hover:bg-green-500/10"
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Download Session
                     </Button>
                   )}
                 </>

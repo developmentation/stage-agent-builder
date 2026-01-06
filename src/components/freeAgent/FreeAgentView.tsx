@@ -369,6 +369,7 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
 
       <FinalReportModal
         report={session?.finalReport || null}
+        session={session}
         open={finalReportModalOpen}
         onClose={() => setFinalReportModalOpen(false)}
         onReset={handleReset}
