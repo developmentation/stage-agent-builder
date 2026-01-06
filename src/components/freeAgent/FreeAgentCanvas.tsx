@@ -78,62 +78,47 @@ const WRITE_TOOLS = [
 // All tools combined
 const ALL_TOOLS = [...READ_TOOLS, ...WRITE_TOOLS];
 
-// Layout dimensions - Arc-based layout
+// Layout dimensions - Concentric arcs layout
 const LAYOUT = {
-  // Agent at center of the canvas
-  agentX: 550,
-  agentY: 380,
+  // Agent centered between prompt and scratchpad
+  agentX: 500,
+  agentY: 520,
   
-  // Arc parameters for tools
-  toolArcRadius: 320,
-  toolArcStartAngle: -155,  // Left side (degrees)
-  toolArcEndAngle: -25,     // Right side (degrees)
+  // Concentric arcs for tools (above agent)
+  arcs: [
+    { radius: 420, categories: ["utility", "api", "database", "web", "code"] },
+    { radius: 320, categories: ["memory", "file", "document", "reasoning"] },
+    { radius: 240, categories: ["communication", "interaction", "generation", "export", "advanced_self_author", "advanced_spawn"] },
+  ],
+  toolArcStartAngle: -165,   // Wider arc spread (degrees)
+  toolArcEndAngle: -15,
   toolNodeWidth: 100,
   toolNodeHeight: 60,
-  categoryGap: 25,          // Extra gap between categories
+  categoryGap: 10,          // Extra gap between categories
   
-  // Left side - Prompt
-  promptX: 50,
-  promptY: 200,
+  // Left side - Prompt (further left)
+  promptX: -120,
+  promptY: 340,
   promptWidth: 260,
   promptHeight: 280,
   userFileGap: 70,
   
-  // Right side - Scratchpad
-  scratchpadX: 900,
-  scratchpadY: 200,
+  // Right side - Scratchpad (further right)
+  scratchpadX: 1120,
+  scratchpadY: 340,
   scratchpadWidth: 300,
   scratchpadHeight: 280,
   artifactGap: 70,
   
   // Attributes - right of scratchpad
-  attributeX: 1280,
+  attributeX: 1500,
   attributeGap: 65,
   attributeColumnGap: 220,
   attributesPerColumn: 10,
   
   // Child agents - below agent
-  childOffsetY: 220,
+  childOffsetY: 280,
 };
-
-// Category display order for the arc (left to right)
-const CATEGORY_ORDER = [
-  "utility",
-  "api",
-  "database",
-  "web",
-  "code",
-  "memory",
-  "file",
-  "document",
-  "reasoning",
-  "communication",
-  "interaction",
-  "generation",
-  "export",
-  "advanced_self_author",
-  "advanced_spawn",
-];
 
 export function FreeAgentCanvas({
   session,
@@ -184,48 +169,39 @@ export function FreeAgentCanvas({
     return groups;
   }, [toolsManifest]);
 
-  // Layout tools in a semi-circular arc grouped by category
-  const layoutToolsInArc = useCallback((
+  // Layout tools in concentric arcs grouped by category
+  const layoutToolsInConcentricArcs = useCallback((
     toolsByCategory: Record<string, string[]>,
     centerX: number,
-    centerY: number,
-    radius: number
-  ): Array<{ id: string; x: number; y: number; category: string; categoryIndex: number }> => {
-    // Get ordered categories that have tools
-    const orderedCategories = CATEGORY_ORDER.filter(cat => toolsByCategory[cat]?.length > 0);
-    const totalTools = orderedCategories.reduce((sum, cat) => sum + toolsByCategory[cat].length, 0);
+    centerY: number
+  ): Array<{ id: string; x: number; y: number; category: string; arcIndex: number }> => {
+    const positions: Array<{ id: string; x: number; y: number; category: string; arcIndex: number }> = [];
     
-    if (totalTools === 0) return [];
-    
-    // Calculate angle range with gaps between categories
-    const angleRange = LAYOUT.toolArcEndAngle - LAYOUT.toolArcStartAngle;
-    const totalCategoryGaps = orderedCategories.length - 1;
-    const categoryGapAngle = 8; // degrees gap between categories
-    const usableAngle = angleRange - (totalCategoryGaps * categoryGapAngle);
-    const anglePerTool = usableAngle / totalTools;
-    
-    const positions: Array<{ id: string; x: number; y: number; category: string; categoryIndex: number }> = [];
-    let currentAngle = LAYOUT.toolArcStartAngle;
-    
-    orderedCategories.forEach((category, categoryIndex) => {
-      const tools = toolsByCategory[category];
-      
-      tools.forEach(toolId => {
-        const angleRad = currentAngle * (Math.PI / 180);
-        positions.push({
-          id: toolId,
-          x: centerX + radius * Math.cos(angleRad) - LAYOUT.toolNodeWidth / 2,
-          y: centerY + radius * Math.sin(angleRad) - LAYOUT.toolNodeHeight / 2,
-          category,
-          categoryIndex,
+    LAYOUT.arcs.forEach((arc, arcIndex) => {
+      // Get tools for this arc's categories
+      const arcTools: Array<{ id: string; category: string }> = [];
+      arc.categories.forEach(cat => {
+        (toolsByCategory[cat] || []).forEach(toolId => {
+          arcTools.push({ id: toolId, category: cat });
         });
-        currentAngle += anglePerTool;
       });
       
-      // Add gap after category (except for last)
-      if (categoryIndex < orderedCategories.length - 1) {
-        currentAngle += categoryGapAngle;
-      }
+      if (arcTools.length === 0) return;
+      
+      // Calculate angle range for this arc
+      const angleRange = LAYOUT.toolArcEndAngle - LAYOUT.toolArcStartAngle;
+      const angleStep = angleRange / (arcTools.length + 1);
+      
+      arcTools.forEach((tool, index) => {
+        const angle = (LAYOUT.toolArcStartAngle + angleStep * (index + 1)) * (Math.PI / 180);
+        positions.push({
+          id: tool.id,
+          x: centerX + arc.radius * Math.cos(angle) - LAYOUT.toolNodeWidth / 2,
+          y: centerY + arc.radius * Math.sin(angle) - LAYOUT.toolNodeHeight / 2,
+          category: tool.category,
+          arcIndex,
+        });
+      });
     });
     
     return positions;
@@ -306,12 +282,11 @@ export function FreeAgentCanvas({
       });
     });
 
-    // === TOOLS: Arc layout above agent ===
-    const toolPositions = layoutToolsInArc(
+    // === TOOLS: Concentric arcs layout above agent ===
+    const toolPositions = layoutToolsInConcentricArcs(
       toolsByCategory,
       LAYOUT.agentX,
-      LAYOUT.agentY,
-      LAYOUT.toolArcRadius
+      LAYOUT.agentY
     );
 
     const currentIteration = session?.currentIteration || 0;
@@ -592,7 +567,7 @@ export function FreeAgentCanvas({
     existingNodeIdsRef.current = newNodeIds;
 
     return { nodes: newNodes, edges: newEdges };
-  }, [toolsManifest, toolsByCategory, layoutToolsInArc, session, activeToolIds, onScratchpadChange, onRetry]);
+  }, [toolsManifest, toolsByCategory, layoutToolsInConcentricArcs, session, activeToolIds, onScratchpadChange, onRetry]);
 
   React.useEffect(() => {
     const { nodes: newNodes, edges: newEdges } = generateLayout();
