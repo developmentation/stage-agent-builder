@@ -9,6 +9,48 @@ import type {
 
 const STORAGE_KEY = "freeagent-prompt-customizations";
 
+// Valid template section IDs - must match the set in freeAgentToolExecutor.ts
+const VALID_TEMPLATE_SECTION_IDS = new Set([
+  'identity', 'tools_list', 'session_files', 'configured_secrets', 
+  'blackboard', 'scratchpad', 'previous_results', 'iteration_info',
+  'memory_architecture', 'correct_workflow', 'loop_problem', 
+  'anti_loop_rules', 'loop_self_reflection', 'tool_execution_timing',
+  'response_format', 'blackboard_mandatory', 'data_handling', 
+  'workflow_summary', 'accessing_attributes', 'reference_resolution',
+  'self_author', 'spawn_capabilities'
+]);
+
+// Filter out invalid section overrides that don't correspond to valid sections or custom sections
+function cleanupInvalidOverrides(
+  customization: PromptCustomization
+): PromptCustomization {
+  const customSectionIds = new Set(customization.additionalSections?.map(s => s.id) || []);
+  
+  const cleanedOverrides: Record<string, string> = {};
+  let removedCount = 0;
+  
+  for (const [sectionId, content] of Object.entries(customization.sectionOverrides || {})) {
+    const isValidTemplate = VALID_TEMPLATE_SECTION_IDS.has(sectionId);
+    const isCustom = customSectionIds.has(sectionId);
+    
+    if (isValidTemplate || isCustom) {
+      cleanedOverrides[sectionId] = content;
+    } else {
+      removedCount++;
+      console.log(`[PromptCustomization] Removed invalid section override: "${sectionId}"`);
+    }
+  }
+  
+  if (removedCount > 0) {
+    console.log(`[PromptCustomization] Cleaned up ${removedCount} invalid section override(s)`);
+  }
+  
+  return {
+    ...customization,
+    sectionOverrides: cleanedOverrides,
+  };
+}
+
 interface UsePromptCustomizationReturn {
   // State
   customizations: PromptCustomization | null;
@@ -72,9 +114,11 @@ export function usePromptCustomization(templateId: string): UsePromptCustomizati
         const parsed = JSON.parse(stored) as Record<string, PromptCustomization>;
         const templateCustomizations = parsed[templateId] || null;
         if (templateCustomizations) {
-          console.log(`[PromptCustomization] Loaded ${Object.keys(templateCustomizations.sectionOverrides || {}).length} section overrides for template "${templateId}"`);
+          // Clean up any invalid overrides on load
+          const cleaned = cleanupInvalidOverrides(templateCustomizations);
+          console.log(`[PromptCustomization] Loaded ${Object.keys(cleaned.sectionOverrides || {}).length} section overrides for template "${templateId}"`);
+          return cleaned;
         }
-        return templateCustomizations;
       }
     } catch (err) {
       console.error("Failed to load prompt customizations:", err);
@@ -88,7 +132,9 @@ export function usePromptCustomization(templateId: string): UsePromptCustomizati
       const stored = localStorage.getItem(STORAGE_KEY);
       if (stored) {
         const parsed = JSON.parse(stored) as Record<string, PromptCustomization>;
-        setCustomizations(parsed[templateId] || null);
+        const templateCustomizations = parsed[templateId] || null;
+        // Clean up any invalid overrides on load
+        setCustomizations(templateCustomizations ? cleanupInvalidOverrides(templateCustomizations) : null);
       }
     } catch (err) {
       console.error("Failed to load prompt customizations:", err);
@@ -101,7 +147,8 @@ export function usePromptCustomization(templateId: string): UsePromptCustomizati
       if (stored) {
         const parsed = JSON.parse(stored) as Record<string, PromptCustomization>;
         if (parsed[templateId]) {
-          setCustomizations(parsed[templateId]);
+          // Clean up any invalid overrides on load
+          setCustomizations(cleanupInvalidOverrides(parsed[templateId]));
         }
       }
     } catch (err) {
