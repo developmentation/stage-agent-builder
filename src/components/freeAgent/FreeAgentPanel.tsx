@@ -101,7 +101,7 @@ export function FreeAgentPanel({
   const [prompt, setPrompt] = useState("");
   const [files, setFiles] = useState<SessionFile[]>([]);
   // Preserve model selection - use session model if available, otherwise keep last selection
-  const [selectedModel, setSelectedModel] = useState(() => session?.model || "gemini-2.5-flash");
+  const [selectedModel, setSelectedModel] = useState(() => session?.model || "claude-sonnet-4-5");
   const [maxIterations, setMaxIterations] = useState(() => session?.maxIterations || 50);
   const [interjectModalOpen, setInterjectModalOpen] = useState(false);
   const [enhanceModalOpen, setEnhanceModalOpen] = useState(false);
