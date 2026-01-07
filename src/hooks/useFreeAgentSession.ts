@@ -860,32 +860,43 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
       
       console.log(`[Child:${child.name}] Starting execution with max ${child.maxIterations} iterations`);
       
-      // Build child's promptData by injecting task into identity section
+      // Build child's promptData by substituting the user_task section with child-specific task and rules
+      // This keeps the identity section clean and uses the proper task section
       const childPromptData: PromptDataPayload | undefined = parentPromptData ? {
         toolOverrides: parentPromptData.toolOverrides,
         disabledTools: parentPromptData.disabledTools,
         sections: parentPromptData.sections.map(section => {
-          if (section.id === 'identity') {
-            // Prepend task to identity section
+          if (section.id === 'user_task') {
+            // Substitute the entire user_task section with child-specific content
             return {
               ...section,
-              content: `## CHILD AGENT: ${child.name}
+              content: `## CHILD AGENT TASK: ${child.name}
 
-**YOUR SPECIFIC TASK:**
+<child-task>
 ${child.task}
+</child-task>
 
----
+### ⚠️ CHILD AGENT CRITICAL RULES:
 
-${section.content}
+**1. PROGRESS TRACKING (MANDATORY):**
+- Write "✅ COMPLETED: [item]" in blackboard for EACH item you finish
+- Check PREVIOUS ITERATION RESULTS - if tool SUCCEEDED, the data is SAVED
+- If you see "saveAs" confirmation, DON'T re-fetch - MOVE ON to next item
 
----
+**2. LOOP PREVENTION:**
+- Before calling a tool, check: "Did I already call this with these params?"
+- If your last 2 blackboard entries are nearly identical, YOU ARE LOOPING
+- If looping: Check your scratchpad/attributes - data may already be there
 
-**IMPORTANT CHILD AGENT RULES:**
-1. You are a child agent spawned to complete ONE specific task
-2. Focus ONLY on your assigned task - do not deviate
-3. Write your findings to the scratchpad clearly with your name prefix
-4. Complete as quickly as possible - the orchestrator is waiting
-5. Set status to "completed" when done, or "error" if you cannot complete`,
+**3. COMPLETION CRITERIA:**
+- When ALL items in your task are done, set status to "completed"
+- Include final_report with summary of what you collected
+- Write consolidated findings to scratchpad with [${child.name}] prefix
+
+**4. EFFICIENCY:**
+- You have MAX ${child.maxIterations} iterations - work quickly
+- Each successful tool call auto-saves results as an attribute
+- Use read_attribute to verify data was saved before re-fetching`,
             };
           }
           return section;
@@ -1021,7 +1032,10 @@ ${section.content}
               childAttributes[autoName] = attribute;
               console.log(`[Child:${child.name}] Attribute auto-saved: ${autoName} (${resultString.length} chars)`);
               
-              const scratchpadEntry = `\n\n## ${autoName} (from ${result.tool})\nData stored in attribute (${resultString.length} chars).\nAccess via: read_attribute({ names: ['${autoName}'] })\n\n**TODO: Summarize key findings here.**`;
+              // Enhanced scratchpad entry with explicit completion marker and key params
+              const keyParamValue = toolCall.params?.location || toolCall.params?.query || toolCall.params?.url || '';
+              const keyParamDisplay = keyParamValue ? ` for "${keyParamValue}"` : '';
+              const scratchpadEntry = `\n\n## ✅ COMPLETED: ${autoName}${keyParamDisplay}\n**Tool:** ${result.tool}\n**Size:** ${resultString.length} chars\n**Status:** Data saved to attribute. Access via: read_attribute({ names: ['${autoName}'] })\n`;
               childScratchpad = childScratchpad + scratchpadEntry;
             }
           }
@@ -1148,6 +1162,46 @@ ${section.content}
                 tool: handler.tool,
                 success: true,
                 result: { handled: false },
+              });
+            }
+          }
+          
+          // CHILD LOOP DETECTION: Check for repetitive blackboard patterns
+          // If last 2+ entries are nearly identical, inject a warning into tool results
+          if (childBlackboard.length >= 2) {
+            const recentEntries = childBlackboard.slice(-3);
+            const normalizedContents = recentEntries.map(e => 
+              e.content.toLowerCase().replace(/step\s*\d+:?/gi, '').replace(/\s+/g, ' ').trim()
+            );
+            
+            // Check if the last 2 entries are nearly identical
+            const lastTwo = normalizedContents.slice(-2);
+            const isDuplicate = lastTwo.length === 2 && lastTwo[0] === lastTwo[1];
+            
+            // Also check for repeated "NEXT:" patterns with same target
+            const nextMatches = recentEntries.map(e => {
+              const match = e.content.match(/NEXT:\s*([^.]+)/i);
+              return match ? match[1].toLowerCase().trim() : '';
+            }).filter(n => n);
+            const hasRepeatedNext = nextMatches.length >= 2 && 
+              nextMatches[nextMatches.length - 1] === nextMatches[nextMatches.length - 2];
+            
+            if (isDuplicate || hasRepeatedNext) {
+              console.warn(`[Child:${child.name}] LOOP DETECTED at iteration ${childIteration}! Injecting warning.`);
+              
+              // List what attributes are already saved
+              const savedAttributesList = Object.keys(childAttributes).join(', ') || 'none';
+              
+              iterationToolResults.unshift({
+                tool: '_system_loop_warning',
+                success: true,
+                result: {
+                  warning: '⚠️ LOOP DETECTED - YOU ARE REPEATING THE SAME ACTION!',
+                  message: 'Your last blackboard entries are nearly identical. CHECK YOUR PROGRESS:',
+                  savedAttributes: savedAttributesList,
+                  scratchpadMarkers: childScratchpad.match(/## ✅ COMPLETED:/g)?.length || 0,
+                  action: 'If the data you need is already in savedAttributes above, MOVE ON to the next item or set status to "completed" if done.',
+                },
               });
             }
           }

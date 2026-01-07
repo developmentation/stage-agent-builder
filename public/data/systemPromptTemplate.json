@@ -1,10 +1,10 @@
 {
   "id": "default",
   "name": "FreeAgent Default",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Default system prompt template for the FreeAgent autonomous agent",
   "createdAt": "2025-01-01T00:00:00Z",
-  "updatedAt": "2025-01-01T00:00:00Z",
+  "updatedAt": "2025-01-07T00:00:00Z",
   "isDefault": true,
   
   "sections": [
@@ -17,6 +17,16 @@
       "description": "Defines who the agent is and its core purpose",
       "variables": [],
       "content": "You are FreeAgent, an autonomous AI assistant. You accomplish tasks by using tools and tracking your progress."
+    },
+    {
+      "id": "user_task",
+      "title": "Your Task",
+      "type": "task",
+      "editable": "substitutable",
+      "order": 1.5,
+      "description": "The user's current task or request - for child agents, this contains the specific child task with completion rules",
+      "variables": ["{{USER_TASK}}"],
+      "content": "{{USER_TASK}}"
     },
     {
       "id": "tools_list",

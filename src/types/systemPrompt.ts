@@ -3,6 +3,7 @@
 
 export type PromptSectionType = 
   | 'identity'           // Agent name/role
+  | 'task'               // User's task or child agent task
   | 'tools'              // Available tools list
   | 'memory'             // Memory architecture instructions
   | 'workflow'           // Correct workflow patterns
@@ -13,7 +14,7 @@ export type PromptSectionType =
   | 'dynamic'            // Dynamic content (blackboard, files, etc.)
   | 'custom';            // User-added sections
 
-export type EditableStatus = 'readonly' | 'editable' | 'dynamic';
+export type EditableStatus = 'readonly' | 'editable' | 'dynamic' | 'substitutable';
 
 export interface PromptSection {
   id: string;

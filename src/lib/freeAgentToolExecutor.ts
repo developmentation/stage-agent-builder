@@ -677,13 +677,13 @@ async function executeReadSelf(
 
 // Valid template section IDs that can be overridden
 const VALID_TEMPLATE_SECTION_IDS = new Set([
-  'identity', 'tools_list', 'session_files', 'configured_secrets', 
+  'identity', 'user_task', 'tools_list', 'session_files', 'configured_secrets', 
   'blackboard', 'scratchpad', 'previous_results', 'iteration_info',
-  'memory_architecture', 'correct_workflow', 'loop_problem', 
+  'memory_architecture', 'memory_persistence', 'correct_workflow', 'loop_problem', 
   'anti_loop_rules', 'loop_self_reflection', 'tool_execution_timing',
   'response_format', 'blackboard_mandatory', 'data_handling', 
   'workflow_summary', 'accessing_attributes', 'reference_resolution',
-  'self_author', 'spawn_capabilities'
+  'self_author', 'spawn_capabilities', 'artifacts_list'
 ]);
 
 // Write/modify the agent's own prompt configuration
