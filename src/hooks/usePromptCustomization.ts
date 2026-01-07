@@ -11,7 +11,7 @@ const STORAGE_KEY = "freeagent-prompt-customizations";
 
 // Valid template section IDs - must match the set in freeAgentToolExecutor.ts
 const VALID_TEMPLATE_SECTION_IDS = new Set([
-  'identity', 'tools_list', 'session_files', 'configured_secrets', 
+  'identity', 'user_task', 'tools_list', 'session_files', 'configured_secrets', 
   'blackboard', 'scratchpad', 'previous_results', 'iteration_info',
   'memory_architecture', 'memory_persistence', 'correct_workflow', 'loop_problem', 
   'anti_loop_rules', 'loop_self_reflection', 'tool_execution_timing',

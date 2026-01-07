@@ -1039,6 +1039,8 @@ function buildSystemPromptDynamic(
   }
   
   // Build runtime variable map
+  // Note: {{USER_TASK}} is NOT populated here - it's handled specially for parent (empty) vs child (task content)
+  // The frontend substitutes the user_task section entirely for children with their specific task content
   const runtimeVars: Record<string, string> = {
     '{{TOOLS_LIST}}': formatToolsList(promptData.toolOverrides, promptData.disabledTools, advancedFeatures),
     '{{SESSION_FILES}}': formatSessionFiles(sessionFiles),
@@ -1049,6 +1051,9 @@ function buildSystemPromptDynamic(
     '{{CURRENT_ITERATION}}': String(iteration),
     '{{ARTIFACTS_LIST}}': formatArtifactsList(artifacts),
     '{{ASSISTANCE_RESPONSE}}': formatAssistanceResponse(assistanceResponse),
+    // USER_TASK is empty by default for parent - the actual task comes from the user message
+    // For child agents, the frontend substitutes the entire user_task section with child-specific content
+    '{{USER_TASK}}': '',
     // Advanced feature sections - only populated when enabled
     '{{SELF_AUTHOR}}': advancedFeatures?.selfAuthorEnabled ? `
 ## ⚠️ SELF-AUTHOR CAPABILITIES (EXPERIMENTAL)
