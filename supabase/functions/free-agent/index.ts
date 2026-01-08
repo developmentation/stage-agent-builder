@@ -707,7 +707,8 @@ async function executeTool(
   params: Record<string, unknown>,
   supabaseUrl: string,
   supabaseKey: string,
-  secretOverrides?: Record<string, { params?: Record<string, unknown>; headers?: Record<string, string> }>
+  secretOverrides?: Record<string, { params?: Record<string, unknown>; headers?: Record<string, string> }>,
+  validToolNames?: Set<string>
 ): Promise<{ success: boolean; result?: unknown; error?: string }> {
   const toolMap: Record<string, string> = {
     get_time: "time",
@@ -745,7 +746,15 @@ async function executeTool(
   const edgeFunction = toolMap[baseToolName];
   
   if (!edgeFunction) {
-    return { success: true, result: { frontend_handler: true, tool: toolName, params } };
+    // Check if it's a valid frontend-handled tool from the manifest
+    if (validToolNames && validToolNames.has(baseToolName)) {
+      return { success: true, result: { frontend_handler: true, tool: toolName, params } };
+    }
+    // Unknown tool - not in manifest at all
+    return { 
+      success: false, 
+      error: `Unknown tool "${toolName}". This tool does not exist.`
+    };
   }
 
   try {
@@ -1137,6 +1146,11 @@ serve(async (req) => {
     const toolResults: Array<{ tool: string; params?: Record<string, unknown>; success: boolean; result?: unknown; error?: string }> = [];
     const frontendHandlers: Array<{ tool: string; params: Record<string, unknown> }> = [];
 
+    // Build valid tool names from the manifest
+    const validToolNames = new Set(
+      (promptData.toolDefinitions || []).map((t: { id?: string; name?: string }) => t.id || t.name).filter((n): n is string => !!n)
+    );
+
     for (const toolCall of agentResponse.tool_calls || []) {
       const resolvedParams = resolveReferences(toolCall.params, resolverContext) as Record<string, unknown>;
       
@@ -1144,7 +1158,7 @@ serve(async (req) => {
         console.log(`[Reference Resolution] ${toolCall.tool}: params were resolved from placeholders`);
       }
       
-      const result = await executeTool(toolCall.tool, resolvedParams, supabaseUrl, supabaseKey, secretOverrides);
+      const result = await executeTool(toolCall.tool, resolvedParams, supabaseUrl, supabaseKey, secretOverrides, validToolNames);
 
       if ((result.result as Record<string, unknown>)?.frontend_handler) {
         frontendHandlers.push({ tool: toolCall.tool, params: resolvedParams });
