@@ -59,6 +59,26 @@ import { ToolInstancesTab } from "./ToolInstancesTab";
 import { safeStringify } from "@/lib/safeRender";
 import type { SecretsManager } from "@/hooks/useSecretsManager";
 import type { ToolInstancesManager } from "@/hooks/useToolInstances";
+import { extractTextFromFile } from "@/utils/fileTextExtraction";
+import { parseExcelFile, type ExcelData } from "@/utils/parseExcel";
+import { ExcelSelector } from "@/components/ExcelSelector";
+
+// Text-based file extensions that can be read as plain text
+const TEXT_EXTENSIONS = [
+  'txt', 'md', 'markdown', 'json', 'xml', 'csv', 'yaml', 'yml', 'toml',
+  'js', 'jsx', 'ts', 'tsx', 'vue', 'svelte', 'html', 'css', 'scss', 'sass', 'less',
+  'py', 'java', 'c', 'cpp', 'h', 'hpp', 'cs', 'go', 'rs', 'php', 'rb', 'swift', 'kt',
+  'sql', 'sh', 'bash', 'zsh', 'fish', 'ps1', 'bat', 'cmd',
+  'log', 'env', 'ini', 'conf', 'config', 'gitignore', 'dockerfile'
+];
+
+const getFileType = (filename: string): 'excel' | 'document' | 'text' | 'binary' => {
+  const ext = filename.toLowerCase().split('.').pop();
+  if (ext === 'xlsx' || ext === 'xls') return 'excel';
+  if (ext === 'pdf' || ext === 'docx') return 'document';
+  if (ext && TEXT_EXTENSIONS.includes(ext)) return 'text';
+  return 'binary';
+};
 
 // Available models - Claude first, then Google, then Grok
 const MODEL_OPTIONS = [
@@ -116,6 +136,11 @@ export function FreeAgentPanel({
   const [controlTab, setControlTab] = useState<'task' | 'secrets' | 'instances' | 'advanced'>('task');
   const fileInputRef = useRef<HTMLInputElement>(null);
   
+  // Excel file handling state
+  const [excelData, setExcelData] = useState<ExcelData | null>(null);
+  const [excelQueue, setExcelQueue] = useState<File[]>([]);
+  const [isProcessingFiles, setIsProcessingFiles] = useState(false);
+  
   // Advanced features state
   const [selfAuthorEnabled, setSelfAuthorEnabled] = useState(false);
   const [spawnEnabled, setSpawnEnabled] = useState(false);
@@ -140,39 +165,148 @@ export function FreeAgentPanel({
     const uploadedFiles = e.target.files;
     if (!uploadedFiles) return;
 
+    setIsProcessingFiles(true);
     const newFiles: SessionFile[] = [];
+    const excelFilesQueue: File[] = [];
 
     for (const file of Array.from(uploadedFiles)) {
-      const content = await readFileAsBase64OrText(file);
-      newFiles.push({
-        id: crypto.randomUUID(),
-        filename: file.name,
-        mimeType: file.type || "application/octet-stream",
-        size: file.size,
-        content,
-        uploadedAt: new Date().toISOString(),
-      });
+      const fileType = getFileType(file.name);
+      
+      try {
+        if (fileType === 'excel') {
+          // Queue Excel files for interactive selection
+          excelFilesQueue.push(file);
+        } else if (fileType === 'document') {
+          // Extract text from PDF/DOCX
+          const extracted = await extractTextFromFile(file);
+          newFiles.push({
+            id: crypto.randomUUID(),
+            filename: file.name,
+            mimeType: 'text/plain',
+            size: extracted.content.length,
+            content: extracted.content,
+            uploadedAt: new Date().toISOString(),
+          });
+          toast.success(`Extracted text from ${file.name}`);
+        } else if (fileType === 'text') {
+          // Read as plain text
+          const content = await readFileAsText(file);
+          newFiles.push({
+            id: crypto.randomUUID(),
+            filename: file.name,
+            mimeType: file.type || 'text/plain',
+            size: file.size,
+            content,
+            uploadedAt: new Date().toISOString(),
+          });
+        } else {
+          // Binary files - read as base64
+          const content = await readFileAsBase64(file);
+          newFiles.push({
+            id: crypto.randomUUID(),
+            filename: file.name,
+            mimeType: file.type || 'application/octet-stream',
+            size: file.size,
+            content,
+            uploadedAt: new Date().toISOString(),
+          });
+        }
+      } catch (error) {
+        console.error(`Error processing ${file.name}:`, error);
+        toast.error(`Failed to process ${file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
     }
 
     setFiles((prev) => [...prev, ...newFiles]);
+    setIsProcessingFiles(false);
+    
+    // Process Excel files queue
+    if (excelFilesQueue.length > 0) {
+      setExcelQueue(excelFilesQueue);
+      processNextExcel(excelFilesQueue);
+    }
+    
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
   };
 
-  const readFileAsBase64OrText = (file: File): Promise<string> => {
+  const processNextExcel = async (queue: File[]) => {
+    if (queue.length === 0) {
+      setExcelData(null);
+      setExcelQueue([]);
+      return;
+    }
+    
+    const file = queue[0];
+    try {
+      const parsed = await parseExcelFile(file);
+      setExcelData(parsed);
+    } catch (error) {
+      console.error(`Error parsing ${file.name}:`, error);
+      toast.error(`Failed to parse ${file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      // Move to next file
+      const remaining = queue.slice(1);
+      setExcelQueue(remaining);
+      processNextExcel(remaining);
+    }
+  };
+
+  const handleExcelSelect = (data: {
+    fileName: string;
+    selectedData: Array<{
+      sheetName: string;
+      headers: string[];
+      selectedRows: Record<string, any>[];
+    }>;
+    formattedContent: string;
+    totalRows: number;
+  }) => {
+    // Create session file with the pre-formatted content
+    const newFile: SessionFile = {
+      id: crypto.randomUUID(),
+      filename: data.fileName,
+      mimeType: 'application/json',
+      size: data.formattedContent.length,
+      content: data.formattedContent,
+      uploadedAt: new Date().toISOString(),
+    };
+    
+    setFiles((prev) => [...prev, newFile]);
+    toast.success(`Added ${data.fileName} with ${data.totalRows} rows`);
+    
+    // Process next Excel file in queue
+    const remaining = excelQueue.slice(1);
+    setExcelQueue(remaining);
+    processNextExcel(remaining);
+  };
+
+  const handleExcelClose = () => {
+    // Skip current file and process next
+    const remaining = excelQueue.slice(1);
+    setExcelQueue(remaining);
+    processNextExcel(remaining);
+  };
+
+  const readFileAsText = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsText(file);
+    });
+  };
 
-      if (file.type.startsWith("text/") || file.type.includes("json") || file.type.includes("xml")) {
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsText(file);
-      } else {
-        reader.onload = () => {
-          const base64 = (reader.result as string).split(",")[1];
-          resolve(base64);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      }
+  const readFileAsBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const base64 = (reader.result as string).split(",")[1];
+        resolve(base64);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
     });
   };
 
@@ -767,6 +901,15 @@ export function FreeAgentPanel({
           toolsManifest={toolsManifest}
           toolInstancesManager={toolInstancesManager}
         />
+
+        {/* Excel Selector Modal */}
+        {excelData && (
+          <ExcelSelector
+            excelData={excelData}
+            onClose={handleExcelClose}
+            onSelect={handleExcelSelect}
+          />
+        )}
       </CardContent>
     </Card>
   );
