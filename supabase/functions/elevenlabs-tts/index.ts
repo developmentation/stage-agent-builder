@@ -15,9 +15,12 @@ serve(async (req) => {
 
   try {
     const { text, voice_id, model_id = 'eleven_multilingual_v2' } = await req.json();
+    
+    // Default voice if not provided
+    const voiceId = voice_id || 'FyYFoP6qNryBV7G8rnI9';
 
-    if (!text || !voice_id) {
-      throw new Error('Text and voice_id are required');
+    if (!text) {
+      throw new Error('Text is required');
     }
 
     const elevenlabsApiKey = Deno.env.get('ELEVENLABS_API_KEY');
@@ -25,10 +28,10 @@ serve(async (req) => {
       throw new Error('ELEVENLABS_API_KEY is not configured');
     }
 
-    console.log(`🎤 Generating speech for voice ${voice_id} with model ${model_id}`);
+    console.log(`🎤 Generating speech for voice ${voiceId} with model ${model_id}`);
 
     // Call ElevenLabs API for text-to-speech (non-streaming to get full audio)
-    const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voice_id}`, {
+    const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`, {
       method: 'POST',
       headers: {
         'Accept': 'audio/mpeg',
