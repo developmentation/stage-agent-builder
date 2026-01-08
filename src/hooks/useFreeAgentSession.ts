@@ -999,10 +999,9 @@ ${child.task}
             };
             childToolCalls.push(toolCall);
             
-            // Highlight tool usage on canvas
+            // Highlight tool usage on canvas - don't deactivate to prevent flickering
             if (onToolActive) {
               onToolActive(result.tool, true);
-              setTimeout(() => onToolActive(result.tool, false), 1000);
             }
             
             // Auto-save ALL successful tool results from AUTO_SAVE_TOOLS for children
@@ -1244,8 +1243,8 @@ ${child.task}
             return;
           }
           
-          // Small delay between iterations
-          await new Promise(resolve => setTimeout(resolve, 300));
+          // Small delay between iterations - minimal for responsiveness
+          await new Promise(resolve => setTimeout(resolve, 50));
           
         } catch (err) {
           console.error(`[Child:${child.name}] Exception at iteration ${childIteration}:`, err);
@@ -1388,6 +1387,9 @@ ${child.task}
             artifacts: [],
             toolResultAttributes: { ...spawnRequest.parentAttributes }, // Inherit parent's attributes
           }));
+          
+          // Keep spawn tool active while children are running
+          setActiveToolIds((prev) => new Set([...prev, 'spawn']));
           
           // Set orchestrator to 'waiting' status
           updateSession((prev) => prev ? {
@@ -1546,6 +1548,13 @@ ${child.task}
           
           console.log('[Spawn] All children completed. Resuming orchestrator.');
           
+          // Clear spawn from active tools now that children are done
+          setActiveToolIds((prev) => {
+            const next = new Set(prev);
+            next.delete('spawn');
+            return next;
+          });
+          
           shouldContinue = true;
           lastToolResults = [{
             tool: 'spawn',
@@ -1557,16 +1566,16 @@ ${child.task}
             },
           }];
           
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise(resolve => setTimeout(resolve, 100));
           continue;
         }
         
         shouldContinue = result.continue;
         lastToolResults = result.toolResults;
         
-        // Small delay between iterations
+        // Small delay between iterations - reduced for faster execution
         if (shouldContinue && !shouldStopRef.current) {
-          await new Promise((resolve) => setTimeout(resolve, 500));
+          await new Promise((resolve) => setTimeout(resolve, 100));
         }
       }
     },
