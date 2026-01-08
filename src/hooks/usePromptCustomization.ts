@@ -9,15 +9,19 @@ import type {
 
 const STORAGE_KEY = "freeagent-prompt-customizations";
 
-// Valid template section IDs - must match the set in freeAgentToolExecutor.ts
+// Valid template section IDs - must match the consolidated template v1.1.0
 const VALID_TEMPLATE_SECTION_IDS = new Set([
-  'identity', 'user_task', 'tools_list', 'session_files', 'configured_secrets', 
-  'blackboard', 'scratchpad', 'previous_results', 'iteration_info',
-  'memory_architecture', 'memory_persistence', 'correct_workflow', 'loop_problem', 
-  'anti_loop_rules', 'loop_self_reflection', 'tool_execution_timing',
-  'response_format', 'blackboard_mandatory', 'data_handling', 
-  'workflow_summary', 'accessing_attributes', 'reference_resolution',
-  'self_author', 'spawn_capabilities', 'artifacts_list'
+  'identity', 'user_task', 'tools_list', 
+  'memory_system', 'workflow', 'loop_prevention', 
+  'tool_execution_timing', 'data_handling', 'reference_resolution', 'response_format',
+  'session_files', 'configured_secrets', 'blackboard', 'scratchpad', 
+  'previous_results', 'artifacts_list',
+  'self_author', 'spawn_capabilities',
+  // Legacy IDs for backward compatibility with existing customizations
+  'memory_architecture', 'memory_persistence', 'accessing_attributes',
+  'correct_workflow', 'workflow_summary',
+  'loop_problem', 'anti_loop_rules', 'loop_self_reflection',
+  'blackboard_mandatory', 'iteration_info'
 ]);
 
 // Filter out invalid section overrides that don't correspond to valid sections or custom sections
