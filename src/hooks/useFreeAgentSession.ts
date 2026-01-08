@@ -855,6 +855,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
       let childToolCalls = [...child.toolCalls];
       let childArtifacts = [...child.artifacts];
       let childAttributes: Record<string, ToolResultAttribute> = { ...child.toolResultAttributes };
+      let childRawData: RawIterationData[] = [...(child.rawData || [])];
       
       console.log(`[Child:${child.name}] Starting execution with max ${child.maxIterations} iterations`);
       
@@ -914,6 +915,7 @@ ${child.task}
           toolCalls: childToolCalls,
           artifacts: childArtifacts,
           toolResultAttributes: childAttributes,
+          rawData: childRawData,
         };
         onUpdate(updatedChild);
         
@@ -979,6 +981,33 @@ ${child.task}
           }
           
           const response = data.response as AgentResponse;
+          
+          // Capture raw iteration data for debugging
+          childRawData.push({
+            iteration: childIteration,
+            timestamp: new Date().toISOString(),
+            input: {
+              model: parentSession.model || 'unknown',
+              userPrompt: child.task,
+              systemPrompt: data.debugInfo?.fullPromptPreview || '',
+              fullPromptSent: data.debugInfo?.fullPromptSent || '',
+              scratchpadLength: childScratchpad.length,
+              blackboardEntries: childBlackboard.length,
+              previousResultsCount: lastToolResults.length,
+            },
+            output: {
+              rawLLMResponse: data.debugInfo?.rawLLMResponse || JSON.stringify(data.parsed || response),
+              parsedResponse: data.parsed || response,
+              parseError: data.parseError,
+              errorMessage: data.error,
+            },
+            toolResults: (data.toolResults || []).map((tr: ToolResult) => ({
+              tool: tr.tool,
+              success: tr.success,
+              result: tr.result,
+              error: tr.error,
+            })),
+          });
           
           // Process tool calls first to get tool names for blackboard
           const iterationToolResults: ToolResult[] = [];
@@ -1228,6 +1257,7 @@ ${child.task}
               toolCalls: childToolCalls,
               artifacts: childArtifacts,
               toolResultAttributes: childAttributes,
+              rawData: childRawData,
             };
             onUpdate(finalChild);
             return;
@@ -1246,6 +1276,7 @@ ${child.task}
               toolCalls: childToolCalls,
               artifacts: childArtifacts,
               toolResultAttributes: childAttributes,
+              rawData: childRawData,
               error: response.message_to_user || 'Child agent encountered an error',
             };
             onUpdate(errorChild);
@@ -1279,6 +1310,7 @@ ${child.task}
         toolCalls: childToolCalls,
         artifacts: childArtifacts,
         toolResultAttributes: childAttributes,
+        rawData: childRawData,
       };
       onUpdate(finalChild);
     },
@@ -1395,6 +1427,7 @@ ${child.task}
             toolCalls: [],
             artifacts: [],
             toolResultAttributes: { ...spawnRequest.parentAttributes }, // Inherit parent's attributes
+            rawData: [],
           }));
           
           // Keep spawn tool active while children are running
