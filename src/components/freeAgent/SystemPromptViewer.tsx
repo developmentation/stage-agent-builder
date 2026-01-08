@@ -171,12 +171,14 @@ const toolIconMap: Record<string, React.ReactNode> = {
 const editableColors: Record<string, string> = {
   readonly: "bg-muted text-muted-foreground",
   editable: "bg-primary/10 text-primary border-primary/30",
+  substitutable: "bg-primary/10 text-primary border-primary/30",
   dynamic: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30",
 };
 
 const editableLabels: Record<string, string> = {
   readonly: "System",
   editable: "Customizable",
+  substitutable: "Customizable",
   dynamic: "Runtime",
 };
 
@@ -1049,8 +1051,9 @@ export function SystemPromptViewer({ onClose, configuredParams = [], promptCusto
     id => !isSectionDisabled(id) && !customSectionIds.has(id)
   ).length;
   
+  // Count 'substitutable' as editable since users can modify it
   const editableCounts = {
-    editable: template.sections.filter(s => s.editable === 'editable').length,
+    editable: template.sections.filter(s => s.editable === 'editable' || s.editable === 'substitutable').length,
     readonly: template.sections.filter(s => s.editable === 'readonly').length,
     dynamic: template.sections.filter(s => s.editable === 'dynamic').length,
     customized: visibleCustomizedCount,
