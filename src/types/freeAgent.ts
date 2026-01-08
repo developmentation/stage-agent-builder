@@ -154,7 +154,11 @@ export interface RawIterationData {
     } | null;
     errorMessage?: string;
   };
-  toolResults: ToolResult[];
+  toolResults: ToolResult[];       // Tool results from PREVIOUS iteration (passed as context)
+  toolCalls?: Array<{              // Tool calls LLM REQUESTED in this iteration
+    tool: string;
+    params: Record<string, unknown>;
+  }>;
 }
 
 // Final report when task completes
