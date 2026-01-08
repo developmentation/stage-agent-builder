@@ -48,6 +48,15 @@ interface FreeAgentRequest {
     maxChildren?: number;
     childMaxIterations?: number;
   };
+  // Tool instances for per-instance configuration
+  toolInstances?: Array<{
+    id: string;
+    baseToolId: string;
+    instanceName: string;
+    fullToolId: string;
+    label: string;
+    description: string;
+  }>;
 }
 
 // ============================================================================
@@ -725,10 +734,12 @@ If you called a tool with saveAs (e.g., brave_search with saveAs: "weather_data"
 // ============================================================================
 
 // Format tools list with optional custom descriptions and filtering disabled tools
+// Now supports tool instances - when instances exist for a tool, show instances instead of global
 function formatToolsList(
   toolOverrides?: Record<string, { description?: string; disabled?: boolean }>,
   disabledTools?: string[],
-  advancedFeatures?: FreeAgentRequest['advancedFeatures']
+  advancedFeatures?: FreeAgentRequest['advancedFeatures'],
+  toolInstances?: FreeAgentRequest['toolInstances']
 ): string {
   // Build a set of disabled tool IDs from both sources
   const disabledSet = new Set(disabledTools || []);
@@ -739,6 +750,20 @@ function formatToolsList(
         disabledSet.add(toolId);
       }
     }
+  }
+  
+  // Build a map of base tools that have instances
+  const toolsWithInstances = new Set<string>();
+  const instancesByBaseTool: Record<string, typeof toolInstances> = {};
+  if (toolInstances && toolInstances.length > 0) {
+    for (const instance of toolInstances) {
+      toolsWithInstances.add(instance.baseToolId);
+      if (!instancesByBaseTool[instance.baseToolId]) {
+        instancesByBaseTool[instance.baseToolId] = [];
+      }
+      instancesByBaseTool[instance.baseToolId]!.push(instance);
+    }
+    console.log(`[formatToolsList] ${toolInstances.length} tool instances found for ${toolsWithInstances.size} base tools`);
   }
   
   const allTools = [
@@ -823,10 +848,31 @@ function formatToolsList(
     if (categoryTools.length === 0) continue;
     output += `## ${category} Tools\n`;
     for (const tool of categoryTools) {
-      const desc = toolOverrides?.[tool.id]?.description || tool.defaultDesc;
-      output += `- ${tool.id}: ${desc} (params: ${tool.params})\n`;
+      // Check if this tool has instances
+      if (toolsWithInstances.has(tool.id)) {
+        // Show instances instead of the global tool
+        const instances = instancesByBaseTool[tool.id] || [];
+        for (const instance of instances) {
+          const instanceDesc = toolOverrides?.[instance.fullToolId]?.description || 
+            `${tool.defaultDesc} - ${instance.description}`;
+          output += `- ${instance.fullToolId}: [${instance.label}] ${instanceDesc} (params: ${tool.params})\n`;
+        }
+      } else {
+        // Show global tool as normal
+        const desc = toolOverrides?.[tool.id]?.description || tool.defaultDesc;
+        output += `- ${tool.id}: ${desc} (params: ${tool.params})\n`;
+      }
     }
     output += "\n";
+  }
+
+  // Add tool instances section if there are any
+  if (toolInstances && toolInstances.length > 0) {
+    output += `## 🔧 TOOL INSTANCES
+Some tools have been configured with specific instances. Use the EXACT instance name (e.g., "execute_sql:policies_database") when calling these tools.
+The appropriate credentials will be injected automatically based on the instance configuration.
+
+`;
   }
 
   // Add the saveAs explanation
@@ -1031,7 +1077,8 @@ function buildSystemPromptDynamic(
   assistanceResponse?: { response?: string; fileId?: string; selectedChoice?: string },
   configuredParams?: Array<{ tool: string; param: string }>,
   promptData?: FreeAgentRequest['promptData'],
-  advancedFeatures?: FreeAgentRequest['advancedFeatures']
+  advancedFeatures?: FreeAgentRequest['advancedFeatures'],
+  toolInstances?: FreeAgentRequest['toolInstances']
 ): string {
   // REQUIRE promptData - no hardcoded fallback
   if (!promptData || !promptData.sections || promptData.sections.length === 0) {
@@ -1042,7 +1089,7 @@ function buildSystemPromptDynamic(
   // Note: {{USER_TASK}} is NOT populated here - it's handled specially for parent (empty) vs child (task content)
   // The frontend substitutes the user_task section entirely for children with their specific task content
   const runtimeVars: Record<string, string> = {
-    '{{TOOLS_LIST}}': formatToolsList(promptData.toolOverrides, promptData.disabledTools, advancedFeatures),
+    '{{TOOLS_LIST}}': formatToolsList(promptData.toolOverrides, promptData.disabledTools, advancedFeatures, toolInstances),
     '{{SESSION_FILES}}': formatSessionFiles(sessionFiles),
     '{{CONFIGURED_PARAMS}}': formatConfiguredParams(configuredParams),
     '{{BLACKBOARD_CONTENT}}': formatBlackboard(blackboard),
@@ -1205,7 +1252,17 @@ async function executeTool(
     ocr_image: "tool_ocr-handler",
   };
 
-  const edgeFunction = toolMap[toolName];
+  // Parse tool instance format: "baseTool:instanceName" -> extract base tool and use full ID for secret lookup
+  let baseToolName = toolName;
+  let secretLookupKey = toolName;
+  if (toolName.includes(':')) {
+    const parts = toolName.split(':');
+    baseToolName = parts[0]; // e.g., "execute_sql"
+    secretLookupKey = toolName; // Keep full ID for secret lookup, e.g., "execute_sql:policies_database"
+    console.log(`[Tool Instance] Using base tool "${baseToolName}" with secrets from "${secretLookupKey}"`);
+  }
+
+  const edgeFunction = toolMap[baseToolName];
   
   if (!edgeFunction) {
     // Frontend handler tools - return marker for frontend to handle
@@ -1218,8 +1275,11 @@ async function executeTool(
   try {
     let body = { ...params };
     
-    // Apply secret overrides for this tool (merge with user-defined values taking precedence)
-    const toolSecrets = secretOverrides?.[toolName];
+    // Apply secret overrides - first try instance-specific (fullToolId), then fall back to base tool
+    const instanceSecrets = secretOverrides?.[secretLookupKey];
+    const baseSecrets = secretOverrides?.[baseToolName];
+    const toolSecrets = instanceSecrets || baseSecrets;
+    
     if (toolSecrets?.params) {
       // Deep merge params with secret values overriding LLM values
       for (const [key, value] of Object.entries(toolSecrets.params)) {
@@ -1553,6 +1613,7 @@ serve(async (req) => {
       artifacts = [],
       promptData,
       advancedFeatures,
+      toolInstances,
     } = request || {};
 
     // Build resolver context for reference resolution in tool params
@@ -1593,7 +1654,8 @@ serve(async (req) => {
         assistanceResponse,
         configuredParams,
         promptData,
-        advancedFeatures
+        advancedFeatures,
+        toolInstances
       );
     } else {
       console.log(`Using legacy hardcoded system prompt (no promptData provided)`);

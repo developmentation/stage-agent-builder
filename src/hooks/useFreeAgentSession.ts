@@ -319,6 +319,8 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
             promptData: currentSession.promptData,
             // Pass advanced features flags
             advancedFeatures: currentSession.advancedFeatures,
+            // Pass tool instances for per-instance configuration
+            toolInstances: currentSession.toolInstances,
           },
         });
 
@@ -1587,7 +1589,8 @@ ${child.task}
       promptData?: PromptDataPayload,
       advancedFeatures?: AdvancedFeatures,
       promptCustomization?: PromptCustomization | null,
-      onPromptCustomizationChange?: () => void
+      onPromptCustomizationChange?: () => void,
+      toolInstances?: FreeAgentSession['toolInstances']
     ) => {
       try {
         setIsRunning(true);
@@ -1638,6 +1641,8 @@ ${child.task}
           promptData: promptData || existingSession?.promptData,
           // Include advanced features
           advancedFeatures: advancedFeatures || existingSession?.advancedFeatures,
+          // Include tool instances
+          toolInstances: toolInstances || existingSession?.toolInstances,
         };
 
         // Initialize refs with session memory

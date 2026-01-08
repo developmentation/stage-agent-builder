@@ -89,9 +89,13 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
     // Use promptCustomization directly (not from closure) to get latest values
     const promptData = await buildPromptData(promptCustomization);
     
+    // Get tool instances for the session
+    const toolInstances = toolInstancesManager.instances;
+    
     console.log('[FreeAgentView] Starting session with promptData:', 
       promptData.sections.find(s => s.id === 'identity')?.content.substring(0, 100));
     console.log('[FreeAgentView] Advanced features:', advancedFeatures);
+    console.log('[FreeAgentView] Tool instances:', toolInstances.length);
     
     // Pass the promptCustomization.customizations object for self-author tools
     // Provide a default empty object if no customizations exist yet
@@ -110,7 +114,7 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
       promptCustomization.loadFromStorage();
     };
     
-    await startSession(prompt, files, model, maxIterations, existingSession, secretOverrides, configuredParams, promptData, advancedFeatures, customizationsData, handlePromptCustomizationChange);
+    await startSession(prompt, files, model, maxIterations, existingSession, secretOverrides, configuredParams, promptData, advancedFeatures, customizationsData, handlePromptCustomizationChange, toolInstances);
   };
 
   const handleAssistanceResponse = useCallback(
