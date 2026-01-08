@@ -33,6 +33,8 @@ interface ToolNodeData {
   category?: string;
   categoryColor?: string;
   toolId?: string;
+  isInstance?: boolean;
+  instanceLabel?: string;
 }
 
 const iconMap: Record<string, React.ReactNode> = {
@@ -83,7 +85,8 @@ export function ToolNode({ data }: NodeProps<ToolNodeData>) {
         "w-[100px] h-[60px] rounded-lg",
         "shadow-sm transition-all duration-200 cursor-pointer",
         getStatusStyles(),
-        data.status === "active" && "animate-pulse"
+        data.status === "active" && "animate-pulse",
+        data.isInstance && "border-dashed"
       )}
       style={{
         borderColor: data.status === "idle" || data.status === "success" 
@@ -109,9 +112,25 @@ export function ToolNode({ data }: NodeProps<ToolNodeData>) {
 
       {/* Category color indicator dot */}
       <div 
-        className="absolute -top-1.5 -left-1.5 w-3 h-3 rounded-full border-2 border-background shadow-sm"
-        style={{ backgroundColor: categoryColor }}
+        className={cn(
+          "absolute -top-1.5 -left-1.5 w-3 h-3 rounded-full border-2 border-background shadow-sm",
+          data.isInstance && "ring-2 ring-offset-1 ring-offset-background ring-current"
+        )}
+        style={{ 
+          backgroundColor: categoryColor,
+          color: data.isInstance ? categoryColor : undefined,
+        }}
       />
+
+      {/* Instance badge */}
+      {data.isInstance && (
+        <div 
+          className="absolute -top-1.5 -right-1.5 px-1 text-[7px] font-bold rounded bg-background border shadow-sm"
+          style={{ borderColor: categoryColor, color: categoryColor }}
+        >
+          INST
+        </div>
+      )}
 
       {/* Icon */}
       <div

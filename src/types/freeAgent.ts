@@ -389,7 +389,7 @@ export interface AgentResponse {
 export interface FreeAgentNodeData {
   type: 'agent' | 'tool' | 'artifact' | 'file' | 'scratchpad' | 'prompt' | 'promptFile' | 'attribute' | 'childAgent' | 'categoryLabel';
   label: string;
-  status: 'idle' | 'thinking' | 'active' | 'success' | 'error' | 'reading' | 'paused' | 'waiting';
+  status?: 'idle' | 'thinking' | 'active' | 'success' | 'error' | 'reading' | 'paused' | 'waiting';
   icon?: string;
   category?: string;
   categoryColor?: string;
@@ -418,6 +418,9 @@ export interface FreeAgentNodeData {
   task?: string; // Child agent's assigned task
   maxIterations?: number;
   currentIteration?: number;
+  // For tool instances
+  isInstance?: boolean;
+  instanceLabel?: string;
 }
 
 // Canvas edge for connections
