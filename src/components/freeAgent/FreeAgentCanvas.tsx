@@ -29,6 +29,7 @@ import type {
   FreeAgentSession,
   ToolsManifest,
   FreeAgentNodeData,
+  SessionFile,
 } from "@/types/freeAgent";
 import type { ToolInstance } from "@/types/toolInstance";
 
@@ -37,6 +38,7 @@ interface FreeAgentCanvasProps {
   toolsManifest: ToolsManifest | null;
   activeToolIds: Set<string>;
   toolInstances?: ToolInstance[];
+  pendingFiles?: SessionFile[];
   onToolClick?: (toolId: string) => void;
   onArtifactClick?: (artifactId: string) => void;
   onFileClick?: (fileId: string) => void;
@@ -120,6 +122,7 @@ export function FreeAgentCanvas({
   toolsManifest,
   activeToolIds,
   toolInstances = [],
+  pendingFiles = [],
   onToolClick,
   onArtifactClick,
   onFileClick,
@@ -317,8 +320,9 @@ export function FreeAgentCanvas({
       style: { stroke: "#3b82f6", strokeWidth: 1.5, strokeDasharray: session?.prompt ? undefined : "5,5" },
     });
 
-    // User files below prompt
-    session?.sessionFiles.forEach((file, index) => {
+    // User files below prompt - use session files if running, or pending files if not
+    const filesToShow = session?.sessionFiles || pendingFiles;
+    filesToShow.forEach((file, index) => {
       const fileY = LAYOUT.promptY + LAYOUT.promptHeight + 20 + (index * LAYOUT.userFileGap);
       const fileId = `promptFile-${file.id}`;
       newNodeIds.add(fileId);
@@ -639,7 +643,7 @@ export function FreeAgentCanvas({
     existingNodeIdsRef.current = newNodeIds;
 
     return { nodes: newNodes, edges: newEdges };
-  }, [toolsManifest, toolsByCategory, layoutToolsInClusters, session, activeToolIds, onScratchpadChange, onRetry]);
+  }, [toolsManifest, toolsByCategory, layoutToolsInClusters, session, activeToolIds, pendingFiles, onScratchpadChange, onRetry]);
 
   React.useEffect(() => {
     const { nodes: newNodes, edges: newEdges } = generateLayout();

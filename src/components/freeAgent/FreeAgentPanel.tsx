@@ -107,6 +107,8 @@ interface FreeAgentPanelProps {
   secretsManager: SecretsManager;
   toolsManifest: ToolsManifest | null;
   toolInstancesManager: ToolInstancesManager;
+  pendingFiles: SessionFile[];
+  onPendingFilesChange: (files: SessionFile[]) => void;
 }
 
 export function FreeAgentPanel({
@@ -122,9 +124,21 @@ export function FreeAgentPanel({
   secretsManager,
   toolsManifest,
   toolInstancesManager,
+  pendingFiles,
+  onPendingFilesChange,
 }: FreeAgentPanelProps) {
   const [prompt, setPrompt] = useState("");
-  const [files, setFiles] = useState<SessionFile[]>([]);
+  
+  // Helper to add files to parent state
+  const addFiles = (newFiles: SessionFile[]) => {
+    onPendingFilesChange([...pendingFiles, ...newFiles]);
+  };
+  
+  // Helper to remove a file from parent state
+  const removeFile = (fileId: string) => {
+    onPendingFilesChange(pendingFiles.filter((f) => f.id !== fileId));
+  };
+  
   // Preserve model selection - use session model if available, otherwise keep last selection
   const [selectedModel, setSelectedModel] = useState(() => session?.model || "claude-sonnet-4-5");
   const [maxIterations, setMaxIterations] = useState(() => session?.maxIterations || 50);
@@ -157,7 +171,7 @@ export function FreeAgentPanel({
 
   const handleClear = () => {
     setPrompt("");
-    setFiles([]);
+    onPendingFilesChange([]);
     // Also reset session to clear blackboard, scratchpad, and attributes
     onReset();
   };
@@ -217,7 +231,7 @@ export function FreeAgentPanel({
       }
     }
 
-    setFiles((prev) => [...prev, ...newFiles]);
+    addFiles(newFiles);
     setIsProcessingFiles(false);
     
     // Process Excel files queue
@@ -273,7 +287,7 @@ export function FreeAgentPanel({
       uploadedAt: new Date().toISOString(),
     };
     
-    setFiles((prev) => [...prev, newFile]);
+    addFiles([newFile]);
     toast.success(`Added ${data.fileName} with ${data.totalRows} rows`);
     
     // Process next Excel file in queue
@@ -310,9 +324,6 @@ export function FreeAgentPanel({
     });
   };
 
-  const removeFile = (fileId: string) => {
-    setFiles((prev) => prev.filter((f) => f.id !== fileId));
-  };
 
   const handleStart = () => {
     if (!prompt.trim()) return;
@@ -324,7 +335,7 @@ export function FreeAgentPanel({
       childMaxIterations,
     };
     // Pass existing session if in "idle" state (after Continue) to preserve memory
-    onStart(prompt, files, selectedModel, maxIterations, session?.status === "idle" ? session : null, advancedFeatures);
+    onStart(prompt, pendingFiles, selectedModel, maxIterations, session?.status === "idle" ? session : null, advancedFeatures);
     // Keep prompt and files so user can re-run
   };
 
@@ -340,7 +351,7 @@ export function FreeAgentPanel({
     setPrompt(enhancedPrompt);
     // Start agent with enhanced prompt after state update
     setTimeout(() => {
-      onStart(enhancedPrompt, files, selectedModel, maxIterations, session?.status === "idle" ? session : null);
+      onStart(enhancedPrompt, pendingFiles, selectedModel, maxIterations, session?.status === "idle" ? session : null);
     }, 0);
   };
 
@@ -499,10 +510,10 @@ export function FreeAgentPanel({
                 />
               </div>
 
-              {files.length > 0 && (
+              {pendingFiles.length > 0 && (
                 <ScrollArea className="h-[80px] border rounded-md p-2">
                   <div className="space-y-1">
-                    {files.map((file) => (
+                    {pendingFiles.map((file) => (
                       <div
                         key={file.id}
                         className="flex items-center justify-between text-sm bg-muted/50 rounded px-2 py-1"
@@ -574,7 +585,7 @@ export function FreeAgentPanel({
             </Button>
 
             {/* Clear button */}
-            {(prompt.trim() || files.length > 0) && (
+            {(prompt.trim() || pendingFiles.length > 0) && (
               <Button
                 variant="outline"
                 onClick={handleClear}
@@ -871,7 +882,7 @@ export function FreeAgentPanel({
           open={enhanceModalOpen}
           onOpenChange={setEnhanceModalOpen}
           originalPrompt={prompt}
-          files={files}
+          files={pendingFiles}
           model={selectedModel}
           onAccept={handleEnhancedPromptAccept}
           onAcceptAndStart={handleEnhancedPromptAcceptAndStart}
