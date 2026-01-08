@@ -43,6 +43,7 @@ import {
   AlertTriangle,
   GitBranch,
   Download,
+  Package,
 } from "lucide-react";
 import { toast } from "sonner";
 import { exportSessionToZip } from "@/utils/sessionExporter";
@@ -54,8 +55,10 @@ import { EnhancePromptSettingsModal } from "./EnhancePromptSettingsModal";
 import { ReflectModal } from "./ReflectModal";
 import { SecretsManagerModal } from "./SecretsManagerModal";
 import { SecretsMiniPanel } from "./SecretsMiniPanel";
+import { ToolInstancesTab } from "./ToolInstancesTab";
 import { safeStringify } from "@/lib/safeRender";
 import type { SecretsManager } from "@/hooks/useSecretsManager";
+import type { ToolInstancesManager } from "@/hooks/useToolInstances";
 
 // Available models - Claude first, then Google, then Grok
 const MODEL_OPTIONS = [
@@ -83,6 +86,7 @@ interface FreeAgentPanelProps {
   cacheSize?: number;
   secretsManager: SecretsManager;
   toolsManifest: ToolsManifest | null;
+  toolInstancesManager: ToolInstancesManager;
 }
 
 export function FreeAgentPanel({
@@ -97,6 +101,7 @@ export function FreeAgentPanel({
   cacheSize = 0,
   secretsManager,
   toolsManifest,
+  toolInstancesManager,
 }: FreeAgentPanelProps) {
   const [prompt, setPrompt] = useState("");
   const [files, setFiles] = useState<SessionFile[]>([]);
@@ -108,7 +113,7 @@ export function FreeAgentPanel({
   const [enhanceSettingsModalOpen, setEnhanceSettingsModalOpen] = useState(false);
   const [reflectModalOpen, setReflectModalOpen] = useState(false);
   const [secretsModalOpen, setSecretsModalOpen] = useState(false);
-  const [controlTab, setControlTab] = useState<'task' | 'secrets' | 'advanced'>('task');
+  const [controlTab, setControlTab] = useState<'task' | 'secrets' | 'instances' | 'advanced'>('task');
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Advanced features state
@@ -271,20 +276,30 @@ export function FreeAgentPanel({
       </CardHeader>
 
       <CardContent className="flex-1 flex flex-col overflow-hidden px-2 pb-2">
-        {/* Sub-tabs for Task, Secrets, Advanced */}
-        <Tabs value={controlTab} onValueChange={(v) => setControlTab(v as 'task' | 'secrets' | 'advanced')} className="flex-1 flex flex-col overflow-hidden">
-          <TabsList className="grid w-full grid-cols-3 mb-3">
+        {/* Sub-tabs for Task, Instances, Secrets, Advanced */}
+        <Tabs value={controlTab} onValueChange={(v) => setControlTab(v as 'task' | 'secrets' | 'instances' | 'advanced')} className="flex-1 flex flex-col overflow-hidden">
+          <TabsList className="grid w-full grid-cols-4 mb-3">
             <TabsTrigger value="task" className="gap-1 text-xs">
               <ClipboardList className="w-3 h-3" />
-              Task
+              <span className="hidden min-[380px]:inline">Task</span>
+            </TabsTrigger>
+            <TabsTrigger value="instances" className="gap-1 text-xs">
+              <Package className="w-3 h-3" />
+              <span className="hidden min-[380px]:inline">Instances</span>
+              {toolInstancesManager.instances.length > 0 && (
+                <span className="min-[380px]:hidden">({toolInstancesManager.instances.length})</span>
+              )}
             </TabsTrigger>
             <TabsTrigger value="secrets" className="gap-1 text-xs">
               <Key className="w-3 h-3" />
-              <span className="hidden min-[380px]:inline">Secrets</span> ({secretsManager.secrets.length})
+              <span className="hidden min-[380px]:inline">Secrets</span>
+              {secretsManager.secrets.length > 0 && (
+                <span className="min-[380px]:hidden">({secretsManager.secrets.length})</span>
+              )}
             </TabsTrigger>
             <TabsTrigger value="advanced" className="gap-1 text-xs">
               <AlertTriangle className="w-3 h-3" />
-              <span className="hidden min-[380px]:inline">Advanced</span>
+              <span className="hidden min-[380px]:inline">Adv</span>
             </TabsTrigger>
           </TabsList>
 
@@ -583,6 +598,14 @@ export function FreeAgentPanel({
             </div>
           </TabsContent>
 
+          {/* Instances Tab */}
+          <TabsContent value="instances" className="flex-1 overflow-hidden m-0">
+            <ToolInstancesTab
+              toolInstancesManager={toolInstancesManager}
+              toolsManifest={toolsManifest}
+            />
+          </TabsContent>
+
           {/* Secrets Tab */}
           <TabsContent value="secrets" className="flex-1 overflow-hidden m-0">
             <SecretsMiniPanel
@@ -742,6 +765,7 @@ export function FreeAgentPanel({
           onOpenChange={setSecretsModalOpen}
           secretsManager={secretsManager}
           toolsManifest={toolsManifest}
+          toolInstancesManager={toolInstancesManager}
         />
       </CardContent>
     </Card>

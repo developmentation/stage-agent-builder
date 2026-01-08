@@ -11,6 +11,7 @@ import { FinalReportModal } from "./FinalReportModal";
 import { ChildAgentDetailModal } from "./ChildAgentDetailModal";
 import { useFreeAgentSession } from "@/hooks/useFreeAgentSession";
 import { useSecretsManager } from "@/hooks/useSecretsManager";
+import { useToolInstances } from "@/hooks/useToolInstances";
 import { usePromptCustomization } from "@/hooks/usePromptCustomization";
 import { buildPromptData } from "@/lib/systemPromptBuilder";
 import type { ToolsManifest, SessionFile, AssistanceRequest, FreeAgentSession, AdvancedFeatures, ChildSession } from "@/types/freeAgent";
@@ -48,6 +49,9 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
 
   // Secrets manager for tool parameter injection
   const secretsManager = useSecretsManager();
+  
+  // Tool instances manager
+  const toolInstancesManager = useToolInstances();
   
   // Prompt customization for dynamic system prompt
   const promptCustomization = usePromptCustomization('default');
@@ -193,6 +197,7 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
                 cacheSize={getCacheSize()}
                 secretsManager={secretsManager}
                 toolsManifest={toolsManifest}
+                toolInstancesManager={toolInstancesManager}
               />
             </div>
           )}
@@ -266,6 +271,7 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
                   cacheSize={getCacheSize()}
                   secretsManager={secretsManager}
                   toolsManifest={toolsManifest}
+                  toolInstancesManager={toolInstancesManager}
                 />
               </div>
             </div>
