@@ -800,6 +800,64 @@
         "properties": ["filename", "artifactId", "size"]
       }
     },
+    "pronghorn_post": {
+      "name": "Pronghorn Post",
+      "description": "Send artifacts (text, images, binary) to a Pronghorn project for collection. Use for exporting results, reports, or generated content to external storage.",
+      "edge_function": "pronghorn-post",
+      "icon": "Send",
+      "category": "export",
+      "parameters": {
+        "projectId": {
+          "type": "string",
+          "required": true,
+          "description": "Pronghorn project ID to send artifacts to",
+          "sensitive": true
+        },
+        "token": {
+          "type": "string",
+          "required": true,
+          "description": "Pronghorn share token for authentication",
+          "sensitive": true
+        },
+        "items": {
+          "type": "array",
+          "required": true,
+          "description": "Array of items to send. Each item has: type ('text'|'image'|'binary'), content (string or base64), optional title, fileName, contentType. Supports {{scratchpad}}, {{attribute:name}}, {{artifact:id}} references in content.",
+          "items": {
+            "type": {
+              "type": "string",
+              "enum": ["text", "image", "binary"],
+              "description": "Type of content being sent"
+            },
+            "content": {
+              "type": "string",
+              "description": "Content to send - plain text or base64 encoded. Supports reference placeholders."
+            },
+            "title": {
+              "type": "string",
+              "description": "Optional title for the artifact"
+            },
+            "fileName": {
+              "type": "string",
+              "description": "Optional filename for file artifacts"
+            },
+            "contentType": {
+              "type": "string",
+              "description": "Optional MIME type for binary content"
+            }
+          }
+        },
+        "saveAs": {
+          "type": "string",
+          "required": false,
+          "description": "Save result to a named attribute. Use read_attribute(['name']) to retrieve."
+        }
+      },
+      "returns": {
+        "type": "object",
+        "properties": ["success", "message", "itemsReceived", "itemsCreated", "itemsFailed", "processingTimeMs", "results"]
+      }
+    },
     "get_call_api": {
       "name": "GET API Call",
       "description": "Make a GET request to an external API endpoint. Use for fetching data from REST APIs.",
