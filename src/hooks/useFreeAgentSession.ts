@@ -870,11 +870,10 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
             // Substitute the entire user_task section with child-specific content
             return {
               ...section,
-              content: `## CHILD AGENT TASK: ${child.name}
+              content: `<prompt-section id="user_task" type="task">
+## CHILD AGENT TASK: ${child.name}
 
-<child-task>
 ${child.task}
-</child-task>
 
 ### ⚠️ CHILD AGENT CRITICAL RULES:
 
@@ -896,7 +895,8 @@ ${child.task}
 **4. EFFICIENCY:**
 - You have MAX ${child.maxIterations} iterations - work quickly
 - Each successful tool call auto-saves results as an attribute
-- Use read_attribute to verify data was saved before re-fetching`,
+- Use read_attribute to verify data was saved before re-fetching
+</prompt-section>`,
             };
           }
           return section;
