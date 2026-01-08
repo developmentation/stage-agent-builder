@@ -75,7 +75,7 @@ const LAYOUT = {
   // Tree cluster settings
   treeStartY: 100,           // Top of tree
   clusterGapX: 40,           // Gap between category clusters
-  clusterStartX: 50,         // Left edge start
+  clusterStartX: -350,       // Left edge start
   
   // Tool node dimensions
   toolNodeWidth: 100,
