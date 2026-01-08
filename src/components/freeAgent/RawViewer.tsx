@@ -174,7 +174,7 @@ export function RawViewer({ rawData }: RawViewerProps) {
                       <div className="text-sm font-mono">{currentData.input.userPrompt}</div>
                     </div>
                   )}
-                  <pre className="text-xs p-3 whitespace-pre-wrap font-mono leading-relaxed">
+                  <pre className="text-xs p-3 whitespace-pre-wrap break-all font-mono leading-relaxed">
                     {currentData.input.systemPrompt || "(not captured)"}
                   </pre>
                 </ScrollArea>
@@ -215,7 +215,7 @@ export function RawViewer({ rawData }: RawViewerProps) {
                       </div>
                     </div>
                     <ScrollArea className="flex-1">
-                      <pre className="text-xs p-3 whitespace-pre-wrap font-mono leading-relaxed">
+                      <pre className="text-xs p-3 whitespace-pre-wrap break-all font-mono leading-relaxed">
                         {currentData.output.rawLLMResponse || currentData.output.parseError.rawResponse || "(no response captured)"}
                       </pre>
                     </ScrollArea>
@@ -223,7 +223,7 @@ export function RawViewer({ rawData }: RawViewerProps) {
                 ) : (
                   // Normal output display
                   <ScrollArea className="flex-1">
-                    <pre className="text-xs p-3 whitespace-pre-wrap font-mono leading-relaxed">
+                    <pre className="text-xs p-3 whitespace-pre-wrap break-all font-mono leading-relaxed">
                       {currentData.output.rawLLMResponse || "(not captured)"}
                     </pre>
                   </ScrollArea>
@@ -264,7 +264,7 @@ export function RawViewer({ rawData }: RawViewerProps) {
                               {tr.success ? "SUCCESS" : "ERROR"}
                             </Badge>
                           </div>
-                          <pre className="text-xs p-3 whitespace-pre-wrap font-mono leading-relaxed bg-background/50 max-h-[300px] overflow-auto">
+                          <pre className="text-xs p-3 whitespace-pre-wrap break-all font-mono leading-relaxed bg-background/50 max-h-[300px] overflow-auto">
                             {tr.error 
                               ? `Error: ${safeStringify(tr.error)}` 
                               : safeStringify(tr.result) || "(no result)"}

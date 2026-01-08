@@ -989,14 +989,14 @@ ${child.task}
             input: {
               model: parentSession.model || 'unknown',
               userPrompt: child.task,
-              systemPrompt: data.debugInfo?.fullPromptPreview || '',
-              fullPromptSent: data.debugInfo?.fullPromptSent || '',
+              systemPrompt: data.debug?.fullPromptSent || data.debug?.systemPrompt || '',
+              fullPromptSent: data.debug?.fullPromptSent || '',
               scratchpadLength: childScratchpad.length,
               blackboardEntries: childBlackboard.length,
               previousResultsCount: lastToolResults.length,
             },
             output: {
-              rawLLMResponse: data.debugInfo?.rawLLMResponse || JSON.stringify(data.parsed || response),
+              rawLLMResponse: data.debug?.rawLLMResponse || JSON.stringify(data.parsed || response),
               parsedResponse: data.parsed || response,
               parseError: data.parseError,
               errorMessage: data.error,
