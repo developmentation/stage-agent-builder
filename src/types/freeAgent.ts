@@ -29,7 +29,8 @@ export type ArtifactType =
   | 'text' 
   | 'file' 
   | 'image' 
-  | 'data';
+  | 'data'
+  | 'audio';
 
 // Tool result attribute - stored data from tool execution (auto-saved)
 export interface ToolResultAttribute {

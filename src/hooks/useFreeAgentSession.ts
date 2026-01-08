@@ -527,6 +527,48 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
             result: result.result,
             error: result.error,
           });
+          
+          // Auto-create artifacts for image_generation results
+          if (result.success && handler.tool === 'image_generation' && result.result) {
+            const imgResult = result.result as { imageUrl?: string; model?: string; mimeType?: string };
+            if (imgResult.imageUrl) {
+              const imageArtifact: FreeAgentArtifact = {
+                id: crypto.randomUUID(),
+                type: 'image',
+                title: `Generated Image (Iteration ${iterationRef.current})`,
+                content: imgResult.imageUrl, // Already has data:image/... prefix
+                description: `Generated with ${imgResult.model || 'Gemini'}`,
+                mimeType: imgResult.mimeType || 'image/png',
+                createdAt: new Date().toISOString(),
+                iteration: iterationRef.current,
+              };
+              handleArtifactCreated(imageArtifact);
+              console.log(`[Auto-Artifact] Created image artifact from image_generation`);
+            }
+          }
+          
+          // Auto-create artifacts for elevenlabs_tts results
+          if (result.success && handler.tool === 'elevenlabs_tts' && result.result) {
+            const ttsResult = result.result as { audioContent?: string; mimeType?: string };
+            if (ttsResult.audioContent) {
+              const mimeType = ttsResult.mimeType || 'audio/mpeg';
+              const audioUrl = ttsResult.audioContent.startsWith('data:') 
+                ? ttsResult.audioContent 
+                : `data:${mimeType};base64,${ttsResult.audioContent}`;
+              const audioArtifact: FreeAgentArtifact = {
+                id: crypto.randomUUID(),
+                type: 'audio',
+                title: `Generated Audio (Iteration ${iterationRef.current})`,
+                content: audioUrl,
+                description: 'Text-to-speech audio generated with ElevenLabs',
+                mimeType,
+                createdAt: new Date().toISOString(),
+                iteration: iterationRef.current,
+              };
+              handleArtifactCreated(audioArtifact);
+              console.log(`[Auto-Artifact] Created audio artifact from elevenlabs_tts`);
+            }
+          }
 
           // If assistance needed, stop here
           if (handler.tool === "request_assistance") {

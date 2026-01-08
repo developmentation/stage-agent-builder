@@ -1,7 +1,7 @@
 // Artifact Node - Created artifact visualization (styled like PromptFileNode)
 import React from "react";
 import { Handle, Position, NodeProps } from "reactflow";
-import { FileText, Image, Database, File, CheckCircle2 } from "lucide-react";
+import { FileText, Image, Database, File, CheckCircle2, Volume2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface ArtifactNodeData {
@@ -9,7 +9,7 @@ interface ArtifactNodeData {
   label: string;
   status: "idle" | "success";
   artifactId?: string;
-  artifactType?: "text" | "file" | "image" | "data";
+  artifactType?: "text" | "file" | "image" | "data" | "audio";
 }
 
 export function ArtifactNode({ data }: NodeProps<ArtifactNodeData>) {
@@ -17,6 +17,8 @@ export function ArtifactNode({ data }: NodeProps<ArtifactNodeData>) {
     switch (data.artifactType) {
       case "image":
         return <Image className="w-4 h-4" />;
+      case "audio":
+        return <Volume2 className="w-4 h-4" />;
       case "data":
         return <Database className="w-4 h-4" />;
       case "file":
@@ -30,6 +32,8 @@ export function ArtifactNode({ data }: NodeProps<ArtifactNodeData>) {
     switch (data.artifactType) {
       case "image":
         return "Generated Image";
+      case "audio":
+        return "Generated Audio";
       case "data":
         return "Data Output";
       case "file":
