@@ -776,18 +776,29 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
         };
 
         // Add artifacts from response - filter out duplicates from frontend tools (export_word, export_pdf)
+        // Also resolve {{attribute:name}} references in content to actual data
         const existingArtifactTitles = new Set(artifactsRef.current.map(a => a.title));
+        const resolverCtx: ResolverContext = {
+          scratchpad: scratchpadRef.current,
+          blackboard: blackboardRef.current,
+          attributes: toolResultAttributesRef.current,
+          artifacts: artifactsRef.current,
+        };
         const newArtifacts: FreeAgentArtifact[] = (response.artifacts || [])
           .filter(a => !existingArtifactTitles.has(a.title)) // Skip duplicates
-          .map((a) => ({
-            id: crypto.randomUUID(),
-            type: a.type,
-            title: a.title,
-            content: a.content,
-            description: a.description,
-            createdAt: new Date().toISOString(),
-            iteration: iterationRef.current,
-          }));
+          .map((a) => {
+            // Resolve references like {{attribute:dog_image_3}} to actual image data
+            const resolvedContent = resolveReferences(a.content, resolverCtx) as string;
+            return {
+              id: crypto.randomUUID(),
+              type: a.type,
+              title: a.title,
+              content: resolvedContent,
+              description: a.description,
+              createdAt: new Date().toISOString(),
+              iteration: iterationRef.current,
+            };
+          });
         
         // Update artifacts ref immediately for sync access in next iteration
         if (newArtifacts.length > 0) {
