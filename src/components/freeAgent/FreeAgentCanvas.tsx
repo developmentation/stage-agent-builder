@@ -1,4 +1,4 @@
-// Free Agent Canvas - Main visualization component with arc-based tool layout
+// Free Agent Canvas - Clustered tree layout for tools with instance support
 import React, { useMemo, useCallback, useRef } from "react";
 import ReactFlow, {
   Node,
@@ -30,11 +30,13 @@ import type {
   ToolsManifest,
   FreeAgentNodeData,
 } from "@/types/freeAgent";
+import type { ToolInstance } from "@/types/toolInstance";
 
 interface FreeAgentCanvasProps {
   session: FreeAgentSession | null;
   toolsManifest: ToolsManifest | null;
   activeToolIds: Set<string>;
+  toolInstances?: ToolInstance[];
   onToolClick?: (toolId: string) => void;
   onArtifactClick?: (artifactId: string) => void;
   onFileClick?: (fileId: string) => void;
@@ -57,84 +59,56 @@ const nodeTypes = {
   categoryLabel: CategoryLabelNode,
 };
 
-// All tools from manifest - organized by category
-const ALL_TOOLS = [
-  // Utility
-  "get_time", "get_weather",
-  // Web
-  "brave_search", "google_search", "web_scrape",
-  // Code
-  "read_github_repo", "read_github_file",
-  // Memory
-  "read_blackboard", "write_blackboard", "read_scratchpad", "write_scratchpad", 
-  "read_prompt", "read_prompt_files", "read_attribute", "read_artifact",
-  // File
-  "read_file", "read_zip_contents", "read_zip_file", "extract_zip_files",
-  // Document
-  "pdf_info", "pdf_extract_text", "ocr_image",
-  // Reasoning
-  "think", "summarize", "analyze",
-  // Communication
-  "send_email",
-  // Interaction
-  "request_assistance",
-  // Generation
-  "image_generation", "elevenlabs_tts",
-  // Export
-  "export_word", "export_pdf",
-  // API
-  "get_call_api", "post_call_api",
-  // Database
-  "read_database_schemas", "execute_sql",
-  // Self-Author (advanced)
-  "read_self", "write_self",
-  // Spawn (advanced)
-  "spawn",
+// Category order for tree layout (left to right clusters)
+const CATEGORY_ORDER = [
+  "utility", "web", "code", "memory", "file", "document", 
+  "reasoning", "communication", "interaction", "generation", 
+  "export", "api", "database", "advanced_self_author", "advanced_spawn"
 ];
 
-// Layout dimensions - Concentric arcs layout
+// Cluster layout - tools arranged in category groups above agent
 const LAYOUT = {
-  // Tool arc center
-  toolCenterX: 550,
-  toolCenterY: 750,
+  // Agent position (center bottom of tree)
+  agentX: 700,
+  agentY: 900,
   
-  // Agent position
-  agentX: 550,
-  agentY: 750,
+  // Tree cluster settings
+  treeStartY: 100,           // Top of tree
+  clusterGapX: 180,          // Gap between category clusters
+  clusterStartX: 50,         // Left edge start
   
-  // Concentric arcs for tools - radii from toolCenterY
-  arcs: [
-    { radius: 680, categories: ["utility", "api", "database", "web", "code"] },
-    { radius: 540, categories: ["memory", "file", "document", "reasoning"] },
-    { radius: 420, categories: ["communication", "interaction", "generation", "export", "advanced_self_author", "advanced_spawn"] },
-  ],
-  toolArcStartAngle: -175,
-  toolArcEndAngle: -5,
+  // Tool node dimensions
   toolNodeWidth: 100,
   toolNodeHeight: 60,
+  toolGapY: 75,              // Vertical gap between tools in cluster
+  toolGapX: 110,             // Horizontal gap for multi-column clusters
+  maxToolsPerColumn: 4,      // Tools per column before wrapping
   
-  // Left side - Prompt (BELOW the agent)
-  promptX: -50,
+  // Category label offset
+  labelOffsetY: -30,
+  
+  // Left side - Prompt
+  promptX: -100,
   promptY: 900,
   promptWidth: 260,
   promptHeight: 280,
   userFileGap: 70,
   
-  // Right side - Scratchpad (BELOW the agent)
-  scratchpadX: 890,
+  // Right side - Scratchpad
+  scratchpadX: 1150,
   scratchpadY: 900,
   scratchpadWidth: 300,
   scratchpadHeight: 280,
   artifactGap: 70,
   
-  // Attributes - right of scratchpad
-  attributeX: 1280,
+  // Attributes
+  attributeX: 1550,
   attributeY: 900,
   attributeGap: 65,
   attributeColumnGap: 220,
   attributesPerColumn: 10,
   
-  // Child agents - below prompt/scratchpad
+  // Child agents
   childOffsetY: 200,
   childSpacing: 180,
   childRowGap: 120,
@@ -145,6 +119,7 @@ export function FreeAgentCanvas({
   session,
   toolsManifest,
   activeToolIds,
+  toolInstances = [],
   onToolClick,
   onArtifactClick,
   onFileClick,
@@ -175,54 +150,123 @@ export function FreeAgentCanvas({
     onNodesChange(changes);
   }, [onNodesChange]);
 
+  // Build effective tools list: instances replace global tools
+  const effectiveTools = useMemo(() => {
+    if (!toolsManifest) return [];
+    
+    // Get all base tool IDs that have instances
+    const toolsWithInstances = new Set(toolInstances.map(i => i.baseToolId));
+    
+    // Build the effective list
+    const tools: Array<{
+      id: string;           // Full tool ID (or instance ID)
+      baseToolId: string;   // Base tool ID
+      isInstance: boolean;
+      instanceLabel?: string;
+      instanceDescription?: string;
+      category: string;
+      name: string;
+      icon?: string;
+    }> = [];
+    
+    // Add all tools from manifest (skip those with instances)
+    Object.entries(toolsManifest.tools).forEach(([toolId, tool]) => {
+      if (!toolsWithInstances.has(toolId)) {
+        const cat = Array.isArray(tool.category) ? tool.category[0] : tool.category;
+        tools.push({
+          id: toolId,
+          baseToolId: toolId,
+          isInstance: false,
+          category: cat,
+          name: tool.name,
+          icon: tool.icon,
+        });
+      }
+    });
+    
+    // Add all instances
+    toolInstances.forEach(instance => {
+      const baseTool = toolsManifest.tools[instance.baseToolId];
+      if (baseTool) {
+        const cat = Array.isArray(baseTool.category) ? baseTool.category[0] : baseTool.category;
+        tools.push({
+          id: instance.fullToolId,
+          baseToolId: instance.baseToolId,
+          isInstance: true,
+          instanceLabel: instance.label,
+          instanceDescription: instance.description,
+          category: cat,
+          name: instance.label,
+          icon: baseTool.icon,
+        });
+      }
+    });
+    
+    return tools;
+  }, [toolsManifest, toolInstances]);
+
   // Group tools by category
   const toolsByCategory = useMemo(() => {
-    if (!toolsManifest) return {};
-    
-    const groups: Record<string, string[]> = {};
-    ALL_TOOLS.forEach(toolId => {
-      const tool = toolsManifest.tools[toolId];
-      if (!tool) return;
-      const cat = Array.isArray(tool.category) ? tool.category[0] : tool.category;
-      if (!groups[cat]) groups[cat] = [];
-      groups[cat].push(toolId);
+    const groups: Record<string, typeof effectiveTools> = {};
+    effectiveTools.forEach(tool => {
+      if (!groups[tool.category]) groups[tool.category] = [];
+      groups[tool.category].push(tool);
     });
     return groups;
-  }, [toolsManifest]);
+  }, [effectiveTools]);
 
-  // Layout tools in concentric arcs grouped by category
-  const layoutToolsInConcentricArcs = useCallback((
-    toolsByCategory: Record<string, string[]>,
-    centerX: number,
-    centerY: number
-  ): Array<{ id: string; x: number; y: number; category: string; arcIndex: number }> => {
-    const positions: Array<{ id: string; x: number; y: number; category: string; arcIndex: number }> = [];
+  // Layout tools in clustered tree formation
+  const layoutToolsInClusters = useCallback((
+    toolsByCategory: Record<string, typeof effectiveTools>
+  ): Array<{ 
+    tool: typeof effectiveTools[0]; 
+    x: number; 
+    y: number;
+    clusterCenterX: number;
+    clusterCenterY: number;
+  }> => {
+    const positions: Array<{ 
+      tool: typeof effectiveTools[0]; 
+      x: number; 
+      y: number;
+      clusterCenterX: number;
+      clusterCenterY: number;
+    }> = [];
     
-    LAYOUT.arcs.forEach((arc, arcIndex) => {
-      // Get tools for this arc's categories
-      const arcTools: Array<{ id: string; category: string }> = [];
-      arc.categories.forEach(cat => {
-        (toolsByCategory[cat] || []).forEach(toolId => {
-          arcTools.push({ id: toolId, category: cat });
-        });
-      });
+    let currentX = LAYOUT.clusterStartX;
+    
+    // Process categories in order
+    CATEGORY_ORDER.forEach(category => {
+      const categoryTools = toolsByCategory[category];
+      if (!categoryTools || categoryTools.length === 0) return;
       
-      if (arcTools.length === 0) return;
+      // Calculate cluster dimensions
+      const numColumns = Math.ceil(categoryTools.length / LAYOUT.maxToolsPerColumn);
+      const clusterWidth = numColumns * LAYOUT.toolGapX;
+      const clusterHeight = Math.min(categoryTools.length, LAYOUT.maxToolsPerColumn) * LAYOUT.toolGapY;
       
-      // Calculate angle range for this arc
-      const angleRange = LAYOUT.toolArcEndAngle - LAYOUT.toolArcStartAngle;
-      const angleStep = angleRange / (arcTools.length + 1);
+      const clusterCenterX = currentX + clusterWidth / 2;
+      const clusterCenterY = LAYOUT.treeStartY + clusterHeight / 2;
       
-      arcTools.forEach((tool, index) => {
-        const angle = (LAYOUT.toolArcStartAngle + angleStep * (index + 1)) * (Math.PI / 180);
+      // Position each tool in the cluster
+      categoryTools.forEach((tool, index) => {
+        const column = Math.floor(index / LAYOUT.maxToolsPerColumn);
+        const row = index % LAYOUT.maxToolsPerColumn;
+        
+        const x = currentX + column * LAYOUT.toolGapX;
+        const y = LAYOUT.treeStartY + row * LAYOUT.toolGapY;
+        
         positions.push({
-          id: tool.id,
-          x: centerX + arc.radius * Math.cos(angle) - LAYOUT.toolNodeWidth / 2,
-          y: centerY + arc.radius * Math.sin(angle) - LAYOUT.toolNodeHeight / 2,
-          category: tool.category,
-          arcIndex,
+          tool,
+          x,
+          y,
+          clusterCenterX,
+          clusterCenterY,
         });
       });
+      
+      // Move to next cluster position
+      currentX += clusterWidth + LAYOUT.clusterGapX;
     });
     
     return positions;
@@ -303,38 +347,30 @@ export function FreeAgentCanvas({
       });
     });
 
-    // === TOOLS: Concentric arcs layout above agent ===
-    const toolPositions = layoutToolsInConcentricArcs(
-      toolsByCategory,
-      LAYOUT.toolCenterX,
-      LAYOUT.toolCenterY
-    );
+    // === TOOLS: Clustered tree layout above agent ===
+    const toolPositions = layoutToolsInClusters(toolsByCategory);
 
     const currentIteration = session?.currentIteration || 0;
     const recentIterations = [currentIteration, currentIteration - 1].filter(i => i > 0);
 
-    // Track categories for labels
-    const categoryPositions: Record<string, { x: number; y: number; count: number }> = {};
+    // Track cluster centers for category label positioning
+    const clusterCenters: Record<string, { x: number; y: number }> = {};
 
-    toolPositions.forEach(({ id: toolId, x, y, category }) => {
-      const tool = toolsManifest.tools[toolId];
-      if (!tool) return;
-
-      const nodeId = `tool-${toolId}`;
+    toolPositions.forEach(({ tool, x, y, clusterCenterX, clusterCenterY }) => {
+      const nodeId = `tool-${tool.id}`;
       newNodeIds.add(nodeId);
 
-      const isActive = activeToolIds.has(toolId);
-      const wasUsedEver = session?.toolCalls.some((tc) => tc.tool === toolId && tc.status === "completed");
-      const wasUsedRecently = session?.toolCalls.some(
-        (tc) => tc.tool === toolId && tc.status === "completed" && recentIterations.includes(tc.iteration)
+      const isActive = activeToolIds.has(tool.id) || activeToolIds.has(tool.baseToolId);
+      const wasUsedEver = session?.toolCalls.some((tc) => 
+        (tc.tool === tool.id || tc.tool === tool.baseToolId) && tc.status === "completed"
       );
 
       // Determine if it's a read-type tool based on category
       const readCategories = ["utility", "web", "code", "memory", "file", "document", "api", "database"];
-      const isReadTool = readCategories.includes(category);
+      const isReadTool = readCategories.includes(tool.category);
       
       // Get category color
-      const categoryData = toolsManifest.categories?.[category];
+      const categoryData = toolsManifest.categories?.[tool.category];
       const categoryColor = categoryData?.color || "#6B7280";
 
       newNodes.push({
@@ -348,23 +384,21 @@ export function FreeAgentCanvas({
           icon: tool.icon,
           category: tool.category,
           categoryColor,
-          toolId,
+          toolId: tool.id,
+          isInstance: tool.isInstance,
+          instanceLabel: tool.instanceLabel,
         },
       });
 
-      // Track for category labels
-      if (!categoryPositions[category]) {
-        categoryPositions[category] = { x, y, count: 1 };
-      } else {
-        categoryPositions[category].x = (categoryPositions[category].x + x) / 2;
-        categoryPositions[category].y = Math.min(categoryPositions[category].y, y);
-        categoryPositions[category].count++;
+      // Track cluster centers for category labels
+      if (!clusterCenters[tool.category]) {
+        clusterCenters[tool.category] = { x: clusterCenterX, y: clusterCenterY };
       }
 
       // Edge from tool to agent - persist after use
       if (isActive || wasUsedEver) {
         newEdges.push({
-          id: `edge-tool-agent-${toolId}`,
+          id: `edge-tool-agent-${tool.id}`,
           source: nodeId,
           sourceHandle: "bottom",
           target: "agent",
@@ -376,6 +410,29 @@ export function FreeAgentCanvas({
           },
         });
       }
+    });
+
+    // Add category labels above each cluster
+    Object.entries(clusterCenters).forEach(([category, pos]) => {
+      const labelId = `category-label-${category}`;
+      newNodeIds.add(labelId);
+      
+      const categoryData = toolsManifest.categories?.[category];
+      const categoryColor = categoryData?.color || "#6B7280";
+      const categoryName = categoryData?.name || category.replace(/_/g, ' ');
+      
+      newNodes.push({
+        id: labelId,
+        type: "categoryLabel",
+        position: { x: pos.x - 50, y: LAYOUT.treeStartY + LAYOUT.labelOffsetY },
+        selectable: false,
+        draggable: false,
+        data: {
+          type: "categoryLabel",
+          label: categoryName,
+          color: categoryColor,
+        },
+      });
     });
 
     // Category labels removed for cleaner look
@@ -574,7 +631,7 @@ export function FreeAgentCanvas({
     existingNodeIdsRef.current = newNodeIds;
 
     return { nodes: newNodes, edges: newEdges };
-  }, [toolsManifest, toolsByCategory, layoutToolsInConcentricArcs, session, activeToolIds, onScratchpadChange, onRetry]);
+  }, [toolsManifest, toolsByCategory, layoutToolsInClusters, session, activeToolIds, onScratchpadChange, onRetry]);
 
   React.useEffect(() => {
     const { nodes: newNodes, edges: newEdges } = generateLayout();

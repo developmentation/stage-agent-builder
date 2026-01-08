@@ -211,6 +211,7 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
                 session={session}
                 toolsManifest={toolsManifest}
                 activeToolIds={activeToolIds}
+                toolInstances={toolInstancesManager.instances}
                 onScratchpadChange={updateScratchpad}
                 onRetry={retrySession}
                 onChildClick={handleChildClick}
@@ -290,6 +291,7 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
                 session={session}
                 toolsManifest={toolsManifest}
                 activeToolIds={activeToolIds}
+                toolInstances={toolInstancesManager.instances}
                 onScratchpadChange={updateScratchpad}
                 onRetry={retrySession}
                 onChildClick={handleChildClick}
