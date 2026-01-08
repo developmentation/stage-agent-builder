@@ -223,6 +223,8 @@ export interface ChildSession {
   artifacts: FreeAgentArtifact[];
   toolResultAttributes: Record<string, ToolResultAttribute>; // Named attributes from saveAs
   error?: string;
+  // Debug data for Raw viewer
+  rawData?: RawIterationData[];
 }
 
 export interface OrchestrationState {

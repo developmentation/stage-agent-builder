@@ -10,9 +10,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { ChildSession } from "@/types/freeAgent";
-import { GitBranch, Clock, CheckCircle, XCircle, Loader2, FileText, Wrench, MessageSquare, Database, FileOutput } from "lucide-react";
+import { GitBranch, Clock, CheckCircle, XCircle, Loader2, FileText, Wrench, MessageSquare, Database, FileOutput, Code } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { RawViewer } from "./RawViewer";
 
 interface ChildAgentDetailModalProps {
   isOpen: boolean;
@@ -89,6 +90,10 @@ export function ChildAgentDetailModal({ isOpen, onClose, child }: ChildAgentDeta
               <TabsTrigger value="artifacts" className="gap-1.5">
                 <FileOutput className="w-4 h-4" />
                 Artifacts ({child.artifacts?.length || 0})
+              </TabsTrigger>
+              <TabsTrigger value="raw" className="gap-1.5">
+                <Code className="w-4 h-4" />
+                Raw ({child.rawData?.length || 0})
               </TabsTrigger>
             </TabsList>
           </div>
@@ -304,6 +309,11 @@ export function ChildAgentDetailModal({ isOpen, onClose, child }: ChildAgentDeta
                   </div>
                 )}
               </ScrollArea>
+            </TabsContent>
+
+            {/* Raw Data Tab */}
+            <TabsContent value="raw" className="h-full m-0 mt-4">
+              <RawViewer rawData={child.rawData || []} />
             </TabsContent>
           </div>
         </Tabs>
