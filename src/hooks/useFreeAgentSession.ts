@@ -553,6 +553,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
                 parsedResponse: data.response,
               },
               toolResults: iterationToolResults,
+              toolCalls: response.tool_calls || [],  // Tool calls requested by LLM this iteration
             };
             
             // Add blackboard entry - use same logic as main flow (auto-generate if missing)
@@ -614,6 +615,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
             parsedResponse: data.response,
           },
           toolResults: iterationToolResults,
+          toolCalls: response.tool_calls || [],  // Tool calls requested by LLM this iteration
         };
 
         // Determine if we need to auto-generate a blackboard entry
@@ -1007,6 +1009,7 @@ ${child.task}
               result: tr.result,
               error: tr.error,
             })),
+            toolCalls: response.tool_calls || [],  // Tool calls requested by LLM this iteration
           });
           
           // Process tool calls first to get tool names for blackboard

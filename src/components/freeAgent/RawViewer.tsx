@@ -7,7 +7,6 @@ import { Code, ArrowRight, ArrowLeft, Copy, Check, Wrench, AlertCircle } from "l
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import type { RawIterationData } from "@/types/freeAgent";
-import { safeStringify } from "@/lib/safeRender";
 import { toast } from "sonner";
 
 interface RawViewerProps {
@@ -140,7 +139,7 @@ export function RawViewer({ rawData }: RawViewerProps) {
                 Output
               </TabsTrigger>
               <TabsTrigger value="tools" className="flex-1 text-xs">
-                Tools ({currentData.toolResults?.length || 0})
+                Tools ({currentData.toolCalls?.length || 0})
               </TabsTrigger>
             </TabsList>
 
@@ -236,12 +235,12 @@ export function RawViewer({ rawData }: RawViewerProps) {
                 <div className="flex items-center justify-between px-3 py-2 border-b border-border/50">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <Wrench className="w-3 h-3" />
-                    <span>{currentData.toolResults?.length || 0} tool calls this iteration</span>
+                    <span>{currentData.toolCalls?.length || 0} tool calls this iteration</span>
                   </div>
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => handleCopy(JSON.stringify(currentData.toolResults, null, 2), "tools")}
+                    onClick={() => handleCopy(JSON.stringify(currentData.toolCalls, null, 2), "tools")}
                     className="h-6 px-2"
                   >
                     {copiedTools ? (
@@ -252,22 +251,18 @@ export function RawViewer({ rawData }: RawViewerProps) {
                   </Button>
                 </div>
                 <ScrollArea className="flex-1">
-                  {currentData.toolResults && currentData.toolResults.length > 0 ? (
+                  {currentData.toolCalls && currentData.toolCalls.length > 0 ? (
                     <div className="p-3 space-y-3">
-                      {currentData.toolResults.map((tr, idx) => (
+                      {currentData.toolCalls.map((tc, idx) => (
                         <div key={idx} className="border border-border/50 rounded-md overflow-hidden">
-                          <div className={`px-3 py-1.5 text-xs font-medium flex items-center justify-between ${
-                            tr.success ? 'bg-green-500/10 text-green-700 dark:text-green-400' : 'bg-red-500/10 text-red-700 dark:text-red-400'
-                          }`}>
-                            <span className="font-mono">{tr.tool}</span>
-                            <Badge variant={tr.success ? "default" : "destructive"} className="text-[10px] h-4">
-                              {tr.success ? "SUCCESS" : "ERROR"}
+                          <div className="px-3 py-1.5 text-xs font-medium flex items-center justify-between bg-blue-500/10 text-blue-700 dark:text-blue-400">
+                            <span className="font-mono">{tc.tool}</span>
+                            <Badge variant="outline" className="text-[10px] h-4">
+                              REQUESTED
                             </Badge>
                           </div>
                           <pre className="text-xs p-3 whitespace-pre-wrap break-all font-mono leading-relaxed bg-background/50 max-h-[300px] overflow-auto">
-                            {tr.error 
-                              ? `Error: ${safeStringify(tr.error)}` 
-                              : safeStringify(tr.result) || "(no result)"}
+                            {JSON.stringify(tc.params, null, 2)}
                           </pre>
                         </div>
                       ))}
