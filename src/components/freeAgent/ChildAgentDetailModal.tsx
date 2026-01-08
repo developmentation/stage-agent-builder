@@ -9,11 +9,13 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ChildSession } from "@/types/freeAgent";
-import { GitBranch, Clock, CheckCircle, XCircle, Loader2, FileText, Wrench, MessageSquare, Database, FileOutput, Code } from "lucide-react";
+import { GitBranch, Clock, CheckCircle, XCircle, Loader2, FileText, Wrench, MessageSquare, Database, FileOutput, Code, Copy } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { RawViewer } from "./RawViewer";
+import { toast } from "sonner";
 
 interface ChildAgentDetailModalProps {
   isOpen: boolean;
@@ -51,6 +53,19 @@ export function ChildAgentDetailModal({ isOpen, onClose, child }: ChildAgentDeta
             <GitBranch className="w-5 h-5 text-amber-500" />
             <DialogTitle className="text-lg">{child.name}</DialogTitle>
             {getStatusBadge()}
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 ml-auto"
+              onClick={() => {
+                const json = JSON.stringify(child, null, 2);
+                navigator.clipboard.writeText(json);
+                toast.success("Session JSON copied to clipboard");
+              }}
+            >
+              <Copy className="w-4 h-4" />
+              Copy Session JSON
+            </Button>
           </div>
           <div className="flex items-center gap-4 text-sm text-muted-foreground mt-2">
             <span className="flex items-center gap-1">
