@@ -74,6 +74,24 @@ export function ArtifactsPanel({ artifacts, onArtifactClick }: ArtifactsPanelPro
     try {
       // Create blob from content
       let blob: Blob;
+      let filename = artifact.title;
+      
+      // Helper to get extension from mimeType
+      const getExtension = (mimeType: string): string => {
+        const map: Record<string, string> = {
+          'image/png': '.png',
+          'image/jpeg': '.jpg',
+          'image/gif': '.gif',
+          'image/webp': '.webp',
+          'audio/mpeg': '.mp3',
+          'audio/mp3': '.mp3',
+          'audio/wav': '.wav',
+          'audio/ogg': '.ogg',
+          'application/pdf': '.pdf',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx',
+        };
+        return map[mimeType] || '';
+      };
       
       if (artifact.type === "image") {
         // Handle image content
@@ -89,8 +107,45 @@ export function ArtifactsPanel({ artifacts, onArtifactClick }: ArtifactsPanelPro
           }
           const byteArray = new Uint8Array(byteNumbers);
           blob = new Blob([byteArray], { type: mimeType });
+          // Add extension if not present
+          if (!filename.match(/\.(png|jpg|jpeg|gif|webp)$/i)) {
+            filename += getExtension(mimeType) || '.png';
+          }
         } else {
           blob = new Blob([artifact.content], { type: "text/plain" });
+        }
+      } else if (artifact.type === "audio" || artifact.mimeType?.startsWith("audio/")) {
+        // Handle audio content
+        const mimeType = artifact.mimeType || "audio/mpeg";
+        let base64Data = artifact.content;
+        
+        // Extract base64 if it's a data URL
+        if (base64Data.startsWith("data:")) {
+          base64Data = base64Data.split(",")[1];
+        }
+        
+        // Try to parse JSON if content is wrapped
+        try {
+          const parsed = JSON.parse(artifact.content);
+          if (parsed.audioContent) {
+            base64Data = parsed.audioContent.startsWith("data:") 
+              ? parsed.audioContent.split(",")[1] 
+              : parsed.audioContent;
+          }
+        } catch {
+          // Not JSON, use as-is
+        }
+        
+        const byteCharacters = atob(base64Data);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        blob = new Blob([byteArray], { type: mimeType });
+        // Add extension if not present
+        if (!filename.match(/\.(mp3|wav|ogg|m4a)$/i)) {
+          filename += getExtension(mimeType) || '.mp3';
         }
       } else if (artifact.type === "file" && artifact.mimeType) {
         // Base64 encoded file
@@ -101,21 +156,29 @@ export function ArtifactsPanel({ artifacts, onArtifactClick }: ArtifactsPanelPro
         }
         const byteArray = new Uint8Array(byteNumbers);
         blob = new Blob([byteArray], { type: artifact.mimeType });
+        // Add extension if not present
+        const ext = getExtension(artifact.mimeType);
+        if (ext && !filename.includes('.')) {
+          filename += ext;
+        }
       } else {
         // Text content
         blob = new Blob([artifact.content], { type: "text/plain" });
+        if (!filename.includes('.')) {
+          filename += '.txt';
+        }
       }
 
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = artifact.title;
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
 
-      toast.success(`Downloaded ${artifact.title}`);
+      toast.success(`Downloaded ${filename}`);
     } catch (error) {
       toast.error("Failed to download artifact");
     }
