@@ -73,7 +73,7 @@ const LAYOUT = {
   agentY: 900,
   
   // Tree cluster settings
-  treeStartY: 100,           // Top of tree
+  treeStartY: 300,           // Top of tree
   clusterGapX: 40,           // Gap between category clusters
   clusterStartX: -350,       // Left edge start
   
