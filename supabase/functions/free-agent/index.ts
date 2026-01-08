@@ -10,6 +10,13 @@ interface ToolCall {
   params: Record<string, unknown>;
 }
 
+interface ToolDefinition {
+  id: string;
+  description: string;
+  params: string;
+  category: string;
+}
+
 interface FreeAgentRequest {
   prompt: string;
   model?: string;
@@ -19,15 +26,10 @@ interface FreeAgentRequest {
   iteration: number;
   scratchpad?: string;
   assistanceResponse?: { response?: string; fileId?: string; selectedChoice?: string };
-  // Secrets injection - values for tool parameters
   secretOverrides?: Record<string, { params?: Record<string, unknown>; headers?: Record<string, string> }>;
-  // Configured params for LLM awareness (no values, just tool+param names)
   configuredParams?: Array<{ tool: string; param: string }>;
-  // Named attributes for reference resolution (full data from saveAs)
   toolResultAttributes?: Record<string, { result: unknown; size: number }>;
-  // Artifacts for reference resolution
   artifacts?: Array<{ id: string; type: string; title: string; content: string; description?: string }>;
-  // Dynamic prompt data from frontend (Phase 2)
   promptData?: {
     sections: Array<{
       id: string;
@@ -40,15 +42,21 @@ interface FreeAgentRequest {
     }>;
     toolOverrides?: Record<string, { description?: string; disabled?: boolean }>;
     disabledTools?: string[];
+    // Tool definitions passed from frontend (from toolsManifest.json)
+    toolDefinitions?: Array<{
+      id: string;
+      name: string;
+      description: string;
+      category: string;
+      parameters: Record<string, { type: string; required?: boolean; description?: string }>;
+    }>;
   };
-  // Advanced features flags (Phase 3)
   advancedFeatures?: {
     selfAuthorEnabled?: boolean;
     spawnEnabled?: boolean;
     maxChildren?: number;
     childMaxIterations?: number;
   };
-  // Tool instances for per-instance configuration
   toolInstances?: Array<{
     id: string;
     baseToolId: string;
@@ -63,7 +71,6 @@ interface FreeAgentRequest {
 // RESPONSE SCHEMA - Single Source of Truth for all providers
 // ============================================================================
 
-// Get JSON Schema for Grok's response_format
 function getGrokResponseSchema() {
   return {
     type: "json_schema",
@@ -130,7 +137,6 @@ function getGrokResponseSchema() {
   };
 }
 
-// Get tool definition for Claude's tool_choice
 function getClaudeResponseTool() {
   return {
     name: "respond_with_actions",
@@ -189,19 +195,15 @@ function getClaudeResponseTool() {
   };
 }
 
-// Map UI model names to actual API model identifiers
 function getApiModelName(uiModel: string): string {
   const modelMap: Record<string, string> = {
-    // Gemini models - exact names
     "gemini-2.5-flash": "gemini-2.5-flash",
     "gemini-2.5-flash-lite": "gemini-2.5-flash-lite",
     "gemini-3-pro-preview": "gemini-3-pro-preview",
     "gemini-3-flash-preview": "gemini-3-flash-preview",
-    // Claude models - exact names
     "claude-sonnet-4-5": "claude-sonnet-4-5",
     "claude-haiku-4-5": "claude-haiku-4-5",
     "claude-opus-4-5": "claude-opus-4-5",
-    // Grok models - exact names
     "grok-4-1-fast-reasoning": "grok-4-1-fast-reasoning",
     "grok-4-1-fast-non-reasoning": "grok-4-1-fast-non-reasoning",
     "grok-code-fast-1": "grok-code-fast-1",
@@ -209,11 +211,10 @@ function getApiModelName(uiModel: string): string {
   return modelMap[uiModel] || uiModel;
 }
 
-// Determine provider from model name
 function getProvider(model: string): "gemini" | "claude" | "grok" {
   if (model.startsWith("claude") || model.includes("claude")) return "claude";
   if (model.startsWith("grok") || model.includes("grok")) return "grok";
-  return "gemini"; // Default to Gemini
+  return "gemini";
 }
 
 // ============================================================================
@@ -227,7 +228,6 @@ interface ResolverContext {
   artifacts: Array<{ id: string; type: string; title: string; content: string; description?: string }>;
 }
 
-// Resolve reference placeholders in tool parameters
 function resolveReferences(value: unknown, context: ResolverContext): unknown {
   if (typeof value === 'string') {
     return resolveStringReferences(value, context);
@@ -248,18 +248,13 @@ function resolveReferences(value: unknown, context: ResolverContext): unknown {
 function resolveStringReferences(str: string, ctx: ResolverContext): string {
   let result = str;
   
-  // {{scratchpad}} -> full scratchpad content
   result = result.replace(/\{\{scratchpad\}\}/gi, () => ctx.scratchpad || '');
   
-  // {{blackboard}} -> formatted blackboard entries
   result = result.replace(/\{\{blackboard\}\}/gi, () => {
     if (!ctx.blackboard || ctx.blackboard.length === 0) return '[No blackboard entries]';
-    return ctx.blackboard
-      .map(e => `[${e.category.toUpperCase()}]: ${e.content}`)
-      .join('\n\n');
+    return ctx.blackboard.map(e => `[${e.category.toUpperCase()}]: ${e.content}`).join('\n\n');
   });
   
-  // {{attributes}} -> all attributes as JSON object
   result = result.replace(/\{\{attributes\}\}/gi, () => {
     if (!ctx.toolResultAttributes || Object.keys(ctx.toolResultAttributes).length === 0) return '{}';
     const formatted: Record<string, unknown> = {};
@@ -269,7 +264,6 @@ function resolveStringReferences(str: string, ctx: ResolverContext): string {
     return JSON.stringify(formatted, null, 2);
   });
   
-  // {{attribute:name}} -> specific attribute content
   result = result.replace(/\{\{attribute:([^}]+)\}\}/gi, (_, name) => {
     const trimmedName = name.trim();
     const attr = ctx.toolResultAttributes?.[trimmedName];
@@ -279,480 +273,100 @@ function resolveStringReferences(str: string, ctx: ResolverContext): string {
     return `[Attribute '${trimmedName}' not found]`;
   });
   
-  // {{artifacts}} -> all artifacts as JSON array
   result = result.replace(/\{\{artifacts\}\}/gi, () => {
     if (!ctx.artifacts || ctx.artifacts.length === 0) return '[]';
     return JSON.stringify(ctx.artifacts.map(a => ({
-      id: a.id,
-      type: a.type,
-      title: a.title,
-      content: a.content,
-      description: a.description,
+      id: a.id, type: a.type, title: a.title, content: a.content, description: a.description,
     })), null, 2);
   });
   
-  // {{artifact:id}} -> specific artifact content
   result = result.replace(/\{\{artifact:([^}]+)\}\}/gi, (_, id) => {
     const trimmedId = id.trim();
     const artifact = ctx.artifacts?.find(a => a.id === trimmedId || a.title === trimmedId);
-    if (artifact) {
-      return artifact.content;
-    }
+    if (artifact) return artifact.content;
     return `[Artifact '${trimmedId}' not found]`;
   });
   
   return result;
 }
 
-// Build system prompt for agent
-function buildSystemPrompt(
-  blackboard: Array<{ category: string; content: string }>,
-  sessionFiles: Array<{ id: string; filename: string; mimeType: string; size: number; content?: string }>,
-  previousResults: Array<{ tool: string; result?: unknown; error?: string }>,
-  iteration: number,
-  scratchpad: string,
-  assistanceResponse?: { response?: string; fileId?: string; selectedChoice?: string },
-  configuredParams?: Array<{ tool: string; param: string }>
-) {
-  // Add null safety for all parameters
-  const safeBlackboard = blackboard || [];
-  const safeSessionFiles = sessionFiles || [];
-  const safePreviousResults = previousResults || [];
-  const safeScratchpad = scratchpad || "";
-
-  const toolsList = `
-Available Tools:
-
-## Search & Web Tools
-- brave_search: Search the web (params: query, numResults?, saveAs?)
-- google_search: Search via Google (params: query, numResults?, saveAs?)
-- web_scrape: Scrape webpage content (params: url, maxCharacters?, saveAs?)
-
-## GitHub Tools
-- read_github_repo: Get repo file tree (params: repoUrl, branch?, saveAs?)
-- read_github_file: Read files from repo (params: repoUrl, selectedPaths, branch?, saveAs?)
-
-## Document Tools
-- pdf_info: Get PDF metadata and page count (params: fileData - base64 encoded PDF)
-- pdf_extract_text: Extract text from PDF (params: fileData - base64 encoded PDF, pages?)
-- ocr_image: Extract text from image via OCR (params: imageSource - base64, URL, or data URI)
-- read_zip_contents: List files in ZIP archive (params: fileData - base64 encoded ZIP)
-- read_zip_file: Read specific file from ZIP (params: fileData, entryPath)
-- extract_zip_files: Extract files from ZIP (params: fileData, paths? - empty for all)
-
-## Communication Tools
-- send_email: Send email via Resend (params: to, subject, body, useHtml?)
-- request_assistance: Ask user for input (params: question, context?, inputType?, choices?)
-
-## Generation Tools
-- image_generation: Generate image from prompt (params: prompt)
-- elevenlabs_tts: Text to speech (params: text, voiceId?, modelId?)
-
-## API Tools
-- get_call_api: Make GET request (params: url, headers?, saveAs?)
-- post_call_api: Make POST request (params: url, headers?, saveAs?)
-
-## Database Tools
-- read_database_schemas: Get database structure - tables, columns, types, constraints (params: connectionString, schemas?, saveAs?)
-- execute_sql: Execute SQL on external PostgreSQL database (params: connectionString, query, isWrite?, params?, saveAs?). Multiple statements separated by semicolons are executed sequentially.
-
-## Utility Tools
-- get_time: Get current date/time (params: timezone?)
-- get_weather: Get weather for a location (params: location, units? - "celsius" or "fahrenheit")
-
-## Memory Tools
-- write_blackboard: Write to your planning journal (params: category, content, data?)
-- read_file: Read session file content (params: fileId)
-- read_prompt: Read the original user prompt
-- read_prompt_files: Get list of available files with metadata
-- read_attribute: Read saved tool result attributes (params: names[] - empty array for list, specific names for content)
-- read_scratchpad: Read your data storage. Handlebar syntax {{attribute_name}} will be substituted with attribute content.
-- write_scratchpad: SAVE DATA HERE immediately after search/read (params: content, mode?)
-
-## Export Tools
-- export_word: Create Word document (params: content, filename?)
-- export_pdf: Create PDF document (params: content, filename?)
-
-## 🚀 NAMED TOOL RESULT ATTRIBUTES - USE saveAs TO SAVE TOKEN BUDGET!
-
-Data-fetching tools support a "saveAs" parameter that AUTOMATICALLY saves results to a named attribute:
-
-Example: { "tool": "web_scrape", "params": { "url": "...", "saveAs": "london_weather" } }
-
-Benefits of using saveAs:
-- Results are saved AUTOMATICALLY - no need to call write_scratchpad
-- You receive a small confirmation instead of the full data (saves tokens!)
-- Results appear as clickable nodes on the canvas
-- Use {{london_weather}} in scratchpad to reference the data
-- Call read_attribute(["london_weather"]) to retrieve specific attributes
-- Call read_attribute([]) to list all saved attributes
-
-RECOMMENDED: Use saveAs for ALL data-fetching operations (searches, scrapes, API calls, GitHub reads).
-This is the most efficient way to store data without wasting tokens on large responses!
-`;
-// NOTE: read_blackboard removed - blackboard is ALWAYS shown above automatically
-
-  // Include file content if available (for small text files)
-  let filesSection = '\nNo session files provided.';
-  if (safeSessionFiles.length > 0) {
-    const filesList = safeSessionFiles.map(f => {
-      let fileInfo = `- ${f.filename} (fileId: "${f.id}", type: ${f.mimeType}, size: ${f.size} bytes)`;
-      if (f.content && f.size < 50000 && (f.mimeType.startsWith('text/') || f.mimeType.includes('json') || f.mimeType.includes('xml') || f.mimeType.includes('javascript') || f.mimeType.includes('typescript'))) {
-        fileInfo += `\n  Content:\n\`\`\`\n${f.content}\n\`\`\``;
-      }
-      return fileInfo;
-    }).join('\n');
-    filesSection = `\nSession Files Available:\n${filesList}\n\nUse read_file with the exact fileId to read file contents.`;
-  }
-
-  // Check if there are any user interjections in the blackboard
-  const hasUserInterjections = safeBlackboard.some(e => e.category === 'user_interjection');
-  
-  // Format blackboard with tiered visibility: Last (1), Recent (3 prior), Older (summarized)
-  let blackboardSection: string;
-  if (safeBlackboard.length === 0) {
-    blackboardSection = '\n## BLACKBOARD: Empty. Track your plan and completed items here.';
-  } else if (safeBlackboard.length <= 4) {
-    // Show all entries if 4 or fewer - use helper for tool display
-    const formatEntrySimple = (e: { category: string; content: string; tools?: string[] }, index: number): string => {
-      const toolsSuffix = e.tools?.length ? ` | Tools: [${e.tools.join(', ')}]` : '';
-      return `[#${index} ${e.category}]${toolsSuffix} ${e.content}`;
-    };
-    blackboardSection = `\n## YOUR BLACKBOARD (Planning Journal - Read this EVERY iteration!):\n${safeBlackboard.map((e, i) => formatEntrySimple(e, i + 1)).join('\n\n')}${hasUserInterjections ? '\n\n⚠️ Pay special attention to any recent User Interjections and ensure your next actions are aligned with the user\'s further direction.' : ''}`;
-  } else {
-    // Split into 3 tiers: Older (summarized), Recent (3 prior), Last (1 most recent)
-    const olderEntries = safeBlackboard.slice(0, -4);
-    const recentEntries = safeBlackboard.slice(-4, -1);
-    const lastEntry = safeBlackboard[safeBlackboard.length - 1];
-    const lastEntryIndex = safeBlackboard.length;
-    
-    // Helper to format entry with tools suffix
-    const formatEntry = (e: { category: string; content: string; tools?: string[] }, index: number): string => {
-      const toolsSuffix = e.tools?.length ? ` | Tools: [${e.tools.join(', ')}]` : '';
-      return `[#${index} ${e.category}]${toolsSuffix} ${e.content}`;
-    };
-    
-    // Older: Show full content but grouped separately
-    const olderFormatted = olderEntries.map((e, i) => 
-      formatEntry(e, i + 1)
-    ).join('\n\n');
-    
-    // Recent: Show full content (indices are offset by older entries length)
-    const recentStartIndex = olderEntries.length + 1;
-    const recentFormatted = recentEntries.map((e, i) => 
-      formatEntry(e, recentStartIndex + i)
-    ).join('\n\n');
-    
-    // Last: Show full content with emphasis
-    const lastFormatted = formatEntry(lastEntry, lastEntryIndex);
-    
-    blackboardSection = `
-## YOUR BLACKBOARD (Planning Journal)
-
-### 📌 LAST ENTRY (Most Recent - Your Current State):
-${lastFormatted}
-
-### Recent Entries (Previous 3):
-${recentFormatted}
-
-### Older Entries (Summarized - ${olderEntries.length} entries):
-${olderFormatted}${hasUserInterjections ? '\n\n⚠️ Pay special attention to any recent User Interjections and ensure your next actions are aligned with the user\'s further direction.' : ''}`;
-  }
-
-  // Scratchpad - only show preview if small, otherwise just size (saves context)
-  let scratchpadSection: string;
-  if (!safeScratchpad || !safeScratchpad.trim()) {
-    scratchpadSection = '\n## YOUR SCRATCHPAD (Data Storage): Empty. Write actual DATA here (file contents, search results, analysis).';
-  } else if (safeScratchpad.length < 500) {
-    scratchpadSection = `\n## YOUR SCRATCHPAD (Data Storage - ${safeScratchpad.length} chars):\n\`\`\`\n${safeScratchpad}\n\`\`\``;
-  } else {
-    // Only show preview to save context - agent can use read_scratchpad for full content
-    scratchpadSection = `\n## YOUR SCRATCHPAD: Contains ${safeScratchpad.length} chars of saved data. Use read_scratchpad to view full content.`;
-  }
-
-  // Make previous tool results VERY prominent so agent sees them
-  let resultsSection = '';
-  if (safePreviousResults.length > 0) {
-    const formattedResults = safePreviousResults.map(r => {
-      // Handle undefined, null, or error results gracefully
-      let resultStr: string;
-      if (r.result === undefined || r.result === null) {
-        resultStr = r.error ? `Error: ${r.error}` : "No result returned";
-      } else {
-        try {
-          resultStr = JSON.stringify(r.result, null, 2);
-        } catch (e) {
-          resultStr = `[Unable to serialize result: ${e instanceof Error ? e.message : 'Unknown error'}]`;
-        }
-      }
-      
-      // Safe length check with fallback
-      const resultLength = resultStr?.length || 0;
-      const display = resultLength > 250000 
-        ? resultStr.slice(0, 250000) + '\n...[truncated at 250KB - use saveAs for large data]'
-        : resultStr || 'No result';
-        
-      return `### Tool: ${r.tool}\n\`\`\`json\n${display}\n\`\`\``;
-    }).join('\n\n');
-    
-    resultsSection = `
-
-## ⚠️ PREVIOUS ITERATION TOOL RESULTS - READ THIS FIRST! ⚠️
-These results will DISAPPEAR next iteration! You MUST save important data to scratchpad NOW.
-
-${formattedResults}
-
-ACTION REQUIRED: If you see search/read results above, call write_scratchpad with the actual data.
-DO NOT call the same tool again - the results are RIGHT HERE.
-`;
-  }
-
-  // Include user's assistance response if provided
-  let assistanceSection = '';
-  if (assistanceResponse && (assistanceResponse.response || assistanceResponse.selectedChoice)) {
-    const userAnswer = assistanceResponse.response || assistanceResponse.selectedChoice;
-    assistanceSection = `\n\n## User Response to Your Previous Question\nThe user answered: "${userAnswer}"\nYou MUST incorporate this answer. Do NOT ask the same question again.`;
-  }
-
-  // Build pre-configured parameters section
-  let configuredParamsSection = '';
-  if (configuredParams && configuredParams.length > 0) {
-    // Group by tool
-    const byTool: Record<string, string[]> = {};
-    for (const cp of configuredParams) {
-      if (!byTool[cp.tool]) byTool[cp.tool] = [];
-      byTool[cp.tool].push(cp.param);
-    }
-    
-    const paramsList = Object.entries(byTool)
-      .map(([tool, params]) => `- ${tool}: ${params.join(', ')}`)
-      .join('\n');
-    
-    configuredParamsSection = `
-## 🔐 PRE-CONFIGURED TOOL PARAMETERS
-The following tool parameters have been pre-configured by the user with secrets/credentials.
-You do NOT need to provide values for these - they will be injected automatically at execution time:
-
-${paramsList}
-
-When using these tools, you may omit the configured parameters or pass null - the user's values will override.
-`;
-  }
-
-  return `You are FreeAgent, an autonomous AI assistant. You accomplish tasks by using tools and tracking your progress.
-
-${toolsList}
-${filesSection}
-${configuredParamsSection}${blackboardSection}
-${scratchpadSection}
-${resultsSection}${assistanceSection}
-
-Current Iteration: ${iteration}
-
-## MEMORY ARCHITECTURE - UNDERSTAND THIS:
-
-### BLACKBOARD (shown above) = Your Planning Journal
-- AUTOMATICALLY included every iteration - you see it above
-- Track: current step, COMPLETED items list, NEXT action
-- Write EVERY iteration with VERBOSE detail (see format below)
-
-### SCRATCHPAD = Your Data Storage with References
-- Contains YOUR SUMMARIES and notes (not raw JSON dumps!)
-- May contain {{attribute_name}} references to saved raw data
-- Use read_scratchpad to see your summaries and references
-- Handlebars are NOT auto-expanded - they're just placeholders
-
-### NAMED ATTRIBUTES = Full Raw Data Storage  
-- When you use saveAs, full data is stored in attributes
-- Reference appears as {{name}} in scratchpad
-- Access via: read_attribute({ names: ["attr1", "attr2"] })
-- Only access when you need to extract SPECIFIC information
-
-## ✅ CORRECT WORKFLOW (Use saveAs!)
-
-### Step 1: Fetch data with saveAs
-\`\`\`json
-{ "tool": "web_scrape", "params": { "url": "...", "saveAs": "weather_data" } }
-\`\`\`
-
-### Step 2: You receive confirmation
-"Result saved to attribute 'weather_data' (5000 chars). NEXT: Call read_attribute..."
-
-### Step 3: Read the attribute ONCE
-\`\`\`json  
-{ "tool": "read_attribute", "params": { "names": ["weather_data"] } }
-\`\`\`
-
-### Step 4: EXTRACT and SUMMARIZE to scratchpad
-After seeing the raw data in PREVIOUS ITERATION RESULTS:
-\`\`\`json
-{ "tool": "write_scratchpad", "params": { "content": "## Weather Summary\\n- London: 15°C, Cloudy\\n- Paris: 18°C, Sunny\\n- New York: 22°C, Clear" } }
-\`\`\`
-
-### Step 5: Continue from YOUR SUMMARY
-- Your scratchpad now has clean, readable data
-- Don't re-read the raw attribute - work from your summary!
-
-## ⚠️ THE LOOP PROBLEM - CRITICAL ⚠️
-Tool results only stay visible for ONE iteration. If you don't save:
-- Iteration 5: brave_search returns results
-- Iteration 6: Results are GONE
-- You think "I should search again" - WRONG!
-
-**Solution**: Use saveAs, then read_attribute ONCE, then SUMMARIZE.
-
-## ANTI-LOOP RULES:
-1. Check PREVIOUS ITERATION RESULTS first - if you see data, EXTRACT key info and SUMMARIZE
-2. Check your blackboard - have you already done this step?
-3. Never call the same tool twice with same parameters
-4. After read_attribute, ALWAYS write a summary - don't keep re-reading raw data
-
-## 🔄 LOOP SELF-REFLECTION (MANDATORY BEFORE EACH ACTION)
-
-Before proceeding with tool calls, ask yourself:
-"Based on my blackboard entries and scratchpad, what is the likelihood I am stuck in a loop that I am unlikely to break free from?"
-
-Signs you may be looping:
-- Calling the same tool with identical or very similar parameters multiple times
-- Blackboard entries show repetitive patterns (e.g., same step description appearing repeatedly)
-- You keep re-reading the same data without making progress
-- Previous iterations show the same reasoning pattern
-
-If you detect a high likelihood of being stuck:
-1. STOP and acknowledge it in your reasoning
-2. Try a COMPLETELY DIFFERENT approach or tool
-3. If truly stuck, set status to "needs_assistance" and ask the user for guidance
-
-## TOOL EXECUTION TIMING (CRITICAL!)
-All tools in your tool_calls array execute IN PARALLEL - they run at the same time!
-This means:
-- NEVER call write_scratchpad in the SAME iteration as data-fetching tools
-- The data isn't available yet when write_scratchpad runs!
-
-### ❌ WRONG (will fail - data not available yet):
-\`\`\`json
-{ "tool_calls": [
-  { "tool": "web_scrape", "params": { "url": "...", "saveAs": "data" } },
-  { "tool": "write_scratchpad", "params": { "content": "Results: {{data}}" } }
-]}
-\`\`\`
-
-### ✅ CORRECT (fetch first, summarize next iteration):
-Iteration 1: \`{ "tool_calls": [{ "tool": "web_scrape", "params": { "url": "...", "saveAs": "data" } }] }\`
-Iteration 2: \`{ "tool_calls": [{ "tool": "read_attribute", "params": { "names": ["data"] } }] }\`  
-Iteration 3: \`{ "tool_calls": [{ "tool": "write_scratchpad", "params": { "content": "## Summary\\n..." } }] }\`
-
-## Response Format
-You MUST respond with valid JSON only. No markdown outside JSON:
-{
-  "reasoning": "Your thought process",
-  "tool_calls": [{ "tool": "tool_name", "params": { ... } }],
-  "blackboard_entry": { "category": "observation|insight|plan|decision|error|question|artifact", "content": "What you did/learned" },
-  "status": "in_progress|completed|needs_assistance|error",
-  "message_to_user": "Optional progress message",
-  "artifacts": [{ "type": "text|file|image|data", "title": "Title", "content": "Content", "description": "Description" }],
-  "final_report": { "summary": "...", "tools_used": [...], "artifacts_created": [...], "key_findings": [...] }
-}
-
-## ⚠️⚠️⚠️ CRITICAL: blackboard_entry IS MANDATORY & MUST BE VERBOSE ⚠️⚠️⚠️
-
-You MUST include a detailed "blackboard_entry" field in EVERY response. NO EXCEPTIONS.
-This is your memory journal - track not just WHAT you did, but WHAT YOU LEARNED.
-
-### BLACKBOARD ENTRY FORMAT - BE VERBOSE!
-
-Your entries MUST include:
-- **COMPLETED**: What task/step you finished
-- **EXTRACTED/FOUND**: Key data points you discovered (summarize key findings here!)
-- **NEXT**: Specific next action and WHY
-
-### ❌ BAD EXAMPLES (too vague):
-- "Step 3: Reading scratchpad to find dependencies"
-- "Step 4: Checking the data"
-- "Searching for weather information"
-
-### ✅ GOOD EXAMPLES (detailed with findings):
-- "Step 3: COMPLETED repo structure fetch. FOUND: 45 files total, package.json at root, src/ contains 12 React components. EXTRACTED key deps: react@18.3.1, typescript@5.x, lucide-react. NEXT: Check for CVEs in these specific versions."
-- "Step 4: ANALYZED weather_data attribute. KEY DATA: London 15°C cloudy, Paris 18°C sunny, NYC 22°C clear. EXTRACTED: All cities above 10°C. NEXT: Format this into the email body."
-- "Step 5: COMPLETED email draft. CONTENT: 3-paragraph summary covering weather, travel tips, packing list. NEXT: Send email to user."
-
-### ALWAYS INCLUDE:
-- Starting a task → "Step N: Starting [task]. PLAN: [specific steps]"
-- After data fetch → "Step N: FETCHED [data]. KEY INFO: [extracted facts]. NEXT: [action]"
-- After analysis → "Step N: ANALYZED [source]. FINDINGS: [insights]. EXTRACTED: [key data]. NEXT: [action]"
-- Completing task → "COMPLETED: [task]. SUMMARY: [what was accomplished]. ARTIFACTS: [what was created]"
-- Making observations → category: "observation", content: "[what you found]"
-- Making decisions → category: "decision", content: "[what you decided and why]"
-
-If you skip blackboard_entry, your response is INVALID and will cause problems.
-
-## ⚠️ DATA HANDLING - CRITICAL FOR VALID JSON ⚠️
-
-Your response MUST be valid JSON. When saving data to scratchpad:
-
-1. **NEVER copy raw JSON verbatim** - Embedding complex JSON breaks your response
-2. **SUMMARIZE for your next step** - Only save what you need to proceed
-3. **Use plain text formatting** - Bullet points, numbered lists, simple text
-4. **Keep it clean** - No special characters, no nested objects, no raw API responses
-
-### WRONG (will break JSON parsing):
-write_scratchpad content: {"treeData":[{"key":"src/index.ts","data":{"path":"src/index.ts"}}]}
-
-### CORRECT (clean summary):
-write_scratchpad content: "## GitHub Repo Analysis\\n\\nTotal files: 47\\nKey directories: src/, lib/, tests/\\n\\nFiles found:\\n- src/index.ts\\n- src/utils.ts\\n- package.json"
-
-### Per-Tool Guidance:
-
-**read_github_repo**: Save file count and paths as plain text list, NOT the tree JSON structure
-**read_github_file**: Save relevant code snippets or key findings, NOT entire file contents verbatim
-**brave_search / google_search**: Save titles, URLs, and key points as text - NOT raw API response objects
-**web_scrape**: Extract and summarize relevant content - NOT the full scraped HTML/text dump
-**API calls**: Extract the specific data fields you need - NOT the entire response object
-
-REMEMBER: Your goal is to give yourself just enough information to complete the NEXT step. Keep it simple and clean.
-
-## Workflow:
-1. Check your scratchpad for existing findings before making tool calls
-2. Make tool calls as needed - USE saveAs TO AUTO-SAVE DATA
-3. If you used saveAs, call read_attribute(["attribute_name"]) when you need to see the data
-4. If you didn't use saveAs, write results to scratchpad immediately - SUMMARIZED, not raw
-5. ALWAYS include blackboard_entry to track your progress
-6. Set status to "completed" with final_report when done
-7. Use artifacts for FINAL deliverables only
-
-## ⚠️ IMPORTANT: ACCESSING SAVED ATTRIBUTES
-
-If you called a tool with saveAs (e.g., brave_search with saveAs: "weather_data"):
-- The data is stored but you DON'T see it yet
-- To access it: call read_attribute({ names: ["weather_data"] })
-- The NEXT iteration will show you the full data in PREVIOUS ITERATION RESULTS
-- THEN you can analyze it and proceed with your task`;
-}
-
 // ============================================================================
-// DYNAMIC SYSTEM PROMPT BUILDER - Uses sections from frontend
+// DYNAMIC TOOLS LIST BUILDER - Generates tool documentation from manifest
 // ============================================================================
 
-// Format tools list with optional custom descriptions and filtering disabled tools
-// Now supports tool instances - when instances exist for a tool, show instances instead of global
+// Category display order and groupings
+const CATEGORY_ORDER = [
+  { key: "web", label: "Search & Web" },
+  { key: "code", label: "GitHub" },
+  { key: "document", label: "Document" },
+  { key: "file", label: "File" },
+  { key: "communication", label: "Communication" },
+  { key: "interaction", label: "Interaction" },
+  { key: "generation", label: "Generation" },
+  { key: "api", label: "API" },
+  { key: "database", label: "Database" },
+  { key: "utility", label: "Utility" },
+  { key: "memory", label: "Memory" },
+  { key: "export", label: "Export" },
+  { key: "advanced_self_author", label: "Self-Author (Advanced)" },
+  { key: "advanced_spawn", label: "Spawn (Advanced)" },
+];
+
 function formatToolsList(
   toolOverrides?: Record<string, { description?: string; disabled?: boolean }>,
   disabledTools?: string[],
   advancedFeatures?: FreeAgentRequest['advancedFeatures'],
-  toolInstances?: FreeAgentRequest['toolInstances']
+  toolInstances?: FreeAgentRequest['toolInstances'],
+  toolDefinitions?: Array<{
+    id: string;
+    name: string;
+    description: string;
+    category: string;
+    parameters: Record<string, { type: string; required?: boolean; description?: string }>;
+  }>
 ): string {
-  // Build a set of disabled tool IDs from both sources
+  // Build disabled set from both sources
   const disabledSet = new Set(disabledTools || []);
-  // Also check toolOverrides for disabled flag
   if (toolOverrides) {
     for (const [toolId, override] of Object.entries(toolOverrides)) {
-      if (override.disabled) {
-        disabledSet.add(toolId);
-      }
+      if (override.disabled) disabledSet.add(toolId);
     }
   }
   
-  // Build a map of base tools that have instances
+  // Build tools list dynamically from toolDefinitions
+  const allTools: ToolDefinition[] = [];
+  
+  if (toolDefinitions && toolDefinitions.length > 0) {
+    for (const tool of toolDefinitions) {
+      // Skip advanced tools if features not enabled
+      if (tool.category === 'advanced_self_author' && !advancedFeatures?.selfAuthorEnabled) continue;
+      if (tool.category === 'advanced_spawn' && !advancedFeatures?.spawnEnabled) continue;
+      
+      // Build params string from parameter definitions
+      const params = Object.entries(tool.parameters || {})
+        .map(([name, paramDef]) => {
+          const required = paramDef.required ? '' : '?';
+          return `${name}${required}`;
+        })
+        .join(', ');
+      
+      // Get description (with potential override)
+      const desc = toolOverrides?.[tool.id]?.description || tool.description;
+      
+      allTools.push({
+        id: tool.id,
+        description: desc,
+        params: params,
+        category: tool.category,
+      });
+    }
+    console.log(`[formatToolsList] Built ${allTools.length} tools from toolDefinitions`);
+  } else {
+    console.error('[formatToolsList] No toolDefinitions provided - prompt will have no tools!');
+    return '\n## Available Tools\n\nERROR: No tool definitions provided. Check promptData.toolDefinitions.\n';
+  }
+  
+  // Build instances map - tools with instances show instances instead of global
   const toolsWithInstances = new Set<string>();
   const instancesByBaseTool: Record<string, typeof toolInstances> = {};
   if (toolInstances && toolInstances.length > 0) {
@@ -763,144 +377,72 @@ function formatToolsList(
       }
       instancesByBaseTool[instance.baseToolId]!.push(instance);
     }
-    console.log(`[formatToolsList] ${toolInstances.length} tool instances found for ${toolsWithInstances.size} base tools`);
-  }
-  
-  const allTools = [
-    { id: "brave_search", defaultDesc: "Search the web", params: "query, numResults?, saveAs?" },
-    { id: "google_search", defaultDesc: "Search via Google", params: "query, numResults?, saveAs?" },
-    { id: "web_scrape", defaultDesc: "Scrape webpage content", params: "url, maxCharacters?, saveAs?" },
-    { id: "read_github_repo", defaultDesc: "Get repo file tree", params: "repoUrl, branch?, saveAs?" },
-    { id: "read_github_file", defaultDesc: "Read files from repo", params: "repoUrl, selectedPaths, branch?, saveAs?" },
-    { id: "pdf_info", defaultDesc: "Get PDF metadata and page count", params: "fileData - base64 encoded PDF" },
-    { id: "pdf_extract_text", defaultDesc: "Extract text from PDF", params: "fileData - base64 encoded PDF, pages?" },
-    { id: "ocr_image", defaultDesc: "Extract text from image via OCR", params: "imageSource - base64, URL, or data URI" },
-    { id: "read_zip_contents", defaultDesc: "List files in ZIP archive", params: "fileData - base64 encoded ZIP" },
-    { id: "read_zip_file", defaultDesc: "Read specific file from ZIP", params: "fileData, entryPath" },
-    { id: "extract_zip_files", defaultDesc: "Extract files from ZIP", params: "fileData, paths? - empty for all" },
-    { id: "send_email", defaultDesc: "Send email via Resend", params: "to, subject, body, useHtml?" },
-    { id: "request_assistance", defaultDesc: "Ask user for input", params: "question, context?, inputType?, choices?" },
-    { id: "image_generation", defaultDesc: "Generate image from prompt", params: "prompt" },
-    { id: "elevenlabs_tts", defaultDesc: "Text to speech", params: "text, voiceId?, modelId?" },
-    { id: "get_call_api", defaultDesc: "Make GET request", params: "url, headers?, saveAs?" },
-    { id: "post_call_api", defaultDesc: "Make POST request", params: "url, headers?, saveAs?" },
-    { id: "read_database_schemas", defaultDesc: "Get database structure - tables, columns, types, constraints", params: "connectionString, schemas?, saveAs?" },
-    { id: "execute_sql", defaultDesc: "Execute SQL on external PostgreSQL database", params: "connectionString, query, isWrite?, params?, saveAs?" },
-    { id: "get_time", defaultDesc: "Get current date/time", params: "timezone?" },
-    { id: "get_weather", defaultDesc: "Get weather for a location", params: "location, units? - celsius or fahrenheit" },
-    { id: "write_blackboard", defaultDesc: "Write to your planning journal", params: "category, content, data?" },
-    { id: "read_file", defaultDesc: "Read session file content", params: "fileId" },
-    { id: "read_prompt", defaultDesc: "Read the original user prompt", params: "" },
-    { id: "read_prompt_files", defaultDesc: "Get list of available files with metadata", params: "" },
-    { id: "read_attribute", defaultDesc: "Read saved tool result attributes", params: "names[] - empty array for list, specific names for content" },
-    { id: "read_artifact", defaultDesc: "Read artifacts created in this session", params: "ids[] - empty array for list, specific ids/titles for content" },
-    { id: "read_scratchpad", defaultDesc: "Read your data storage", params: "" },
-    { id: "write_scratchpad", defaultDesc: "SAVE DATA HERE immediately after search/read", params: "content, mode?" },
-    { id: "export_word", defaultDesc: "Create Word document", params: "content, filename?" },
-    { id: "export_pdf", defaultDesc: "Create PDF document", params: "content, filename?" },
-  ];
-  
-  // Conditionally add advanced Self-Author tools
-  if (advancedFeatures?.selfAuthorEnabled) {
-    allTools.push(
-      { id: "read_self", defaultDesc: "Read your own system prompt configuration (sections, tools, overrides)", params: "include? - 'sections', 'tools', or 'all'" },
-      { id: "write_self", defaultDesc: "Modify your own system prompt - DANGEROUS! Changes take effect next iteration", params: "sectionOverrides?, disableSections?, enableSections?, toolDescriptionOverrides?, disableTools?, enableTools?" }
-    );
-    console.log(`[formatToolsList] Self-Author tools enabled`);
-  }
-  
-  // Conditionally add advanced Spawn tools
-  if (advancedFeatures?.spawnEnabled) {
-    const maxChildren = advancedFeatures.maxChildren || 5;
-    const childMaxIter = advancedFeatures.childMaxIterations || 20;
-    allTools.push(
-      { id: "spawn", defaultDesc: `Create up to ${maxChildren} child agents for parallel work. Each child gets ${childMaxIter} max iterations.`, params: "children[] - array of {name, task, maxIterations?, sectionOverrides?, attributes?}, completionThreshold?" }
-    );
-    console.log(`[formatToolsList] Spawn tool enabled (max ${maxChildren} children)`);
+    console.log(`[formatToolsList] ${toolInstances.length} tool instances for ${toolsWithInstances.size} base tools`);
   }
   
   // Filter out disabled tools
-  const tools = allTools.filter(t => !disabledSet.has(t.id));
+  const enabledTools = allTools.filter(t => !disabledSet.has(t.id));
   
-  // Log if any tools are disabled
   if (disabledSet.size > 0) {
     console.log(`[formatToolsList] ${disabledSet.size} tools disabled:`, Array.from(disabledSet).join(', '));
   }
   
   // Group by category
-  const categories: Record<string, typeof tools> = {
-    "Search & Web": tools.filter(t => ["brave_search", "google_search", "web_scrape"].includes(t.id)),
-    "GitHub": tools.filter(t => ["read_github_repo", "read_github_file"].includes(t.id)),
-    "Document": tools.filter(t => ["pdf_info", "pdf_extract_text", "ocr_image", "read_zip_contents", "read_zip_file", "extract_zip_files"].includes(t.id)),
-    "Communication": tools.filter(t => ["send_email", "request_assistance"].includes(t.id)),
-    "Generation": tools.filter(t => ["image_generation", "elevenlabs_tts"].includes(t.id)),
-    "API": tools.filter(t => ["get_call_api", "post_call_api"].includes(t.id)),
-    "Database": tools.filter(t => ["read_database_schemas", "execute_sql"].includes(t.id)),
-    "Utility": tools.filter(t => ["get_time", "get_weather"].includes(t.id)),
-    "Memory": tools.filter(t => ["write_blackboard", "read_file", "read_prompt", "read_prompt_files", "read_attribute", "read_artifact", "read_scratchpad", "write_scratchpad"].includes(t.id)),
-    "Export": tools.filter(t => ["export_word", "export_pdf"].includes(t.id)),
-    "Advanced": tools.filter(t => ["read_self", "write_self", "spawn"].includes(t.id)),
-  };
+  const byCategory: Record<string, ToolDefinition[]> = {};
+  for (const tool of enabledTools) {
+    const cat = tool.category || 'utility';
+    if (!byCategory[cat]) byCategory[cat] = [];
+    byCategory[cat].push(tool);
+  }
   
-  let output = "Available Tools:\n\n";
+  // Build output in category order
+  let output = `\n## Available Tools (${enabledTools.length} total)\n`;
   
-  for (const [category, categoryTools] of Object.entries(categories)) {
-    if (categoryTools.length === 0) continue;
-    output += `## ${category} Tools\n`;
-    for (const tool of categoryTools) {
+  for (const { key, label } of CATEGORY_ORDER) {
+    const tools = byCategory[key];
+    if (!tools || tools.length === 0) continue;
+    
+    output += `\n### ${label}\n`;
+    for (const tool of tools) {
       // Check if this tool has instances
       if (toolsWithInstances.has(tool.id)) {
-        // Show instances instead of the global tool
         const instances = instancesByBaseTool[tool.id] || [];
-        for (const instance of instances) {
-          const instanceDesc = toolOverrides?.[instance.fullToolId]?.description || 
-            `${tool.defaultDesc} - ${instance.description}`;
-          output += `- ${instance.fullToolId}: [${instance.label}] ${instanceDesc} (params: ${tool.params})\n`;
+        for (const inst of instances) {
+          if (disabledSet.has(inst.fullToolId)) continue;
+          output += `- **${inst.fullToolId}**: ${inst.description} (params: ${tool.params})\n`;
         }
       } else {
-        // Show global tool as normal
-        const desc = toolOverrides?.[tool.id]?.description || tool.defaultDesc;
-        output += `- ${tool.id}: ${desc} (params: ${tool.params})\n`;
+        output += `- **${tool.id}**: ${tool.description} (params: ${tool.params})\n`;
       }
     }
-    output += "\n";
   }
-
-  // Add tool instances section if there are any
-  if (toolInstances && toolInstances.length > 0) {
-    output += `## 🔧 TOOL INSTANCES
-Some tools have been configured with specific instances. Use the EXACT instance name (e.g., "execute_sql:policies_database") when calling these tools.
-The appropriate credentials will be injected automatically based on the instance configuration.
-
-`;
-  }
-
-  // Add the saveAs explanation
-  output += `## 🚀 NAMED TOOL RESULT ATTRIBUTES - USE saveAs TO SAVE TOKEN BUDGET!
-
+  
+  // Add saveAs documentation
+  output += `
+### Named Attribute Storage (saveAs)
 Data-fetching tools support a "saveAs" parameter that AUTOMATICALLY saves results to a named attribute:
 
-Example: { "tool": "web_scrape", "params": { "url": "...", "saveAs": "london_weather" } }
+Example: { "tool": "web_scrape", "params": { "url": "...", "saveAs": "weather_data" } }
 
-Benefits of using saveAs:
-- Results are saved AUTOMATICALLY - no need to call write_scratchpad
-- You receive a small confirmation instead of the full data (saves tokens!)
-- Results appear as clickable nodes on the canvas
-- Use {{london_weather}} in scratchpad to reference the data
-- Call read_attribute(["london_weather"]) to retrieve specific attributes
-- Call read_attribute([]) to list all saved attributes
+Benefits:
+- Results saved AUTOMATICALLY - no need for write_scratchpad
+- You receive a confirmation instead of full data (saves tokens!)
+- Use {{name}} in scratchpad to reference the data
+- Call read_attribute(["name"]) to retrieve specific attributes
 
-RECOMMENDED: Use saveAs for ALL data-fetching operations (searches, scrapes, API calls, GitHub reads).
-This is the most efficient way to store data without wasting tokens on large responses!
+RECOMMENDED: Use saveAs for ALL data-fetching operations.
 `;
   
   return output;
 }
 
-// Format session files section
+// ============================================================================
+// DYNAMIC SECTION FORMATTERS
+// ============================================================================
+
 function formatSessionFiles(files: Array<{ id: string; filename: string; mimeType: string; size: number; content?: string }>): string {
   if (!files || files.length === 0) {
-    return '\nNo session files provided.';
+    return '\n## Session Files: None provided.';
   }
   
   const filesList = files.map(f => {
@@ -911,14 +453,11 @@ function formatSessionFiles(files: Array<{ id: string; filename: string; mimeTyp
     return fileInfo;
   }).join('\n');
   
-  return `\nSession Files Available:\n${filesList}\n\nUse read_file with the exact fileId to read file contents.`;
+  return `\n## Session Files Available:\n${filesList}\n\nUse read_file with the exact fileId to read file contents.`;
 }
 
-// Format configured params section
 function formatConfiguredParams(configuredParams?: Array<{ tool: string; param: string }>): string {
-  if (!configuredParams || configuredParams.length === 0) {
-    return '';
-  }
+  if (!configuredParams || configuredParams.length === 0) return '';
   
   const byTool: Record<string, string[]> = {};
   for (const cp of configuredParams) {
@@ -931,98 +470,85 @@ function formatConfiguredParams(configuredParams?: Array<{ tool: string; param: 
     .join('\n');
   
   return `
-## 🔐 PRE-CONFIGURED TOOL PARAMETERS
-The following tool parameters have been pre-configured by the user with secrets/credentials.
-You do NOT need to provide values for these - they will be injected automatically at execution time:
+## Pre-Configured Tool Parameters
+The following parameters have been pre-configured with secrets/credentials.
+You do NOT need to provide values for these - they will be injected automatically:
 
 ${paramsList}
-
-When using these tools, you may omit the configured parameters or pass null - the user's values will override.
 `;
 }
 
-// Detect potential loops by checking for repeated content in recent entries
-function detectPotentialLoop(entries: Array<{ category: string; content: string }>): boolean {
-  if (entries.length < 3) return false;
-  
-  const recentEntries = entries.slice(-5);
-  // Normalize content for comparison (trim, lowercase, remove step numbers)
-  const normalizedContents = recentEntries.map(e => 
-    e.content.trim().toLowerCase().replace(/step\s*\d+:?/gi, '').trim()
-  );
-  
-  // Count duplicates
-  const contentCounts = new Map<string, number>();
-  for (const content of normalizedContents) {
-    contentCounts.set(content, (contentCounts.get(content) || 0) + 1);
-  }
-  
-  // If any content appears 3+ times in last 5 entries, we're likely looping
-  return Array.from(contentCounts.values()).some(count => count >= 3);
-}
-
-// Format blackboard section with iteration prefixes for loop detection
-function formatBlackboard(entries: Array<{ category: string; content: string; iteration?: number }>): string {
-  if (!entries || entries.length === 0) {
+function formatBlackboard(blackboard: Array<{ category: string; content: string; tools?: string[] }>): string {
+  if (!blackboard || blackboard.length === 0) {
     return '\n## BLACKBOARD: Empty. Track your plan and completed items here.';
   }
   
-  const hasUserInterjections = entries.some(e => e.category === 'user_interjection');
-  const interjectionNote = hasUserInterjections 
-    ? '\n\n⚠️ Pay special attention to any recent User Interjections (within the last 1-5 blackboard entries) and ensure your next actions are aligned with the user\'s further direction.' 
-    : '';
+  const formatEntry = (e: { category: string; content: string; tools?: string[] }, index: number): string => {
+    const toolsSuffix = e.tools?.length ? ` | Tools: [${e.tools.join(', ')}]` : '';
+    return `[#${index} ${e.category}]${toolsSuffix} ${e.content}`;
+  };
   
-  // Check for potential loop
-  const potentialLoop = detectPotentialLoop(entries);
-  const loopWarning = potentialLoop 
-    ? '\n\n⚠️⚠️⚠️ LOOP WARNING: Your recent blackboard entries show REPETITIVE PATTERNS! Check if your last tool call SUCCEEDED in PREVIOUS ITERATION RESULTS before repeating it. If it succeeded, MOVE ON to the next step!\n'
-    : '';
-  
-  // Prefix each entry with iteration number for loop detection
-  const formattedEntries = entries.map(e => {
-    const iterPrefix = e.iteration !== undefined ? `#${e.iteration} ` : '';
-    return `[${iterPrefix}${e.category}] ${e.content}`;
-  }).join('\n');
-  
-  return `\n## YOUR BLACKBOARD (Planning Journal - Read this EVERY iteration!):${loopWarning}\n${formattedEntries}${interjectionNote}`;
-}
-
-// Format scratchpad section
-function formatScratchpad(content: string): string {
-  if (!content || !content.trim()) {
-    return '\n## YOUR SCRATCHPAD (Data Storage): Empty. Write actual DATA here (file contents, search results, analysis).';
+  // Tiered display: Last (1), Recent (3 prior), Older (rest)
+  if (blackboard.length <= 4) {
+    return `\n## YOUR BLACKBOARD (Planning Journal):\n${blackboard.map((e, i) => formatEntry(e, i + 1)).join('\n\n')}`;
   }
   
-  if (content.length < 500) {
-    return `\n## YOUR SCRATCHPAD (Data Storage - ${content.length} chars):\n\`\`\`\n${content}\n\`\`\``;
+  const olderEntries = blackboard.slice(0, -4);
+  const recentEntries = blackboard.slice(-4, -1);
+  const lastEntry = blackboard[blackboard.length - 1];
+  const lastIdx = blackboard.length;
+  
+  let section = '\n## YOUR BLACKBOARD (Planning Journal - Read this EVERY iteration!):\n';
+  
+  // Older entries (summarized)
+  if (olderEntries.length > 0) {
+    section += `\n### Older (${olderEntries.length} entries - summarized):\n`;
+    for (let i = 0; i < olderEntries.length; i++) {
+      const e = olderEntries[i];
+      const preview = e.content.length > 150 ? e.content.slice(0, 150) + '...' : e.content;
+      section += `[#${i + 1} ${e.category}] ${preview}\n\n`;
+    }
   }
   
-  return `\n## YOUR SCRATCHPAD: Contains ${content.length} chars of saved data. Use read_scratchpad to view full content.`;
+  // Recent entries (full)
+  section += `\n### Recent:\n`;
+  for (let i = 0; i < recentEntries.length; i++) {
+    section += `${formatEntry(recentEntries[i], olderEntries.length + i + 1)}\n\n`;
+  }
+  
+  // Last entry (full, highlighted)
+  section += `\n### Last (MOST RECENT - READ CAREFULLY):\n${formatEntry(lastEntry, lastIdx)}\n`;
+  
+  return section;
 }
 
-// Format artifacts list section
-function formatArtifactsList(
-  artifacts: Array<{ id: string; type: string; title: string; content: string; description?: string }>
-): string {
+function formatScratchpad(scratchpad: string): string {
+  if (!scratchpad || scratchpad.trim() === '') {
+    return '\n## YOUR SCRATCHPAD: Empty. Use write_scratchpad to save analysis and findings.';
+  }
+  
+  const truncated = scratchpad.length > 10000 
+    ? scratchpad.slice(0, 10000) + `\n...[Truncated - ${scratchpad.length} total chars. Use read_scratchpad for full content.]`
+    : scratchpad;
+  
+  return `\n## YOUR SCRATCHPAD (${scratchpad.length} chars):\n${truncated}`;
+}
+
+function formatArtifactsList(artifacts: Array<{ id: string; type: string; title: string; content: string; description?: string }>): string {
   if (!artifacts || artifacts.length === 0) {
     return '\n## YOUR ARTIFACTS: None created yet. Use the artifacts field in your response to create deliverables.';
   }
   
   const list = artifacts.map((a, i) => {
-    const preview = a.content.length > 200 
-      ? a.content.slice(0, 200) + '...' 
-      : a.content;
+    const preview = a.content.length > 200 ? a.content.slice(0, 200) + '...' : a.content;
     return `${i + 1}. **${a.title}** (${a.type}, ${a.content.length} chars)\n   ID: ${a.id}\n   ${a.description || 'No description'}\n   Preview: ${preview}`;
   }).join('\n\n');
   
-  return `\n## YOUR CREATED ARTIFACTS (${artifacts.length} total):\nThese artifacts were created in previous iterations. Use read_artifact to access full content or {{artifact:title}} in tool parameters.\n\n${list}`;
+  return `\n## YOUR CREATED ARTIFACTS (${artifacts.length} total):\n${list}`;
 }
 
-// Format previous results section
 function formatPreviousResults(results: Array<{ tool: string; result?: unknown; error?: string }>): string {
-  if (!results || results.length === 0) {
-    return '';
-  }
+  if (!results || results.length === 0) return '';
   
   const formattedResults = results.map(r => {
     let resultStr: string;
@@ -1036,17 +562,16 @@ function formatPreviousResults(results: Array<{ tool: string; result?: unknown; 
       }
     }
     
-    const resultLength = resultStr?.length || 0;
-    const display = resultLength > 250000 
+    const display = resultStr.length > 250000 
       ? resultStr.slice(0, 250000) + '\n...[truncated at 250KB - use saveAs for large data]'
-      : resultStr || 'No result';
+      : resultStr;
       
     return `### Tool: ${r.tool}\n\`\`\`json\n${display}\n\`\`\``;
   }).join('\n\n');
   
   return `
 
-## ⚠️ PREVIOUS ITERATION TOOL RESULTS - READ THIS FIRST! ⚠️
+## PREVIOUS ITERATION TOOL RESULTS - READ THIS FIRST!
 These results will DISAPPEAR next iteration! You MUST save important data to scratchpad NOW.
 
 ${formattedResults}
@@ -1056,17 +581,16 @@ DO NOT call the same tool again - the results are RIGHT HERE.
 `;
 }
 
-// Format assistance response section
 function formatAssistanceResponse(assistanceResponse?: { response?: string; fileId?: string; selectedChoice?: string }): string {
-  if (!assistanceResponse || (!assistanceResponse.response && !assistanceResponse.selectedChoice)) {
-    return '';
-  }
-  
+  if (!assistanceResponse || (!assistanceResponse.response && !assistanceResponse.selectedChoice)) return '';
   const userAnswer = assistanceResponse.response || assistanceResponse.selectedChoice;
   return `\n\n## User Response to Your Previous Question\nThe user answered: "${userAnswer}"\nYou MUST incorporate this answer. Do NOT ask the same question again.`;
 }
 
-// Build system prompt dynamically from sections
+// ============================================================================
+// DYNAMIC SYSTEM PROMPT BUILDER
+// ============================================================================
+
 function buildSystemPromptDynamic(
   blackboard: Array<{ category: string; content: string; iteration?: number }>,
   sessionFiles: Array<{ id: string; filename: string; mimeType: string; size: number; content?: string }>,
@@ -1080,16 +604,13 @@ function buildSystemPromptDynamic(
   advancedFeatures?: FreeAgentRequest['advancedFeatures'],
   toolInstances?: FreeAgentRequest['toolInstances']
 ): string {
-  // REQUIRE promptData - no hardcoded fallback
   if (!promptData || !promptData.sections || promptData.sections.length === 0) {
     throw new Error('promptData is required - dynamic system prompt must be provided from frontend');
   }
   
   // Build runtime variable map
-  // Note: {{USER_TASK}} is NOT populated here - it's handled specially for parent (empty) vs child (task content)
-  // The frontend substitutes the user_task section entirely for children with their specific task content
   const runtimeVars: Record<string, string> = {
-    '{{TOOLS_LIST}}': formatToolsList(promptData.toolOverrides, promptData.disabledTools, advancedFeatures, toolInstances),
+    '{{TOOLS_LIST}}': formatToolsList(promptData.toolOverrides, promptData.disabledTools, advancedFeatures, toolInstances, promptData.toolDefinitions),
     '{{SESSION_FILES}}': formatSessionFiles(sessionFiles),
     '{{CONFIGURED_PARAMS}}': formatConfiguredParams(configuredParams),
     '{{BLACKBOARD_CONTENT}}': formatBlackboard(blackboard),
@@ -1098,88 +619,48 @@ function buildSystemPromptDynamic(
     '{{CURRENT_ITERATION}}': String(iteration),
     '{{ARTIFACTS_LIST}}': formatArtifactsList(artifacts),
     '{{ASSISTANCE_RESPONSE}}': formatAssistanceResponse(assistanceResponse),
-    // USER_TASK is empty by default for parent - the actual task comes from the user message
-    // For child agents, the frontend substitutes the entire user_task section with child-specific content
-    '{{USER_TASK}}': '',
-    // Advanced feature sections - only populated when enabled
+    '{{USER_TASK}}': '', // Empty for parent - task comes from user message; for children, section is substituted
     '{{SELF_AUTHOR}}': advancedFeatures?.selfAuthorEnabled ? `
-## ⚠️ SELF-AUTHOR CAPABILITIES (EXPERIMENTAL)
+## Self-Author Capabilities
 
-You have access to powerful self-modification tools:
+You have access to self-modification tools:
 
 - **read_self**: Introspect your own system prompt configuration
   - Returns: sections, tool overrides, disabled items
-  - Use to understand your current behavior and constraints
+  - Use to understand your current behavior
 
 - **write_self**: Modify your own configuration
   - Can: Override section content, enable/disable sections, change tool descriptions
-  - Changes take effect in the NEXT iteration, not immediately
-  - Use sparingly and carefully - incorrect modifications may cause errors
+  - Changes take effect in the NEXT iteration
+  - Use sparingly and carefully
 
-### VALID SECTION IDS FOR sectionOverrides:
+### Valid Section IDs for sectionOverrides:
+identity, memory_architecture, correct_workflow, loop_problem, anti_loop_rules, loop_self_reflection, 
+tool_execution_timing, response_format, blackboard_mandatory, data_handling, workflow_summary, 
+accessing_attributes, reference_resolution
 
-**Editable sections** (can override content):
-- identity - Your core persona and behavior definition
-- memory_architecture - How you use blackboard/scratchpad/attributes
-- correct_workflow - Workflow steps for data handling
-- loop_problem - Loop prevention guidance
-- anti_loop_rules - Anti-loop rules
-- loop_self_reflection - Loop detection instructions
-- tool_execution_timing - Parallel execution guidance
-- response_format - JSON response structure
-- blackboard_mandatory - Blackboard entry requirements
-- data_handling - JSON data handling guidelines
-- workflow_summary - High-level workflow steps
-- accessing_attributes - How to access saved attributes
-- reference_resolution - Reference placeholder documentation
-
-**Read-only sections** (can disable but NOT override):
-- tools_list - Auto-generated from tool manifest
-- session_files - User's uploaded files
-- configured_secrets - Auto-injected API keys
-- blackboard - Current blackboard state
-- scratchpad - Current scratchpad state
-- previous_results - Last iteration's tool results
-- iteration_info - Current iteration number
-- artifacts_list - Created artifacts list
-
-### CREATING NEW SECTIONS:
-To add a NEW section (like "persona"), use addSections - NOT sectionOverrides:
-\`\`\`json
-{ "tool": "write_self", "params": { "addSections": [{ "title": "My Persona", "content": "I am a JavaScript expert..." }] } }
-\`\`\`
-
-WARNING: Self-modification is powerful but risky. Only use when:
-1. You need to optimize your behavior for a specific task
-2. You want to disable irrelevant sections to save tokens
-3. You need to adjust tool descriptions for clarity
+### Creating NEW Sections:
+Use addSections (NOT sectionOverrides):
+{ "tool": "write_self", "params": { "addSections": [{ "title": "My Persona", "content": "..." }] } }
 ` : '',
     '{{SPAWN}}': advancedFeatures?.spawnEnabled ? `
-## 🔀 SPAWN CAPABILITIES (PARALLEL PROCESSING)
+## Spawn Capabilities
 
-You can create child agent instances to process work in parallel:
+You can create up to ${advancedFeatures.maxChildren || 5} child agents for parallel work:
 
-- **spawn**: Create up to ${advancedFeatures.maxChildren || 5} child agents
-  - Each child gets its own task and up to ${advancedFeatures.childMaxIterations || 20} iterations
-  - Children share your current scratchpad but have separate blackboards
-  - You enter "orchestrate" mode and wait for children to complete
-  - Child results are merged to your blackboard when they finish
+- **spawn**: Create child agents with specific tasks
+  - Each child gets up to ${advancedFeatures.childMaxIterations || 20} iterations
+  - Children share your attributes but have separate blackboards
+  - Results merge to your blackboard when they complete
 
-When to use spawn:
-- Processing multiple files, URLs, or data sources
-- Dividing a large task into independent subtasks
-- Parallel research on different topics
-- Bulk operations that don't depend on each other
-
-Example spawn call:
+Example:
 {
   "tool": "spawn",
   "params": {
     "children": [
       { "name": "researcher_1", "task": "Research topic A" },
       { "name": "researcher_2", "task": "Research topic B" }
-    ],
-    "completionThreshold": 2
+    ]
   }
 }
 ` : '',
@@ -1191,10 +672,10 @@ Example spawn call:
   // Log identity section for debugging
   const identitySection = sortedSections.find(s => s.id === 'identity');
   if (identitySection) {
-    console.log(`[DynamicPrompt] Identity section content (first 200 chars): ${identitySection.content.substring(0, 200)}`);
+    console.log(`[DynamicPrompt] Identity: ${identitySection.content.substring(0, 200)}`);
   }
   
-  // Build prompt by iterating through sections
+  // Build prompt
   let prompt = '';
   for (const section of sortedSections) {
     let content = section.content;
@@ -1204,20 +685,23 @@ Example spawn call:
       content = content.split(variable).join(value);
     }
     
-    // Skip empty dynamic sections (e.g., no previous results, no assistance response)
+    // Skip empty dynamic sections (no previous results, no assistance response, etc.)
     if (section.type === 'dynamic' && !content.trim()) continue;
     
-    // FEATURE: XML Section Tags for Agent Introspection
-    // This wraps each section with metadata tags so the agent can "see" its own prompt structure,
-    // including section IDs and editability status, without needing to call read_self.
-    // ROLLBACK: To disable this feature, replace the line below with: prompt += content + '\n\n';
+    // Skip advanced sections with empty content (self_author/spawn when not enabled)
+    if (section.type === 'advanced' && !content.trim()) continue;
+    
+    // Wrap each section with XML metadata tags for agent introspection
     prompt += `<prompt-section id="${section.id}" editable="${section.editable}" type="${section.type}">\n${content}\n</prompt-section>\n\n`;
   }
   
   return prompt.trim();
 }
 
-// Execute a single tool call against edge functions
+// ============================================================================
+// TOOL EXECUTION
+// ============================================================================
+
 async function executeTool(
   toolName: string,
   params: Record<string, unknown>,
@@ -1239,52 +723,41 @@ async function executeTool(
     execute_sql: "external-db",
     read_database_schemas: "external-db",
     elevenlabs_tts: "elevenlabs-tts",
-    // Weather
     get_weather: "tool_weather",
-    // ZIP tools
     read_zip_contents: "tool_zip-handler",
     read_zip_file: "tool_zip-handler",
     extract_zip_files: "tool_zip-handler",
-    // PDF tools
     pdf_info: "tool_pdf-handler",
     pdf_extract_text: "tool_pdf-handler",
-    // OCR
     ocr_image: "tool_ocr-handler",
   };
 
-  // Parse tool instance format: "baseTool:instanceName" -> extract base tool and use full ID for secret lookup
+  // Parse tool instance format: "baseTool:instanceName"
   let baseToolName = toolName;
   let secretLookupKey = toolName;
   if (toolName.includes(':')) {
     const parts = toolName.split(':');
-    baseToolName = parts[0]; // e.g., "execute_sql"
-    secretLookupKey = toolName; // Keep full ID for secret lookup, e.g., "execute_sql:policies_database"
+    baseToolName = parts[0];
+    secretLookupKey = toolName;
     console.log(`[Tool Instance] Using base tool "${baseToolName}" with secrets from "${secretLookupKey}"`);
   }
 
   const edgeFunction = toolMap[baseToolName];
   
   if (!edgeFunction) {
-    // Frontend handler tools - return marker for frontend to handle
-    return {
-      success: true,
-      result: { frontend_handler: true, tool: toolName, params }
-    };
+    return { success: true, result: { frontend_handler: true, tool: toolName, params } };
   }
 
   try {
     let body = { ...params };
     
-    // Apply secret overrides - first try instance-specific (fullToolId), then fall back to base tool
     const instanceSecrets = secretOverrides?.[secretLookupKey];
     const baseSecrets = secretOverrides?.[baseToolName];
     const toolSecrets = instanceSecrets || baseSecrets;
     
     if (toolSecrets?.params) {
-      // Deep merge params with secret values overriding LLM values
       for (const [key, value] of Object.entries(toolSecrets.params)) {
         if (typeof value === 'object' && value !== null && typeof body[key] === 'object' && body[key] !== null) {
-          // Merge objects (like headers)
           body[key] = { ...(body[key] as Record<string, unknown>), ...(value as Record<string, unknown>) };
         } else {
           body[key] = value;
@@ -1302,7 +775,6 @@ async function executeTool(
       body = { ...body, action: "schemas" };
     }
     
-    // Apply user-defined headers to the body for tools that support them
     if (toolSecrets?.headers && Object.keys(toolSecrets.headers).length > 0) {
       const existingHeaders = (body.headers as Record<string, string>) || {};
       body.headers = { ...existingHeaders, ...toolSecrets.headers };
@@ -1310,7 +782,6 @@ async function executeTool(
 
     console.log(`Executing tool ${toolName} via ${edgeFunction}:`, JSON.stringify(body).slice(0, 500));
 
-    // Add x-source header for github-fetch to return compact response
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       "Authorization": `Bearer ${supabaseKey}`,
@@ -1340,7 +811,10 @@ async function executeTool(
   }
 }
 
-// Call the LLM - Multi-provider support
+// ============================================================================
+// LLM CALLING
+// ============================================================================
+
 async function callLLM(
   systemPrompt: string,
   userPrompt: string,
@@ -1349,16 +823,14 @@ async function callLLM(
   const provider = getProvider(model);
   const apiModel = getApiModelName(model);
   
-  console.log(`Calling LLM - Provider: ${provider}, UI Model: ${model}, API Model: ${apiModel}`);
+  console.log(`Calling LLM - Provider: ${provider}, Model: ${apiModel}`);
 
   try {
     let response: Response;
     
     if (provider === "gemini") {
       const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-      if (!GEMINI_API_KEY) {
-        return { success: false, error: "GEMINI_API_KEY not configured" };
-      }
+      if (!GEMINI_API_KEY) return { success: false, error: "GEMINI_API_KEY not configured" };
 
       response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/${apiModel}:generateContent?key=${GEMINI_API_KEY}`,
@@ -1366,22 +838,18 @@ async function callLLM(
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            contents: [
-              { role: "user", parts: [{ text: `${systemPrompt}\n\nUser Task: ${userPrompt}` }] }
-            ],
+            contents: [{ role: "user", parts: [{ text: `${systemPrompt}\n\nUser Task: ${userPrompt}` }] }],
             generationConfig: {
               maxOutputTokens: 16384,
               temperature: 0.7,
-              responseMimeType: "application/json", // Gemini JSON mode
+              responseMimeType: "application/json",
             },
           }),
         }
       );
     } else if (provider === "claude") {
       const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
-      if (!ANTHROPIC_API_KEY) {
-        return { success: false, error: "ANTHROPIC_API_KEY not configured" };
-      }
+      if (!ANTHROPIC_API_KEY) return { success: false, error: "ANTHROPIC_API_KEY not configured" };
 
       response = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
@@ -1401,9 +869,7 @@ async function callLLM(
       });
     } else if (provider === "grok") {
       const XAI_API_KEY = Deno.env.get("XAI_API_KEY");
-      if (!XAI_API_KEY) {
-        return { success: false, error: "XAI_API_KEY not configured" };
-      }
+      if (!XAI_API_KEY) return { success: false, error: "XAI_API_KEY not configured" };
 
       response = await fetch("https://api.x.ai/v1/chat/completions", {
         method: "POST",
@@ -1423,87 +889,71 @@ async function callLLM(
         }),
       });
     } else {
-      return { success: false, error: `Unknown provider for model: ${model}` };
+      return { success: false, error: `Unknown provider: ${provider}` };
     }
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`LLM error (${provider}):`, errorText);
-      return { success: false, error: `LLM Error ${response.status}: ${errorText}` };
+      console.error(`LLM API error (${response.status}):`, errorText.slice(0, 500));
+      return { success: false, error: `LLM API error: ${response.status}` };
     }
 
     const data = await response.json();
+    
+    // Extract response based on provider
     let responseText: string;
-
-    // Parse provider-specific response format
     if (provider === "gemini") {
       responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
     } else if (provider === "claude") {
-      // Claude with tool_choice returns structured data in tool_use block
-      const toolUseBlock = data.content?.find((block: { type: string }) => block.type === "tool_use");
-      if (toolUseBlock?.input) {
-        // Already structured - stringify for consistent handling downstream
-        responseText = JSON.stringify(toolUseBlock.input);
+      const toolBlock = data.content?.find((b: { type: string }) => b.type === "tool_use");
+      if (toolBlock?.input) {
+        responseText = JSON.stringify(toolBlock.input);
       } else {
-        // Fallback to text content
-        const textBlock = data.content?.find((block: { type: string }) => block.type === "text");
+        const textBlock = data.content?.find((b: { type: string }) => b.type === "text");
         responseText = textBlock?.text || "";
       }
-    } else if (provider === "grok") {
-      responseText = data.choices?.[0]?.message?.content || "";
     } else {
-      responseText = "";
+      responseText = data.choices?.[0]?.message?.content || "";
     }
 
-    if (!responseText) {
-      return { success: false, error: "No response from LLM" };
-    }
-
-    console.log(`LLM response received (${provider}):`, responseText.slice(0, 500));
+    console.log(`LLM response length: ${responseText.length} chars`);
     return { success: true, response: responseText };
   } catch (error) {
-    console.error("LLM call failed:", error);
-    return { success: false, error: error instanceof Error ? error.message : "LLM call failed" };
+    console.error("LLM call error:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Unknown error" };
   }
 }
 
-// Sanitize JSON string by escaping control characters that break parsing
-function sanitizeJsonString(text: string): string {
-  // Replace unescaped control characters inside strings
-  // This handles the "Bad control character in string literal" error
-  return text.replace(/[\x00-\x1F]/g, (char) => {
-    // Map common control characters to their escaped versions
-    const escapeMap: Record<string, string> = {
-      '\n': '\\n',
-      '\r': '\\r',
-      '\t': '\\t',
-      '\b': '\\b',
-      '\f': '\\f',
-    };
-    return escapeMap[char] || `\\u${char.charCodeAt(0).toString(16).padStart(4, '0')}`;
+// ============================================================================
+// RESPONSE PARSING
+// ============================================================================
+
+function sanitizeJsonString(str: string): string {
+  return str.replace(/[\x00-\x1F\x7F]/g, (char) => {
+    if (char === '\n' || char === '\r' || char === '\t') return char;
+    return '';
   });
 }
 
-// Parse agent response with better error handling
 function parseAgentResponse(text: string): unknown {
-  console.log("Raw LLM response length:", text.length);
+  if (!text) return null;
   
-  let parsed: Record<string, unknown> | null = null;
+  let parsed = null;
   
-  // Try direct parse first
+  // Try direct parse
   try {
     parsed = JSON.parse(text.trim());
-  } catch (directError) {
-    console.warn("Direct JSON parse failed:", directError instanceof Error ? directError.message : "Unknown");
+  } catch {
+    // Continue to other methods
   }
   
-  // Try sanitizing control characters and parsing again
+  // Try sanitized parse
   if (!parsed) {
     try {
       const sanitized = sanitizeJsonString(text.trim());
       parsed = JSON.parse(sanitized);
-    } catch (sanitizeError) {
-      console.warn("Sanitized JSON parse failed:", sanitizeError instanceof Error ? sanitizeError.message : "Unknown");
+    } catch {
+      // Continue
     }
   }
   
@@ -1514,70 +964,38 @@ function parseAgentResponse(text: string): unknown {
       try {
         parsed = JSON.parse(match[0]);
       } catch {
-        // Try sanitized version of extracted JSON
         try {
           const sanitizedMatch = sanitizeJsonString(match[0]);
           parsed = JSON.parse(sanitizedMatch);
-        } catch (extractError) {
-          console.error("JSON extraction also failed. Response end:", text.slice(-300));
+        } catch {
+          console.error("JSON extraction failed. Response end:", text.slice(-300));
         }
       }
     }
   }
   
-  // If we got a parsed object, fix any stringified fields
+  // Fix stringified fields
   if (parsed) {
-    // Fix tool_calls if it's a string
     if (typeof parsed.tool_calls === "string") {
-      try {
-        parsed.tool_calls = JSON.parse(parsed.tool_calls);
-      } catch {
-        console.warn("Failed to parse stringified tool_calls");
-        parsed.tool_calls = [];
-      }
+      try { parsed.tool_calls = JSON.parse(parsed.tool_calls); } catch { parsed.tool_calls = []; }
     }
-    
-    // Fix blackboard_entry if it's a string
     if (typeof parsed.blackboard_entry === "string") {
-      try {
-        parsed.blackboard_entry = JSON.parse(parsed.blackboard_entry);
-      } catch {
-        console.warn("Failed to parse stringified blackboard_entry");
-        parsed.blackboard_entry = null;
-      }
+      try { parsed.blackboard_entry = JSON.parse(parsed.blackboard_entry); } catch { parsed.blackboard_entry = null; }
     }
-    
-    // Fix final_report if it's a string
     if (typeof parsed.final_report === "string") {
-      try {
-        parsed.final_report = JSON.parse(parsed.final_report);
-      } catch {
-        console.warn("Failed to parse stringified final_report");
-        parsed.final_report = null;
-      }
+      try { parsed.final_report = JSON.parse(parsed.final_report); } catch { parsed.final_report = null; }
     }
-    
-    // Fix artifacts if it's a string
     if (typeof parsed.artifacts === "string") {
-      try {
-        parsed.artifacts = JSON.parse(parsed.artifacts);
-      } catch {
-        console.warn("Failed to parse stringified artifacts");
-        parsed.artifacts = [];
-      }
+      try { parsed.artifacts = JSON.parse(parsed.artifacts); } catch { parsed.artifacts = []; }
     }
-    
     return parsed;
   }
   
-  // Log details for debugging truncation
   console.error("Failed to parse LLM response. Preview:", text.slice(0, 500));
-  console.error("Response ends with:", text.slice(-200));
   
-  // Try to salvage at least the reasoning for user feedback
+  // Try to salvage reasoning
   const reasoningMatch = text.match(/"reasoning"\s*:\s*"([^"]+)"/);
   if (reasoningMatch) {
-    console.log("Salvaged reasoning:", reasoningMatch[1].slice(0, 200));
     return {
       reasoning: reasoningMatch[1],
       status: "error",
@@ -1587,6 +1005,10 @@ function parseAgentResponse(text: string): unknown {
   
   return null;
 }
+
+// ============================================================================
+// MAIN HANDLER
+// ============================================================================
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -1616,7 +1038,7 @@ serve(async (req) => {
       toolInstances,
     } = request || {};
 
-    // Build resolver context for reference resolution in tool params
+    // Build resolver context
     const resolverContext: ResolverContext = {
       scratchpad: scratchpad || "",
       blackboard: blackboard || [],
@@ -1627,53 +1049,37 @@ serve(async (req) => {
     console.log(`Free Agent iteration ${iteration}, model: ${model}, prompt: ${(prompt || "").slice(0, 100)}...`);
     console.log(`Scratchpad length: ${(scratchpad || "").length} chars`);
     console.log(`Previous tool results count: ${(previousToolResults || []).length}`);
-    if (previousToolResults && previousToolResults.length > 0) {
-      console.log(`Previous tool results tools: ${previousToolResults.map((t: { tool: string }) => t.tool).join(', ')}`);
-      // Log each result's size for debugging
-      previousToolResults.forEach((t: { tool: string; result?: unknown; error?: string }, idx: number) => {
-        const resultSize = t.result ? JSON.stringify(t.result).length : 0;
-        const hasError = !!t.error;
-        console.log(`  [${idx}] ${t.tool}: result=${resultSize} chars, hasError=${hasError}`);
-      });
-    }
-    if (assistanceResponse) {
-      console.log(`User assistance response: ${JSON.stringify(assistanceResponse)}`);
+
+    // REQUIRE promptData - no legacy fallback
+    if (!promptData || !promptData.sections || promptData.sections.length === 0) {
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: "promptData is required. The legacy hardcoded prompt has been removed.",
+          debug: { prompt, model, iteration },
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    // Build prompt dynamically from frontend sections (or fall back to hardcoded for backward compat)
-    let systemPrompt: string;
-    if (promptData && promptData.sections && promptData.sections.length > 0) {
-      console.log(`Using dynamic system prompt with ${promptData.sections.length} sections`);
-      systemPrompt = buildSystemPromptDynamic(
-        blackboard,
-        sessionFiles,
-        previousToolResults.map(t => ({ tool: t.tool, result: t.result, error: t.error })),
-        iteration,
-        scratchpad,
-        artifacts || [],
-        assistanceResponse,
-        configuredParams,
-        promptData,
-        advancedFeatures,
-        toolInstances
-      );
-    } else {
-      console.log(`Using legacy hardcoded system prompt (no promptData provided)`);
-      systemPrompt = buildSystemPrompt(
-        blackboard,
-        sessionFiles,
-        previousToolResults.map(t => ({ tool: t.tool, result: t.result, error: t.error })),
-        iteration,
-        scratchpad,
-        assistanceResponse,
-        configuredParams
-      );
-    }
+    console.log(`Using dynamic system prompt with ${promptData.sections.length} sections`);
+    const systemPrompt = buildSystemPromptDynamic(
+      blackboard,
+      sessionFiles,
+      previousToolResults.map(t => ({ tool: t.tool, result: t.result, error: t.error })),
+      iteration,
+      scratchpad,
+      artifacts || [],
+      assistanceResponse,
+      configuredParams,
+      promptData,
+      advancedFeatures,
+      toolInstances
+    );
 
     const llmResult = await callLLM(systemPrompt, prompt, model);
 
     if (!llmResult.success) {
-      // Return error with debug info - HTTP 200 so frontend can read the body
       return new Response(
         JSON.stringify({
           success: false,
@@ -1705,7 +1111,6 @@ serve(async (req) => {
     };
 
     if (!agentResponse) {
-      // PARSING FAILED - return the raw response for debugging with HTTP 200
       return new Response(
         JSON.stringify({
           success: false,
@@ -1722,9 +1127,6 @@ serve(async (req) => {
             fullPromptSent: `${systemPrompt}\n\nUser Task: ${prompt}`,
             rawLLMResponse: llmResult.response || "",
             model,
-            scratchpadLength: (scratchpad || "").length,
-            blackboardEntries: (blackboard || []).length,
-            previousResultsCount: (previousToolResults || []).length,
           },
         }),
         { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -1736,31 +1138,20 @@ serve(async (req) => {
     const frontendHandlers: Array<{ tool: string; params: Record<string, unknown> }> = [];
 
     for (const toolCall of agentResponse.tool_calls || []) {
-      // Resolve references in params (backup resolution - frontend already does this, but edge function has scratchpad/blackboard)
       const resolvedParams = resolveReferences(toolCall.params, resolverContext) as Record<string, unknown>;
       
-      // Log if references were resolved
       if (JSON.stringify(resolvedParams) !== JSON.stringify(toolCall.params)) {
         console.log(`[Reference Resolution] ${toolCall.tool}: params were resolved from placeholders`);
       }
       
-      const result = await executeTool(
-        toolCall.tool,
-        resolvedParams, // Use resolved params
-        supabaseUrl,
-        supabaseKey,
-        secretOverrides
-      );
+      const result = await executeTool(toolCall.tool, resolvedParams, supabaseUrl, supabaseKey, secretOverrides);
 
       if ((result.result as Record<string, unknown>)?.frontend_handler) {
-        frontendHandlers.push({
-          tool: toolCall.tool,
-          params: resolvedParams, // Pass resolved params to frontend
-        });
+        frontendHandlers.push({ tool: toolCall.tool, params: resolvedParams });
       } else {
         toolResults.push({
           tool: toolCall.tool,
-          params: resolvedParams, // Include params so child can access saveAs
+          params: resolvedParams,
           success: result.success,
           result: result.result,
           error: result.error,
@@ -1776,7 +1167,6 @@ serve(async (req) => {
         toolResults,
         frontendHandlers,
         status: agentResponse.status,
-        // Debug data for Raw viewer
         debug: {
           systemPrompt,
           userPrompt: prompt,

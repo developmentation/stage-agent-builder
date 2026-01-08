@@ -63,14 +63,5 @@ verify_jwt = false
 [functions.tool_weather]
 verify_jwt = false
 
-[functions.tool_think]
-verify_jwt = false
-
-[functions.tool_summarize]
-verify_jwt = false
-
-[functions.tool_analyze]
-verify_jwt = false
-
 [functions.enhance-prompt]
 verify_jwt = false

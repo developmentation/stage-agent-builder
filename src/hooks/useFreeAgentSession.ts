@@ -65,10 +65,6 @@ const AUTO_SAVE_TOOLS = [
   'read_zip_contents',
   'read_zip_file',
   'extract_zip_files',
-  // Reasoning tools
-  'think',
-  'summarize',
-  'analyze',
   // Database tools
   'execute_sql',
   'read_database_schemas',

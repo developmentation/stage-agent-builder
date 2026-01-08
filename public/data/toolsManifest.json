@@ -613,116 +613,6 @@
         "properties": ["text", "confidence", "language"]
       }
     },
-    "think": {
-      "name": "Think",
-      "description": "Use AI to reason through a problem, analyze options, or think step-by-step about a complex task.",
-      "edge_function": "tool_think",
-      "icon": "Brain",
-      "category": "reasoning",
-      "parameters": {
-        "prompt": {
-          "type": "string",
-          "required": true,
-          "description": "The problem or question to think through"
-        },
-        "context": {
-          "type": "string",
-          "required": false,
-          "description": "Additional context to consider"
-        },
-        "task": {
-          "type": "string",
-          "required": false,
-          "enum": ["analyze", "plan", "decide", "compare", "troubleshoot"],
-          "description": "Type of thinking task"
-        },
-        "saveAs": {
-          "type": "string",
-          "required": false,
-          "description": "Save result to a named attribute. Use read_attribute(['name']) to retrieve."
-        }
-      },
-      "returns": {
-        "type": "object",
-        "properties": ["thinking", "model"]
-      }
-    },
-    "summarize": {
-      "name": "Summarize",
-      "description": "Create a summary of content using AI. Supports various summary styles.",
-      "edge_function": "tool_summarize",
-      "icon": "FileText",
-      "category": "reasoning",
-      "parameters": {
-        "content": {
-          "type": "string",
-          "required": true,
-          "description": "Content to summarize"
-        },
-        "style": {
-          "type": "string",
-          "required": false,
-          "default": "concise",
-          "enum": ["concise", "detailed", "bullets", "executive", "technical"],
-          "description": "Summary style"
-        },
-        "maxLength": {
-          "type": "number",
-          "required": false,
-          "description": "Target word count"
-        },
-        "focus": {
-          "type": "string",
-          "required": false,
-          "description": "Specific area to focus on"
-        },
-        "saveAs": {
-          "type": "string",
-          "required": false,
-          "description": "Save result to a named attribute. Use read_attribute(['name']) to retrieve."
-        }
-      },
-      "returns": {
-        "type": "object",
-        "properties": ["summary", "style", "wordCount", "compressionRatio"]
-      }
-    },
-    "analyze": {
-      "name": "Analyze",
-      "description": "Perform structured analysis on content using AI.",
-      "edge_function": "tool_analyze",
-      "icon": "BarChart2",
-      "category": "reasoning",
-      "parameters": {
-        "content": {
-          "type": "string",
-          "required": true,
-          "description": "Content to analyze"
-        },
-        "analysisType": {
-          "type": "string",
-          "required": false,
-          "default": "general",
-          "enum": ["general", "sentiment", "structure", "argument", "comparison", "swot", "stakeholder"],
-          "description": "Type of analysis"
-        },
-        "questions": {
-          "type": "array",
-          "items": "string",
-          "required": false,
-          "description": "Specific questions to address"
-        },
-        "saveAs": {
-          "type": "string",
-          "required": false,
-          "description": "Save result to a named attribute. Use read_attribute(['name']) to retrieve."
-        }
-      },
-      "returns": {
-        "type": "object",
-        "properties": ["analysis", "analysisType"]
-      }
-    },
     "send_email": {
       "name": "Send Email",
       "description": "Send an email using Resend. Supports plain text or HTML content.",
@@ -1187,11 +1077,6 @@
       "name": "Document",
       "description": "PDF and OCR processing",
       "color": "#EC4899"
-    },
-    "reasoning": {
-      "name": "Reasoning",
-      "description": "AI-powered thinking and analysis",
-      "color": "#6366F1"
     },
     "communication": {
       "name": "Communication",
