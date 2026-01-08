@@ -361,8 +361,8 @@ export function FreeAgentCanvas({
         categoryPositions[category].count++;
       }
 
-      // Edge from tool to agent
-      if (isActive || wasUsedRecently) {
+      // Edge from tool to agent - persist after use
+      if (isActive || wasUsedEver) {
         newEdges.push({
           id: `edge-tool-agent-${toolId}`,
           source: nodeId,
