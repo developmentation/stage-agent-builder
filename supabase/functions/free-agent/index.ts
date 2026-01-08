@@ -731,6 +731,7 @@ async function executeTool(
     pdf_info: "tool_pdf-handler",
     pdf_extract_text: "tool_pdf-handler",
     ocr_image: "tool_ocr-handler",
+    pronghorn_post: "pronghorn-post",
   };
 
   // Parse tool instance format: "baseTool:instanceName"
