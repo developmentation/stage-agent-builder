@@ -25,6 +25,7 @@ import { executeFrontendTool, ToolExecutionContext, SpawnRequest } from "@/lib/f
 import { resolveReferences, getResolvedReferenceSummary, type ResolverContext } from "@/lib/referenceResolver";
 import type { PromptDataPayload } from "@/lib/systemPromptBuilder";
 import type { PromptCustomization } from "@/types/systemPrompt";
+import { isBinaryTool, detectBinaryContent, sanitizeBinaryResultForContext } from "@/lib/binaryToolUtils";
 
 interface UseFreeAgentSessionOptions {
   maxIterations?: number;
@@ -1127,34 +1128,46 @@ ${child.task}
                 autoName = paramSlug ? `${result.tool}_${paramSlug}` : `${result.tool}_${childIteration}_${childToolCalls.length}`;
               }
               
-              const resultString = JSON.stringify(result.result, null, 2);
+              // Detect binary content for image_generation and elevenlabs_tts
+              const binaryInfo = detectBinaryContent(result.tool, result.result);
+              const resultString = binaryInfo.isBinary 
+                ? binaryInfo.summary
+                : JSON.stringify(result.result, null, 2);
+              
               const attribute: ToolResultAttribute = {
                 id: crypto.randomUUID(),
                 name: autoName,
                 tool: result.tool,
                 params: toolCall.params || {},
-                result: result.result,
+                result: result.result, // Keep full result for artifact display
                 resultString,
-                size: resultString.length,
+                size: binaryInfo.isBinary ? binaryInfo.size : resultString.length,
                 createdAt: new Date().toISOString(),
                 iteration: childIteration,
+                isBinary: binaryInfo.isBinary || undefined,
+                mimeType: binaryInfo.mimeType,
               };
               childAttributes[autoName] = attribute;
-              console.log(`[Child:${child.name}] Attribute auto-saved: ${autoName} (${resultString.length} chars)`);
+              console.log(`[Child:${child.name}] Attribute auto-saved: ${autoName} (${binaryInfo.isBinary ? 'binary ' + binaryInfo.mimeType : resultString.length + ' chars'})`);
               
               // Enhanced scratchpad entry with explicit completion marker and key params
               const keyParamValue = toolCall.params?.location || toolCall.params?.query || toolCall.params?.url || '';
               const keyParamDisplay = keyParamValue ? ` for "${keyParamValue}"` : '';
-              const scratchpadEntry = `\n\n## ✅ COMPLETED: ${autoName}${keyParamDisplay}\n**Tool:** ${result.tool}\n**Size:** ${resultString.length} chars\n**Status:** Data saved to attribute. Access via: read_attribute({ names: ['${autoName}'] })\n`;
+              const sizeDisplay = binaryInfo.isBinary ? binaryInfo.summary : `${resultString.length} chars`;
+              const scratchpadEntry = `\n\n## ✅ COMPLETED: ${autoName}${keyParamDisplay}\n**Tool:** ${result.tool}\n**Size:** ${sizeDisplay}\n**Status:** Data saved to attribute. Access via: read_attribute({ names: ['${autoName}'] })\n`;
               childScratchpad = childScratchpad + scratchpadEntry;
             }
             
             // CRITICAL: Add ALL tool results (success or failure) to iteration results
-            // so the agent sees them in PREVIOUS ITERATION TOOL RESULTS
+            // For binary tools, sanitize the result to prevent context bloat in LLM
+            const sanitizedResult = isBinaryTool(result.tool) 
+              ? sanitizeBinaryResultForContext(result.tool, result.result)
+              : result.result;
+            
             iterationToolResults.push({
               tool: result.tool,
               success: result.success,
-              result: result.result,
+              result: sanitizedResult,
               error: result.error,
             });
           }

@@ -694,6 +694,7 @@
       "edge_function": "run-nano",
       "icon": "Image",
       "category": "generation",
+      "binary": true,
       "parameters": {
         "prompt": {
           "type": "string",
@@ -724,6 +725,7 @@
       "edge_function": "elevenlabs-tts",
       "icon": "Volume2",
       "category": "generation",
+      "binary": true,
       "parameters": {
         "text": {
           "type": "string",
