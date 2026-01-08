@@ -285,7 +285,7 @@ export function FreeAgentPanel({
             </TabsTrigger>
             <TabsTrigger value="instances" className="gap-1 text-xs">
               <Package className="w-3 h-3" />
-              <span className="hidden min-[380px]:inline">Instances</span>
+              <span className="hidden min-[380px]:inline">Tools</span>
               {toolInstancesManager.instances.length > 0 && (
                 <span className="min-[380px]:hidden">({toolInstancesManager.instances.length})</span>
               )}

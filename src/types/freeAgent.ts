@@ -299,6 +299,16 @@ export interface FreeAgentSession {
     disabledTools: string[];
   };
   
+  // Tool instances for per-instance configuration
+  toolInstances?: Array<{
+    id: string;
+    baseToolId: string;
+    instanceName: string;
+    fullToolId: string;
+    label: string;
+    description: string;
+  }>;
+  
   // Advanced features state
   advancedFeatures?: AdvancedFeatures;
   
