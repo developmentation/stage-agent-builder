@@ -56,6 +56,7 @@ import {
 import type { SecretsManager } from '@/hooks/useSecretsManager';
 import type { Secret, ToolParameterMapping, CustomHeader } from '@/types/secrets';
 import type { ToolsManifest, ToolDefinition } from '@/types/freeAgent';
+import type { ToolInstancesManager } from '@/hooks/useToolInstances';
 import { toast } from 'sonner';
 
 interface SecretsManagerModalProps {
@@ -63,6 +64,7 @@ interface SecretsManagerModalProps {
   onOpenChange: (open: boolean) => void;
   secretsManager: SecretsManager;
   toolsManifest: ToolsManifest | null;
+  toolInstancesManager?: ToolInstancesManager;
 }
 
 export function SecretsManagerModal({
@@ -70,6 +72,7 @@ export function SecretsManagerModal({
   onOpenChange,
   secretsManager,
   toolsManifest,
+  toolInstancesManager,
 }: SecretsManagerModalProps) {
   const [activeTab, setActiveTab] = useState<'secrets' | 'mappings' | 'import'>('secrets');
   
@@ -97,6 +100,9 @@ export function SecretsManagerModal({
   const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
   const [deleteSecretId, setDeleteSecretId] = useState<string | null>(null);
 
+  // Tool type filter for mappings tab
+  const [toolTypeFilter, setToolTypeFilter] = useState<'global' | 'instances'>('global');
+
   // Get tools that have edge functions (can receive secrets)
   const edgeFunctionTools = useMemo(() => {
     if (!toolsManifest?.tools) return [];
@@ -105,10 +111,29 @@ export function SecretsManagerModal({
       .map(([id, tool]) => ({ id, ...tool }));
   }, [toolsManifest]);
 
-  // Get parameters for selected tool
+  // Get tools that have instances vs global-only tools
+  const toolsWithInstances = useMemo(() => {
+    if (!toolInstancesManager) return new Set<string>();
+    return new Set(toolInstancesManager.instances.map(i => i.baseToolId));
+  }, [toolInstancesManager?.instances]);
+
+  // Filter tools based on whether they have instances
+  const globalOnlyTools = useMemo(() => {
+    return edgeFunctionTools.filter(tool => !toolsWithInstances.has(tool.id));
+  }, [edgeFunctionTools, toolsWithInstances]);
+
+  // Get all tool instances for the dropdown
+  const allInstances = useMemo(() => {
+    return toolInstancesManager?.instances || [];
+  }, [toolInstancesManager?.instances]);
+
+  // Get parameters for selected tool (handles both global and instance tools)
   const selectedToolParams = useMemo(() => {
     if (!selectedTool || !toolsManifest?.tools) return [];
-    const tool = toolsManifest.tools[selectedTool];
+    
+    // For instances, extract the base tool ID
+    const baseToolId = selectedTool.includes(':') ? selectedTool.split(':')[0] : selectedTool;
+    const tool = toolsManifest.tools[baseToolId];
     if (!tool?.parameters) return [];
     return Object.entries(tool.parameters).map(([name, param]) => ({
       name,
@@ -446,18 +471,53 @@ export function SecretsManagerModal({
                   <div className="p-3 sm:p-4 border rounded-lg bg-muted/30">
                     <h3 className="font-medium mb-3">Configure Tool Parameters</h3>
                     <div className="space-y-3">
+                      {/* Tool Type Filter - only show if there are instances */}
+                      {allInstances.length > 0 && (
+                        <div className="flex gap-2 mb-3">
+                          <Button
+                            variant={toolTypeFilter === 'global' ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => { setToolTypeFilter('global'); setSelectedTool(''); }}
+                          >
+                            Global Tools ({globalOnlyTools.length})
+                          </Button>
+                          <Button
+                            variant={toolTypeFilter === 'instances' ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => { setToolTypeFilter('instances'); setSelectedTool(''); }}
+                          >
+                            Tool Instances ({allInstances.length})
+                          </Button>
+                        </div>
+                      )}
+
                       <div className="space-y-1">
-                        <Label className="text-xs">Select Tool</Label>
+                        <Label className="text-xs">
+                          {toolTypeFilter === 'instances' ? 'Select Tool Instance' : 'Select Tool'}
+                        </Label>
                         <Select value={selectedTool} onValueChange={setSelectedTool}>
                           <SelectTrigger>
-                            <SelectValue placeholder="Choose a tool to configure..." />
+                            <SelectValue placeholder={toolTypeFilter === 'instances' ? 'Choose an instance...' : 'Choose a tool to configure...'} />
                           </SelectTrigger>
                           <SelectContent>
-                            {edgeFunctionTools.map((tool) => (
-                              <SelectItem key={tool.id} value={tool.id}>
-                                {tool.name} ({tool.id})
-                              </SelectItem>
-                            ))}
+                            {toolTypeFilter === 'instances' ? (
+                              // Show tool instances
+                              allInstances.map((instance) => (
+                                <SelectItem key={instance.id} value={instance.fullToolId}>
+                                  <div className="flex flex-col">
+                                    <span>{instance.label}</span>
+                                    <span className="text-xs text-muted-foreground">{instance.fullToolId}</span>
+                                  </div>
+                                </SelectItem>
+                              ))
+                            ) : (
+                              // Show global-only tools (those without instances)
+                              (allInstances.length > 0 ? globalOnlyTools : edgeFunctionTools).map((tool) => (
+                                <SelectItem key={tool.id} value={tool.id}>
+                                  {tool.name} ({tool.id})
+                                </SelectItem>
+                              ))
+                            )}
                           </SelectContent>
                         </Select>
                       </div>
