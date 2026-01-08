@@ -603,6 +603,12 @@ export function FreeAgentCanvas({
       const nodeId = `attribute-${name}`;
       newNodeIds.add(nodeId);
 
+      // For binary content, pass the raw result object (contains imageUrl/audioContent)
+      // For non-binary, pass the resultString
+      const attrValue = attribute.isBinary 
+        ? JSON.stringify(attribute.result) 
+        : attribute.resultString;
+
       newNodes.push({
         id: nodeId,
         type: "attribute",
@@ -613,7 +619,7 @@ export function FreeAgentCanvas({
           status: "success",
           attributeName: name,
           attributeTool: attribute.tool,
-          attributeValue: attribute.resultString,
+          attributeValue: attrValue,
           size: attribute.size,
           iteration: attribute.iteration,
           isBinary: attribute.isBinary,
