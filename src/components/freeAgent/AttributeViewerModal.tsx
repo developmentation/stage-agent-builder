@@ -90,21 +90,28 @@ export function AttributeViewerModal({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="w-[calc(100vw-100px)] max-w-none h-[calc(100vh-100px)] flex flex-col p-0 gap-0"
-        style={{ maxHeight: "calc(100vh - 100px)" }}
+        className="flex flex-col p-0 gap-0"
+        style={{ 
+          width: 'calc(100vw - 32px)', 
+          height: 'calc(100vh - 32px)',
+          maxWidth: 'calc(100vw - 32px)',
+          maxHeight: 'calc(100vh - 32px)',
+        }}
       >
-        <DialogHeader className="px-6 py-4 border-b bg-muted/30 shrink-0">
-          <div className="flex items-center gap-3">
+        <DialogHeader className="px-4 py-3 border-b bg-muted/30 shrink-0">
+          <div className="flex flex-wrap items-center gap-2">
             {isBinary ? (
-              isImage ? <Image className="w-5 h-5 text-purple-500" /> : 
-              isAudio ? <Volume2 className="w-5 h-5 text-purple-500" /> :
-              <Database className="w-5 h-5 text-purple-500" />
+              isImage ? <Image className="w-5 h-5 text-purple-500 shrink-0" /> : 
+              isAudio ? <Volume2 className="w-5 h-5 text-purple-500 shrink-0" /> :
+              <Database className="w-5 h-5 text-purple-500 shrink-0" />
             ) : (
-              <Database className="w-5 h-5 text-cyan-500" />
+              <Database className="w-5 h-5 text-cyan-500 shrink-0" />
             )}
-            <DialogTitle className="font-mono text-lg">
+            <DialogTitle className="font-mono text-base sm:text-lg break-all">
               {`{{${attributeName}}}`}
             </DialogTitle>
+          </div>
+          <div className="flex flex-wrap items-center gap-2 mt-2">
             {attributeTool && (
               <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
                 from {attributeTool}
@@ -116,7 +123,7 @@ export function AttributeViewerModal({
               </span>
             )}
             {isBinary && dataUrl && (
-              <Button variant="outline" size="sm" onClick={handleDownload} className="ml-auto gap-1.5">
+              <Button variant="outline" size="sm" onClick={handleDownload} className="gap-1.5">
                 <Download className="w-4 h-4" />
                 Download
               </Button>
@@ -167,7 +174,7 @@ export function AttributeViewerModal({
                       <audio 
                         src={dataUrl} 
                         controls 
-                        className="w-96"
+                        className="w-full max-w-96"
                       />
                     </div>
                   )}
