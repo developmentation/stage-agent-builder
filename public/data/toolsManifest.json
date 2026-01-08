@@ -733,7 +733,7 @@
         "voiceId": {
           "type": "string",
           "required": false,
-          "description": "ElevenLabs voice ID"
+          "description": "ElevenLabs voice ID (optional - defaults to a natural male voice if not specified)"
         },
         "modelId": {
           "type": "string",
