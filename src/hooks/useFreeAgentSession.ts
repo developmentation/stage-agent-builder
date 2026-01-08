@@ -424,7 +424,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
             
             // Check for saveAs parameter and create attribute if present
             const saveAsName = toolCall.params?.saveAs as string | undefined;
-            if (result.success && saveAsName && AUTO_SAVE_TOOLS.includes(result.tool)) {
+            if (result.success && saveAsName) {
               const resultString = JSON.stringify(result.result, null, 2);
               const attribute: ToolResultAttribute = {
                 id: crypto.randomUUID(),
@@ -1037,7 +1037,8 @@ ${child.task}
             }
             
             // Auto-save ALL successful tool results from AUTO_SAVE_TOOLS for children
-            if (result.success && AUTO_SAVE_TOOLS.includes(result.tool)) {
+            const baseTool = result.tool.includes(':') ? result.tool.split(':')[0] : result.tool;
+            if (result.success && AUTO_SAVE_TOOLS.includes(baseTool)) {
               const explicitSaveAs = toolCall.params?.saveAs as string | undefined;
               let autoName = explicitSaveAs;
               
