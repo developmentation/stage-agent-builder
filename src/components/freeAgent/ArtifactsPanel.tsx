@@ -44,12 +44,55 @@ export function ArtifactsPanel({ artifacts, onArtifactClick }: ArtifactsPanelPro
     }
   };
 
+  // Extract image source from various formats
+  const getImageSrc = (artifact: FreeAgentArtifact): string => {
+    const content = artifact.content;
+    
+    // Already a data URL
+    if (content.startsWith("data:")) {
+      return content;
+    }
+    
+    // Try to parse as JSON (might be wrapped result)
+    try {
+      const parsed = JSON.parse(content);
+      if (parsed.imageUrl) {
+        return parsed.imageUrl;
+      }
+      if (parsed.url) {
+        return parsed.url;
+      }
+    } catch {
+      // Not JSON, treat as base64
+    }
+    
+    // Raw base64
+    return `data:${artifact.mimeType || 'image/png'};base64,${content}`;
+  };
+
   const handleDownload = (artifact: FreeAgentArtifact) => {
     try {
       // Create blob from content
       let blob: Blob;
       
-      if (artifact.type === "file" && artifact.mimeType) {
+      if (artifact.type === "image") {
+        // Handle image content
+        const src = getImageSrc(artifact);
+        if (src.startsWith("data:")) {
+          const [header, base64Data] = src.split(",");
+          const mimeMatch = header.match(/data:([^;]+)/);
+          const mimeType = mimeMatch ? mimeMatch[1] : artifact.mimeType || "image/png";
+          const byteCharacters = atob(base64Data);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          blob = new Blob([byteArray], { type: mimeType });
+        } else {
+          blob = new Blob([artifact.content], { type: "text/plain" });
+        }
+      } else if (artifact.type === "file" && artifact.mimeType) {
         // Base64 encoded file
         const byteCharacters = atob(artifact.content);
         const byteNumbers = new Array(byteCharacters.length);
@@ -140,9 +183,13 @@ export function ArtifactsPanel({ artifacts, onArtifactClick }: ArtifactsPanelPro
 
                   {artifact.type === "image" && (
                     <img
-                      src={artifact.content.startsWith("data:") ? artifact.content : `data:image/png;base64,${artifact.content}`}
+                      src={getImageSrc(artifact)}
                       alt={artifact.title}
                       className="max-h-[80px] rounded object-cover"
+                      onError={(e) => {
+                        console.error('Image failed to load:', artifact.title, artifact.content?.substring(0, 100));
+                        e.currentTarget.style.display = 'none';
+                      }}
                     />
                   )}
 

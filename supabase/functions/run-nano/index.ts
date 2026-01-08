@@ -12,7 +12,10 @@ serve(async (req) => {
   }
 
   try {
-    const { prompt, model = "gemini-2.5-flash-image" } = await req.json();
+    const { prompt, model } = await req.json();
+    
+    // Default to gemini-3-pro-image-preview if model is blank or not provided
+    const requestedModel = model || "gemini-3-pro-image-preview";
 
     if (!prompt) {
       return new Response(
@@ -24,7 +27,7 @@ serve(async (req) => {
       );
     }
 
-    console.log(`🎨 Generating image with model: ${model}`);
+    console.log(`🎨 Generating image with requested model: ${requestedModel}`);
 
     const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
 
@@ -32,9 +35,10 @@ serve(async (req) => {
       throw new Error('GEMINI_API_KEY is not configured');
     }
 
-    // Validate model - only allow image generation models
+    // Validate model - only allow image generation models, default to gemini-3-pro-image-preview
     const validModels = ["gemini-2.5-flash-image", "gemini-3-pro-image-preview"];
-    const selectedModel = validModels.includes(model) ? model : "gemini-2.5-flash-image";
+    const selectedModel = validModels.includes(requestedModel) ? requestedModel : "gemini-3-pro-image-preview";
+    console.log(`🎨 Using validated model: ${selectedModel}`);
 
     // Prepare request body for Gemini image generation
     const requestBody = {

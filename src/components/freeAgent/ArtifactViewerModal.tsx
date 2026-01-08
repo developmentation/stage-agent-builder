@@ -114,18 +114,43 @@ export function ArtifactViewerModal({
     }
   };
 
+  // Extract image source from various formats
+  const getImageSrc = (content: string, mimeType?: string): string => {
+    // Already a data URL
+    if (content.startsWith("data:")) {
+      return content;
+    }
+    
+    // Try to parse as JSON (might be wrapped result)
+    try {
+      const parsed = JSON.parse(content);
+      if (parsed.imageUrl) {
+        return parsed.imageUrl;
+      }
+      if (parsed.url) {
+        return parsed.url;
+      }
+    } catch {
+      // Not JSON, treat as base64
+    }
+    
+    // Raw base64
+    return `data:${mimeType || 'image/png'};base64,${content}`;
+  };
+
   const renderContent = () => {
     // Image artifact
     if (artifact.type === "image") {
-      const src = artifact.content.startsWith("data:") 
-        ? artifact.content 
-        : `data:${artifact.mimeType || "image/png"};base64,${artifact.content}`;
+      const src = getImageSrc(artifact.content, artifact.mimeType);
       return (
         <div className="flex items-center justify-center p-4">
           <img
             src={src}
             alt={artifact.title}
             className="max-w-full max-h-[calc(100vh-250px)] object-contain rounded-lg shadow-lg"
+            onError={(e) => {
+              console.error('Modal image failed to load:', artifact.title, artifact.content?.substring(0, 100));
+            }}
           />
         </div>
       );
