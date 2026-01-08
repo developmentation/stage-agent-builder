@@ -74,14 +74,14 @@ const LAYOUT = {
   
   // Tree cluster settings
   treeStartY: 100,           // Top of tree
-  clusterGapX: 180,          // Gap between category clusters
+  clusterGapX: 40,           // Gap between category clusters
   clusterStartX: 50,         // Left edge start
   
   // Tool node dimensions
   toolNodeWidth: 100,
   toolNodeHeight: 60,
-  toolGapY: 75,              // Vertical gap between tools in cluster
-  toolGapX: 110,             // Horizontal gap for multi-column clusters
+  toolGapY: 70,              // Vertical gap between tools in cluster
+  toolGapX: 105,             // Horizontal gap for multi-column clusters
   maxToolsPerColumn: 4,      // Tools per column before wrapping
   
   // Category label offset
