@@ -14,6 +14,7 @@ import {
   Download,
   Copy,
   Package,
+  Volume2,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { FreeAgentArtifact } from "@/types/freeAgent";
@@ -24,10 +25,16 @@ interface ArtifactsPanelProps {
 }
 
 export function ArtifactsPanel({ artifacts, onArtifactClick }: ArtifactsPanelProps) {
-  const getIcon = (type: FreeAgentArtifact["type"]) => {
+  const getIcon = (type: FreeAgentArtifact["type"], mimeType?: string) => {
+    // Check mimeType first for more accurate detection
+    if (mimeType?.startsWith("audio/")) {
+      return <Volume2 className="w-4 h-4" />;
+    }
     switch (type) {
       case "image":
         return <Image className="w-4 h-4" />;
+      case "audio":
+        return <Volume2 className="w-4 h-4" />;
       case "data":
         return <Database className="w-4 h-4" />;
       case "file":
@@ -107,7 +114,7 @@ export function ArtifactsPanel({ artifacts, onArtifactClick }: ArtifactsPanelPro
                   onClick={() => onArtifactClick?.(artifact)}
                 >
                   <div className="flex items-center gap-2 mb-1">
-                    <div className="text-primary">{getIcon(artifact.type)}</div>
+                    <div className="text-primary">{getIcon(artifact.type, artifact.mimeType)}</div>
                     <span className="text-sm font-medium flex-1 truncate">
                       {artifact.title}
                     </span>
@@ -136,6 +143,16 @@ export function ArtifactsPanel({ artifacts, onArtifactClick }: ArtifactsPanelPro
                       src={artifact.content.startsWith("data:") ? artifact.content : `data:image/png;base64,${artifact.content}`}
                       alt={artifact.title}
                       className="max-h-[80px] rounded object-cover"
+                    />
+                  )}
+
+                  {/* Audio preview with player */}
+                  {(artifact.type === "audio" || artifact.mimeType?.startsWith("audio/")) && (
+                    <audio
+                      src={artifact.content.startsWith("data:") ? artifact.content : `data:${artifact.mimeType || "audio/mpeg"};base64,${artifact.content}`}
+                      controls
+                      className="w-full h-8"
+                      onClick={(e) => e.stopPropagation()}
                     />
                   )}
 

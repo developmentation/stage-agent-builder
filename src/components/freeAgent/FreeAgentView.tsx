@@ -9,12 +9,13 @@ import { SystemPromptViewer } from "./SystemPromptViewer";
 import { AssistanceModal } from "./AssistanceModal";
 import { FinalReportModal } from "./FinalReportModal";
 import { ChildAgentDetailModal } from "./ChildAgentDetailModal";
+import { ArtifactViewerModal } from "./ArtifactViewerModal";
 import { useFreeAgentSession } from "@/hooks/useFreeAgentSession";
 import { useSecretsManager } from "@/hooks/useSecretsManager";
 import { useToolInstances } from "@/hooks/useToolInstances";
 import { usePromptCustomization } from "@/hooks/usePromptCustomization";
 import { buildPromptData } from "@/lib/systemPromptBuilder";
-import type { ToolsManifest, SessionFile, AssistanceRequest, FreeAgentSession, AdvancedFeatures, ChildSession } from "@/types/freeAgent";
+import type { ToolsManifest, SessionFile, AssistanceRequest, FreeAgentSession, AdvancedFeatures, ChildSession, FreeAgentArtifact } from "@/types/freeAgent";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -31,6 +32,8 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
   const [pendingAssistance, setPendingAssistance] = useState<AssistanceRequest | null>(null);
   const [selectedChild, setSelectedChild] = useState<ChildSession | null>(null);
   const [childModalOpen, setChildModalOpen] = useState(false);
+  const [selectedArtifact, setSelectedArtifact] = useState<FreeAgentArtifact | null>(null);
+  const [artifactViewerOpen, setArtifactViewerOpen] = useState(false);
 
   const {
     session,
@@ -143,6 +146,11 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
     }
   }, [session?.orchestration?.children]);
 
+  const handleArtifactClick = useCallback((artifact: FreeAgentArtifact) => {
+    setSelectedArtifact(artifact);
+    setArtifactViewerOpen(true);
+  }, []);
+
   const [mobileTab, setMobileTab] = useState<"panel" | "canvas" | "data">("panel");
 
   return (
@@ -243,7 +251,7 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
                   <BlackboardViewer entries={session?.blackboard || []} />
                 </TabsContent>
                 <TabsContent value="artifacts" className="flex-1 overflow-hidden m-0 p-0">
-                  <ArtifactsPanel artifacts={session?.artifacts || []} />
+                  <ArtifactsPanel artifacts={session?.artifacts || []} onArtifactClick={handleArtifactClick} />
                 </TabsContent>
                 <TabsContent value="raw" className="flex-1 overflow-hidden m-0 p-0">
                   <RawViewer rawData={session?.rawData || []} />
@@ -357,7 +365,7 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
                   <BlackboardViewer entries={session?.blackboard || []} />
                 </TabsContent>
                 <TabsContent value="artifacts" className="flex-1 overflow-hidden m-0 p-0">
-                  <ArtifactsPanel artifacts={session?.artifacts || []} />
+                  <ArtifactsPanel artifacts={session?.artifacts || []} onArtifactClick={handleArtifactClick} />
                 </TabsContent>
                 <TabsContent value="raw" className="flex-1 overflow-hidden m-0 p-0">
                   <RawViewer rawData={session?.rawData || []} />
@@ -391,6 +399,12 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
         isOpen={childModalOpen}
         onClose={() => setChildModalOpen(false)}
         child={selectedChild}
+      />
+
+      <ArtifactViewerModal
+        artifact={selectedArtifact}
+        open={artifactViewerOpen}
+        onOpenChange={setArtifactViewerOpen}
       />
     </div>
   );
