@@ -1036,6 +1036,15 @@ ${child.task}
               const scratchpadEntry = `\n\n## ✅ COMPLETED: ${autoName}${keyParamDisplay}\n**Tool:** ${result.tool}\n**Size:** ${resultString.length} chars\n**Status:** Data saved to attribute. Access via: read_attribute({ names: ['${autoName}'] })\n`;
               childScratchpad = childScratchpad + scratchpadEntry;
             }
+            
+            // CRITICAL: Add ALL tool results (success or failure) to iteration results
+            // so the agent sees them in PREVIOUS ITERATION TOOL RESULTS
+            iterationToolResults.push({
+              tool: result.tool,
+              success: result.success,
+              result: result.result,
+              error: result.error,
+            });
           }
           
           // Process blackboard entry (with tool names from this iteration)
