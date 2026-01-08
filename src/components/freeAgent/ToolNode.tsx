@@ -68,7 +68,7 @@ export function ToolNode({ data }: NodeProps<ToolNodeData>) {
       case "active":
         return "border-2 border-yellow-500 bg-yellow-500/20 shadow-lg shadow-yellow-500/40";
       case "success":
-        return "border-2 bg-card";
+        return "border-2 border-green-500 bg-green-500/10";
       case "error":
         return "border-2 border-red-500 bg-red-500/10";
       default:
@@ -89,9 +89,7 @@ export function ToolNode({ data }: NodeProps<ToolNodeData>) {
         data.isInstance && "border-dashed"
       )}
       style={{
-        borderColor: data.status === "idle" || data.status === "success" 
-          ? categoryColor 
-          : undefined,
+        borderColor: data.status === "idle" ? categoryColor : undefined,
       }}
     >
       {/* Target handle - for receiving connections (write tools receive from agent) */}
@@ -137,13 +135,12 @@ export function ToolNode({ data }: NodeProps<ToolNodeData>) {
         className={cn(
           "mb-1 transition-colors",
           data.status === "active" && "text-yellow-500",
+          data.status === "success" && "text-green-500",
           data.status === "error" && "text-red-500",
-          (data.status === "idle" || data.status === "success") && "text-muted-foreground"
+          data.status === "idle" && "text-muted-foreground"
         )}
         style={{
-          color: (data.status === "idle" || data.status === "success") 
-            ? categoryColor 
-            : undefined,
+          color: data.status === "idle" ? categoryColor : undefined,
         }}
       >
         {icon}
