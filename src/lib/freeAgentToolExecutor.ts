@@ -1,7 +1,6 @@
 // Free Agent Tool Executor - Handles frontend-side tool execution
 import { supabase } from "@/integrations/supabase/client";
-import { jsPDF } from "jspdf";
-import { Document, Packer, Paragraph, TextRun, HeadingLevel } from "docx";
+import { MarkdownProcessor } from "@/utils/markdownProcessor";
 import type { 
   BlackboardEntry, 
   FreeAgentArtifact, 
@@ -377,7 +376,7 @@ async function executeReadArtifact(
   return { success: true, result: { artifacts: found, count: Object.keys(found).length } };
 }
 
-// Export to Word document
+// Export to Word document using MarkdownProcessor for proper formatting
 async function executeExportWord(
   params: Record<string, unknown>,
   context: ToolExecutionContext
@@ -385,47 +384,11 @@ async function executeExportWord(
   try {
     const content = params.content as string;
     const filename = (params.filename as string) || "document.docx";
+    const title = (params.title as string) || "Document";
 
-    // Parse markdown-like content into paragraphs
-    const lines = content.split("\n");
-    const children: Paragraph[] = [];
-
-    for (const line of lines) {
-      if (line.startsWith("# ")) {
-        children.push(
-          new Paragraph({
-            text: line.substring(2),
-            heading: HeadingLevel.HEADING_1,
-          })
-        );
-      } else if (line.startsWith("## ")) {
-        children.push(
-          new Paragraph({
-            text: line.substring(3),
-            heading: HeadingLevel.HEADING_2,
-          })
-        );
-      } else if (line.startsWith("### ")) {
-        children.push(
-          new Paragraph({
-            text: line.substring(4),
-            heading: HeadingLevel.HEADING_3,
-          })
-        );
-      } else if (line.trim()) {
-        children.push(
-          new Paragraph({
-            children: [new TextRun(line)],
-          })
-        );
-      }
-    }
-
-    const doc = new Document({
-      sections: [{ children }],
-    });
-
-    const blob = await Packer.toBlob(doc);
+    const processor = new MarkdownProcessor();
+    const sections = [{ title: "Content", value: content }];
+    const blob = await processor.generateWordDocument(title, sections);
     const base64 = await blobToBase64(blob);
 
     const artifact: FreeAgentArtifact = {
@@ -451,7 +414,7 @@ async function executeExportWord(
   }
 }
 
-// Export to PDF
+// Export to PDF using MarkdownProcessor for proper formatting
 async function executeExportPdf(
   params: Record<string, unknown>,
   context: ToolExecutionContext
@@ -459,39 +422,12 @@ async function executeExportPdf(
   try {
     const content = params.content as string;
     const filename = (params.filename as string) || "document.pdf";
+    const title = (params.title as string) || "Document";
 
-    const pdf = new jsPDF();
-    const lines = content.split("\n");
-    let y = 20;
-
-    for (const line of lines) {
-      if (y > 270) {
-        pdf.addPage();
-        y = 20;
-      }
-
-      if (line.startsWith("# ")) {
-        pdf.setFontSize(24);
-        pdf.text(line.substring(2), 20, y);
-        y += 12;
-      } else if (line.startsWith("## ")) {
-        pdf.setFontSize(18);
-        pdf.text(line.substring(3), 20, y);
-        y += 10;
-      } else if (line.startsWith("### ")) {
-        pdf.setFontSize(14);
-        pdf.text(line.substring(4), 20, y);
-        y += 8;
-      } else if (line.trim()) {
-        pdf.setFontSize(12);
-        const splitText = pdf.splitTextToSize(line, 170);
-        pdf.text(splitText, 20, y);
-        y += splitText.length * 6;
-      } else {
-        y += 4;
-      }
-    }
-
+    const processor = new MarkdownProcessor();
+    const sections = [{ title: "Content", value: content }];
+    const pdf = processor.generatePDF(title, sections);
+    
     const blob = pdf.output("blob");
     const base64 = await blobToBase64(blob);
 
