@@ -147,7 +147,7 @@ export function ArtifactViewerModal({
           <img
             src={src}
             alt={artifact.title}
-            className="max-w-full max-h-[calc(100vh-250px)] object-contain rounded-lg shadow-lg"
+            className="max-w-full max-h-[60vh] object-contain rounded-lg shadow-lg"
             onError={(e) => {
               console.error('Modal image failed to load:', artifact.title, artifact.content?.substring(0, 100));
             }}
@@ -182,7 +182,7 @@ export function ArtifactViewerModal({
     // Text/Data artifact - render as markdown
     if (artifact.type === "text" || artifact.type === "data") {
       return (
-        <ScrollArea className="h-[calc(100vh-250px)]">
+        <ScrollArea className="h-full flex-1">
           <div className="p-4 prose prose-sm dark:prose-invert max-w-none">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
               {typeof artifact.content === "string" 
@@ -215,32 +215,42 @@ export function ArtifactViewerModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[calc(100vw-100px)] max-h-[calc(100vh-100px)] w-full h-full flex flex-col">
+      <DialogContent 
+        className="flex flex-col p-4"
+        style={{ 
+          width: 'calc(100vw - 32px)', 
+          height: 'calc(100vh - 32px)',
+          maxWidth: 'calc(100vw - 32px)',
+          maxHeight: 'calc(100vh - 32px)',
+        }}
+      >
         <DialogHeader className="flex-shrink-0">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="text-primary">{getIcon()}</div>
-              <DialogTitle className="text-lg">{artifact.title}</DialogTitle>
-              <Badge variant="secondary">{artifact.type}</Badge>
+          <div className="flex flex-wrap items-start gap-2">
+            <div className="flex items-center gap-2 text-primary">
+              {getIcon()}
+              <DialogTitle className="text-base sm:text-lg break-words">
+                {artifact.title}
+              </DialogTitle>
             </div>
-            <div className="flex items-center gap-2">
-              {(artifact.type === "text" || artifact.type === "data") && (
-                <Button variant="outline" size="sm" onClick={handleCopy}>
-                  <Copy className="w-4 h-4 mr-2" />
-                  Copy
-                </Button>
-              )}
-              <Button variant="outline" size="sm" onClick={handleDownload}>
-                <Download className="w-4 h-4 mr-2" />
-                Download
-              </Button>
-            </div>
+            <Badge variant="secondary" className="shrink-0">{artifact.type}</Badge>
           </div>
           {artifact.description && (
             <p className="text-sm text-muted-foreground mt-2">
               {artifact.description}
             </p>
           )}
+          <div className="flex flex-wrap items-center gap-2 mt-3">
+            {(artifact.type === "text" || artifact.type === "data") && (
+              <Button variant="outline" size="sm" onClick={handleCopy}>
+                <Copy className="w-4 h-4 mr-2" />
+                Copy
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={handleDownload}>
+              <Download className="w-4 h-4 mr-2" />
+              Download
+            </Button>
+          </div>
         </DialogHeader>
 
         <div className="flex-1 overflow-hidden border rounded-lg bg-muted/20">
