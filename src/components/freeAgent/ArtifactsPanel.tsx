@@ -93,7 +93,33 @@ export function ArtifactsPanel({ artifacts, onArtifactClick }: ArtifactsPanelPro
         return map[mimeType] || '';
       };
       
-      if (artifact.type === "image") {
+      // Helper to detect if content is audio (check for audioContent in JSON or audio data URL)
+      const isAudioContent = (content: string): boolean => {
+        if (content.startsWith("data:audio/")) return true;
+        try {
+          const parsed = JSON.parse(content);
+          return !!parsed.audioContent;
+        } catch {
+          return false;
+        }
+      };
+      
+      // Helper to detect if content is image
+      const isImageContent = (content: string): boolean => {
+        if (content.startsWith("data:image/")) return true;
+        try {
+          const parsed = JSON.parse(content);
+          return !!parsed.imageUrl;
+        } catch {
+          return false;
+        }
+      };
+      
+      // Determine actual type - check content if type isn't explicit
+      const isAudio = artifact.type === "audio" || artifact.mimeType?.startsWith("audio/") || isAudioContent(artifact.content);
+      const isImage = artifact.type === "image" || artifact.mimeType?.startsWith("image/") || isImageContent(artifact.content);
+      
+      if (isImage) {
         // Handle image content
         const src = getImageSrc(artifact);
         if (src.startsWith("data:")) {
@@ -114,7 +140,7 @@ export function ArtifactsPanel({ artifacts, onArtifactClick }: ArtifactsPanelPro
         } else {
           blob = new Blob([artifact.content], { type: "text/plain" });
         }
-      } else if (artifact.type === "audio" || artifact.mimeType?.startsWith("audio/")) {
+      } else if (isAudio) {
         // Handle audio content
         const mimeType = artifact.mimeType || "audio/mpeg";
         let base64Data = artifact.content;
