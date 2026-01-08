@@ -616,6 +616,8 @@ export function FreeAgentCanvas({
           attributeValue: attribute.resultString,
           size: attribute.size,
           iteration: attribute.iteration,
+          isBinary: attribute.isBinary,
+          mimeType: attribute.mimeType,
         },
       });
 

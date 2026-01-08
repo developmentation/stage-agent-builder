@@ -43,6 +43,8 @@ export interface ToolResultAttribute {
   size: number;           // Character count
   createdAt: string;
   iteration: number;
+  isBinary?: boolean;     // Flag for binary content (images, audio)
+  mimeType?: string;      // MIME type for binary content
 }
 
 export type AssistanceInputType = 
@@ -425,6 +427,7 @@ export interface FreeAgentNodeData {
   attributeName?: string; // For attribute nodes
   attributeTool?: string; // Source tool for attribute nodes
   attributeValue?: string; // Full attribute value for viewing
+  isBinary?: boolean; // For binary attribute nodes (images, audio)
   retryCount?: number; // For agent node retry count display
   onRetry?: () => void; // Callback when retry button clicked on agent node
   // For child agent nodes

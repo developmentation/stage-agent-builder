@@ -287,28 +287,45 @@ async function executeReadAttribute(
   const attributes = context.toolResultAttributes || {};
   
   if (names.length === 0) {
-    // Return metadata for all attributes
+    // Return metadata for all attributes (including binary flag)
     const metadata = Object.entries(attributes).map(([name, attr]) => ({
       name,
       tool: attr.tool,
       size: attr.size,
       iteration: attr.iteration,
       createdAt: attr.createdAt,
+      isBinary: attr.isBinary || false,
+      mimeType: attr.mimeType,
     }));
     console.log(`[Read Attribute] Returning metadata for ${metadata.length} attributes`);
     return { success: true, result: { attributes: metadata, count: metadata.length } };
   }
   
-  // Return full content for requested attributes
+  // Return full content for requested attributes (or metadata for binary)
   const results: Record<string, unknown> = {};
   console.log(`[Read Attribute] Requested attributes: ${names.join(', ')}`);
   console.log(`[Read Attribute] Available attributes: ${Object.keys(attributes).join(', ') || 'none'}`);
   
   for (const name of names) {
     if (attributes[name]) {
+      const attr = attributes[name];
+      
+      // For binary attributes, return metadata only (not the full base64 data)
+      if (attr.isBinary) {
+        results[name] = {
+          _type: 'binary',
+          _message: `Binary content (${attr.mimeType || 'binary'}), size: ${Math.round(attr.size / 1024)}KB. This data is available for use in pronghorn_post or other export tools. Do NOT attempt to read or display raw binary data.`,
+          mimeType: attr.mimeType,
+          size: attr.size,
+          tool: attr.tool,
+        };
+        console.log(`[Read Attribute] Found binary '${name}': ${attr.mimeType}, ${Math.round(attr.size / 1024)}KB (metadata only)`);
+        continue;
+      }
+      
       // Safely serialize to ensure no circular references
       try {
-        const serialized = JSON.parse(JSON.stringify(attributes[name].result));
+        const serialized = JSON.parse(JSON.stringify(attr.result));
         results[name] = serialized;
         console.log(`[Read Attribute] Found '${name}': ${JSON.stringify(serialized).length} chars`);
       } catch (e) {
