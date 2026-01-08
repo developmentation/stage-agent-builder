@@ -505,7 +505,7 @@ export function FreeAgentPanel({
                   ref={fileInputRef}
                   type="file"
                   multiple
-                  accept=".txt,.md,.json,.xml,.csv,.yaml,.yml,.toml,.js,.jsx,.ts,.tsx,.vue,.svelte,.html,.css,.scss,.sass,.less,.py,.java,.c,.cpp,.h,.hpp,.cs,.go,.rs,.php,.rb,.swift,.kt,.sql,.sh,.bash,.zsh,.fish,.ps1,.bat,.cmd,.log,.env,.ini,.conf,.config,.gitignore,.dockerfile,.pdf,.docx,.xlsx,.xls"
+                  accept="*/*"
                   className="hidden"
                   onChange={handleFileUpload}
                 />
