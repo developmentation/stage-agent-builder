@@ -297,6 +297,13 @@ export interface FreeAgentSession {
     }>;
     toolOverrides: Record<string, { description?: string }>;
     disabledTools: string[];
+    toolDefinitions?: Array<{
+      id: string;
+      name: string;
+      description: string;
+      category: string;
+      parameters: Record<string, { type: string; required?: boolean; description?: string }>;
+    }>;
   };
   
   // Tool instances for per-instance configuration

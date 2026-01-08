@@ -844,7 +844,7 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
     async (
       child: ChildSession,
       parentSession: FreeAgentSession,
-      parentPromptData: PromptDataPayload | undefined,
+      parentPromptData: FreeAgentSession['promptData'],
       onUpdate: (child: ChildSession) => void,
       onToolActive?: (toolId: string, active: boolean) => void
     ) => {
@@ -860,9 +860,10 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
       
       // Build child's promptData by substituting the user_task section with child-specific task and rules
       // This keeps the identity section clean and uses the proper task section
-      const childPromptData: PromptDataPayload | undefined = parentPromptData ? {
+      const childPromptData: FreeAgentSession['promptData'] = parentPromptData ? {
         toolOverrides: parentPromptData.toolOverrides,
         disabledTools: parentPromptData.disabledTools,
+        toolDefinitions: parentPromptData.toolDefinitions, // Inherit tool definitions from parent
         sections: parentPromptData.sections.map(section => {
           if (section.id === 'user_task') {
             // Substitute the entire user_task section with child-specific content

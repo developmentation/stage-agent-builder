@@ -1,6 +1,15 @@
 // System Prompt Builder - Prepares prompt data from template + customizations
 import type { PromptSection, ToolOverride } from "@/types/systemPrompt";
 
+// Structure for tool definitions sent to edge function
+export interface ToolDefinitionPayload {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  parameters: Record<string, { type: string; required?: boolean; description?: string }>;
+}
+
 // Structure sent to edge function
 export interface PromptDataSection {
   id: string;
@@ -16,6 +25,7 @@ export interface PromptDataPayload {
   sections: PromptDataSection[];
   toolOverrides: Record<string, ToolOverride>;
   disabledTools: string[];
+  toolDefinitions: ToolDefinitionPayload[];
 }
 
 // Interface for the template loaded from JSON
@@ -32,6 +42,19 @@ interface SystemPromptTemplateJSON {
   metadata?: Record<string, unknown>;
 }
 
+// Interface for tool manifest loaded from JSON
+interface ToolsManifestJSON {
+  version: string;
+  description: string;
+  tools: Record<string, {
+    name: string;
+    description: string;
+    category: string | string[];
+    parameters: Record<string, { type: string; required?: boolean; description?: string }>;
+  }>;
+  categories: Record<string, { name: string; description: string; color: string }>;
+}
+
 // Interface for customization methods (subset of usePromptCustomization return)
 export interface PromptCustomizationMethods {
   getSortedSections: (templateSections: PromptSection[]) => PromptSection[];
@@ -41,8 +64,9 @@ export interface PromptCustomizationMethods {
   getDisabledTools: () => string[];
 }
 
-// Cache for loaded template
+// Cache for loaded template and tools manifest
 let templateCache: SystemPromptTemplateJSON | null = null;
+let toolsManifestCache: ToolsManifestJSON | null = null;
 
 /**
  * Load the system prompt template from JSON file
@@ -62,10 +86,51 @@ export async function loadSystemPromptTemplate(): Promise<SystemPromptTemplateJS
 }
 
 /**
- * Clear the template cache (useful for testing or hot reloading)
+ * Load the tools manifest from JSON file
+ */
+export async function loadToolsManifest(): Promise<ToolsManifestJSON> {
+  if (toolsManifestCache) {
+    return toolsManifestCache;
+  }
+  
+  const response = await fetch('/data/toolsManifest.json');
+  if (!response.ok) {
+    throw new Error(`Failed to load tools manifest: ${response.status}`);
+  }
+  
+  toolsManifestCache = await response.json();
+  return toolsManifestCache!;
+}
+
+/**
+ * Clear the template and manifest caches (useful for testing or hot reloading)
  */
 export function clearTemplateCache(): void {
   templateCache = null;
+  toolsManifestCache = null;
+}
+
+/**
+ * Build tool definitions array from the manifest
+ */
+function buildToolDefinitions(manifest: ToolsManifestJSON): ToolDefinitionPayload[] {
+  const definitions: ToolDefinitionPayload[] = [];
+  
+  for (const [toolId, tool] of Object.entries(manifest.tools)) {
+    // For tools with multiple categories, use the first one
+    const category = Array.isArray(tool.category) ? tool.category[0] : tool.category;
+    
+    definitions.push({
+      id: toolId,
+      name: tool.name,
+      description: tool.description,
+      category,
+      parameters: tool.parameters,
+    });
+  }
+  
+  console.log(`[PromptBuilder] Built ${definitions.length} tool definitions from manifest`);
+  return definitions;
 }
 
 /**
@@ -73,14 +138,18 @@ export function clearTemplateCache(): void {
  * 
  * This function:
  * 1. Loads the template from JSON
- * 2. Applies customizations (section overrides, custom sections, order changes)
- * 3. Returns the structured data for the edge function to build the final prompt
+ * 2. Loads the tools manifest from JSON
+ * 3. Applies customizations (section overrides, custom sections, order changes)
+ * 4. Returns the structured data for the edge function to build the final prompt
  */
 export async function buildPromptData(
   customization: PromptCustomizationMethods
 ): Promise<PromptDataPayload> {
-  // Load the base template
-  const template = await loadSystemPromptTemplate();
+  // Load the base template and tools manifest in parallel
+  const [template, toolsManifest] = await Promise.all([
+    loadSystemPromptTemplate(),
+    loadToolsManifest(),
+  ]);
   
   // Get sorted sections (includes custom sections and respects order overrides)
   const sortedSections = customization.getSortedSections(template.sections);
@@ -117,13 +186,17 @@ export async function buildPromptData(
   // Get disabled tools
   const disabledTools = customization.getDisabledTools();
   
+  // Build tool definitions from manifest
+  const toolDefinitions = buildToolDefinitions(toolsManifest);
+  
   console.log(`[PromptBuilder] Built ${sectionsWithOverrides.length} sections (${disabledSectionIds.size} disabled), ` +
-    `${Object.keys(toolOverrides).length} tool overrides, ${disabledTools.length} disabled tools`);
+    `${toolDefinitions.length} tools, ${Object.keys(toolOverrides).length} tool overrides, ${disabledTools.length} disabled tools`);
   
   return {
     sections: sectionsWithOverrides,
     toolOverrides,
     disabledTools,
+    toolDefinitions,
   };
 }
 
@@ -132,7 +205,10 @@ export async function buildPromptData(
  * Useful when customization hook isn't available
  */
 export async function buildDefaultPromptData(): Promise<PromptDataPayload> {
-  const template = await loadSystemPromptTemplate();
+  const [template, toolsManifest] = await Promise.all([
+    loadSystemPromptTemplate(),
+    loadToolsManifest(),
+  ]);
   
   // Return sections as-is with no overrides
   const sections: PromptDataSection[] = template.sections
@@ -147,9 +223,13 @@ export async function buildDefaultPromptData(): Promise<PromptDataPayload> {
       variables: section.variables,
     }));
   
+  // Build tool definitions from manifest
+  const toolDefinitions = buildToolDefinitions(toolsManifest);
+  
   return {
     sections,
     toolOverrides: {},
     disabledTools: [],
+    toolDefinitions,
   };
 }
