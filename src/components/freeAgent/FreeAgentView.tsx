@@ -34,6 +34,9 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
   const [childModalOpen, setChildModalOpen] = useState(false);
   const [selectedArtifact, setSelectedArtifact] = useState<FreeAgentArtifact | null>(null);
   const [artifactViewerOpen, setArtifactViewerOpen] = useState(false);
+  
+  // Lifted file state for canvas preview before session starts
+  const [pendingFiles, setPendingFiles] = useState<SessionFile[]>([]);
 
   const {
     session,
@@ -210,6 +213,8 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
                 secretsManager={secretsManager}
                 toolsManifest={toolsManifest}
                 toolInstancesManager={toolInstancesManager}
+                pendingFiles={pendingFiles}
+                onPendingFilesChange={setPendingFiles}
               />
             </div>
           )}
@@ -223,6 +228,7 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
                 onScratchpadChange={updateScratchpad}
                 onRetry={retrySession}
                 onChildClick={handleChildClick}
+                pendingFiles={pendingFiles}
               />
             </div>
           )}
@@ -285,6 +291,8 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
                   secretsManager={secretsManager}
                   toolsManifest={toolsManifest}
                   toolInstancesManager={toolInstancesManager}
+                  pendingFiles={pendingFiles}
+                  onPendingFilesChange={setPendingFiles}
                 />
               </div>
             </div>
@@ -303,6 +311,7 @@ export function FreeAgentView({ maxIterations }: FreeAgentViewProps) {
                 onScratchpadChange={updateScratchpad}
                 onRetry={retrySession}
                 onChildClick={handleChildClick}
+                pendingFiles={pendingFiles}
               />
             </div>
           </ResizablePanel>
