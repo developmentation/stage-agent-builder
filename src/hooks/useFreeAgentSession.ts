@@ -425,7 +425,19 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
             // Check for saveAs parameter and create attribute if present
             const saveAsName = toolCall.params?.saveAs as string | undefined;
             if (result.success && saveAsName) {
-              const resultString = JSON.stringify(result.result, null, 2);
+              // Detect binary content for image_generation and elevenlabs_tts
+              const isBinaryTool = result.tool === 'image_generation' || result.tool === 'elevenlabs_tts';
+              const imgResult = result.result as { imageUrl?: string; mimeType?: string } | undefined;
+              const ttsResult = result.result as { audioContent?: string; mimeType?: string } | undefined;
+              
+              const isBinary = isBinaryTool && !!(imgResult?.imageUrl || ttsResult?.audioContent);
+              const binaryMimeType = imgResult?.mimeType || ttsResult?.mimeType || 
+                (result.tool === 'image_generation' ? 'image/png' : 'audio/mpeg');
+              
+              const resultString = isBinary 
+                ? `[Binary ${binaryMimeType} - ${Math.round((imgResult?.imageUrl?.length || ttsResult?.audioContent?.length || 0) / 1024)}KB]`
+                : JSON.stringify(result.result, null, 2);
+              
               const attribute: ToolResultAttribute = {
                 id: crypto.randomUUID(),
                 name: saveAsName,
@@ -433,22 +445,33 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
                 params: toolCall.params || {},
                 result: result.result,
                 resultString,
-                size: resultString.length,
+                size: isBinary ? (imgResult?.imageUrl?.length || ttsResult?.audioContent?.length || 0) : resultString.length,
                 createdAt: new Date().toISOString(),
                 iteration: iterationRef.current,
+                isBinary: isBinary || undefined,
+                mimeType: isBinary ? binaryMimeType : undefined,
               };
               handleAttributeCreated(attribute);
               
               // AUTO-ADD to scratchpad with guidance on how to access
-              const scratchpadEntry = `\n\n## ${saveAsName} (from ${result.tool})\nData stored in attribute (${resultString.length} chars).\nAccess via: read_attribute({ names: ['${saveAsName}'] })\nPlaceholder: {{${saveAsName}}}\n\n**TODO: After reading, summarize key findings here.**`;
+              const scratchpadEntry = isBinary
+                ? `\n\n## ${saveAsName} (${binaryMimeType} from ${result.tool})\n[Binary content stored - ${Math.round(attribute.size / 1024)}KB]\nUse in pronghorn_post or other export tools.\n`
+                : `\n\n## ${saveAsName} (from ${result.tool})\nData stored in attribute (${resultString.length} chars).\nAccess via: read_attribute({ names: ['${saveAsName}'] })\nPlaceholder: {{${saveAsName}}}\n\n**TODO: After reading, summarize key findings here.**`;
               const newScratchpad = (scratchpadRef.current || "") + scratchpadEntry;
               handleScratchpadUpdate(newScratchpad);
               
               // Replace the full result with a summary message guiding the agent
-              const summaryResult = {
-                _savedAsAttribute: saveAsName,
-                _message: `Result saved to attribute '${saveAsName}' (${resultString.length} chars). NEXT STEP: Call read_attribute({ names: ['${saveAsName}'] }) ONCE, extract key data, then write YOUR SUMMARY to scratchpad. Don't re-read raw data!`,
-              };
+              const summaryResult = isBinary
+                ? {
+                    _savedAsAttribute: saveAsName,
+                    _type: 'binary',
+                    _message: `Binary ${binaryMimeType} saved to attribute '${saveAsName}' (${Math.round(attribute.size / 1024)}KB). Available for use in pronghorn_post or export tools. Do NOT attempt to read binary data.`,
+                    mimeType: binaryMimeType,
+                  }
+                : {
+                    _savedAsAttribute: saveAsName,
+                    _message: `Result saved to attribute '${saveAsName}' (${resultString.length} chars). NEXT STEP: Call read_attribute({ names: ['${saveAsName}'] }) ONCE, extract key data, then write YOUR SUMMARY to scratchpad. Don't re-read raw data!`,
+                  };
               
               // Add to iteration results with summary instead of full result
               iterationToolResults.push({
@@ -752,16 +775,19 @@ export function useFreeAgentSession(options: UseFreeAgentSessionOptions = {}) {
           iteration: iterationRef.current,
         };
 
-        // Add artifacts from response
-        const newArtifacts: FreeAgentArtifact[] = (response.artifacts || []).map((a) => ({
-          id: crypto.randomUUID(),
-          type: a.type,
-          title: a.title,
-          content: a.content,
-          description: a.description,
-          createdAt: new Date().toISOString(),
-          iteration: iterationRef.current,
-        }));
+        // Add artifacts from response - filter out duplicates from frontend tools (export_word, export_pdf)
+        const existingArtifactTitles = new Set(artifactsRef.current.map(a => a.title));
+        const newArtifacts: FreeAgentArtifact[] = (response.artifacts || [])
+          .filter(a => !existingArtifactTitles.has(a.title)) // Skip duplicates
+          .map((a) => ({
+            id: crypto.randomUUID(),
+            type: a.type,
+            title: a.title,
+            content: a.content,
+            description: a.description,
+            createdAt: new Date().toISOString(),
+            iteration: iterationRef.current,
+          }));
         
         // Update artifacts ref immediately for sync access in next iteration
         if (newArtifacts.length > 0) {
