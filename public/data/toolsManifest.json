@@ -704,7 +704,7 @@
         "model": {
           "type": "string",
           "required": false,
-          "default": "gemini-2.5-flash-image",
+          "default": "gemini-3-pro-image-preview",
           "enum": ["gemini-2.5-flash-image", "gemini-3-pro-image-preview"],
           "description": "Image generation model to use"
         },
@@ -771,6 +771,12 @@
           "required": false,
           "default": "document.docx",
           "description": "Output filename"
+        },
+        "title": {
+          "type": "string",
+          "required": false,
+          "default": "Document",
+          "description": "Document title for header/metadata"
         }
       },
       "returns": {
@@ -795,6 +801,12 @@
           "required": false,
           "default": "document.pdf",
           "description": "Output filename"
+        },
+        "title": {
+          "type": "string",
+          "required": false,
+          "default": "Document",
+          "description": "Document title for header/metadata"
         }
       },
       "returns": {
