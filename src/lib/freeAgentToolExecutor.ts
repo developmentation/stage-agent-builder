@@ -514,6 +514,8 @@ export async function executeEdgeFunctionTool(
     pdf_extract_text: "tool_pdf-handler",
     // OCR
     ocr_image: "tool_ocr-handler",
+    // Pronghorn
+    pronghorn_post: "pronghorn-post",
   };
 
   const functionName = toolToFunction[tool];
@@ -531,7 +533,7 @@ export async function executeEdgeFunctionTool(
     } else if (tool === "post_call_api") {
       body = { ...params, method: "POST" };
     } else if (tool === "image_generation") {
-      body = { prompt: params.prompt, model: params.model || "gemini-2.5-flash-image" };
+      body = { prompt: params.prompt, model: params.model || "gemini-3-pro-image-preview" };
     } else if (tool === "read_database_schemas") {
       body = { ...params, action: "schemas" };
     }
